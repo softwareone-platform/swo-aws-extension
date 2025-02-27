@@ -1,0 +1,1 @@
+# swo-aws-extension
