@@ -1,0 +1,54 @@
+services:
+  app:
+    container_name: aws
+    build:
+      context: .
+      dockerfile: prod.Dockerfile
+    working_dir: /extension
+    command: swoext run --no-color
+    volumes: 
+      - .:/extension
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    expose:
+      - "8080"
+
+  bash:
+    container_name: aws_bash
+    build:
+      context: .
+      dockerfile: dev.Dockerfile
+    working_dir: /extension
+    command: bash
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/extension
+    env_file:
+      - .env
+
+  app_test:
+    container_name: aws_test
+    build:
+      context: .
+      dockerfile: dev.Dockerfile
+    working_dir: /extension
+    command: bash -c "ruff check . && pytest"
+    volumes:
+      - .:/extension
+    env_file:
+      - .env
+
+  format:
+    container_name: aws_format
+    build:
+      context: .
+      dockerfile: dev.Dockerfile
+    working_dir: /extension
+    command: bash -c "ruff check . --select I --fix && ruff format ."
+    volumes:
+      - .:/extension
+    env_file:
+      - .env
