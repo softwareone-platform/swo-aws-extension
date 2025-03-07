@@ -31,10 +31,12 @@ def test_mpa_pre_configuration_phase_preconfig_mpa(mocker,
     mpa_pre_config(mpt_client_mock, context, next_step_mock)
 
     mock_client.create_organization.assert_called_once_with(FeatureSet="ALL")
+    mock_client.activate_organizations_access.assert_called_once_with()
     assert (
             context.order["parameters"]
             == set_phase(order, CREATE_ACCOUNT)["parameters"]
     )
+
     mocked_update_order.assert_called_once_with(
         mpt_client_mock,
         context.order["id"],

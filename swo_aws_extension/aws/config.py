@@ -19,6 +19,10 @@ class Config:
     def ccp_oauth_url(self) -> str:
         return settings.EXTENSION_CONFIG["CCP_OAUTH_URL"]
 
+    @property
+    def aws_region(self) -> str:
+        return settings.EXTENSION_CONFIG["AWS_REGION"]
+
     @staticmethod
     def _get_client_secret():
         """

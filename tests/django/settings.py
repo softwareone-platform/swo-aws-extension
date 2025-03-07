@@ -181,5 +181,6 @@ EXTENSION_CONFIG = {
     "CCP_CLIENT_ID":"client_id",
     "CCP_CLIENT_SECRET" : "client_secret",
     "AWS_OPENID_SCOPE" : "scope",
-    "CCP_OAUTH_URL" : "https://ccpoauth.com/oauth2/token"
+    "CCP_OAUTH_URL" : "https://ccpoauth.com/oauth2/token",
+    "AWS_REGION" : "us-east-1"
 }

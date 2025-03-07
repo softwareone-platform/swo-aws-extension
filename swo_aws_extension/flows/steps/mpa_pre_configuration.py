@@ -21,6 +21,9 @@ class MPAPreConfiguration(Step):
         logger.info("Starting MPA pre-configuration. Creating AWS organization")
         context.aws_client.create_organization()
 
+        logger.info("Activating Organizations Access")
+        context.aws_client.activate_organizations_access()
+
         # add logic to get next phase
         context.order = set_phase(context.order, CREATE_ACCOUNT)
         update_order(client, context.order_id, parameters=context.order["parameters"])

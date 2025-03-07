@@ -75,6 +75,19 @@ class AWSClient:
             aws_session_token=self.credentials["SessionToken"],
         )
 
+    def _get_cloudformation_client(self):
+        """
+        Get the cloudformation client.
+        :return: The cloudformation client.
+        """
+        return boto3.client(
+            "cloudformation",
+            aws_access_key_id=self.credentials["AccessKeyId"],
+            aws_secret_access_key=self.credentials["SecretAccessKey"],
+            aws_session_token=self.credentials["SessionToken"],
+            region_name=self.config.aws_region
+        )
+
     @wrap_boto3_error
     def create_organization(self):
         """
@@ -92,3 +105,19 @@ class AWSClient:
                 logger.warning("Organization already exists")
             else:
                 raise
+
+    @wrap_boto3_error
+    def activate_organizations_access(self,):
+        """
+        Activate the organizations access. If the access is already active,
+        the function logs a warning and continues.
+
+        :return: None
+        """
+        cloudformation_client = self._get_cloudformation_client()
+
+        response = cloudformation_client.activate_organizations_access()
+        logger.info(f"Organizations access activated: {response}")
+
+
+
