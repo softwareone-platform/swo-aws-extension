@@ -32,6 +32,10 @@ EXT_MSTEAMS_WEBHOOK_URL=https://whatever.webhook.office.com/webhookb2/<...>
 EXT_AWS_SES_CREDENTIALS=<access-key>:<secret-key>
 EXT_EMAIL_NOTIFICATIONS_SENDER=no-reply@domain.com
 EXT_EMAIL_NOTIFICATIONS_ENABLED=1
+EXT_CCP_CLIENT_ID=123456789
+EXT_AWS_OPENID_SCOPE=urn://dev.aws.services.softwareone.com/.default
+EXT_CCP_OAUTH_URL=https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token
+EXT_CCP_CLIENT_SECRET=QWERTYUIOP
 ```
 
 `MPT_PRODUCTS_IDS` should be a comma-separated list of the SWO Marketplace Product identifiers
@@ -53,6 +57,11 @@ EXT_MSTEAMS_WEBHOOK_URL=https://whatever.webhook.office.com/webhookb2/<...>
 EXT_AWS_SES_CREDENTIALS=<access-key>:<secret-key>
 EXT_EMAIL_NOTIFICATIONS_SENDER=no-reply@domain.com
 EXT_EMAIL_NOTIFICATIONS_ENABLED=1
+EXT_CCP_CLIENT_ID=CCP Client ID
+EXT_AWS_OPENID_SCOPE=urn://dev.aws.services.softwareone.com/.default
+EXT_CCP_OAUTH_URL=https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token
+EXT_CCP_CLIENT_SECRET=CCP Client Secret
+
 ```
 
 

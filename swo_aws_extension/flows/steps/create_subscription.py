@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class CreateSubscription(Step):
     def __call__(self, client, context, next_step):
         if is_purchase_order(context.order) or is_change_order(context.order):
-            for line in context.order['lines']:
+            for line in context.order["lines"]:
                 order_subscription = get_subscription_by_line_and_item_id(
                     context.order["subscriptions"],
                     line["item"]["id"],
@@ -26,7 +26,7 @@ class CreateSubscription(Step):
                             {
                                 "id": line["id"],
                             },
-                        ]
+                        ],
                     }
                     subscription = create_subscription(
                         client, context.order_id, subscription

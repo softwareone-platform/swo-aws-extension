@@ -11,7 +11,19 @@ from rich.highlighter import ReprHighlighter as _ReprHighlighter
 from swo.mpt.extensions.core.events.dataclasses import Event
 from swo.mpt.extensions.runtime.djapp.conf import get_for_product
 
+from swo_aws_extension.aws.client import AWSClient
+from swo_aws_extension.aws.config import get_config
+from swo_aws_extension.constants import (
+    PARAM_ACCOUNT_EMAIL,
+    PARAM_MPA_ACCOUNT_ID,
+    PARAM_PHASE,
+)
+
 PARAM_COMPANY_NAME = "ACME Inc"
+AWESOME_PRODUCT = "Awesome product"
+CREATED_AT= "2023-12-14T18:02:16.9359"
+META = "$meta"
+
 
 @pytest.fixture()
 def requests_mocker():
@@ -22,26 +34,47 @@ def requests_mocker():
         yield rsps
 
 
-
-
-
-
-
-
-
 @pytest.fixture()
 def order_parameters_factory():
     def _order_parameters(
+        account_email="test@aws.com",
     ):
-        return []
+        return [
+            {
+                "id": "PAR-1234-5678",
+                "name": "AWS account email",
+                "externalId": PARAM_ACCOUNT_EMAIL,
+                "type": "SingleLineText",
+                "value": account_email,
+            },
+        ]
+
     return _order_parameters
 
 
 @pytest.fixture()
 def fulfillment_parameters_factory():
     def _fulfillment_parameters(
+        account_email="test@aws.com",
+        mp_account_id="123456789012",
+        phase="",
     ):
-        return []
+        return [
+            {
+                "id": "PAR-1234-5678",
+                "name": "MPA account ID",
+                "externalId": PARAM_MPA_ACCOUNT_ID,
+                "type": "SingleLineText",
+                "value": mp_account_id,
+            },
+            {
+                "id": "PAR-1234-5678",
+                "name": "Phase",
+                "externalId": PARAM_PHASE,
+                "type": "Dropdown",
+                "value": phase,
+            },
+        ]
 
     return _fulfillment_parameters
 
@@ -50,7 +83,7 @@ def fulfillment_parameters_factory():
 def items_factory():
     def _items(
         item_id=1,
-        name="Awesome product",
+        name=AWESOME_PRODUCT,
         external_vendor_id="65304578CA",
     ):
         return [
@@ -96,7 +129,7 @@ def lines_factory(agreement, deployment_id: str = None):
     def _items(
         line_id=1,
         item_id=1,
-        name="Awesome product",
+        name=AWESOME_PRODUCT,
         old_quantity=0,
         quantity=170,
         external_vendor_id="65304578CA",
@@ -130,7 +163,7 @@ def lines_factory(agreement, deployment_id: str = None):
 def subscriptions_factory(lines_factory):
     def _subscriptions(
         subscription_id="SUB-1000-2000-3000",
-        product_name="Awesome product",
+        product_name=AWESOME_PRODUCT,
         vendor_id="123-456-789",
         start_date=None,
         commitment_date=None,
@@ -144,12 +177,7 @@ def subscriptions_factory(lines_factory):
             {
                 "id": subscription_id,
                 "name": f"Subscription for {product_name}",
-                "parameters": {
-                    "fulfillment": [
-                        {
-                        }
-                    ]
-                },
+                "parameters": {"fulfillment": [{}]},
                 "externalIds": {
                     "vendor": vendor_id,
                 },
@@ -163,7 +191,7 @@ def subscriptions_factory(lines_factory):
 
 
 @pytest.fixture()
-def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_factory):
+def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_factory, seller):
     def _agreement(
         licensee_name="My beautiful licensee",
         licensee_address=None,
@@ -207,7 +235,7 @@ def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_fa
             "name": "Product Name 1",
             "audit": {
                 "created": {
-                    "at": "2023-12-14T18:02:16.9359",
+                    "at": CREATED_AT,
                     "by": {"id": "USR-0000-0001"},
                 },
                 "updated": None,
@@ -224,10 +252,10 @@ def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_fa
             "licensee": licensee,
             "buyer": buyer,
             "seller": {
-                "id": "SEL-9121-8944",
-                "href": "/accounts/sellers/SEL-9121-8944",
-                "name": "Software LN",
-                "icon": "/static/SEL-9121-8944/icon.png",
+                "id": seller["id"],
+                "href": seller["href"],
+                "name": seller["name"],
+                "icon": seller["icon"],
                 "address": {
                     "country": "US",
                 },
@@ -300,7 +328,7 @@ def template():
 
 
 @pytest.fixture()
-def agreement(buyer, licensee, listing):
+def agreement(buyer, licensee, listing, seller):
     return {
         "id": "AGR-2119-4550-8674-5962",
         "href": "/commerce/agreements/AGR-2119-4550-8674-5962",
@@ -308,7 +336,7 @@ def agreement(buyer, licensee, listing):
         "name": "Product Name 1",
         "audit": {
             "created": {
-                "at": "2023-12-14T18:02:16.9359",
+                "at": CREATED_AT,
                 "by": {"id": "USR-0000-0001"},
             },
             "updated": None,
@@ -353,10 +381,10 @@ def agreement(buyer, licensee, listing):
         "licensee": licensee,
         "buyer": buyer,
         "seller": {
-            "id": "SEL-9121-8944",
-            "href": "/accounts/sellers/SEL-9121-8944",
-            "name": "Software LN",
-            "icon": "/static/SEL-9121-8944/icon.png",
+            "id": seller["id"],
+            "href": seller["href"],
+            "name": seller["name"],
+            "icon": seller["icon"],
             "address": {
                 "country": "US",
             },
@@ -422,9 +450,11 @@ def order_factory(
                 "fulfillment": fulfillment_parameters,
                 "ordering": order_parameters,
             },
+            "product": {"id": "PRD-1111-1111", "name": "AWS"},
+            "seller": {"id": "SEL-1111-1111"},
             "audit": {
                 "created": {
-                    "at": "2023-12-14T18:02:16.9359",
+                    "at": CREATED_AT,
                     "by": {"id": "USR-0000-0001"},
                 },
                 "updated": None,
@@ -593,6 +623,10 @@ def jwt_token(settings):
         algorithm="HS256",
     )
 
+@pytest.fixture()
+def config():
+    return get_config()
+
 
 @pytest.fixture()
 def extension_settings(settings):
@@ -718,7 +752,7 @@ def mock_wrap_event():
 @pytest.fixture()
 def mock_meta_with_pagination_has_more_pages():
     return {
-        "$meta": {
+        META: {
             "pagination": {
                 "offset": 0,
                 "limit": 10,
@@ -731,7 +765,7 @@ def mock_meta_with_pagination_has_more_pages():
 @pytest.fixture()
 def mock_meta_with_pagination_has_no_more_pages():
     return {
-        "$meta": {
+        META: {
             "pagination": {
                 "offset": 0,
                 "limit": 10,
@@ -846,11 +880,9 @@ def mock_worker_call_command(mocker):
 
 @pytest.fixture()
 def mock_get_order_for_producer(order, order_factory):
-    order = order_factory()
-
     return {
         "data": [order],
-        "$meta": {
+        META: {
             "pagination": {
                 "offset": 0,
                 "limit": 10,
@@ -858,3 +890,26 @@ def mock_get_order_for_producer(order, order_factory):
             },
         },
     }
+
+@pytest.fixture()
+def aws_client_factory(mocker, requests_mocker):
+    def _aws_client( config, mpa_account_id, role_name):
+        requests_mocker.post(
+            config.ccp_oauth_url,
+            json={"access_token": "test_access_token"},
+            status=200)
+
+        mock_boto3_client = mocker.patch("boto3.client")
+        mock_client = mock_boto3_client.return_value
+        credentials = {
+            "AccessKeyId": "test_access_key",
+            "SecretAccessKey": "test_secret_key",
+            "SessionToken": "test_session_token",
+        }
+        mock_client.assume_role_with_web_identity.return_value = {
+            "Credentials": credentials
+        }
+        return AWSClient(config, mpa_account_id, role_name), mock_client
+
+    return _aws_client
+

@@ -8,6 +8,7 @@ from swo_aws_extension.notifications import send_email_notification
 
 logger = logging.getLogger(__name__)
 
+
 class CompleteOrder(Step):
     def __init__(self, template_name):
         self.template_name = template_name
@@ -30,4 +31,3 @@ class CompleteOrder(Step):
         send_email_notification(client, context.order)
         logger.info(f"{context}: order has been completed successfully")
         next_step(client, context)
-
