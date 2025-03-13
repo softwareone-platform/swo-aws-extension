@@ -3,6 +3,10 @@ from datetime import date
 
 from swo.mpt.extensions.flows.context import Context as BaseContext
 
+from swo_aws_extension.aws.client import AWSClient
+from swo_aws_extension.parameters import (
+    get_phase,
+)
 from swo_aws_extension.utils import find_first
 
 MPT_ORDER_STATUS_PROCESSING = "Processing"
@@ -18,7 +22,7 @@ def is_purchase_order(order):
     """
     Check if the order is a real purchase order or a subscriptions transfer order.
     Args:
-        source (str): The order to check.
+        order (dict): The order to check.
 
     Returns:
         bool: True if it is a real purchase order, False otherwise.
@@ -38,13 +42,15 @@ def is_termination_order(order):
 class OrderContext(BaseContext):
     order: dict
     due_date: date | None = None
-    validation_succeeded : bool = True
+    validation_succeeded: bool = True
     type: str | None = None
     product_id: str | None = None
     agreement_id: str | None = None
     order_id: str | None = None
     authorization_id: str | None = None
     seller_id: str | None = None
+    phase: str | None = None
+    aws_client: AWSClient | None = None
 
     def __str__(self):
         due_date = self.due_date.strftime("%Y-%m-%d") if self.due_date else "-"
@@ -54,7 +60,7 @@ class OrderContext(BaseContext):
         )
 
     @staticmethod
-    def FromOrder(order: dict):
+    def from_order(order: dict) -> "OrderContext":
         return OrderContext(
             order=order,
             product_id=order["product"]["id"],
@@ -62,6 +68,7 @@ class OrderContext(BaseContext):
             order_id=order["id"],
             authorization_id=order["authorization"]["id"],
             seller_id=order["seller"]["id"],
+            phase=get_phase(order),
         )
 
 
@@ -85,5 +92,3 @@ def get_subscription_by_line_and_item_id(subscriptions, item_id, line_id):
 
         if item:
             return subscription
-
-

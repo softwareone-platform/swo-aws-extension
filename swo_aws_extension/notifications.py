@@ -159,7 +159,6 @@ def md2html(template):
     return MarkdownIt("commonmark", {"breaks": True, "html": True}).render(template)
 
 
-
 def send_email_notification(client, order):
     """
     Send a notification email to the customer according to the
@@ -214,6 +213,3 @@ def notify_unhandled_exception_in_teams(process, order_id, traceback):
         f"of the order **{order_id}**:\n\n"
         f"```{traceback}```",
     )
-
-
-

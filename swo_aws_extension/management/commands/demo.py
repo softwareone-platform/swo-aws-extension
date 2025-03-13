@@ -21,5 +21,3 @@ class Command(BaseCommand):
         self.info("Info message")
         self.warning("Warning message")
         self.error("Error message")
-
-
