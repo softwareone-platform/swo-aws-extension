@@ -1,6 +1,7 @@
 import logging
 import traceback
 
+from swo_aws_extension.flows.close_account.flow import close_account_pipeline
 from swo_aws_extension.flows.error import strip_trace_id
 from swo_aws_extension.flows.fulfillment.pipelines import (
     change_order,
@@ -10,6 +11,7 @@ from swo_aws_extension.flows.fulfillment.pipelines import (
 from swo_aws_extension.flows.order import (
     OrderContext,
     is_change_order,
+    is_close_account_flow,
     is_purchase_order,
     is_termination_order,
 )
@@ -37,6 +39,8 @@ def fulfill_order(client, order,):
             purchase.run(client, context)
         elif is_change_order(order):
             change_order.run(client, context)
+        elif is_close_account_flow(order):
+            close_account_pipeline.run(client, context)
         elif is_termination_order(order):  # pragma: no branch
             terminate.run(client, context)
     except Exception:
