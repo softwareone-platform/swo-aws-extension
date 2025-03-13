@@ -1,3 +1,5 @@
+from unittest.mock import call
+
 import botocore.exceptions
 import pytest
 
@@ -71,3 +73,66 @@ def test_create_organization_error(config, aws_client_factory):
     with pytest.raises(botocore.exceptions.ClientError) as e:
         aws_client.create_organization()
     assert "AccessDeniedForDependencyException" in str(e.value)
+
+
+def test_aws_client_list_accounts(
+    mocker, config, aws_client_factory, data_aws_account_factory
+):
+    aws_client, mock_client = aws_client_factory(
+        config, "test_account_id", "test_role_name"
+    )
+    mock_client.list_accounts.side_effect = [
+        {
+            "Accounts": [
+                data_aws_account_factory(id=f"0000-{0:04}-{j:04}") for j in range(10)
+            ],
+            "NextToken": "token0",
+        },
+        {
+            "Accounts": [
+                data_aws_account_factory(id=f"0000-{1:04}-{j:04}") for j in range(10)
+            ],
+        },
+    ]
+
+    accounts = aws_client.list_accounts()
+    assert len(accounts) == 20
+    expected_calls = [call(), call(NextToken="token0")]
+    mock_client.list_accounts.assert_has_calls(expected_calls)
+
+
+def test_aws_client_close_account(config, aws_client_factory):
+    aws_client, mock_client = aws_client_factory(
+        config, "test_account_id", "test_role_name"
+    )
+    error_response = {
+        "Error": {
+            "Code": "AccountAlreadyClosedException",
+            "Message": "The request failed because your credentials do not have permission"
+            " to create the service-linked role required by AWS Organizations",
+        }
+    }
+    mock_client.close_account.side_effect = botocore.exceptions.ClientError(
+        error_response, "CloseAccount"
+    )
+    aws_client.close_account("account-id")
+
+    mock_client.close_account.assert_called_once_with(AccountId="account-id")
+
+
+def test_aws_client_close_account_raise_exception(config, aws_client_factory):
+    aws_client, mock_client = aws_client_factory(
+        config, "test_account_id", "test_role_name"
+    )
+    error_response = {
+        "Error": {
+            "Code": "AlternativeError",
+            "Message": "The request failed because your credentials do not have permission"
+            " to create the service-linked role required by AWS Organizations",
+        }
+    }
+    mock_client.close_account.side_effect = botocore.exceptions.ClientError(
+        error_response, "CloseAccount"
+    )
+    with pytest.raises(botocore.exceptions.ClientError):
+        aws_client.close_account("account-id")

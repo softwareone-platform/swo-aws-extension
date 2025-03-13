@@ -14,6 +14,8 @@ class OrderParametersEnum(StrEnum):
     PARAM_ORDER_ROOT_ACCOUNT_EMAIL = "orderRootAccountEmail"
     PARAM_ORDER_ACCOUNT_NAME = "orderAccountName"
     PARAM_ORDER_ACCOUNT_ID = "orderAccountId"
+    TERMINATION = "terminationType"
+    ACCOUNT_ID = "orderAccountId"
 
 
 class FulfillmentParametersEnum(StrEnum):
@@ -22,6 +24,7 @@ class FulfillmentParametersEnum(StrEnum):
     PARAM_ACCOUNT_REQUEST_ID = "accountRequestId"
     PARAM_ACCOUNT_EMAIL = "accountEmail"
     PARAM_ACCOUNT_NAME = "accountName"
+    CRM_TICKET_ID = "crmTicketId"
 
 
 def get_parameter(parameter_phase, source, param_external_id):
@@ -93,7 +96,9 @@ def set_ordering_parameter_error(order, param_external_id, error, required=True)
     return updated_order
 
 
-def update_ordering_parameter_constraints(order, param_external_id, hidden, required, readonly):
+def update_ordering_parameter_constraints(
+    order, param_external_id, hidden, required, readonly
+):
     """
     Update constraints on an ordering parameter.
     Args:
@@ -290,5 +295,61 @@ def get_account_type(source):
     param = get_ordering_parameter(
         source,
         OrderParametersEnum.PARAM_ACCOUNT_TYPE,
+    )
+    return param.get("value", None)
+
+
+def get_crm_ticket_id(order):
+    """
+    Get the CRM ticket ID from the corresponding fulfillment
+    parameter or None if it is not set.
+
+    Args:
+        order (dict): The order that contains the parameter.
+
+    Returns:
+        str: The CRM ticket ID provided by client or None if it isn't set.
+    """
+    param = get_fulfillment_parameter(
+        order,
+        FulfillmentParametersEnum.CRM_TICKET_ID,
+    )
+    return param.get("value", None)
+
+
+def set_crm_ticket_id(order, crm_ticket_id):
+    """
+    Set the CRM ticket ID on the fulfillment parameters.
+
+    Args:
+        order (dict): The order that contains the parameter.
+        crm_ticket_id (str): The CRM ticket ID.
+
+    Returns:
+        dict: The order updated.
+    """
+    updated_order = copy.deepcopy(order)
+    param = get_fulfillment_parameter(
+        updated_order,
+        FulfillmentParametersEnum.CRM_TICKET_ID,
+    )
+    param["value"] = crm_ticket_id
+    return updated_order
+
+
+def get_termination_type_parameter(order):
+    """
+    Get the termination flow from the corresponding fulfillment
+    parameter or None if it is not set.
+
+    Args:
+        order (dict): The order that contains the parameter.
+
+    Returns:
+        str: The termination flow provided by client or None if it isn't set.
+    """
+    param = get_ordering_parameter(
+        order,
+        OrderParametersEnum.TERMINATION,
     )
     return param.get("value", None)
