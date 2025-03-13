@@ -203,3 +203,43 @@ class AWSClient:
         account_creation_status = AccountCreationStatus.from_boto3_response(response)
         logger.info(f"Linked account request status: {account_creation_status}")
         return account_creation_status
+
+    @wrap_boto3_error
+    def list_accounts(self):
+        """
+        List the accounts in the organization.
+
+        :return: list({
+            'Id': 'string',
+            'Arn': 'string',
+            'Email': 'string',
+            'Name': 'string',
+            'Status': 'ACTIVE'|'SUSPENDED'|'PENDING_CLOSURE',
+            'JoinedMethod': 'INVITED'|'CREATED',
+            'JoinedTimestamp': datetime(2015, 1, 1)
+        }) The accounts in the organization.
+        """
+        org_client = self._get_organization_client()
+        accounts = []
+        response = org_client.list_accounts()
+        accounts.extend(response.get("Accounts", []))
+        while response.get("NextToken"):
+            response = org_client.list_accounts(NextToken=response["NextToken"])
+            accounts.extend(response.get("Accounts", []))
+        return accounts
+
+    @wrap_boto3_error
+    def close_account(self, account_id):
+        """
+        Close the account.
+
+        :return: None
+        """
+        try:
+            org_client = self._get_organization_client()
+            return org_client.close_account(AccountId=account_id)
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "AccountAlreadyClosedException":
+                logger.warning(f"Account {account_id} already closed")
+            else:
+                raise
