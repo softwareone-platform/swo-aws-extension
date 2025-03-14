@@ -17,6 +17,9 @@ from swo_aws_extension.constants import (
     PARAM_ACCOUNT_EMAIL,
     PARAM_MPA_ACCOUNT_ID,
     PARAM_PHASE,
+    FulfillmentParameter,
+    OrderParameter,
+    TerminationParameterChoices,
 )
 
 PARAM_COMPANY_NAME = "ACME Inc"
@@ -38,6 +41,8 @@ def requests_mocker():
 def order_parameters_factory():
     def _order_parameters(
         account_email="test@aws.com",
+        account_id="",
+        termination_type=TerminationParameterChoices.CLOSE_ACCOUNT,
     ):
         return [
             {
@@ -46,6 +51,20 @@ def order_parameters_factory():
                 "externalId": PARAM_ACCOUNT_EMAIL,
                 "type": "SingleLineText",
                 "value": account_email,
+            },
+            {
+                "id": "PAR-1234-5678",
+                "name": "AWS Account ID",
+                "externalId": OrderParameter.ACCOUNT_ID,
+                "type": "SingleLineText",
+                "value": account_id,
+            },
+            {
+                "id": "PAR-1234-5678",
+                "name": "Account Termination Type",
+                "externalId": OrderParameter.TERMINATION,
+                "type": "Choice",
+                "value": termination_type,
             },
         ]
 
@@ -58,6 +77,7 @@ def fulfillment_parameters_factory():
         account_email="test@aws.com",
         mp_account_id="123456789012",
         phase="",
+        crm_ticket_id=""
     ):
         return [
             {
@@ -73,6 +93,13 @@ def fulfillment_parameters_factory():
                 "externalId": PARAM_PHASE,
                 "type": "Dropdown",
                 "value": phase,
+            },
+            {
+                "id": "PAR-1234-5678",
+                "name": "CRM Ticket ID",
+                "externalId": FulfillmentParameter.CRM_TICKET_ID,
+                "type": "SingleLineText",
+                "value": crm_ticket_id,
             },
         ]
 
@@ -912,4 +939,3 @@ def aws_client_factory(mocker, requests_mocker):
         return AWSClient(config, mpa_account_id, role_name), mock_client
 
     return _aws_client
-

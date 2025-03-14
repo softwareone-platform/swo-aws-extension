@@ -4,9 +4,8 @@ from datetime import date
 from swo.mpt.extensions.flows.context import Context as BaseContext
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.parameters import (
-    get_phase,
-)
+from swo_aws_extension.constants import TerminationParameterChoices
+from swo_aws_extension.parameters import get_phase, get_termination_parameter
 from swo_aws_extension.utils import find_first
 
 MPT_ORDER_STATUS_PROCESSING = "Processing"
@@ -38,6 +37,13 @@ def is_termination_order(order):
     return order["type"] == ORDER_TYPE_TERMINATION
 
 
+def is_termination_close_account(order):
+    return get_termination_parameter(order) == TerminationParameterChoices.CLOSE_ACCOUNT
+
+def is_close_account_flow(order):
+    return is_termination_order(order) and is_termination_close_account(order)
+
+
 @dataclass
 class OrderContext(BaseContext):
     order: dict
@@ -55,7 +61,8 @@ class OrderContext(BaseContext):
     def __str__(self):
         due_date = self.due_date.strftime("%Y-%m-%d") if self.due_date else "-"
         return (
-            f"{self.product_id} {(self.type or '-').upper()} {self.agreement_id} {self.order_id} "
+            f"OrderContext: {self.product_id} {(self.type or '-').upper()}"
+            f" {self.agreement_id} {self.order_id} "
             f"{self.authorization_id} {due_date} "
         )
 
@@ -92,3 +99,8 @@ def get_subscription_by_line_and_item_id(subscriptions, item_id, line_id):
 
         if item:
             return subscription
+
+
+class CloseAccountContext(OrderContext):
+    mpa_account: str
+    account_id: str

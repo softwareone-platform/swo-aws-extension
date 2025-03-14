@@ -4,6 +4,8 @@ import functools
 from swo_aws_extension.constants import (
     PARAM_MPA_ACCOUNT_ID,
     PARAM_PHASE,
+    FulfillmentParameter,
+    OrderParameter,
 )
 from swo_aws_extension.utils import find_first
 
@@ -62,7 +64,7 @@ def set_ordering_parameter_error(order, param_external_id, error, required=True)
     return updated_order
 
 
-def get_mpa_account_id(source):
+def  get_mpa_account_id(source):
     """
     Get the MPA Account ID from the corresponding fulfillment
     parameter or None if it is not set.
@@ -118,3 +120,72 @@ def set_phase(order, phase):
     )
     param["value"] = phase
     return updated_order
+
+
+def get_crm_ticket_id(order):
+    """
+    Get the CRM ticket ID from the corresponding fulfillment
+    parameter or None if it is not set.
+
+    Args:
+        order (dict): The order that contains the parameter.
+
+    Returns:
+        str: The CRM ticket ID provided by client or None if it isn't set.
+    """
+    param = get_fulfillment_parameter(
+        order,
+        FulfillmentParameter.CRM_TICKET_ID,
+    )
+    return param.get("value", None)
+
+
+def set_crm_ticket_id(order, crm_ticket_id):
+    """
+    Set the CRM ticket ID on the fulfillment parameters.
+
+    Args:
+        order (dict): The order that contains the parameter.
+        crm_ticket_id (str): The CRM ticket ID.
+
+    Returns:
+        dict: The order updated.
+    """
+    updated_order = copy.deepcopy(order)
+    param = get_fulfillment_parameter(
+        updated_order,
+        FulfillmentParameter.CRM_TICKET_ID,
+    )
+    param["value"] = crm_ticket_id
+    return updated_order
+
+
+def get_termination_parameter(order):
+    """
+    Get the termination flow from the corresponding fulfillment
+    parameter or None if it is not set.
+
+    Args:
+        order (dict): The order that contains the parameter.
+
+    Returns:
+        str: The termination flow provided by client or None if it isn't set.
+    """
+    param = get_fulfillment_parameter(
+        order,
+        OrderParameter.TERMINATION,
+    )
+    return param.get("value", None)
+
+
+def get_account_id(order):
+    """
+    Gets the AWS Account ID from the corresponding ordering parameter or None if it is not set.
+    :param order: dict
+    :return: str | None
+    """
+    param = get_ordering_parameter(
+        order,
+        OrderParameter.ACCOUNT_ID,
+    )
+    return param.get("value", None)
