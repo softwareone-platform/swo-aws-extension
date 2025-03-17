@@ -1,5 +1,7 @@
 import copy
 import functools
+from copy import deepcopy
+from enum import StrEnum
 
 from swo_aws_extension.constants import (
     PARAM_MPA_ACCOUNT_ID,
@@ -7,9 +9,156 @@ from swo_aws_extension.constants import (
 )
 from swo_aws_extension.utils import find_first
 
+
+class OrderingParameters(StrEnum):
+    PARAM_ACCOUNT_EMAIL="accountEmail"
+    MPA_ACCOUNT_ID = "mpaAccountId"
+    TERMINATION_TYPE = "terminationType"
+
+
+class ParameterPhase(StrEnum):
+    ORDERING = "ordering"
+    FULFILLMENT = "fulfillment"
+
 PARAM_PHASE_ORDERING = "ordering"
 PARAM_PHASE_FULFILLMENT = "fulfillment"
 PARAM_CONTACT = "contact"
+
+class Parameter:
+    def __init__(
+            self,
+            order,
+            phase,
+            external_id
+    ):
+        self._order = order
+        self.phase = phase
+        self.external_id = external_id
+
+    @property
+    def parameter(self):
+        return find_first(
+            lambda x: x.get("externalId") == self.external_id,
+            self._order["parameters"][self.phase],
+            default={},
+        )
+
+    @property
+    def id(self):
+        return self.parameter.get("id")
+
+    @property
+    def externalId(self):
+        return self.parameter.get("externalId")
+
+    @property
+    def value(self):
+        return self.parameter.get("value")
+
+    def _clone(self):
+        new_order = deepcopy(self.order)
+        return Parameter(
+            new_order,
+            self.phase,
+            self.external_id
+        )
+
+    def update_value(self, v) -> "Parameter":
+        new_param = self._clone()
+        new_param.parameter["value"] = v
+        assert new_param.parameter["value"] == v
+
+        return new_param
+
+
+    @property
+    def error(self):
+        return self.parameter.get("error")
+
+
+    def update_error(self, e) -> "Parameter":
+        new_param = self._clone()
+        new_param.parameter["error"] = e
+        assert new_param.parameter["error"] == e
+        return self
+
+    @property
+    def constraints(self):
+        return self.parameter.get("constraints")
+
+    @property
+    def name(self):
+        return self.parameter.get("name")
+
+    @property
+    def order(self):
+        return self._order
+
+
+
+
+class ParameterBag:
+
+    def __init__(self, order, phase):
+        self.order = order
+        self.phase = phase
+
+    def get_by_external_id(self, external_id: str) -> Parameter:
+        param = find_first(
+            lambda x: x.get("externalId") == external_id,
+            self.order["parameters"][self.phase],
+            default=None,
+        )
+        if not param:
+            raise ValueError(f"Parameter {external_id=} not found")
+        return Parameter(self.order, self.phase, external_id)
+
+    def get_by_id(self, id: str) -> Parameter:
+        param = find_first(
+            lambda x: x.get("id") == id,
+            self.parameters,
+            default=None,
+        )
+        if not param:
+            raise ValueError(f"Parameter {id=} not found")
+        return Parameter(param)
+
+    def raw(self):
+        return self.parameters
+
+    def update(self):
+        self.parameters=[p.raw() for p in self.parameters]
+        self.parent.update()
+
+
+class Parameters:
+    def __init__(self, order):
+        self.order = order
+
+    @property
+    def ordering(self):
+        return ParameterBag(
+            self.order,
+            ParameterPhase.ORDERING
+        )
+
+    @property
+    def fulfillment(self):
+        return ParameterBag(
+            self.order,
+            ParameterPhase.FULFILLMENT
+        )
+
+    def raw(self):
+        return {
+            ParameterPhase.ORDERING: self.ordering.raw(),
+            ParameterPhase.FULFILLMENT: self.fulfillment.raw(),
+        }
+
+    def update(self):
+        self.context.order["parameters"] = self.parameters.raw()
+        return self.context
+
 
 
 def get_parameter(parameter_phase, source, param_external_id):

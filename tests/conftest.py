@@ -14,10 +14,10 @@ from swo.mpt.extensions.runtime.djapp.conf import get_for_product
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.config import get_config
 from swo_aws_extension.constants import (
-    PARAM_ACCOUNT_EMAIL,
     PARAM_MPA_ACCOUNT_ID,
     PARAM_PHASE,
 )
+from swo_aws_extension.parameters import OrderingParameters
 
 PARAM_COMPANY_NAME = "ACME Inc"
 AWESOME_PRODUCT = "Awesome product"
@@ -38,14 +38,22 @@ def requests_mocker():
 def order_parameters_factory():
     def _order_parameters(
         account_email="test@aws.com",
+        account_id="123-456-789"
     ):
         return [
             {
                 "id": "PAR-1234-5678",
                 "name": "AWS account email",
-                "externalId": PARAM_ACCOUNT_EMAIL,
+                "externalId": OrderingParameters.PARAM_ACCOUNT_EMAIL,
                 "type": "SingleLineText",
                 "value": account_email,
+            },
+            {
+                "id": "PAR-1234-5678",
+                "name": "AWS Account ID",
+                "externalId": OrderingParameters.MPA_ACCOUNT_ID,
+                "type": "SingleLineText",
+                "value": account_id,
             },
         ]
 

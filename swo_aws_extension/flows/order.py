@@ -4,9 +4,7 @@ from datetime import date
 from swo.mpt.extensions.flows.context import Context as BaseContext
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.parameters import (
-    get_phase,
-)
+from swo_aws_extension.parameters import Parameters, get_phase
 from swo_aws_extension.utils import find_first
 
 MPT_ORDER_STATUS_PROCESSING = "Processing"
@@ -38,6 +36,7 @@ def is_termination_order(order):
     return order["type"] == ORDER_TYPE_TERMINATION
 
 
+
 @dataclass
 class OrderContext(BaseContext):
     order: dict
@@ -58,6 +57,11 @@ class OrderContext(BaseContext):
             f"{self.product_id} {(self.type or '-').upper()} {self.agreement_id} {self.order_id} "
             f"{self.authorization_id} {due_date} "
         )
+
+
+    @property
+    def parameters(self) -> Parameters:
+        return Parameters(self.order)
 
     @staticmethod
     def from_order(order: dict) -> "OrderContext":
