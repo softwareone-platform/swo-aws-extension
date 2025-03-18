@@ -36,6 +36,7 @@ EXT_CCP_CLIENT_ID=123456789
 EXT_AWS_OPENID_SCOPE=urn://dev.aws.services.softwareone.com/.default
 EXT_CCP_OAUTH_URL=https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token
 EXT_CCP_CLIENT_SECRET=QWERTYUIOP
+EXT_AWS_REGION=us-east-1
 ```
 
 `MPT_PRODUCTS_IDS` should be a comma-separated list of the SWO Marketplace Product identifiers
@@ -61,7 +62,7 @@ EXT_CCP_CLIENT_ID=CCP Client ID
 EXT_AWS_OPENID_SCOPE=urn://dev.aws.services.softwareone.com/.default
 EXT_CCP_OAUTH_URL=https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token
 EXT_CCP_CLIENT_SECRET=CCP Client Secret
-
+EXT_AWS_REGION=us-east-1
 ```
 
 
