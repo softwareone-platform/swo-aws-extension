@@ -1,13 +1,11 @@
+import copy
 from dataclasses import dataclass
-from datetime import date
 
+from swo.mpt.client.mpt import get_product_template_or_default, query_order
 from swo.mpt.extensions.flows.context import Context as BaseContext
 
-from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.parameters import (
-    get_phase,
-)
-from swo_aws_extension.utils import find_first
+from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
+from swo_aws_extension.notifications import send_email_notification
 
 MPT_ORDER_STATUS_PROCESSING = "Processing"
 MPT_ORDER_STATUS_QUERYING = "Querying"
@@ -41,54 +39,67 @@ def is_termination_order(order):
 @dataclass
 class OrderContext(BaseContext):
     order: dict
-    due_date: date | None = None
     validation_succeeded: bool = True
     type: str | None = None
-    product_id: str | None = None
-    agreement_id: str | None = None
     order_id: str | None = None
-    authorization_id: str | None = None
-    seller_id: str | None = None
-    phase: str | None = None
+    product_id: str | None = None
     aws_client: AWSClient | None = None
-
-    def __str__(self):
-        due_date = self.due_date.strftime("%Y-%m-%d") if self.due_date else "-"
-        return (
-            f"{self.product_id} {(self.type or '-').upper()} {self.agreement_id} {self.order_id} "
-            f"{self.authorization_id} {due_date} "
-        )
+    account_creation_status: AccountCreationStatus | None = None
 
     @staticmethod
     def from_order(order: dict) -> "OrderContext":
         return OrderContext(
-            order=order,
-            product_id=order["product"]["id"],
-            agreement_id=order["agreement"]["id"],
-            order_id=order["id"],
-            authorization_id=order["authorization"]["id"],
-            seller_id=order["seller"]["id"],
-            phase=get_phase(order),
+            order=order, order_id=order["id"], product_id=order["product"]["id"]
         )
 
 
-def get_subscription_by_line_and_item_id(subscriptions, item_id, line_id):
+def switch_order_to_query(client, order, template_name=None):
     """
-    Return a subscription by line id and sku.
+    Switches the status of an MPT order to 'query' and resetting due date and
+    initiating a query order process.
 
     Args:
-        subscriptions (list): a list of subscription obects.
-        vendor_external_id (str): the item SKU
-        line_id (str): the id of the order line that should contain the given SKU.
+        client (MPTClient): An instance of the Marketplace platform client.
+        order (dict): The MPT order to be switched to 'query' status.
+        template_name: The name of the template to use, if None -> use default
 
     Returns:
-        dict: the corresponding subscription if it is found, None otherwise.
+        dict: The updated order.
     """
-    for subscription in subscriptions:
-        item = find_first(
-            lambda x: x["id"] == line_id and x["item"]["id"] == item_id,
-            subscription["lines"],
-        )
+    template = get_product_template_or_default(
+        client,
+        order["product"]["id"],
+        MPT_ORDER_STATUS_QUERYING,
+        name=template_name,
+    )
+    kwargs = {
+        "parameters": order["parameters"],
+        "template": template,
+    }
+    if order.get("error"):
+        kwargs["error"] = order["error"]
 
-        if item:
-            return subscription
+    agreement = order["agreement"]
+    order = query_order(
+        client,
+        order["id"],
+        **kwargs,
+    )
+    order["agreement"] = agreement
+    send_email_notification(client, order)
+    return order
+
+
+def reset_order_error(order):
+    """
+    Reset the error field of an order
+
+    Args:
+        order: The order to reset the error field of
+
+    Returns: The updated order
+
+    """
+    updated_order = copy.deepcopy(order)
+    updated_order["error"] = None
+    return updated_order

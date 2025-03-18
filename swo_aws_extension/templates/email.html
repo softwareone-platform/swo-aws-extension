@@ -34,19 +34,19 @@ Order status update
 											<tr><td style="padding: 0; width: 60px; height: 60px; overflow: hidden; background: #F4F6F8">
 												
 <!-- LOGO -->
-<img src="{% if order.agreement.client.icon is not none %}{{ api_base_url }}{{ order.agreement.client.icon }}{% else %}#{% endif %}" style="max-width: 60px; max-height: 60px;" width="60" height="60"/>
+<img src="{% if order.client.icon is not none %}{{ api_base_url }}{{ order.client.icon }}{% else %}#{% endif %}" style="max-width: 60px; max-height: 60px;" width="60" height="60"/>
 
 											</td><td style="padding-left: 16px;">
 												<h1 style="margin: 0; font-weight: 400; font-size: 24px;">
 
 <!-- NAME -->
-{{ order.agreement.client.name }}
+{{ order.client.name }}
 
 												</h1>
 												<p style="margin: 0"><span>
 
 <!-- IDs -->
-Client | {{ order.agreement.client.id }}
+Client | {{ order.client.id }}
 
 												</span></p>
 											</td></tr>
@@ -137,8 +137,8 @@ Order status update
 											
 											<td style="padding: 8px 0;">
 <!-- ENTITY.ACCOUNT.LINK -->
-<a href="{{ portal_base_url }}/accounts/settings/licensees/{{ order.agreement.licensee.id }}" style="color: #472AFF; text-decoration: none;">
-	{{ order.agreement.licensee.name }}
+<a href="{{ portal_base_url }}/accounts/settings/licensees/{{ order.licensee.id }}" style="color: #472AFF; text-decoration: none;">
+	{{ order.licensee.name }}
 </a>
 
 											</td>
@@ -157,7 +157,7 @@ Order status update
 											<td style="padding: 8px 0;">
 												
 <!-- ORDER.PRODUCT.VENDOR -->
-{{ order.agreement.vendor.name }}
+{{ order.vendor.name }}
 
 											</td>
 										</tr>
@@ -183,7 +183,7 @@ Order status update
 											<td style="padding: 8px 0;">
 												
 <!-- ORDER.CURRENCY -->
-{{ order.agreement.authorization.currency }}
+{{ order.authorization.currency }}
 
 											</td>
 										</tr>

@@ -9,6 +9,7 @@ from swo_aws_extension.flows.order import (
     is_purchase_order,
     is_termination_order,
 )
+from swo_aws_extension.flows.validation.purchase import validate_purchase_order
 from swo_aws_extension.notifications import notify_unhandled_exception_in_teams
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,7 @@ def validate_order(client, order):
         has_errors = False
 
         if is_purchase_order(order):
-            pass
+            has_errors, order = validate_purchase_order(client, order)
         elif is_change_order(order):
             pass
         elif is_termination_order(order):

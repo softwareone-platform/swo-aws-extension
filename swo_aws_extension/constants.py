@@ -1,14 +1,19 @@
-PARAM_ACCOUNT_EMAIL = "accountEmail"
-PARAM_MPA_ACCOUNT_ID = "mpaAccountId"
-PARAM_PHASE = "phase"
+from enum import StrEnum
 
-PRECONFIG_MPA = "Pre-configuration of MPA"
-CREATE_ACCOUNT = "Create Account"
-TRANSFER_ACCOUNT = "Transfer Account"
-TRANSFER_ACCOUNT_ORG = "Transfer account with an organization"
-CHECK_INVITATION_LINK = "Check Invitation Link"
-CREATE_SUBSCRIPTIONS = "Create Subscriptions"
-CCP_ONBOARD = "CCP Onboard"
-COMPLETED = "Completed"
+SWO_EXTENSION_MANAGEMENT_ROLE = "swo/mpt/SWOExtensionManagementRole"
 
-SWO_EXTENSION_MANAGEMENT_ROLE = "swo/ext/SWOExtensionManagementRole"
+
+class AccountTypesEnum(StrEnum):
+    NEW_ACCOUNT = "NewAccount"
+    EXISTING_ACCOUNT = "ExistingAccount"
+
+
+class PhasesEnum(StrEnum):
+    PRECONFIGURATION_MPA = "preConfigurationMPA"
+    CREATE_ACCOUNT = "createAccount"
+    TRANSFER_ACCOUNT = "transferAccount"
+    TRANSFER_ACCOUNT_WITH_ORGANIZATION = "transferAccountWithOrganization"
+    CHECK_INVITATION_LINK = "checkInvitationLink"
+    CREATE_SUBSCRIPTIONS = "createSubscriptions"
+    CCP_ONBOARD = "ccpOnboard"
+    COMPLETED = "completed"

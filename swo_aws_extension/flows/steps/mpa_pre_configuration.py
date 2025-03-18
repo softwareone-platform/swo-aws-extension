@@ -4,9 +4,9 @@ from swo.mpt.client import MPTClient
 from swo.mpt.client.mpt import update_order
 from swo.mpt.extensions.flows.pipeline import Step
 
-from swo_aws_extension.constants import CREATE_ACCOUNT, PRECONFIG_MPA
+from swo_aws_extension.constants import AccountTypesEnum, PhasesEnum
 from swo_aws_extension.flows.order import OrderContext
-from swo_aws_extension.parameters import set_phase
+from swo_aws_extension.parameters import get_account_type, get_phase, set_phase
 
 logger = logging.getLogger(__name__)
 
@@ -14,18 +14,28 @@ logger = logging.getLogger(__name__)
 class MPAPreConfiguration(Step):
 
     def __call__(self, client: MPTClient, context: OrderContext, next_step):
-        if context.phase != PRECONFIG_MPA:
+        if get_phase(context.order) != PhasesEnum.PRECONFIGURATION_MPA:
+            logger.info(
+                f"Current phase is '{get_phase(context.order)}', "
+                f"skipping as it is not '{PhasesEnum.PRECONFIGURATION_MPA}'"
+            )
             next_step(client, context)
             return
 
-        logger.info("Starting MPA pre-configuration. Creating AWS organization")
         context.aws_client.create_organization()
-
-        logger.info("Activating Organizations Access")
         context.aws_client.activate_organizations_access()
 
-        # add logic to get next phase
-        context.order = set_phase(context.order, CREATE_ACCOUNT)
+        account_type = get_account_type(context.order)
+
+        if account_type == AccountTypesEnum.NEW_ACCOUNT:
+            next_phase = PhasesEnum.CREATE_ACCOUNT
+        else:
+            next_phase = PhasesEnum.TRANSFER_ACCOUNT
+
+        context.order = set_phase(context.order, next_phase)
         update_order(client, context.order_id, parameters=context.order["parameters"])
-        logger.info("MPA pre-configuration completed successfully")
+        logger.info(
+            f"'{PhasesEnum.PRECONFIGURATION_MPA}' completed successfully. "
+            f"Proceeding to next phase '{next_phase}'"
+        )
         next_step(client, context)

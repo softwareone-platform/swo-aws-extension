@@ -38,6 +38,7 @@ def test_aws_openid_error_additional_details():
         str(error) == "InvalidToken - The provided token is invalid.: Detail1, Detail2"
     )
 
+
 def test_wrap_http_error_http_error(mocker):
     func = mocker.Mock()
     func.__name__ = "test_wrap_http_error_http_error"

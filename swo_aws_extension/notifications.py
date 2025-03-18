@@ -188,14 +188,11 @@ def send_email_notification(client, order):
             "api_base_url": settings.MPT_API_BASE_URL,
             "portal_base_url": settings.MPT_PORTAL_BASE_URL,
         }
-        subject = (
-            f"Order status update {order['id']} "
-            f"for {order['agreement']['buyer']['name']}"
-        )
+        subject = f"Order status update {order['id']} " f"for {order['buyer']['name']}"
         if order["status"] == "Querying":
             subject = (
                 f"This order need your attention {order['id']} "
-                f"for {order['agreement']['buyer']['name']}"
+                f"for {order['buyer']['name']}"
             )
         send_email(
             [recipient],

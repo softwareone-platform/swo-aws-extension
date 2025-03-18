@@ -11,17 +11,14 @@ from rich.highlighter import ReprHighlighter as _ReprHighlighter
 from swo.mpt.extensions.core.events.dataclasses import Event
 from swo.mpt.extensions.runtime.djapp.conf import get_for_product
 
-from swo_aws_extension.aws.client import AWSClient
+from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
 from swo_aws_extension.aws.config import get_config
-from swo_aws_extension.constants import (
-    PARAM_ACCOUNT_EMAIL,
-    PARAM_MPA_ACCOUNT_ID,
-    PARAM_PHASE,
-)
+from swo_aws_extension.constants import AccountTypesEnum
+from swo_aws_extension.parameters import FulfillmentParametersEnum, OrderParametersEnum
 
 PARAM_COMPANY_NAME = "ACME Inc"
 AWESOME_PRODUCT = "Awesome product"
-CREATED_AT= "2023-12-14T18:02:16.9359"
+CREATED_AT = "2023-12-14T18:02:16.9359"
 META = "$meta"
 
 
@@ -35,17 +32,50 @@ def requests_mocker():
 
 
 @pytest.fixture()
-def order_parameters_factory():
+def constraints():
+    return {"hidden": True, "readonly": False, "required": False}
+
+
+@pytest.fixture()
+def order_parameters_factory(constraints):
     def _order_parameters(
         account_email="test@aws.com",
+        account_name="account_name",
+        account_type=AccountTypesEnum.NEW_ACCOUNT,
+        account_id="account_id",
     ):
         return [
             {
                 "id": "PAR-1234-5678",
                 "name": "AWS account email",
-                "externalId": PARAM_ACCOUNT_EMAIL,
+                "externalId": OrderParametersEnum.PARAM_ORDER_ROOT_ACCOUNT_EMAIL,
                 "type": "SingleLineText",
                 "value": account_email,
+                "constraints": constraints,
+            },
+            {
+                "id": "PAR-1234-5679",
+                "name": "Account Name",
+                "externalId": OrderParametersEnum.PARAM_ORDER_ACCOUNT_NAME,
+                "type": "SingleLineText",
+                "value": account_name,
+                "constraints": constraints,
+            },
+            {
+                "id": "PAR-1234-5680",
+                "name": "Account type",
+                "externalId": OrderParametersEnum.PARAM_ACCOUNT_TYPE,
+                "type": "choice",
+                "value": account_type,
+                "constraints": constraints,
+            },
+            {
+                "id": "PAR-1234-5681",
+                "name": "Account ID",
+                "externalId": OrderParametersEnum.PARAM_ORDER_ACCOUNT_ID,
+                "type": "SingleLineText",
+                "value": account_id,
+                "constraints": constraints,
             },
         ]
 
@@ -55,24 +85,29 @@ def order_parameters_factory():
 @pytest.fixture()
 def fulfillment_parameters_factory():
     def _fulfillment_parameters(
-        account_email="test@aws.com",
-        mp_account_id="123456789012",
-        phase="",
+        mpa_account_id="123456789012", phase="", account_request_id=""
     ):
         return [
             {
-                "id": "PAR-1234-5678",
+                "id": "PAR-1234-5677",
                 "name": "MPA account ID",
-                "externalId": PARAM_MPA_ACCOUNT_ID,
+                "externalId": FulfillmentParametersEnum.PARAM_MPA_ACCOUNT_ID,
                 "type": "SingleLineText",
-                "value": mp_account_id,
+                "value": mpa_account_id,
             },
             {
                 "id": "PAR-1234-5678",
                 "name": "Phase",
-                "externalId": PARAM_PHASE,
+                "externalId": FulfillmentParametersEnum.PARAM_PHASE,
                 "type": "Dropdown",
                 "value": phase,
+            },
+            {
+                "id": "PAR-1234-5679",
+                "name": "Account Request ID",
+                "externalId": FulfillmentParametersEnum.PARAM_ACCOUNT_REQUEST_ID,
+                "type": "SingleLineText",
+                "value": account_request_id,
             },
         ]
 
@@ -191,7 +226,9 @@ def subscriptions_factory(lines_factory):
 
 
 @pytest.fixture()
-def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_factory, seller):
+def agreement_factory(
+    buyer, order_parameters_factory, fulfillment_parameters_factory, seller
+):
     def _agreement(
         licensee_name="My beautiful licensee",
         licensee_address=None,
@@ -623,6 +660,7 @@ def jwt_token(settings):
         algorithm="HS256",
     )
 
+
 @pytest.fixture()
 def config():
     return get_config()
@@ -891,13 +929,13 @@ def mock_get_order_for_producer(order, order_factory):
         },
     }
 
+
 @pytest.fixture()
 def aws_client_factory(mocker, requests_mocker):
-    def _aws_client( config, mpa_account_id, role_name):
+    def _aws_client(config, mpa_account_id, role_name):
         requests_mocker.post(
-            config.ccp_oauth_url,
-            json={"access_token": "test_access_token"},
-            status=200)
+            config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=200
+        )
 
         mock_boto3_client = mocker.patch("boto3.client")
         mock_client = mock_boto3_client.return_value
@@ -913,3 +951,62 @@ def aws_client_factory(mocker, requests_mocker):
 
     return _aws_client
 
+
+@pytest.fixture()
+def create_account_status(account_creation_status_factory):
+    def _create_account(state="IN_PROGRESS", failure_reason="EMAIL_ALREADY_EXISTS"):
+        return {
+            "CreateAccountStatus": {
+                "Id": "account_request_id",
+                "AccountName": "account_name",
+                "State": state,
+                "AccountId": "account_id",
+                "FailureReason": failure_reason,
+            }
+        }
+
+    return _create_account
+
+
+@pytest.fixture()
+def subscription_factory(lines_factory):
+    def _subscription(
+        name="Subscription for account_id",
+        account_email="test@aws.com",
+        account_name="account_name",
+        vendor_id="account_id",
+    ):
+        return {
+            "id": "SUB-1000-2000-3000",
+            "name": name,
+            "parameters": {
+                "fulfillment": [
+                    {"externalId": "accountEmail", "value": account_email},
+                    {"externalId": "accountName", "value": account_name},
+                ]
+            },
+            "externalIds": {"vendor": vendor_id},
+            "lines": [{"id": "ALI-2119-4550-8674-5962-0001"}],
+        }
+
+    return _subscription
+
+
+@pytest.fixture()
+def account_creation_status_factory(lines_factory):
+    def _account_creation_status(
+        account_request_id="account_request_id",
+        status="IN_PROGRESS",
+        account_name="account_name",
+        failure_reason=None,
+        account_id=None,
+    ):
+        return AccountCreationStatus(
+            account_id=account_id,
+            account_name=account_name,
+            account_request_id=account_request_id,
+            status=status,
+            failure_reason=failure_reason,
+        )
+
+    return _account_creation_status
