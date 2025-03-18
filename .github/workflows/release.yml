@@ -26,9 +26,9 @@ jobs:
     - name: 'Build and push image'
       uses: azure/docker-login@v1
       with:
-        login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-        username: ${{ secrets.REGISTRY_USERNAME }}
+        login-server: ${{ vars.REGISTRY_LOGIN_SERVER }}
+        username: ${{ vars.REGISTRY_USERNAME }}
         password: ${{ secrets.REGISTRY_PASSWORD }}
     - run: |
-        docker build -f prod.Dockerfile -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/swo-extensions-aws:${{ steps.get_version.outputs.VERSION }} .
-        docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/swo-extensions-aws:${{ steps.get_version.outputs.VERSION }}
+        docker build -f prod.Dockerfile -t ${{ vars.REGISTRY_LOGIN_SERVER }}/gha/swo-extensions-aws:${{ steps.get_version.outputs.VERSION }} .
+        docker push ${{ vars.REGISTRY_LOGIN_SERVER }}/gha/swo-extensions-aws:${{ steps.get_version.outputs.VERSION }}
