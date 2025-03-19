@@ -28,7 +28,7 @@ jobs:
       with:
         login-server: ${{ vars.EXTENSION_REGISTRY_LOGIN_SERVER }}
         username: ${{ vars.EXTENSION_REGISTRY_USERNAME }}
-        password: ${{ secrets.REGISTRY_PASSWORD }}
+        password: ${{ secrets.EXTENSION_REGISTRY_PASSWORD }}
     - run: |
         docker build -f prod.Dockerfile -t ${{ vars.EXTENSION_REGISTRY_LOGIN_SERVER }}/swo-extensions-aws:${{ steps.get_version.outputs.VERSION }} .
         docker push ${{ vars.EXTENSION_REGISTRY_LOGIN_SERVER }}/swo-extensions-aws:${{ steps.get_version.outputs.VERSION }}
