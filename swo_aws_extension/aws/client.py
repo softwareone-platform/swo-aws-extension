@@ -1,4 +1,6 @@
 import logging
+from dataclasses import dataclass
+from typing import Optional
 
 import boto3
 import botocore.exceptions
@@ -11,6 +13,46 @@ from swo_aws_extension.aws.errors import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class AccountCreationStatus:
+    account_request_id: str
+    status: str
+    account_name: str
+    failure_reason: Optional[str] = None
+    account_id: Optional[str] = None
+
+    @classmethod
+    def from_boto3_response(cls, response):
+        """
+        Create an AccountCreationStatus object from a boto3 response.
+        Args:
+            response: The boto3 response.
+
+        Returns:
+            AccountCreationStatus: The AccountCreationStatus object.
+
+        """
+        status_info = response["CreateAccountStatus"]
+        return cls(
+            account_request_id=status_info["Id"],
+            status=status_info["State"],
+            account_name=status_info["AccountName"],
+            failure_reason=status_info.get("FailureReason"),
+            account_id=status_info.get("AccountId"),
+        )
+
+    def __str__(self):
+        failure_info = (
+            f", Failure Reason: {self.failure_reason}" if self.failure_reason else ""
+        )
+        account_info = f", Account ID: {self.account_id}" if self.account_id else ""
+        return (
+            f"AccountCreationStatus(Name: {self.account_name}, "
+            f"ID: {self.account_request_id}, "
+            f"Status: {self.status}{failure_info}{account_info})"
+        )
 
 
 class AWSClient:
@@ -85,7 +127,7 @@ class AWSClient:
             aws_access_key_id=self.credentials["AccessKeyId"],
             aws_secret_access_key=self.credentials["SecretAccessKey"],
             aws_session_token=self.credentials["SessionToken"],
-            region_name=self.config.aws_region
+            region_name=self.config.aws_region,
         )
 
     @wrap_boto3_error
@@ -99,15 +141,19 @@ class AWSClient:
         org_client = self._get_organization_client()
         try:
             response = org_client.create_organization(FeatureSet="ALL")
-            logger.info(f"Organization created: {response}")
+            logger.info(
+                f"Organization created with Id {response['Organization']['Id']}"
+            )
         except botocore.exceptions.ClientError as e:
             if e.response["Error"]["Code"] == "AlreadyInOrganizationException":
-                logger.warning("Organization already exists")
+                logger.warning("Organization already exists. Skipping creation.")
             else:
                 raise
 
     @wrap_boto3_error
-    def activate_organizations_access(self,):
+    def activate_organizations_access(
+        self,
+    ):
         """
         Activate the organizations access. If the access is already active,
         the function logs a warning and continues.
@@ -116,8 +162,44 @@ class AWSClient:
         """
         cloudformation_client = self._get_cloudformation_client()
 
-        response = cloudformation_client.activate_organizations_access()
-        logger.info(f"Organizations access activated: {response}")
+        cloudformation_client.activate_organizations_access()
+        logger.info("Organizations access activated")
 
+    @wrap_boto3_error
+    def create_linked_account(
+        self, email, account_name, role_name="OrganizationAccountAccessRole"
+    ):
+        """
+        Create a linked account.
 
+        :param email: The email of the account.
+        :param account_name: The name of the account.
+        :param role_name: The role name. By defaults: OrganizationAccountAccessRole
+        :return: AccountCreationStatus The status of the linked account creation.
+        """
+        org_client = self._get_organization_client()
+        response = org_client.create_account(
+            Email=email,
+            AccountName=account_name,
+            RoleName=role_name,
+            IamUserAccessToBilling="DENY",
+        )
+        account_creation_status = AccountCreationStatus.from_boto3_response(response)
+        logger.info(f"Linked account created: {account_creation_status}")
+        return account_creation_status
 
+    @wrap_boto3_error
+    def get_linked_account_status(self, create_account_request_id):
+        """
+        Get the status of a linked account.
+
+        :param create_account_request_id: The request ID from create_account call.
+        :return: AccountCreationStatus The status of the linked account.
+        """
+        org_client = self._get_organization_client()
+        response = org_client.describe_create_account_status(
+            CreateAccountRequestId=create_account_request_id
+        )
+        account_creation_status = AccountCreationStatus.from_boto3_response(response)
+        logger.info(f"Linked account request status: {account_creation_status}")
+        return account_creation_status

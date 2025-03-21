@@ -1,4 +1,3 @@
-
 from swo_aws_extension.aws.config import get_config
 
 
@@ -21,6 +20,6 @@ def test_openid_scope(settings):
 
 
 def test_ccp_oauth_url(settings):
-    settings.EXTENSION_CONFIG["CCP_OAUTH_URL"]= "https://example.com/oauth2/token"
+    settings.EXTENSION_CONFIG["CCP_OAUTH_URL"] = "https://example.com/oauth2/token"
     config = get_config()
     assert config.ccp_oauth_url == "https://example.com/oauth2/token"

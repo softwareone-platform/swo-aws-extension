@@ -18,13 +18,17 @@ def test_instance_aws_client(config, aws_client_factory):
 def test_instance_aws_client_empty_mpa_account_id(config, aws_client_factory):
     with pytest.raises(AWSError) as e:
         aws_client_factory(config, None, "test_role_name")
-    assert ("Parameter 'mpa_account_id' must be provided to assume the role." in str(e.value))
+    assert "Parameter 'mpa_account_id' must be provided to assume the role." in str(
+        e.value
+    )
 
 
 def test_create_organization_success(config, aws_client_factory):
-    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    aws_client, mock_client = aws_client_factory(
+        config, "test_account_id", "test_role_name"
+    )
     mock_client.create_organization.return_value = {
-        "Organization": "test_organization"
+        "Organization": {"Id": "test_organization"}
     }
 
     aws_client.create_organization()
@@ -32,7 +36,9 @@ def test_create_organization_success(config, aws_client_factory):
 
 
 def test_create_organization_already_exists(config, aws_client_factory):
-    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    aws_client, mock_client = aws_client_factory(
+        config, "test_account_id", "test_role_name"
+    )
     error_response = {
         "Error": {
             "Code": "AlreadyInOrganizationException",
@@ -48,12 +54,14 @@ def test_create_organization_already_exists(config, aws_client_factory):
 
 
 def test_create_organization_error(config, aws_client_factory):
-    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    aws_client, mock_client = aws_client_factory(
+        config, "test_account_id", "test_role_name"
+    )
     error_response = {
         "Error": {
             "Code": "AccessDeniedForDependencyException",
             "Message": "The request failed because your credentials do not have permission"
-                       " to create the service-linked role required by AWS Organizations",
+            " to create the service-linked role required by AWS Organizations",
         }
     }
     mock_client.create_organization.side_effect = botocore.exceptions.ClientError(
