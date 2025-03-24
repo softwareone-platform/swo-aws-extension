@@ -17,3 +17,11 @@ class PhasesEnum(StrEnum):
     CREATE_SUBSCRIPTIONS = "createSubscriptions"
     CCP_ONBOARD = "ccpOnboard"
     COMPLETED = "completed"
+
+
+CRM_TICKET_COMPLETED_STATE = "Completed"
+
+
+class TerminationParameterChoices(StrEnum):
+    CLOSE_ACCOUNT = "CloseAccount"
+    UNLINK_ACCOUNT = "UnlinkAccount"

@@ -11,4 +11,3 @@ def test_get_extension_variables_valid(
     extension_variables = get_extension_variables()
 
     assert mock_ext_expected_environment_values.items() <= extension_variables.items()
-

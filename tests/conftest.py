@@ -13,7 +13,12 @@ from swo.mpt.extensions.runtime.djapp.conf import get_for_product
 
 from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
 from swo_aws_extension.aws.config import get_config
-from swo_aws_extension.constants import AccountTypesEnum
+from swo_aws_extension.constants import (
+    AccountTypesEnum,
+    PhasesEnum,
+    TerminationParameterChoices,
+)
+from swo_aws_extension.flows.order import ORDER_TYPE_TERMINATION
 from swo_aws_extension.parameters import FulfillmentParametersEnum, OrderParametersEnum
 
 PARAM_COMPANY_NAME = "ACME Inc"
@@ -43,6 +48,7 @@ def order_parameters_factory(constraints):
         account_name="account_name",
         account_type=AccountTypesEnum.NEW_ACCOUNT,
         account_id="account_id",
+        termination_type=TerminationParameterChoices.CLOSE_ACCOUNT,
     ):
         return [
             {
@@ -77,6 +83,13 @@ def order_parameters_factory(constraints):
                 "value": account_id,
                 "constraints": constraints,
             },
+            {
+                "id": "PAR-1234-5678",
+                "name": "Account Termination Type",
+                "externalId": OrderParametersEnum.TERMINATION,
+                "type": "Choice",
+                "value": termination_type,
+            },
         ]
 
     return _order_parameters
@@ -85,7 +98,7 @@ def order_parameters_factory(constraints):
 @pytest.fixture()
 def fulfillment_parameters_factory():
     def _fulfillment_parameters(
-        mpa_account_id="123456789012", phase="", account_request_id=""
+        mpa_account_id="123456789012", phase="", account_request_id="", crm_ticket_id=""
     ):
         return [
             {
@@ -108,6 +121,13 @@ def fulfillment_parameters_factory():
                 "externalId": FulfillmentParametersEnum.PARAM_ACCOUNT_REQUEST_ID,
                 "type": "SingleLineText",
                 "value": account_request_id,
+            },
+            {
+                "id": "PAR-1234-5678",
+                "name": "CRM Ticket ID",
+                "externalId": FulfillmentParametersEnum.CRM_TICKET_ID,
+                "type": "SingleLineText",
+                "value": crm_ticket_id,
             },
         ]
 
@@ -203,6 +223,7 @@ def subscriptions_factory(lines_factory):
         start_date=None,
         commitment_date=None,
         lines=None,
+        status="Terminating",
     ):
         start_date = (
             start_date.isoformat() if start_date else datetime.now(UTC).isoformat()
@@ -219,6 +240,7 @@ def subscriptions_factory(lines_factory):
                 "lines": lines,
                 "startDate": start_date,
                 "commitmentDate": commitment_date,
+                "status": status,
             }
         ]
 
@@ -1010,3 +1032,154 @@ def account_creation_status_factory(lines_factory):
         )
 
     return _account_creation_status
+
+
+@pytest.fixture()
+def data_aws_account_factory():
+    def create_aws_account(
+        status="ACTIVE",
+        id="1234-1234-1234",
+        arn="arn",
+        email="test@example.com",
+        join_method="CREATED",
+        name="test_account_name",
+    ):
+        """
+        Factory for AWS account data.
+
+        https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/organizations/client/list_accounts.html
+        :param status: 'ACTIVE' | 'SUSPENDED' | 'PENDING_CLOSURE'
+        :param join_method: 'INVITED' | 'CREATED'
+        :param account_id:
+        :param arn:
+        :param email:
+        :return:
+        """
+        return {
+            "Id": id,
+            "Arn": arn,
+            "Email": email,
+            "Name": name,
+            "Status": status,
+            "JoinedMethod": join_method,
+            "JoinedTimestamp": datetime(2015, 1, 1),
+        }
+
+    return create_aws_account
+
+
+@pytest.fixture()
+def order_close_account(
+    order_factory,
+    order_parameters_factory,
+    fulfillment_parameters_factory,
+    subscriptions_factory,
+):
+    order = order_factory(
+        order_type=ORDER_TYPE_TERMINATION,
+        order_parameters=order_parameters_factory(
+            account_email="test@aws.com",
+            account_id="1234-5678",
+            termination_type=TerminationParameterChoices.CLOSE_ACCOUNT,
+        ),
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.COMPLETED
+        ),
+        subscriptions=subscriptions_factory(),
+    )
+    return order
+
+
+@pytest.fixture()
+def order_unlink_account(
+    order_factory, order_parameters_factory, subscriptions_factory
+):
+    order = order_factory(
+        order_type=ORDER_TYPE_TERMINATION,
+        order_parameters=order_parameters_factory(
+            account_email="test@aws.com",
+            account_id="1234-5678",
+            termination_type=TerminationParameterChoices.UNLINK_ACCOUNT,
+        ),
+        subscriptions=subscriptions_factory(),
+    )
+    return order
+
+
+@pytest.fixture()
+def service_request_ticket_factory():
+    def create_service_request_ticket(
+        ticket_id="CS0000001",
+        state="New",
+        email="user_email@example.com",
+        summary="Ignore this ticket",
+        title="MPT - AWS Extension - Test ticket",
+        service_type="MarketPlaceServiceActivation",
+        sub_service="Service Activation",
+        requester="Supplier.Portal",
+    ):
+        return {
+            "id": ticket_id,
+            "title": title,
+            "requester": requester,
+            "serviceType": service_type,
+            "summary": summary,
+            "externalUserEmail": email,
+            "externalUsername": email,
+            "state": state,
+            "_links": [
+                {
+                    "href": f"/servicerequests/{ticket_id}",
+                    "rel": "self",
+                    "method": "GET",
+                }
+            ],
+            "subService": sub_service,
+            "globalacademicExtUserId": "notapplicable",
+            "additionalInfo": "additionalInfo",
+        }
+
+    return create_service_request_ticket
+
+
+@pytest.fixture()
+def order_termination_close_account_multiple(
+    order_close_account, subscriptions_factory
+):
+    order_close_account["subscriptions"] = []
+    order_close_account["subscriptions"].append(
+        subscriptions_factory(
+            subscription_id="SUB-1000-2000-3001",
+            vendor_id="000000001",
+            status="Terminating",
+        )[0],
+    )
+    order_close_account["subscriptions"].append(
+        subscriptions_factory(
+            subscription_id="SUB-1000-2000-3002",
+            vendor_id="000000002",
+            status="Terminating",
+        )[0],
+    )
+    order_close_account["subscriptions"].append(
+        subscriptions_factory(
+            subscription_id="SUB-1000-2000-3003",
+            vendor_id="000000003",
+            status="Terminating",
+        )[0],
+    )
+    order_close_account["subscriptions"].append(
+        subscriptions_factory(
+            subscription_id="SUB-1000-2000-3004",
+            vendor_id="000000004",
+            status="Active",
+        )[0],
+    )
+    order_close_account["subscriptions"].append(
+        subscriptions_factory(
+            subscription_id="SUB-1000-2000-3005",
+            vendor_id="000000005",
+            status="Terminated",
+        )[0],
+    )
+    return order_close_account

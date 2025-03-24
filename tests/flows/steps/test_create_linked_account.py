@@ -84,9 +84,7 @@ def test_create_linked_account_phase_check_linked_account_in_progress(
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, _ = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
     context = OrderContext.from_order(order)
     context.aws_client = aws_client
@@ -120,9 +118,7 @@ def test_create_linked_account_phase_check_linked_account_succeed(
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, _ = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
     context = OrderContext.from_order(order)
     context.aws_client = aws_client
@@ -167,9 +163,7 @@ def test_create_linked_account_phase_check_linked_account_email_already_exist(
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, _ = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
     context = OrderContext.from_order(order)
     context.aws_client = aws_client
@@ -222,9 +216,7 @@ def test_create_linked_account_phase_check_linked_account_failed(
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, _ = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
     context = OrderContext.from_order(order)
     context.aws_client = aws_client

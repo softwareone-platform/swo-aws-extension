@@ -21,7 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("DJANGO_SECRET","secret_key")
+SECRET_KEY = os.environ.get("DJANGO_SECRET", "secret_key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -178,9 +178,9 @@ EXTENSION_CONFIG = {
     "WEBHOOKS_SECRETS": {"PRD-1111-1111": "that's my awesome test secret"},
     "MAX_RETRY_ATTEMPS": "10",
     "DUE_DATE_DAYS": "30",
-    "CCP_CLIENT_ID":"client_id",
-    "CCP_CLIENT_SECRET" : "client_secret",
-    "AWS_OPENID_SCOPE" : "scope",
-    "CCP_OAUTH_URL" : "https://ccpoauth.com/oauth2/token",
-    "AWS_REGION" : "us-east-1"
+    "CCP_CLIENT_ID": "client_id",
+    "CCP_CLIENT_SECRET": "client_secret",
+    "AWS_OPENID_SCOPE": "scope",
+    "CCP_OAUTH_URL": "https://ccpoauth.com/oauth2/token",
+    "AWS_REGION": "us-east-1",
 }
