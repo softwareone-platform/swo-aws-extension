@@ -1,4 +1,3 @@
-from swo_aws_extension.flows.steps.close_aws_account import CloseAWSAccountStep
 from swo_aws_extension.flows.steps.complete_order import (
     CompleteOrder,
     CompletePurchaseOrder,
@@ -16,11 +15,12 @@ from swo_aws_extension.flows.steps.setup_context import (
     SetupContext,
     SetupPurchaseContext,
 )
+from swo_aws_extension.flows.steps.terminate_aws_account import TerminateAWSAccount
 
 __all__ = [
     "AwaitCRMTicketStatusStep",
     "AwaitMPADecommissionServiceRequestTicketCompletionStep",
-    "CloseAWSAccountStep",
+    "TerminateAWSAccount",
     "CompleteOrder",
     "CompletePurchaseOrder",
     "CreateLinkedAccount",

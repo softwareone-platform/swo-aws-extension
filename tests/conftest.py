@@ -1085,7 +1085,10 @@ def order_close_account(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.COMPLETED
         ),
-        subscriptions=subscriptions_factory(),
+        subscriptions=subscriptions_factory(
+            vendor_id="1234-5678",
+            status="Terminating",
+        ),
     )
     return order
 
@@ -1101,7 +1104,48 @@ def order_unlink_account(
             account_id="1234-5678",
             termination_type=TerminationParameterChoices.UNLINK_ACCOUNT,
         ),
-        subscriptions=subscriptions_factory(),
+        subscriptions=subscriptions_factory(
+            vendor_id="1234-5678",
+            status="Terminating",
+        ),
+    )
+    return order
+
+
+@pytest.fixture()
+def order_terminate_without_type(
+    order_factory, order_parameters_factory, subscriptions_factory
+):
+    order = order_factory(
+        order_type=ORDER_TYPE_TERMINATION,
+        order_parameters=order_parameters_factory(
+            account_email="test@aws.com",
+            account_id="1234-5678",
+            termination_type="",
+        ),
+        subscriptions=subscriptions_factory(
+            vendor_id="1234-5678",
+            status="Terminating",
+        ),
+    )
+    return order
+
+
+@pytest.fixture()
+def order_terminate_with_invalid_terminate_type(
+    order_factory, order_parameters_factory, subscriptions_factory
+):
+    order = order_factory(
+        order_type=ORDER_TYPE_TERMINATION,
+        order_parameters=order_parameters_factory(
+            account_email="test@aws.com",
+            account_id="1234-5678",
+            termination_type="invalid_type",
+        ),
+        subscriptions=subscriptions_factory(
+            vendor_id="1234-5678",
+            status="Terminating",
+        ),
     )
     return order
 

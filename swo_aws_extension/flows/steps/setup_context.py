@@ -27,14 +27,13 @@ class SetupContext(Step):
             self._config, context.mpa_account, self._role_name
         )
         logger.info(
-            f"{context.order_id} - MPA credentials for {context.mpa_account} retrieved successfully"
+            f"{context.order_id} - Action - MPA credentials for {context.mpa_account} retrieved "
+            f"successfully"
         )
 
     def __call__(self, client: MPTClient, context: OrderContext, next_step):
-        logger.info(
-            f"{context.order_id} - SetupContext - Setting up context for the next step"
-        )
         self.setup_aws(context)
+        logger.info(f"{context.order_id} - Next - SetupContext completed successfully")
         next_step(client, context)
 
 
@@ -48,12 +47,15 @@ class SetupPurchaseContext(SetupContext):
             context.account_creation_status = (
                 context.aws_client.get_linked_account_status(account_request_id)
             )
+            logger.info(
+                f"{context.order_id} - Action - Setup setup_account_request_id in context"
+            )
 
     def __call__(self, client: MPTClient, context: OrderContext, next_step):
-        logger.info(
-            f"{context.order_id} - SetupPurchaseContext - Setting up context for the next step"
-        )
         if context.mpa_account:
             self.setup_aws(context)
         self.setup_account_request_id(context)
+        logger.info(
+            f"{context.order_id} - Next - SetupPurchaseContext completed successfully"
+        )
         next_step(client, context)

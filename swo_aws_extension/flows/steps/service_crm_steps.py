@@ -7,7 +7,7 @@ from swo.mpt.extensions.flows.pipeline import NextStep, Step
 
 from swo_aws_extension.constants import CRM_TICKET_COMPLETED_STATE
 from swo_aws_extension.crm_service_client.config import get_service_client
-from swo_aws_extension.flows.order import CloseAccountContext, OrderContext
+from swo_aws_extension.flows.order import OrderContext, TerminateContext
 from swo_aws_extension.parameters import get_crm_ticket_id, set_crm_ticket_id
 from swo_crm_service_client import ServiceRequest
 
@@ -15,10 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 class AwaitCRMTicketStatusStep(Step):
-
     def __init__(
         self,
-        get_ticket_id: callable(CloseAccountContext),
+        get_ticket_id: callable(TerminateContext),
         target_status=None,
         skip_if_no_ticket=True,
     ):
@@ -41,7 +40,7 @@ class AwaitCRMTicketStatusStep(Step):
     def __call__(
         self,
         client: MPTClient,
-        context: CloseAccountContext,
+        context: TerminateContext,
         next_step: NextStep,
     ) -> None:
         ticket_id = self.get_ticket_id(context)
@@ -54,7 +53,7 @@ class AwaitCRMTicketStatusStep(Step):
         ticket = crm_service_client.get_service_requests(context.order_id, ticket_id)
         if ticket["state"] not in self.target_status:
             logger.info(
-                "Awaiting for ticket_id={ticket_id} "
+                f"{context.order_id} - Stopping - Awaiting for ticket_id={ticket_id} "
                 f"to move from state={ticket['state']} to any of {self.target_status}"
             )
             return
@@ -78,27 +77,27 @@ class CreateServiceRequestStep(Step):
     def __call__(
         self,
         client: MPTClient,
-        context: CloseAccountContext,
+        context: TerminateContext,
         next_step: NextStep,
     ) -> None:
         if not self.meets_criteria(context):
+            logger.info(
+                f"{context.order_id} - Skipping - Criteria not met to Create a Service ticket."
+            )
             next_step(client, context)
             return
         service_request = self.service_request_factory(context)
         crm_client = get_service_client()
         response = crm_client.create_service_request(context.order_id, service_request)
         ticket_id = response.get("id", None)
-        if not ticket_id:
-            raise ValueError("Response from CRM service did not contain a ticket ID")
         self.ticket_id_saver(client, context, ticket_id)
         logger.info(
-            f"{context.order_id} Created service request with ticket_id={ticket_id}"
+            f"{context.order_id} - Action - Created service request with ticket_id={ticket_id}"
         )
         next_step(client, context)
 
 
 class CreateMPADecomissionServiceRequestStep(CreateServiceRequestStep):
-
     def is_only_mpa_account_in_organization(self, aws_client) -> bool:
         if aws_client is None:
             raise RuntimeError(
@@ -110,7 +109,7 @@ class CreateMPADecomissionServiceRequestStep(CreateServiceRequestStep):
         num_active_accounts = len(active_accounts)
         return num_active_accounts <= 1
 
-    def should_create_ticket_criteria(self, context: CloseAccountContext) -> bool:
+    def should_create_ticket_criteria(self, context: TerminateContext) -> bool:
         """
         A Service Request to close the account has to be sent to service team when only one
         active account is left (the Master Payer Account)
@@ -123,7 +122,7 @@ class CreateMPADecomissionServiceRequestStep(CreateServiceRequestStep):
         ) and not get_crm_ticket_id(context.order)
 
     def build_service_request_for_close_account(
-        self, context: CloseAccountContext
+        self, context: TerminateContext
     ) -> ServiceRequest:
         if not context.mpa_account:
             raise RuntimeError(
@@ -144,6 +143,8 @@ class CreateMPADecomissionServiceRequestStep(CreateServiceRequestStep):
         )
 
     def save_ticket(self, client, context, crm_ticket_id):
+        if not crm_ticket_id:
+            raise ValueError("Updating crm service ticket id - Ticket id is required.")
         context.order = set_crm_ticket_id(context.order, crm_ticket_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])
 

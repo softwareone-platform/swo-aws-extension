@@ -4,7 +4,6 @@ from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import SWO_EXTENSION_MANAGEMENT_ROLE
 from swo_aws_extension.flows.steps import (
     AwaitMPADecommissionServiceRequestTicketCompletionStep,
-    CloseAWSAccountStep,
     CompleteOrder,
     CompletePurchaseOrder,
     CreateLinkedAccount,
@@ -13,6 +12,7 @@ from swo_aws_extension.flows.steps import (
     MPAPreConfiguration,
     SetupContext,
     SetupPurchaseContext,
+    TerminateAWSAccount,
 )
 
 config = Config()
@@ -30,12 +30,8 @@ change_order = Pipeline(
 )
 
 terminate = Pipeline(
-    CompleteOrder("purchase_order"),
-)
-
-close_account = Pipeline(
     SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
-    CloseAWSAccountStep(),
+    TerminateAWSAccount(),
     CreateMPADecomissionServiceRequestStep(),
     AwaitMPADecommissionServiceRequestTicketCompletionStep(),
     CompleteOrder("purchase_order"),
