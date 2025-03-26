@@ -11,6 +11,11 @@ from rich.highlighter import ReprHighlighter as _ReprHighlighter
 from swo.mpt.extensions.core.events.dataclasses import Event
 from swo.mpt.extensions.runtime.djapp.conf import get_for_product
 
+from swo_aws_extension.airtable.models import (
+    AirTableBaseInfo,
+    NotificationStatusEnum,
+    NotificationTypeEnum,
+)
 from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
 from swo_aws_extension.aws.config import get_config
 from swo_aws_extension.constants import (
@@ -25,6 +30,7 @@ PARAM_COMPANY_NAME = "ACME Inc"
 AWESOME_PRODUCT = "Awesome product"
 CREATED_AT = "2023-12-14T18:02:16.9359"
 META = "$meta"
+ACCOUNT_EMAIL = "test@aws.com"
 
 
 @pytest.fixture()
@@ -44,7 +50,7 @@ def constraints():
 @pytest.fixture()
 def order_parameters_factory(constraints):
     def _order_parameters(
-        account_email="test@aws.com",
+        account_email=ACCOUNT_EMAIL,
         account_name="account_name",
         account_type=AccountTypesEnum.NEW_ACCOUNT,
         account_id="account_id",
@@ -994,7 +1000,7 @@ def create_account_status(account_creation_status_factory):
 def subscription_factory(lines_factory):
     def _subscription(
         name="Subscription for account_id",
-        account_email="test@aws.com",
+        account_email=ACCOUNT_EMAIL,
         account_name="account_name",
         vendor_id="account_id",
     ):
@@ -1078,7 +1084,7 @@ def order_close_account(
     order = order_factory(
         order_type=ORDER_TYPE_TERMINATION,
         order_parameters=order_parameters_factory(
-            account_email="test@aws.com",
+            account_email=ACCOUNT_EMAIL,
             account_id="1234-5678",
             termination_type=TerminationParameterChoices.CLOSE_ACCOUNT,
         ),
@@ -1097,7 +1103,7 @@ def order_unlink_account(
     order = order_factory(
         order_type=ORDER_TYPE_TERMINATION,
         order_parameters=order_parameters_factory(
-            account_email="test@aws.com",
+            account_email=ACCOUNT_EMAIL,
             account_id="1234-5678",
             termination_type=TerminationParameterChoices.UNLINK_ACCOUNT,
         ),
@@ -1183,3 +1189,33 @@ def order_termination_close_account_multiple(
         )[0],
     )
     return order_close_account
+
+@pytest.fixture()
+def base_info():
+    return AirTableBaseInfo(api_key="api_key", base_id="base_id")
+
+@pytest.fixture()
+def mpa_pool(mocker):
+    mpa_pool = mocker.MagicMock()
+    mpa_pool.account_id = "Account Id"
+    mpa_pool.account_email = "test@email.com"
+    mpa_pool.account_name = "Account Name"
+    mpa_pool.pls_enabled = True
+    mpa_pool.status = "Ready"
+    mpa_pool.agreement_id = ""
+    mpa_pool.client_id = ""
+    mpa_pool.scu = ""
+
+    return mpa_pool
+
+@pytest.fixture()
+def pool_notification(mocker):
+    pool_notification = mocker.MagicMock()
+    pool_notification.notification_id = 1
+    pool_notification.notification_type = NotificationTypeEnum.WARNING
+    pool_notification.pls_enabled = True
+    pool_notification.ticket_id = "Ticket Id"
+    pool_notification.ticket_status = "Ticket Status"
+    pool_notification.status = NotificationStatusEnum.IN_PROGRESS
+
+    return pool_notification
