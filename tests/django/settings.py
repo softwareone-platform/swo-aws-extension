@@ -183,6 +183,7 @@ EXTENSION_CONFIG = {
     "AWS_OPENID_SCOPE": "scope",
     "CCP_OAUTH_URL": "https://ccpoauth.com/oauth2/token",
     "AWS_REGION": "us-east-1",
-    "AIRTABLE_API_TOKEN":"api_key",
-    "AIRTABLE_BASES":"base_id",
+    "AIRTABLE_API_TOKEN": "api_key",
+    "AIRTABLE_BASES": "base_id",
 }
+MPT_SETUP_CONTEXTS_FUNC = "swo.mpt.extensions.runtime.events.utils.setup_contexts"

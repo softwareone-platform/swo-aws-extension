@@ -1,7 +1,7 @@
 from swo.mpt.client import MPTClient
 
 from swo_aws_extension.constants import PhasesEnum
-from swo_aws_extension.flows.order import OrderContext
+from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.steps import CreateSubscription
 
 
@@ -16,7 +16,7 @@ def test_create_subscription_phase_invalid_phase(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = OrderContext.from_order(order)
+    context = InitialAWSContext(order=order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -54,7 +54,7 @@ def test_create_subscription_phase(
         return_value=subscription,
     )
 
-    context = OrderContext.from_order(order)
+    context = InitialAWSContext(order=order)
     context.aws_client = aws_client
     context.account_creation_status = account_creation_status_factory(
         account_id="account_id"
@@ -94,7 +94,7 @@ def test_create_subscription_phase_subscription_already_created(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = OrderContext.from_order(order)
+    context = InitialAWSContext(order=order)
     context.aws_client = aws_client
     context.account_creation_status = account_creation_status_factory(
         account_id="account_id"

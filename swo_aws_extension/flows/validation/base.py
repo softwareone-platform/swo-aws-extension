@@ -4,24 +4,20 @@ import traceback
 from swo_aws_extension.flows.error import (
     strip_trace_id,
 )
-from swo_aws_extension.flows.order import (
-    is_change_order,
-    is_purchase_order,
-    is_termination_order,
-)
+from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.validation.purchase import validate_purchase_order
 from swo_aws_extension.notifications import notify_unhandled_exception_in_teams
 
 logger = logging.getLogger(__name__)
 
 
-def validate_order(client, order):
+def validate_order(mpt_client, context):
     """
     Performs the validation of a draft order.
 
     Args:
         mpt_client (MPTClient): The client used to consume the MPT API.
-        order (dict): The order to validate
+        context (InitialAWSContext): The context of the order.
 
     Returns:
         dict: The validated order.
@@ -29,22 +25,23 @@ def validate_order(client, order):
     try:
         has_errors = False
 
-        if is_purchase_order(order):
-            has_errors, order = validate_purchase_order(client, order)
-        elif is_change_order(order):
+        if context.is_purchase_order():
+            purchase_context = PurchaseContext.from_context(context)
+            has_errors, order = validate_purchase_order(mpt_client, purchase_context)
+        elif context.is_change_order():
             pass
-        elif is_termination_order(order):
+        elif context.is_termination_order():
             pass
 
         logger.info(
-            f"Validation of order {order['id']} succeeded "
+            f"Validation of order {context.order['id']} succeeded "
             f"with{'out' if not has_errors else ''} errors"
         )
         return order
     except Exception:
         notify_unhandled_exception_in_teams(
             "validation",
-            order["id"],
+            context.order["id"],
             strip_trace_id(traceback.format_exc()),
         )
         raise

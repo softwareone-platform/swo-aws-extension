@@ -12,14 +12,17 @@ class MPAStatusEnum(StrEnum):
     ASSIGNED = "Assigned"
     ERROR = "Error"
 
+
 class NotificationTypeEnum(StrEnum):
     EMPTY = "Empty"
     WARNING = "Warning"
+
 
 class NotificationTicketStatusEnum(StrEnum):
     NOT_CREATED = "Not Created"
     CREATED = "Ticket Created"
     CLOSED = "Ticket Closed"
+
 
 class NotificationStatusEnum(StrEnum):
     PENDING = "Pending"
@@ -28,6 +31,7 @@ class NotificationStatusEnum(StrEnum):
 
 
 PLS_ENABLED = "PLS Enabled"
+
 
 @dataclass(frozen=True)
 class AirTableBaseInfo:
@@ -47,8 +51,9 @@ class AirTableBaseInfo:
         """
         return AirTableBaseInfo(
             api_key=settings.EXTENSION_CONFIG["AIRTABLE_API_TOKEN"],
-            base_id=settings.EXTENSION_CONFIG["AIRTABLE_BASES"]
+            base_id=settings.EXTENSION_CONFIG["AIRTABLE_BASES"],
         )
+
 
 @cache
 def get_master_payer_account_pool_model(base_info):
@@ -122,9 +127,13 @@ def get_available_mpa_from_pool(pls_enabled=False):
     """
     mpa_pool = get_master_payer_account_pool_model(AirTableBaseInfo.for_mpa_pool())
 
-    return mpa_pool.all( formula=AND(
+    return mpa_pool.all(
+        formula=AND(
             FIELD(PLS_ENABLED) if pls_enabled else f"NOT({FIELD(PLS_ENABLED)})",
-            EQUAL(FIELD("Status"), STR_VALUE(MPAStatusEnum.READY)))   )
+            EQUAL(FIELD("Status"), STR_VALUE(MPAStatusEnum.READY)),
+        )
+    )
+
 
 def get_pending_notifications():
     """
@@ -134,6 +143,7 @@ def get_pending_notifications():
     """
     pool_notification = get_pool_notification_model(AirTableBaseInfo.for_mpa_pool())
     return pool_notification.all(EQUAL("Status", NotificationStatusEnum.PENDING))
+
 
 def get_in_progress_notifications():
     """

@@ -5,14 +5,14 @@ from swo.mpt.client.mpt import update_order
 from swo.mpt.extensions.flows.pipeline import Step
 
 from swo_aws_extension.constants import AccountTypesEnum, PhasesEnum
-from swo_aws_extension.flows.order import OrderContext
+from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.parameters import get_account_type, get_phase, set_phase
 
 logger = logging.getLogger(__name__)
 
 
 class MPAPreConfiguration(Step):
-    def __call__(self, client: MPTClient, context: OrderContext, next_step):
+    def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         if get_phase(context.order) != PhasesEnum.PRECONFIGURATION_MPA:
             logger.info(
                 f"Current phase is '{get_phase(context.order)}', "

@@ -4,7 +4,7 @@ from swo.mpt.client import MPTClient
 from swo.mpt.extensions.flows.pipeline import Step
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.flows.order import OrderContext
+from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.parameters import (
     get_account_request_id,
 )
@@ -17,7 +17,7 @@ class SetupContext(Step):
         self._config = config
         self._role_name = role_name
 
-    def setup_aws(self, context: OrderContext):
+    def setup_aws(self, context: InitialAWSContext):
         if not context.mpa_account:
             raise ValueError(
                 "SetupContextError - MPA account is required to setup AWS Client in context"
@@ -31,7 +31,7 @@ class SetupContext(Step):
             f"successfully"
         )
 
-    def __call__(self, client: MPTClient, context: OrderContext, next_step):
+    def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
         self.setup_aws(context)
         logger.info(f"{context.order_id} - Next - SetupContext completed successfully")
         next_step(client, context)
@@ -41,7 +41,8 @@ class SetupPurchaseContext(SetupContext):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def setup_account_request_id(self, context):
+    @staticmethod
+    def setup_account_request_id(context):
         account_request_id = get_account_request_id(context.order)
         if account_request_id:
             context.account_creation_status = (
@@ -51,7 +52,7 @@ class SetupPurchaseContext(SetupContext):
                 f"{context.order_id} - Action - Setup setup_account_request_id in context"
             )
 
-    def __call__(self, client: MPTClient, context: OrderContext, next_step):
+    def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
         if context.mpa_account:
             self.setup_aws(context)
         self.setup_account_request_id(context)

@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
+
 import os
 from pathlib import Path
 
@@ -127,7 +128,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # OpenTelemetry configuration
 SERVICE_NAME = os.getenv("SERVICE_NAME", "Swo.Extensions.SwoDefaultExtensions")
-APPLICATIONINSIGHTS_CONNECTION_STRING = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "")
+APPLICATIONINSIGHTS_CONNECTION_STRING = os.getenv(
+    "APPLICATIONINSIGHTS_CONNECTION_STRING", ""
+)
 USE_APPLICATIONINSIGHTS = APPLICATIONINSIGHTS_CONNECTION_STRING != ""
 
 
@@ -154,7 +157,7 @@ LOGGING = {
         "opentelemetry": {
             "format": "(pid: {process}) {message}",
             "style": "{",
-        }
+        },
     },
     "handlers": {
         "console": {
@@ -207,8 +210,15 @@ MPT_API_TOKEN_OPERATIONS = os.getenv("MPT_API_TOKEN_OPERATIONS", "change-me!")
 MPT_PRODUCTS_IDS = os.getenv("MPT_PRODUCTS_IDS", "PRD-1111-1111")
 MPT_PORTAL_BASE_URL = os.getenv("MPT_PORTAL_BASE_URL", "https://portal.s1.show")
 
-MPT_ORDERS_API_POLLING_INTERVAL_SECS = int(os.getenv("MPT_ORDERS_API_POLLING_INTERVAL_SECS", "120"))
+MPT_ORDERS_API_POLLING_INTERVAL_SECS = int(
+    os.getenv("MPT_ORDERS_API_POLLING_INTERVAL_SECS", "120")
+)
 
 EXTENSION_CONFIG = {
     "DUE_DATE_DAYS": "30",
 }
+
+MPT_SETUP_CONTEXTS_FUNC = os.getenv(
+    "MPT_SETUP_CONTEXTS_FUNC",
+    "swo.mpt.extensions.runtime.events.utils.setup_contexts",
+)

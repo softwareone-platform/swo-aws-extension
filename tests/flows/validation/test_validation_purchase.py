@@ -1,4 +1,5 @@
 from swo_aws_extension.constants import AccountTypesEnum
+from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.validation.purchase import validate_purchase_order
 
 
@@ -12,7 +13,8 @@ def test_validate_new_account_empty_values(
     )
 
     client = mocker.MagicMock()
-    has_errors, result = validate_purchase_order(client, order)
+    context = PurchaseContext(order=order)
+    has_errors, result = validate_purchase_order(client, context)
 
     assert result["parameters"]["ordering"][0]["constraints"] == {
         "hidden": False,
@@ -39,7 +41,8 @@ def test_validate_new_account_with_values(
     )
 
     client = mocker.MagicMock()
-    has_errors, result = validate_purchase_order(client, order)
+    context = PurchaseContext(order=order)
+    has_errors, result = validate_purchase_order(client, context)
 
     assert result["parameters"]["ordering"][0]["constraints"] == {
         "hidden": True,

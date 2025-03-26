@@ -3,7 +3,10 @@ from unittest import mock
 import pytest
 
 from swo_aws_extension.constants import PhasesEnum
-from swo_aws_extension.flows.order import MPT_ORDER_STATUS_COMPLETED, OrderContext
+from swo_aws_extension.flows.order import (
+    MPT_ORDER_STATUS_COMPLETED,
+    InitialAWSContext,
+)
 from swo_aws_extension.flows.steps.complete_order import CompleteOrder
 
 
@@ -14,7 +17,7 @@ def context(order_factory, fulfillment_parameters_factory):
             phase=PhasesEnum.COMPLETED
         )
     )
-    order_context = OrderContext(
+    order_context = InitialAWSContext(
         order=order,
     )
     return order_context

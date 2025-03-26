@@ -5,7 +5,7 @@ from swo.mpt.extensions.flows.pipeline import Pipeline, Step
 
 from swo_aws_extension.constants import AccountTypesEnum
 from swo_aws_extension.flows.order import (
-    OrderContext,
+    PurchaseContext,
     reset_order_error,
 )
 from swo_aws_extension.parameters import (
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class ValidateNewAccount(Step):
-    def __call__(self, client: MPTClient, context: OrderContext, next_step):
+    def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         account_type = get_account_type(context.order)
         if account_type == AccountTypesEnum.NEW_ACCOUNT:
             logger.info("Validating new account order")
@@ -46,11 +46,10 @@ class ValidateNewAccount(Step):
         next_step(client, context)
 
 
-def validate_purchase_order(client, order):
-    order = reset_order_error(order)
-    order = reset_ordering_parameters_error(order)
+def validate_purchase_order(client, context):
+    context.order = reset_order_error(context.order)
+    context.order = reset_ordering_parameters_error(context.order)
 
     pipeline = Pipeline(ValidateNewAccount())
-    context = OrderContext(order=order)
     pipeline.run(client, context)
     return not context.validation_succeeded, context.order

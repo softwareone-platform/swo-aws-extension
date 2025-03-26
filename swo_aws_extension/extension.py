@@ -10,6 +10,7 @@ from swo.mpt.extensions.core import Extension, JWTAuth
 from swo.mpt.extensions.runtime.djapp.conf import get_for_product
 
 from swo_aws_extension.flows.fulfillment import fulfill_order
+from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.validation import validate_order
 from swo_aws_extension.models import Error
 
@@ -39,7 +40,8 @@ def process_order_fulfillment(client, event):
 )
 def process_order_validation(request, order: dict = Body(None)):
     try:
-        validated_order = validate_order(request.client, order)
+        context = InitialAWSContext(order=order)
+        validated_order = validate_order(request.client, context)
         logger.debug(f"Validated order: {pformat(validated_order)}")
         return 200, validated_order
     except Exception as e:

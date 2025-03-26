@@ -1,7 +1,7 @@
 from swo.mpt.client import MPTClient
 
 from swo_aws_extension.constants import PhasesEnum
-from swo_aws_extension.flows.order import OrderContext
+from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.steps import CompleteOrder, CompletePurchaseOrder
 
 
@@ -14,7 +14,7 @@ def test_complete_order(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = OrderContext.from_order(order)
+    context = InitialAWSContext(order=order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
     mocked_get_product_template_or_default = mocker.patch(
@@ -53,7 +53,7 @@ def test_complete_purchase_order_phase(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = OrderContext.from_order(order)
+    context = InitialAWSContext(order=order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
     mocked_get_product_template_or_default = mocker.patch(
@@ -92,7 +92,7 @@ def test_complete_purchase_order_phase_invalid_phase(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = OrderContext.from_order(order)
+    context = InitialAWSContext(order=order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
