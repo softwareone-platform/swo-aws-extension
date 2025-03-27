@@ -24,11 +24,3 @@ def test_fulfill_order_exception(mocker, mpt_error_factory, order_factory):
     assert process == "fulfillment"
     assert order_id == order["id"]
     assert strip_trace_id(str(error)) in tb
-
-
-def test_close_account_flow_order(mocker, mpt_client, order_close_account):
-    close_account_pipeline_mock = mocker.patch(
-        "swo_aws_extension.flows.fulfillment.base.close_account"
-    )
-    fulfill_order(mpt_client, order_close_account)
-    close_account_pipeline_mock.run.assert_called_once()

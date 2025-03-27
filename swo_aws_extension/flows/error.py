@@ -22,3 +22,16 @@ ERR_ACCOUNT_NAME_EMPTY = ValidationError(
     "AWS003",
     "Account name is empty. Please provide an account name.",
 )
+
+ERR_TERMINATION_TYPE_EMPTY = ValidationError(
+    "AWS004",
+    "Please select correct termination type.",
+)
+
+ERR_TERMINATION_AWS = ValidationError(
+    "AWS005",
+    "The member account `{member_account}` is missing one or more of the prerequisites "
+    "required to operate as a standalone account. To add what is missing, sign-in to the member "
+    "account using the AWS Organizations console, then select to leave the organization. "
+    "You will then be prompted to enter any missing information.",
+)

@@ -2,7 +2,6 @@ from django.conf import settings
 
 
 class Config:
-
     @property
     def ccp_client_id(self) -> str:
         return settings.EXTENSION_CONFIG["CCP_CLIENT_ID"]

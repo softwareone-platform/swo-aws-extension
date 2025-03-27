@@ -4,15 +4,13 @@ import traceback
 from swo_aws_extension.flows.error import strip_trace_id
 from swo_aws_extension.flows.fulfillment.pipelines import (
     change_order,
-    close_account,
     purchase,
     terminate,
 )
 from swo_aws_extension.flows.order import (
-    CloseAccountContext,
     OrderContext,
+    TerminateContext,
     is_change_order,
-    is_close_account_flow,
     is_purchase_order,
     is_termination_order,
 )
@@ -44,12 +42,8 @@ def fulfill_order(
         elif is_change_order(order):
             logger.info("Processing change order")
             change_order.run(client, context)
-        elif is_close_account_flow(order):
-            context = CloseAccountContext.from_order(order)
-            logger.info(context)
-            close_account.run(client, context)
         elif is_termination_order(order):  # pragma: no branch
-            logger.info("Processing generic termination flow")
+            context = TerminateContext.from_order(order)
             terminate.run(client, context)
         else:
             logger.warning(f"Unsupported order type: {order['type']}")

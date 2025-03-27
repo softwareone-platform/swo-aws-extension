@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 class MPAPreConfiguration(Step):
-
     def __call__(self, client: MPTClient, context: OrderContext, next_step):
         if get_phase(context.order) != PhasesEnum.PRECONFIGURATION_MPA:
             logger.info(

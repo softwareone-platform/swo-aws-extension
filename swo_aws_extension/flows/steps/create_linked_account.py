@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 
 
 class CreateLinkedAccount(Step):
-
     def __call__(self, client: MPTClient, context: OrderContext, next_step):
         are_invalid_parameters = False
         if get_phase(context.order) != PhasesEnum.CREATE_ACCOUNT:

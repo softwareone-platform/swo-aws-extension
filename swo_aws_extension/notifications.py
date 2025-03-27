@@ -152,7 +152,7 @@ def send_email(recipient, subject, template_name, context):
 def get_notifications_recipient(order):
     return (get_ordering_parameter(order, PARAM_CONTACT).get("value", {}) or {}).get(
         "email"
-    ) or (order["agreement"]["buyer"].get("contact", {}) or {}).get("email")
+    ) or (order["buyer"].get("contact", {}) or {}).get("email")
 
 
 def md2html(template):
@@ -188,10 +188,7 @@ def send_email_notification(client, order):
             "api_base_url": settings.MPT_API_BASE_URL,
             "portal_base_url": settings.MPT_PORTAL_BASE_URL,
         }
-        subject = (
-            f"Order status update {order['id']} "
-            f"for {order['agreement']['buyer']['name']}"
-        )
+        subject = f"Order status update {order['id']} for {order['buyer']['name']}"
         if order["status"] == "Querying":
             subject = (
                 f"This order need your attention {order['id']} "

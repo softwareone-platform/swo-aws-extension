@@ -4,7 +4,7 @@ import pytest
 from swo.mpt.client import MPTClient
 
 from swo_aws_extension.constants import CRM_TICKET_COMPLETED_STATE
-from swo_aws_extension.flows.order import CloseAccountContext
+from swo_aws_extension.flows.order import TerminateContext
 from swo_aws_extension.flows.steps.service_crm_steps import (
     AwaitCRMTicketStatusStep,
     CreateMPADecomissionServiceRequestStep,
@@ -61,7 +61,7 @@ def create_service_crm_ticket_step(
 
 @pytest.fixture()
 def context():
-    return create_autospec(CloseAccountContext, instance=True)
+    return create_autospec(TerminateContext, instance=True)
 
 
 @pytest.fixture()
@@ -124,7 +124,6 @@ def test_create_service_crm_ticket_does_meet_criteria(
     service_request,
     crm_ticket_id_saver,
 ):
-
     crm_client.create_service_request.return_value = {"id": "12345"}
     client = Mock(spec=MPTClient)
     context.order_id = "ORD-0000-0000"  # Set the order_id to a string
@@ -138,25 +137,6 @@ def test_create_service_crm_ticket_does_meet_criteria(
     )
     next_step.assert_called_once_with(client, context)
     crm_ticket_id_saver.assert_called_once_with(client, context, "12345")
-
-
-def test_create_service_crm_ticket_unexpected_response(
-    create_service_crm_ticket_step,
-    crm_client,
-    service_request_factory,
-    context,
-    next_step,
-    service_request,
-    crm_ticket_id_saver,
-):
-
-    client = Mock(spec=MPTClient)
-    context.order_id = "ORD-0000-0000"  # Set the order_id to a string
-    create_service_crm_ticket_step.criteria = lambda context: True
-    crm_client.create_service_request.return_value = {"error": "An error happened"}
-    with pytest.raises(ValueError):
-        create_service_crm_ticket_step(client, context, next_step)
-    crm_ticket_id_saver.assert_not_called()
 
 
 @pytest.fixture()
@@ -281,7 +261,8 @@ def test_await_crm_ticket_status_ticket_in_target_status(
 
 
 def test_errors_create_mpa_service_request(context):
-    context = CloseAccountContext(order={}, aws_client=None)
+    client = Mock(spec=MPTClient)
+    context = TerminateContext(order={}, aws_client=None)
     step = CreateMPADecomissionServiceRequestStep()
 
     with pytest.raises(RuntimeError):
@@ -289,3 +270,9 @@ def test_errors_create_mpa_service_request(context):
 
     with pytest.raises(RuntimeError):
         step.is_only_mpa_account_in_organization(None)
+
+    with pytest.raises(ValueError):
+        step.save_ticket(client, context, "")
+
+    with pytest.raises(ValueError):
+        step.save_ticket(client, context, None)

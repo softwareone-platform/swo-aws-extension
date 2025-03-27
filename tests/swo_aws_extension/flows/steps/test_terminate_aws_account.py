@@ -4,18 +4,13 @@ import pytest
 from swo.mpt.client import MPTClient
 
 from swo_aws_extension.constants import PhasesEnum
-from swo_aws_extension.flows.order import CloseAccountContext
-from swo_aws_extension.flows.steps.close_aws_account import CloseAWSAccountStep
+from swo_aws_extension.flows.order import TerminateContext
+from swo_aws_extension.flows.steps import TerminateAWSAccount
 
 
 @pytest.fixture()
 def aws_client():
     return Mock()
-
-
-@pytest.fixture()
-def close_aws_account():
-    return CloseAWSAccountStep()
 
 
 @pytest.fixture()
@@ -35,7 +30,7 @@ def context(
             vendor_id="close_account_id", status="Terminating"
         ),
     )
-    context = CloseAccountContext.from_order(order)
+    context = TerminateContext.from_order(order)
     context.aws_client = aws_client
     return context
 
@@ -46,14 +41,14 @@ def next_step():
 
 
 def test_close_aws_account_success(
-    mocker, close_aws_account, aws_client, context, next_step, data_aws_account_factory
+    aws_client, context, next_step, data_aws_account_factory
 ):
     client = Mock(spec=MPTClient)
 
     aws_client.list_accounts.return_value = [
         data_aws_account_factory(id="close_account_id", status="ACTIVE")
     ]
-
-    close_aws_account(client, context, next_step)
+    terminate_account_step = TerminateAWSAccount()
+    terminate_account_step(client, context, next_step)
     aws_client.close_account.assert_called_once_with("close_account_id")
     next_step.assert_called_once_with(client, context)

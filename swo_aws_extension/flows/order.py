@@ -5,11 +5,9 @@ from swo.mpt.client.mpt import get_product_template_or_default, query_order
 from swo.mpt.extensions.flows.context import Context as BaseContext
 
 from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
-from swo_aws_extension.constants import TerminationParameterChoices
 from swo_aws_extension.notifications import send_email_notification
 from swo_aws_extension.parameters import (
     get_mpa_account_id,
-    get_termination_type_parameter,
 )
 
 MPT_ORDER_STATUS_PROCESSING = "Processing"
@@ -39,28 +37,6 @@ def is_change_order(order):
 
 def is_termination_order(order):
     return order["type"] == ORDER_TYPE_TERMINATION
-
-
-def is_termination_type_close_account(order):
-    return (
-        get_termination_type_parameter(order)
-        == TerminationParameterChoices.CLOSE_ACCOUNT
-    )
-
-
-def is_close_account_flow(order):
-    return is_termination_order(order) and is_termination_type_close_account(order)
-
-
-def is_termination_type_unlink_account(order):
-    return (
-        get_termination_type_parameter(order)
-        == TerminationParameterChoices.UNLINK_ACCOUNT
-    )
-
-
-def is_unlink_flow(order):
-    return is_termination_order(order) and is_termination_type_unlink_account(order)
 
 
 @dataclass
@@ -150,8 +126,7 @@ def reset_order_error(order):
     return updated_order
 
 
-class CloseAccountContext(OrderContext):
-
+class TerminateContext(OrderContext):
     @property
     def terminating_subscriptions_aws_account_ids(self):
         """
@@ -166,6 +141,6 @@ class CloseAccountContext(OrderContext):
 
     def __str__(self):
         return (
-            super().__str__() + f" - CloseAccount - Closing AWS Accounts: "
+            super().__str__() + f" - Terminate - Terminating AWS Accounts: "
             f"{", ".join(self.terminating_subscriptions_aws_account_ids)}"
         )
