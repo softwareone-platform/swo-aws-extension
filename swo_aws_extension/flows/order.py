@@ -1,9 +1,9 @@
 import copy
 from dataclasses import dataclass
 
+from mpt_extension_sdk.flows.context import Context as BaseContext
+from mpt_extension_sdk.mpt_http.mpt import get_product_template_or_default, query_order
 from pyairtable.orm import Model
-from swo.mpt.client.mpt import get_product_template_or_default, query_order
-from swo.mpt.extensions.flows.context import Context as BaseContext
 
 from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
 from swo_aws_extension.constants import SupportTypesEnum

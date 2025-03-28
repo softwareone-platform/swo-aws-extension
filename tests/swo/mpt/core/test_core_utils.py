@@ -1,6 +1,6 @@
 from django.conf import settings
-from swo.mpt.client import MPTClient
-from swo.mpt.extensions.core.utils import setup_client
+from mpt_extension_sdk.mpt_http.base import MPTClient
+from mpt_extension_sdk.core.utils import setup_client
 
 
 def test_setup_client():

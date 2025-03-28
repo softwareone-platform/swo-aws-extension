@@ -1,7 +1,7 @@
 import logging
 
-from swo.mpt.client import MPTClient
-from swo.mpt.extensions.flows.pipeline import Pipeline, Step
+from mpt_extension_sdk.flows.pipeline import Pipeline, Step
+from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.constants import AccountTypesEnum
 from swo_aws_extension.flows.order import (

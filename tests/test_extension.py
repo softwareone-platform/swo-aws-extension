@@ -1,7 +1,7 @@
 import json
 
-from swo.mpt.extensions.core.events import Event
-from swo.mpt.extensions.runtime.djapp.conf import get_for_product
+from mpt_extension_sdk.core.events.dataclasses import Event
+from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 
 from swo_aws_extension.extension import (
     ext,
@@ -33,9 +33,9 @@ def test_jwt_secret_callback(mocker, settings, mpt_client, webhook):
         "swo_aws_extension.extension.get_webhook",
         return_value=webhook,
     )
-    assert jwt_secret_callback(
-        mpt_client, {"webhook_id": "WH-123-123"}
-    ) == get_for_product(settings, "WEBHOOKS_SECRETS", "PRD-1111-1111")
+    assert jwt_secret_callback(mpt_client, {"webhook_id": "WH-123-123"}) == get_for_product(
+        settings, "WEBHOOKS_SECRETS", "PRD-1111-1111"
+    )
     mocked_webhook.assert_called_once_with(mpt_client, "WH-123-123")
 
 
@@ -45,9 +45,7 @@ def test_process_order_validation(client, mocker, order_factory, jwt_token, webh
         return_value=webhook,
     )
     order = order_factory()
-    m_validate = mocker.patch(
-        "swo_aws_extension.extension.validate_order", return_value=order
-    )
+    m_validate = mocker.patch("swo_aws_extension.extension.validate_order", return_value=order)
     resp = client.post(
         "/api/v1/orders/validate",
         content_type="application/json",

@@ -13,9 +13,7 @@ from swo_aws_extension.flows.steps.complete_order import CompleteOrder
 @pytest.fixture()
 def context(order_factory, fulfillment_parameters_factory):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.COMPLETED
-        )
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED)
     )
     order_context = InitialAWSContext(
         order=order,

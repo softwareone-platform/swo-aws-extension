@@ -1,8 +1,8 @@
 import logging
 
-from swo.mpt.client import MPTClient
-from swo.mpt.client.mpt import update_order
-from swo.mpt.extensions.flows.pipeline import Step
+from mpt_extension_sdk.flows.pipeline import Step
+from mpt_extension_sdk.mpt_http.base import MPTClient
+from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.error import (
@@ -42,25 +42,16 @@ class CreateLinkedAccount(Step):
             logger.info("Checking linked account request status")
             if context.account_creation_status.status == "SUCCEEDED":
                 logger.info("AWS linked account created successfully")
-                context.order = set_phase(
-                    context.order, PhasesEnum.CREATE_SUBSCRIPTIONS
-                )
-                update_order(
-                    client, context.order_id, parameters=context.order["parameters"]
-                )
+                context.order = set_phase(context.order, PhasesEnum.CREATE_SUBSCRIPTIONS)
+                update_order(client, context.order_id, parameters=context.order["parameters"])
                 next_step(client, context)
                 return True
             elif context.account_creation_status.status == "IN_PROGRESS":
                 logger.info("AWS linked account creation in progress")
                 return
             else:
-                if (
-                    context.account_creation_status.failure_reason
-                    == "EMAIL_ALREADY_EXISTS"
-                ):
-                    logger.error(
-                        "AWS linked account creation failed: email already exists"
-                    )
+                if context.account_creation_status.failure_reason == "EMAIL_ALREADY_EXISTS":
+                    logger.error("AWS linked account creation failed: email already exists")
                     context.order = set_ordering_parameter_error(
                         context.order,
                         OrderParametersEnum.ROOT_ACCOUNT_EMAIL,
@@ -102,13 +93,7 @@ class CreateLinkedAccount(Step):
             logger.warning("Order switched to query")
             return
 
-        logger.info(
-            f"Creating linked account with: email={account_email}, name={account_name}"
-        )
-        linked_account = context.aws_client.create_linked_account(
-            account_email, account_name
-        )
-        context.order = set_account_request_id(
-            context.order, linked_account.account_request_id
-        )
+        logger.info(f"Creating linked account with: email={account_email}, name={account_name}")
+        linked_account = context.aws_client.create_linked_account(account_email, account_name)
+        context.order = set_account_request_id(context.order, linked_account.account_request_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])

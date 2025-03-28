@@ -2,8 +2,8 @@ import threading
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 
-from swo.mpt.client.base import MPTClient
-from swo.mpt.extensions.core.events.dataclasses import Event
+from mpt_extension_sdk.mpt_http.base import MPTClient
+from mpt_extension_sdk.core.events.dataclasses import Event
 from swo.mpt.extensions.runtime.events.dispatcher import Dispatcher
 
 

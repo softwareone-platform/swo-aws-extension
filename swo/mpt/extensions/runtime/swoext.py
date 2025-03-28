@@ -1,7 +1,7 @@
 import click
 from django.utils.module_loading import import_string
-from swo.mpt.extensions.runtime import get_version
-from swo.mpt.extensions.runtime.utils import show_banner
+from mpt_extension_sdk.runtime import get_version
+from mpt_extension_sdk.runtime.utils import show_banner
 
 
 def print_version(ctx, param, value):

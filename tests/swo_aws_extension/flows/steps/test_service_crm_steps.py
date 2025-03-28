@@ -1,7 +1,7 @@
 from unittest.mock import Mock, create_autospec
 
 import pytest
-from swo.mpt.client import MPTClient
+from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.constants import CRM_TICKET_COMPLETED_STATE
 from swo_aws_extension.flows.order import TerminateContext
@@ -87,9 +87,7 @@ def test_create_service_crm_ticket_meets_criteria(
     create_service_crm_ticket_step(client, context, next_step)
 
     service_request_factory.assert_called_once_with(context)
-    crm_client.create_service_request.assert_called_once_with(
-        "test_order_id", service_request
-    )
+    crm_client.create_service_request.assert_called_once_with("test_order_id", service_request)
     next_step.assert_called_once_with(client, context)
     crm_ticket_id_saver.assert_called_once_with(client, context, "12345")
 
@@ -132,9 +130,7 @@ def test_create_service_crm_ticket_does_meet_criteria(
     create_service_crm_ticket_step(client, context, next_step)
 
     service_request_factory.assert_called_once_with(context)
-    crm_client.create_service_request.assert_called_once_with(
-        "ORD-0000-0000", service_request
-    )
+    crm_client.create_service_request.assert_called_once_with("ORD-0000-0000", service_request)
     next_step.assert_called_once_with(client, context)
     crm_ticket_id_saver.assert_called_once_with(client, context, "12345")
 
@@ -155,9 +151,7 @@ def await_crm_ticket_status(mocker, crm_service_client, get_ticket_id):
         "swo_aws_extension.flows.steps.service_crm_steps.get_service_client",
         return_value=crm_service_client,
     )
-    return AwaitCRMTicketStatusStep(
-        get_ticket_id, target_status=CRM_TICKET_COMPLETED_STATE
-    )
+    return AwaitCRMTicketStatusStep(get_ticket_id, target_status=CRM_TICKET_COMPLETED_STATE)
 
 
 def test_await_crm_ticket_status_initialization():
@@ -222,16 +216,14 @@ def test_await_crm_ticket_status_ticket_not_in_target_status(
 ):
     client = Mock(spec=MPTClient)
     get_ticket_id.return_value = "ticket_id"
-    crm_service_client.get_service_requests.return_value = (
-        service_request_ticket_factory(state="InProgress")
+    crm_service_client.get_service_requests.return_value = service_request_ticket_factory(
+        state="InProgress"
     )
 
     await_crm_ticket_status(client, context, next_step)
 
     get_ticket_id.assert_called_once_with(context)
-    crm_service_client.get_service_requests.assert_called_once_with(
-        context.order_id, "ticket_id"
-    )
+    crm_service_client.get_service_requests.assert_called_once_with(context.order_id, "ticket_id")
     next_step.assert_not_called()
 
 
@@ -245,18 +237,14 @@ def test_await_crm_ticket_status_ticket_in_target_status(
 ):
     client = Mock(spec=MPTClient)
     get_ticket_id.return_value = "CS001"
-    crm_service_client.get_service_requests.return_value = (
-        service_request_ticket_factory(
-            ticket_id="CS001", state=CRM_TICKET_COMPLETED_STATE
-        )
+    crm_service_client.get_service_requests.return_value = service_request_ticket_factory(
+        ticket_id="CS001", state=CRM_TICKET_COMPLETED_STATE
     )
 
     await_crm_ticket_status(client, context, next_step)
 
     get_ticket_id.assert_called_once_with(context)
-    crm_service_client.get_service_requests.assert_called_once_with(
-        context.order_id, "CS001"
-    )
+    crm_service_client.get_service_requests.assert_called_once_with(context.order_id, "CS001")
     next_step.assert_called_once_with(client, context)
 
 

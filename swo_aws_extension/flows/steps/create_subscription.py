@@ -1,12 +1,12 @@
 import logging
 
-from swo.mpt.client import MPTClient
-from swo.mpt.client.mpt import (
+from mpt_extension_sdk.flows.pipeline import Step
+from mpt_extension_sdk.mpt_http.base import MPTClient
+from mpt_extension_sdk.mpt_http.mpt import (
     create_subscription,
     get_order_subscription_by_external_id,
     update_order,
 )
-from swo.mpt.extensions.flows.pipeline import Step
 
 from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.parameters import (
@@ -64,12 +64,9 @@ class CreateSubscription(Step):
                         },
                     ],
                 }
-                subscription = create_subscription(
-                    client, context.order_id, subscription
-                )
+                subscription = create_subscription(client, context.order_id, subscription)
                 logger.info(
-                    f"{context}: subscription for {account_id} "
-                    f'({subscription["id"]}) created'
+                    f"{context}: subscription for {account_id} " f'({subscription["id"]}) created'
                 )
         context.order = set_phase(context.order, PhasesEnum.COMPLETED)
         update_order(client, context.order_id, parameters=context.order["parameters"])

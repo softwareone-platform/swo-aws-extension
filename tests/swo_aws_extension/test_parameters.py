@@ -46,18 +46,14 @@ def test_get_parameter_empty_source():
 
 def test_get_parameter_fulfillment_phase():
     source = {
-        "parameters": {
-            PARAM_PHASE_FULFILLMENT: [{"externalId": "param_1", "value": "value_1"}]
-        }
+        "parameters": {PARAM_PHASE_FULFILLMENT: [{"externalId": "param_1", "value": "value_1"}]}
     }
     param = get_parameter(PARAM_PHASE_FULFILLMENT, source, "param_1")
     assert param == {"externalId": "param_1", "value": "value_1"}
 
 
 def test_set_ordering_parameter_error():
-    order = {
-        "parameters": {"ordering": [{"externalId": "param_1", "value": "value_1"}]}
-    }
+    order = {"parameters": {"ordering": [{"externalId": "param_1", "value": "value_1"}]}}
     error = {"id": "error_1", "message": "Error message"}
     updated_order = set_ordering_parameter_error(order, "param_1", error)
 
@@ -67,13 +63,9 @@ def test_set_ordering_parameter_error():
 
 
 def test_set_ordering_parameter_error_with_required_false():
-    order = {
-        "parameters": {"ordering": [{"externalId": "param_1", "value": "value_1"}]}
-    }
+    order = {"parameters": {"ordering": [{"externalId": "param_1", "value": "value_1"}]}}
     error = {"id": "error_1", "message": "Error message"}
-    updated_order = set_ordering_parameter_error(
-        order, "param_1", error, required=False
-    )
+    updated_order = set_ordering_parameter_error(order, "param_1", error, required=False)
 
     param = get_ordering_parameter(updated_order, "param_1")
     assert param["error"] == error
@@ -134,9 +126,7 @@ def test_get_termination_parameter_found(mocker):
     }
     result = get_termination_type_parameter(order)
     assert result == "termination_flow"
-    mock_get_fulfillment_parameter.assert_called_once_with(
-        order, OrderParametersEnum.TERMINATION
-    )
+    mock_get_fulfillment_parameter.assert_called_once_with(order, OrderParametersEnum.TERMINATION)
 
 
 def test_get_termination_parameter_not_set(mocker):
@@ -146,6 +136,4 @@ def test_get_termination_parameter_not_set(mocker):
     order = {"parameters": {"fulfillment": []}}
     result = get_termination_type_parameter(order)
     assert result is None
-    mock_get_fulfillment_parameter.assert_called_once_with(
-        order, OrderParametersEnum.TERMINATION
-    )
+    mock_get_fulfillment_parameter.assert_called_once_with(order, OrderParametersEnum.TERMINATION)

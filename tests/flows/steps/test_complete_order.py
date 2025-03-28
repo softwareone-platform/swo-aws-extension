@@ -1,4 +1,4 @@
-from swo.mpt.client import MPTClient
+from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.order import InitialAWSContext
@@ -8,9 +8,7 @@ from swo_aws_extension.flows.steps import CompleteOrder, CompletePurchaseOrder
 def test_complete_order(
     mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
 ):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase="")
-    )
+    order = order_factory(fulfillment_parameters=fulfillment_parameters_factory(phase=""))
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
@@ -46,9 +44,7 @@ def test_complete_purchase_order_phase(
     mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.COMPLETED
-        )
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED)
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
@@ -85,9 +81,7 @@ def test_complete_purchase_order_phase_invalid_phase(
     mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.PRECONFIGURATION_MPA
-        )
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.PRECONFIGURATION_MPA)
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")

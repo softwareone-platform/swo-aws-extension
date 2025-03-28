@@ -1,9 +1,9 @@
 import logging
 from typing import Callable
 
-from swo.mpt.client import MPTClient
-from swo.mpt.client.mpt import update_order
-from swo.mpt.extensions.flows.pipeline import NextStep, Step
+from mpt_extension_sdk.flows.pipeline import NextStep, Step
+from mpt_extension_sdk.mpt_http.base import MPTClient
+from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.constants import CRM_TICKET_COMPLETED_STATE
 from swo_aws_extension.crm_service_client.config import get_service_client
@@ -121,9 +121,7 @@ class CreateMPADecomissionServiceRequestStep(CreateServiceRequestStep):
             context.aws_client
         ) and not get_crm_ticket_id(context.order)
 
-    def build_service_request_for_close_account(
-        self, context: InitialAWSContext
-    ) -> ServiceRequest:
+    def build_service_request_for_close_account(self, context: InitialAWSContext) -> ServiceRequest:
         if not context.mpa_account:
             raise RuntimeError(
                 "Unable to create a service request ticket for an order missing an "

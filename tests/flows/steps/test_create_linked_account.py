@@ -1,4 +1,4 @@
-from swo.mpt.client import MPTClient
+from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.error import (
@@ -21,15 +21,11 @@ def test_create_linked_account_phase_create_linked_account(
     create_account_status,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_ACCOUNT
-        )
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.create_account.return_value = create_account_status()
 
     context = InitialAWSContext(order=order)
@@ -57,9 +53,7 @@ def test_create_linked_account_phase_create_linked_account(
     )
     assert (
         context.order["parameters"]["fulfillment"]
-        == set_account_request_id(order, "account_request_id")["parameters"][
-            "fulfillment"
-        ]
+        == set_account_request_id(order, "account_request_id")["parameters"]["fulfillment"]
     )
     mocked_update_order.assert_called_once_with(
         mpt_client_mock,
@@ -88,18 +82,13 @@ def test_create_linked_account_phase_check_linked_account_in_progress(
 
     context = InitialAWSContext(order=order)
     context.aws_client = aws_client
-    context.account_creation_status = account_creation_status_factory(
-        status="IN_PROGRESS"
-    )
+    context.account_creation_status = account_creation_status_factory(status="IN_PROGRESS")
     next_step_mock = mocker.Mock()
 
     create_linked_account = CreateLinkedAccount()
     create_linked_account(mpt_client_mock, context, next_step_mock)
 
-    assert (
-        context.order["parameters"]
-        == set_phase(order, PhasesEnum.CREATE_ACCOUNT)["parameters"]
-    )
+    assert context.order["parameters"] == set_phase(order, PhasesEnum.CREATE_ACCOUNT)["parameters"]
 
 
 def test_create_linked_account_phase_check_linked_account_succeed(
@@ -122,9 +111,7 @@ def test_create_linked_account_phase_check_linked_account_succeed(
 
     context = InitialAWSContext(order=order)
     context.aws_client = aws_client
-    context.account_creation_status = account_creation_status_factory(
-        status="SUCCEEDED"
-    )
+    context.account_creation_status = account_creation_status_factory(status="SUCCEEDED")
     next_step_mock = mocker.Mock()
 
     mocked_update_order = mocker.patch(
@@ -157,9 +144,7 @@ def test_create_linked_account_phase_check_linked_account_email_already_exist(
     account_creation_status_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_ACCOUNT
-        )
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -194,10 +179,7 @@ def test_create_linked_account_phase_check_linked_account_email_already_exist(
         parameters=context.order["parameters"],
         template={"id": "TPL-964-112"},
     )
-    assert (
-        context.order["parameters"]["ordering"][0]["error"]
-        == ERR_EMAIL_ALREADY_EXIST.to_dict()
-    )
+    assert context.order["parameters"]["ordering"][0]["error"] == ERR_EMAIL_ALREADY_EXIST.to_dict()
 
 
 def test_create_linked_account_phase_check_linked_account_failed(
@@ -210,9 +192,7 @@ def test_create_linked_account_phase_check_linked_account_failed(
     account_creation_status_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_ACCOUNT
-        )
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -241,9 +221,7 @@ def test_create_linked_account_phase_empty_parameters(
     order_parameters_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_ACCOUNT
-        ),
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT),
         order_parameters=order_parameters_factory(account_name="", account_email=""),
     )
 
@@ -274,13 +252,8 @@ def test_create_linked_account_phase_empty_parameters(
         parameters=context.order["parameters"],
         template={"id": "TPL-964-112"},
     )
-    assert (
-        context.order["parameters"]["ordering"][0]["error"] == ERR_EMAIL_EMPTY.to_dict()
-    )
-    assert (
-        context.order["parameters"]["ordering"][1]["error"]
-        == ERR_ACCOUNT_NAME_EMPTY.to_dict()
-    )
+    assert context.order["parameters"]["ordering"][0]["error"] == ERR_EMAIL_EMPTY.to_dict()
+    assert context.order["parameters"]["ordering"][1]["error"] == ERR_ACCOUNT_NAME_EMPTY.to_dict()
 
 
 def test_create_linked_account_invalid_phase(
@@ -292,9 +265,7 @@ def test_create_linked_account_invalid_phase(
     order_parameters_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTIONS
-        )
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_SUBSCRIPTIONS)
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)

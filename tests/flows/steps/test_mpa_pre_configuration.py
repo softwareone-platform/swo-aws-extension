@@ -1,4 +1,4 @@
-from swo.mpt.client import MPTClient
+from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.constants import AccountTypesEnum, PhasesEnum
 from swo_aws_extension.flows.order import PurchaseContext
@@ -10,17 +10,11 @@ def test_mpa_pre_configuration_phase_preconfig_mpa(
     mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.PRECONFIGURATION_MPA
-        )
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.PRECONFIGURATION_MPA)
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
-    mock_client.create_organization.return_value = {
-        "Organization": {"Id": "test_organization"}
-    }
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.create_organization.return_value = {"Organization": {"Id": "test_organization"}}
 
     context = PurchaseContext(order=order)
     context.aws_client = aws_client
@@ -36,10 +30,7 @@ def test_mpa_pre_configuration_phase_preconfig_mpa(
 
     mock_client.create_organization.assert_called_once_with(FeatureSet="ALL")
     mock_client.activate_organizations_access.assert_called_once_with()
-    assert (
-        context.order["parameters"]
-        == set_phase(order, PhasesEnum.CREATE_ACCOUNT)["parameters"]
-    )
+    assert context.order["parameters"] == set_phase(order, PhasesEnum.CREATE_ACCOUNT)["parameters"]
 
     mocked_update_order.assert_called_once_with(
         mpt_client_mock,
@@ -55,9 +46,7 @@ def test_mpa_pre_configuration_phase_not_preconfig_mpa(
     order = order_factory()
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
 
     context = PurchaseContext(order=order)
     context.aws_client = aws_client
@@ -79,20 +68,14 @@ def test_mpa_pre_configuration_phase_preconfig_mpa_next_step_transfer(
     order_parameters_factory,
 ):
     order = order_factory(
-        order_parameters=order_parameters_factory(
-            account_type=AccountTypesEnum.EXISTING_ACCOUNT
-        ),
+        order_parameters=order_parameters_factory(account_type=AccountTypesEnum.EXISTING_ACCOUNT),
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.PRECONFIGURATION_MPA
         ),
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
-    mock_client.create_organization.return_value = {
-        "Organization": {"Id": "test_organization"}
-    }
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.create_organization.return_value = {"Organization": {"Id": "test_organization"}}
 
     context = PurchaseContext(order=order)
     context.aws_client = aws_client
@@ -108,8 +91,7 @@ def test_mpa_pre_configuration_phase_preconfig_mpa_next_step_transfer(
 
     mock_client.create_organization.assert_called_once_with(FeatureSet="ALL")
     assert (
-        context.order["parameters"]
-        == set_phase(order, PhasesEnum.TRANSFER_ACCOUNT)["parameters"]
+        context.order["parameters"] == set_phase(order, PhasesEnum.TRANSFER_ACCOUNT)["parameters"]
     )
     mocked_update_order.assert_called_once_with(
         mpt_client_mock,

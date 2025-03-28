@@ -1,7 +1,7 @@
 import logging
 
-from swo.mpt.client import MPTClient
-from swo.mpt.extensions.flows.pipeline import Step
+from mpt_extension_sdk.flows.pipeline import Step
+from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.flows.order import InitialAWSContext
@@ -23,9 +23,7 @@ class SetupContext(Step):
                 "SetupContextError - MPA account is required to setup AWS Client in context"
             )
 
-        context.aws_client = AWSClient(
-            self._config, context.mpa_account, self._role_name
-        )
+        context.aws_client = AWSClient(self._config, context.mpa_account, self._role_name)
         logger.info(
             f"{context.order_id} - Action - MPA credentials for {context.mpa_account} retrieved "
             f"successfully"
@@ -45,18 +43,14 @@ class SetupPurchaseContext(SetupContext):
     def setup_account_request_id(context):
         account_request_id = get_account_request_id(context.order)
         if account_request_id:
-            context.account_creation_status = (
-                context.aws_client.get_linked_account_status(account_request_id)
+            context.account_creation_status = context.aws_client.get_linked_account_status(
+                account_request_id
             )
-            logger.info(
-                f"{context.order_id} - Action - Setup setup_account_request_id in context"
-            )
+            logger.info(f"{context.order_id} - Action - Setup setup_account_request_id in context")
 
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
         if context.mpa_account:
             self.setup_aws(context)
         self.setup_account_request_id(context)
-        logger.info(
-            f"{context.order_id} - Next - SetupPurchaseContext completed successfully"
-        )
+        logger.info(f"{context.order_id} - Next - SetupPurchaseContext completed successfully")
         next_step(client, context)

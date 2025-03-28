@@ -1,8 +1,8 @@
 import logging
 
-from swo.mpt.client import MPTClient
-from swo.mpt.client.mpt import update_order
-from swo.mpt.extensions.flows.pipeline import Step
+from mpt_extension_sdk.flows.pipeline import Step
+from mpt_extension_sdk.mpt_http.base import MPTClient
+from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.airtable.models import (
     MPAStatusEnum,
