@@ -11,15 +11,13 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from markdown_it import MarkdownIt
 from swo.mpt.client.mpt import get_rendered_template
 
-from swo_aws_extension.parameters import PARAM_CONTACT, get_ordering_parameter
+from swo_aws_extension.parameters import OrderParametersEnum, get_ordering_parameter
 
 logger = logging.getLogger(__name__)
 
 
 def dateformat(date_string):
-    return (
-        datetime.fromisoformat(date_string).strftime("%-d %B %Y") if date_string else ""
-    )
+    return datetime.fromisoformat(date_string).strftime("%-d %B %Y") if date_string else ""
 
 
 env = Environment(
@@ -150,9 +148,9 @@ def send_email(recipient, subject, template_name, context):
 
 
 def get_notifications_recipient(order):
-    return (get_ordering_parameter(order, PARAM_CONTACT).get("value", {}) or {}).get(
-        "email"
-    ) or (order["buyer"].get("contact", {}) or {}).get("email")
+    return (
+        get_ordering_parameter(order, OrderParametersEnum.PARAM_CONTACT).get("value", {}) or {}
+    ).get("email") or (order["buyer"].get("contact", {}) or {}).get("email")
 
 
 def md2html(template):
@@ -190,10 +188,7 @@ def send_email_notification(client, order):
         }
         subject = f"Order status update {order['id']} for {order['buyer']['name']}"
         if order["status"] == "Querying":
-            subject = (
-                f"This order need your attention {order['id']} "
-                f"for {order['buyer']['name']}"
-            )
+            subject = f"This order need your attention {order['id']} for {order['buyer']['name']}"
         send_email(
             [recipient],
             subject,

@@ -1,8 +1,6 @@
 import logging
 import traceback
 
-from swo.mpt.client.mpt import get_buyer
-
 from swo_aws_extension.airtable.models import get_available_mpa_from_pool
 from swo_aws_extension.constants import TransferTypesEnum
 from swo_aws_extension.flows.error import strip_trace_id
@@ -94,8 +92,6 @@ def setup_contexts(mpt_client, orders):
                 if pls_mpa_pool_map[pls_status]:
                     # Assign first available MPA from the pool
                     context.airtable_mpa = pls_mpa_pool_map[pls_status].pop(0)
-                    # Add buyer details to the order to obtain the SCU
-                    order["buyer"] = get_buyer(mpt_client, order["buyer"]["id"])
 
         contexts.append(context)
 

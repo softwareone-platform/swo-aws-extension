@@ -34,9 +34,7 @@ def test_aws_openid_error_additional_details():
         "additionalDetails": ["Detail1", "Detail2"],
     }
     error = AWSOpenIdError(401, payload)
-    assert (
-        str(error) == "InvalidToken - The provided token is invalid.: Detail1, Detail2"
-    )
+    assert str(error) == "InvalidToken - The provided token is invalid.: Detail1, Detail2"
 
 
 def test_wrap_http_error_http_error(mocker):
@@ -82,7 +80,7 @@ def test_wrap_boto3_error_client_error(mocker):
 
     wrapped_func = wrap_boto3_error(func)
 
-    with pytest.raises(botocore.exceptions.ClientError):
+    with pytest.raises(AWSError):
         wrapped_func()
 
 

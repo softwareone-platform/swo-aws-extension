@@ -50,7 +50,7 @@ def test_event_producer_get_processing_orders(
     rql_query = f"and(in(agreement.product.id,({mock_settings_product_ids})),eq(status,processing))"
     url = (
         f"/v1/commerce/orders?{rql_query}"
-        "&select=audit,parameters,lines,subscriptions,subscriptions.lines&order=audit.created.at"
+        "&select=audit,parameters,lines,subscriptions,subscriptions.lines,agreement,buyer&order=audit.created.at"
         f"&limit={limit}&offset={offset}"
     )
     requests_mocker.get(
@@ -70,9 +70,7 @@ def test_event_producer_get_processing_orders(
     assert len(orders) == 1
 
 
-def test_event_producers_has_more_pages(
-    mock_wrap_event, mock_meta_with_pagination_has_more_pages
-):
+def test_event_producers_has_more_pages(mock_wrap_event, mock_meta_with_pagination_has_more_pages):
     dispatcher = Dispatcher()
     dispatcher.start()
     dispatcher.dispatch_event(mock_wrap_event)

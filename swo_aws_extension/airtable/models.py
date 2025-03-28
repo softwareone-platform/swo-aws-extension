@@ -5,6 +5,7 @@ from functools import cache
 from django.conf import settings
 from pyairtable.formulas import AND, EQUAL, FIELD, STR_VALUE
 from pyairtable.orm import Model, fields
+from requests import HTTPError
 
 
 class MPAStatusEnum(StrEnum):
@@ -77,6 +78,7 @@ def get_master_payer_account_pool_model(base_info):
         agreement_id = fields.TextField("Agreement Id")
         client_id = fields.TextField("Client Id")
         scu = fields.TextField("SCU")
+        error_description = fields.TextField("Error Description")
 
         class Meta:
             table_name = "Master Payer Accounts"
@@ -153,3 +155,21 @@ def get_in_progress_notifications():
     """
     pool_notification = get_pool_notification_model(AirTableBaseInfo.for_mpa_pool())
     return pool_notification.all(EQUAL("Status", NotificationStatusEnum.IN_PROGRESS))
+
+
+def get_mpa_view_link():
+    """
+    Generate a link to a record of the Master Payer Accounts table in the AirTable UI.
+
+    Returns:
+        str: The link to the Master Payer Accounts record or None in case of an error.
+    """
+    try:
+        mpa_pool = get_master_payer_account_pool_model(AirTableBaseInfo.for_mpa_pool())
+        base_id = mpa_pool.Meta.base_id
+        table_id = mpa_pool.get_table().id
+        view_id = mpa_pool.get_table().schema().view("Master Payer Accounts").id
+        record_id = mpa_pool.id
+        return f"https://airtable.com/{base_id}/{table_id}/{view_id}/{record_id}"
+    except HTTPError:
+        pass

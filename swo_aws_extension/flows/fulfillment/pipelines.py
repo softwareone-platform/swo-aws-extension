@@ -3,6 +3,7 @@ from swo.mpt.extensions.flows.pipeline import Pipeline
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import SWO_EXTENSION_MANAGEMENT_ROLE
 from swo_aws_extension.flows.steps import (
+    AssignMPA,
     AwaitMPADecommissionServiceRequestTicketCompletionStep,
     CompleteOrder,
     CompletePurchaseOrder,
@@ -18,6 +19,7 @@ from swo_aws_extension.flows.steps import (
 config = Config()
 purchase = Pipeline(
     SetupPurchaseContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    AssignMPA(config, SWO_EXTENSION_MANAGEMENT_ROLE),
     MPAPreConfiguration(),
     CreateLinkedAccount(),
     CreateSubscription(),

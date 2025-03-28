@@ -6,26 +6,25 @@ from swo_aws_extension.utils import find_first
 
 PARAM_PHASE_ORDERING = "ordering"
 PARAM_PHASE_FULFILLMENT = "fulfillment"
-PARAM_CONTACT = "contact"
 
 
 class OrderParametersEnum(StrEnum):
-    PARAM_ACCOUNT_TYPE = "accountType"
-    PARAM_ORDER_ROOT_ACCOUNT_EMAIL = "orderRootAccountEmail"
-    PARAM_ORDER_ACCOUNT_NAME = "orderAccountName"
-    PARAM_ORDER_ACCOUNT_ID = "orderAccountId"
+    ACCOUNT_TYPE = "accountType"
+    ROOT_ACCOUNT_EMAIL = "orderRootAccountEmail"
+    ACCOUNT_NAME = "orderAccountName"
     TERMINATION = "terminationType"
     ACCOUNT_ID = "orderAccountId"
     SUPPORT_TYPE = "supportType"
     TRANSFER_TYPE = "transferType"
+    PARAM_CONTACT = "contact"
 
 
 class FulfillmentParametersEnum(StrEnum):
-    PARAM_MPA_ACCOUNT_ID = "mpaAccountId"
-    PARAM_PHASE = "phase"
-    PARAM_ACCOUNT_REQUEST_ID = "accountRequestId"
-    PARAM_ACCOUNT_EMAIL = "accountEmail"
-    PARAM_ACCOUNT_NAME = "accountName"
+    MPA_ACCOUNT_ID = "mpaAccountId"
+    PHASE = "phase"
+    ACCOUNT_REQUEST_ID = "accountRequestId"
+    ACCOUNT_EMAIL = "accountEmail"
+    ACCOUNT_NAME = "accountName"
     CRM_TICKET_ID = "crmTicketId"
 
 
@@ -98,9 +97,7 @@ def set_ordering_parameter_error(order, param_external_id, error, required=True)
     return updated_order
 
 
-def update_ordering_parameter_constraints(
-    order, param_external_id, hidden, required, readonly
-):
+def update_ordering_parameter_constraints(order, param_external_id, hidden, required, readonly):
     """
     Update constraints on an ordering parameter.
     Args:
@@ -141,7 +138,7 @@ def get_mpa_account_id(source):
     """
     param = get_fulfillment_parameter(
         source,
-        FulfillmentParametersEnum.PARAM_MPA_ACCOUNT_ID,
+        FulfillmentParametersEnum.MPA_ACCOUNT_ID,
     )
     return param.get("value", None)
 
@@ -160,7 +157,7 @@ def set_mpa_account_id(order, mpa_account_id):
     updated_order = copy.deepcopy(order)
     param = get_fulfillment_parameter(
         updated_order,
-        FulfillmentParametersEnum.PARAM_MPA_ACCOUNT_ID,
+        FulfillmentParametersEnum.MPA_ACCOUNT_ID,
     )
     param["value"] = mpa_account_id
     return updated_order
@@ -180,7 +177,7 @@ def get_phase(source):
     """
     param = get_fulfillment_parameter(
         source,
-        FulfillmentParametersEnum.PARAM_PHASE,
+        FulfillmentParametersEnum.PHASE,
     )
     return param.get("value", None)
 
@@ -199,7 +196,7 @@ def set_phase(order, phase):
     updated_order = copy.deepcopy(order)
     param = get_fulfillment_parameter(
         updated_order,
-        FulfillmentParametersEnum.PARAM_PHASE,
+        FulfillmentParametersEnum.PHASE,
     )
     param["value"] = phase
     return updated_order
@@ -219,7 +216,7 @@ def get_account_email(source):
     """
     param = get_ordering_parameter(
         source,
-        OrderParametersEnum.PARAM_ORDER_ROOT_ACCOUNT_EMAIL,
+        OrderParametersEnum.ROOT_ACCOUNT_EMAIL,
     )
     return param.get("value", None)
 
@@ -238,7 +235,7 @@ def get_account_name(source):
     """
     param = get_ordering_parameter(
         source,
-        OrderParametersEnum.PARAM_ORDER_ACCOUNT_NAME,
+        OrderParametersEnum.ACCOUNT_NAME,
     )
     return param.get("value", None)
 
@@ -257,7 +254,7 @@ def get_account_request_id(source):
     """
     param = get_fulfillment_parameter(
         source,
-        FulfillmentParametersEnum.PARAM_ACCOUNT_REQUEST_ID,
+        FulfillmentParametersEnum.ACCOUNT_REQUEST_ID,
     )
     return param.get("value", None)
 
@@ -276,7 +273,7 @@ def set_account_request_id(order, account_request_id):
     updated_order = copy.deepcopy(order)
     param = get_fulfillment_parameter(
         updated_order,
-        FulfillmentParametersEnum.PARAM_ACCOUNT_REQUEST_ID,
+        FulfillmentParametersEnum.ACCOUNT_REQUEST_ID,
     )
     param["value"] = account_request_id
     return updated_order
@@ -296,7 +293,7 @@ def get_account_type(source):
     """
     param = get_ordering_parameter(
         source,
-        OrderParametersEnum.PARAM_ACCOUNT_TYPE,
+        OrderParametersEnum.ACCOUNT_TYPE,
     )
     return param.get("value", None)
 

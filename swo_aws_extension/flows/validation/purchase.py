@@ -29,7 +29,7 @@ class ValidateNewAccount(Step):
             if not account_email:
                 context.order = update_ordering_parameter_constraints(
                     context.order,
-                    OrderParametersEnum.PARAM_ORDER_ROOT_ACCOUNT_EMAIL,
+                    OrderParametersEnum.ROOT_ACCOUNT_EMAIL,
                     hidden=False,
                     required=True,
                     readonly=False,
@@ -38,7 +38,7 @@ class ValidateNewAccount(Step):
             if not account_name:
                 context.order = update_ordering_parameter_constraints(
                     context.order,
-                    OrderParametersEnum.PARAM_ORDER_ACCOUNT_NAME,
+                    OrderParametersEnum.ACCOUNT_NAME,
                     hidden=False,
                     required=True,
                     readonly=False,

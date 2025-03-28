@@ -58,15 +58,16 @@ class OrderEventProducer(EventProducer):
                 logger.info(f"{len(orders)} orders found for processing...")
                 contexts = self.setup_contexts(self.client, orders)
                 for context in contexts:
-                    self.dispatcher.dispatch_event(
-                        Event(context.order_id, "orders", context)
-                    )
+                    self.dispatcher.dispatch_event(Event(context.order_id, "orders", context))
 
     def get_processing_orders(self):
         products = ",".join(settings.MPT_PRODUCTS_IDS)
         orders = []
         rql_query = f"and(in(agreement.product.id,({products})),eq(status,processing))"
-        url = f"/commerce/orders?{rql_query}&select=audit,parameters,lines,subscriptions,subscriptions.lines&order=audit.created.at"
+        url = (
+            f"/commerce/orders?{rql_query}&select=audit,parameters,lines,subscriptions,"
+            f"subscriptions.lines,agreement,buyer&order=audit.created.at"
+        )
         page = None
         limit = 10
         offset = 0
@@ -81,9 +82,7 @@ class OrderEventProducer(EventProducer):
                 page = response.json()
                 orders.extend(page["data"])
             else:
-                logger.warning(
-                    f"Order API error: {response.status_code} {response.content}"
-                )
+                logger.warning(f"Order API error: {response.status_code} {response.content}")
                 return []
             offset += limit
 

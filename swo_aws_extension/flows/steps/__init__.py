@@ -1,3 +1,4 @@
+from swo_aws_extension.flows.steps.assign_mpa import AssignMPA
 from swo_aws_extension.flows.steps.complete_order import (
     CompleteOrder,
     CompletePurchaseOrder,
@@ -30,4 +31,5 @@ __all__ = [
     "MPAPreConfiguration",
     "SetupContext",
     "SetupPurchaseContext",
+    "AssignMPA",
 ]
