@@ -3,6 +3,8 @@ import pytest
 from swo_aws_extension.aws.errors import AWSHttpError
 from swo_aws_extension.flows.error import strip_trace_id
 from swo_aws_extension.flows.fulfillment import fulfill_order
+from swo_aws_extension.flows.fulfillment.base import setup_contexts
+from swo_aws_extension.flows.order import InitialAWSContext
 
 
 def test_fulfill_order_exception(mocker, mpt_error_factory, order_factory):
@@ -16,11 +18,92 @@ def test_fulfill_order_exception(mocker, mpt_error_factory, order_factory):
         side_effect=error,
     )
 
-    order = order_factory(order_id="ORD-FFFF")
+    new_order = order_factory(order_id="ORD-FFFF")
+    context = InitialAWSContext(order=new_order)
     with pytest.raises(AWSHttpError):
-        fulfill_order(mocker.MagicMock(), order)
+        fulfill_order(mocker.MagicMock(), context)
 
     process, order_id, tb = mocked_notify.mock_calls[0].args
     assert process == "fulfillment"
-    assert order_id == order["id"]
+    assert order_id == new_order["id"]
     assert strip_trace_id(str(error)) in tb
+
+
+def test_setup_contexts(mpt_client, order_factory):
+    orders = [order_factory()]
+    contexts = setup_contexts(mpt_client, orders)
+    assert len(contexts) == 1
+    assert contexts[0].order == orders[0]
+
+
+def test_setup_contexts_without_mpa_account_id(
+    mocker,
+    mpt_client,
+    order_factory,
+    fulfillment_parameters_factory,
+    order_parameters_factory,
+    mpa_pool,
+    buyer,
+):
+    order_without_mpa = order_factory(
+        order_id="ORD-1",
+        fulfillment_parameters=fulfillment_parameters_factory(mpa_account_id=""),
+    )
+
+    orders = [order_without_mpa]
+    mocked_master_payer_account_pool_model = mocker.MagicMock()
+    mocker.patch(
+        "swo_aws_extension.airtable.models.get_master_payer_account_pool_model",
+        return_value=mocked_master_payer_account_pool_model,
+    )
+    mocked_master_payer_account_pool_model.all.return_value = [mpa_pool]
+    mocked_get_buyer = mocker.patch(
+        "swo_aws_extension.flows.fulfillment.base.get_buyer",
+        return_value=buyer,
+    )
+
+    contexts = setup_contexts(mpt_client, orders)
+    assert len(contexts) == 1
+    assert contexts[0] == InitialAWSContext(
+        order=order_without_mpa, airtable_mpa=mpa_pool
+    )
+    assert contexts[0].order["buyer"]["externalIds"]["erpCustomer"] == "US-SCU-111111"
+    assert contexts[0].airtable_mpa == mpa_pool
+
+    mocked_master_payer_account_pool_model.all.assert_called_once()
+    mocked_get_buyer.assert_called_once_with(mpt_client, "BUY-1111-1111")
+
+
+def test_setup_contexts_without_mpa_account_id_empty_pool(
+    mocker,
+    mpt_client,
+    order_factory,
+    fulfillment_parameters_factory,
+    order_parameters_factory,
+    buyer,
+):
+    order_without_mpa = order_factory(
+        order_id="ORD-1",
+        fulfillment_parameters=fulfillment_parameters_factory(mpa_account_id=""),
+    )
+
+    orders = [order_without_mpa]
+    mocked_master_payer_account_pool_model = mocker.MagicMock()
+    mocker.patch(
+        "swo_aws_extension.airtable.models.get_master_payer_account_pool_model",
+        return_value=mocked_master_payer_account_pool_model,
+    )
+    mocked_master_payer_account_pool_model.all.return_value = []
+    mocked_get_buyer = mocker.patch(
+        "swo_aws_extension.flows.fulfillment.base.get_buyer",
+        return_value=buyer,
+    )
+
+    contexts = setup_contexts(mpt_client, orders)
+    assert len(contexts) == 1
+    assert contexts[0].order == order_without_mpa
+    assert "externalIds" not in contexts[0].order["buyer"]
+    assert contexts[0].airtable_mpa is None
+
+    mocked_master_payer_account_pool_model.all.assert_called_once()
+    mocked_get_buyer.assert_not_called()

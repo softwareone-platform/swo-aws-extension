@@ -55,9 +55,7 @@ def test_full_successful_termination_flow_for_unlink_account_with_crm_ticket_pip
         ]
     }
 
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    _, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.close_account.return_value = {}
     mock_client.list_accounts.side_effect = [
         # First run. Gets all accounts and unlinks one
@@ -91,12 +89,14 @@ def test_full_successful_termination_flow_for_unlink_account_with_crm_ticket_pip
     )
 
     # Creates tickets and awaits completion
-    fulfill_order(mpt_client, order_unlink_account)
+    terminate_context = TerminateContext(order=order_unlink_account)
+    fulfill_order(mpt_client, terminate_context)
 
     order_with_ticket_id = set_crm_ticket_id(order_unlink_account, "1234-5678")
 
     # Ticket exist but it is in progress
-    fulfill_order(mpt_client, order_with_ticket_id)
+    terminate_context = TerminateContext(order=order_with_ticket_id)
+    fulfill_order(mpt_client, terminate_context)
 
     service_client.create_service_request.assert_called_once()
 
@@ -107,7 +107,8 @@ def test_full_successful_termination_flow_for_unlink_account_with_crm_ticket_pip
     mock_get_template.assert_not_called()
 
     # Next run of the pipeline should finish the order
-    fulfill_order(mpt_client, order_with_ticket_id)
+    terminate_context = TerminateContext(order=order_with_ticket_id)
+    fulfill_order(mpt_client, terminate_context)
 
     mock_client.remove_account_from_organization.assert_called_once()
     mock_client.close_account.assert_not_called()
@@ -174,14 +175,12 @@ def test_unlink_account_with_missing_prerequisites(
         ]
     }
 
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    _, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.remove_account_from_organization.side_effect = [
         remove_account_from_organization_prerequisites_exception
     ]
     mock_client.list_accounts.return_value = list_accounts_all
-    context = TerminateContext.from_order(order_unlink_account)
+    context = TerminateContext(order=order_unlink_account)
     mocker.patch(
         "swo_aws_extension.flows.steps.terminate_aws_account.get_crm_ticket_id",
         return_value="",
@@ -232,14 +231,12 @@ def test_terminate_without_terminate_type(
         ]
     }
 
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    _, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.remove_account_from_organization.side_effect = [
         remove_account_from_organization_prerequisites_exception
     ]
     mock_client.list_accounts.return_value = list_accounts_all
-    context = TerminateContext.from_order(order_terminate_without_type)
+    context = TerminateContext(order=order_terminate_without_type)
     mocker.patch(
         "swo_aws_extension.flows.steps.terminate_aws_account.get_crm_ticket_id",
         return_value="",
@@ -276,14 +273,12 @@ def test_remove_account_from_organization_cool_off_period(
         ]
     }
 
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    _, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.remove_account_from_organization.side_effect = [
         remove_account_from_organization_cool_off_exception
     ]
     mock_client.list_accounts.return_value = list_accounts_all
-    context = TerminateContext.from_order(order_unlink_account)
+    context = TerminateContext(order=order_unlink_account)
     mocker.patch(
         "swo_aws_extension.flows.steps.terminate_aws_account.get_crm_ticket_id",
         return_value="",
@@ -312,6 +307,7 @@ def unknown_client_error():
         operation_name="RemoveAccountFromOrganization",
     )
 
+
 def test_unknown_client_error(
     mocker,
     mpt_client,
@@ -334,12 +330,10 @@ def test_unknown_client_error(
         ]
     }
 
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    _, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.remove_account_from_organization.side_effect = unknown_client_error
     mock_client.list_accounts.return_value = list_accounts_all
-    context = TerminateContext.from_order(order_unlink_account)
+    context = TerminateContext(order=order_unlink_account)
     mocker.patch(
         "swo_aws_extension.flows.steps.terminate_aws_account.get_crm_ticket_id",
         return_value="",

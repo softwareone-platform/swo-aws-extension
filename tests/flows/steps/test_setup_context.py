@@ -4,7 +4,7 @@ import pytest
 from swo.mpt.client import MPTClient
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.flows.order import OrderContext
+from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.setup_context import (
     SetupContext,
     SetupPurchaseContext,
@@ -34,7 +34,7 @@ def test_setup_context_get_mpa_credentials(
     }
     next_step_mock = mocker.Mock()
 
-    context = OrderContext.from_order(order)
+    context = PurchaseContext(order=order)
 
     mocker.patch(
         "swo_aws_extension.parameters.get_mpa_account_id", return_value="123456789012"
@@ -69,7 +69,7 @@ def test_setup_context_without_account_id_raise_exception(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
 
     next_step_mock = mocker.Mock()
-    context = OrderContext.from_order(order)
+    context = PurchaseContext(order=order)
     setup_context = SetupContext(config, role_name)
     with pytest.raises(ValueError):
         setup_context(mpt_client_mock, context, next_step_mock)
@@ -98,7 +98,7 @@ def test_setup_purchase_context_get_mpa_credentials(
     }
     next_step_mock = mocker.Mock()
 
-    context = OrderContext.from_order(order)
+    context = PurchaseContext(order=order)
 
     mocker.patch(
         "swo_aws_extension.parameters.get_mpa_account_id", return_value="123456789012"
@@ -138,7 +138,7 @@ def test_setup_context_get_account_creation_status(
     )
     mock_client.describe_create_account_status.return_value = create_account_status()
 
-    context = OrderContext.from_order(order)
+    context = PurchaseContext(order=order)
     context.aws_client = aws_client
 
     setup_context = SetupPurchaseContext(config, role_name)

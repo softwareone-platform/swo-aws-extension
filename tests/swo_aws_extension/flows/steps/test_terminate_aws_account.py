@@ -30,7 +30,7 @@ def context(
             vendor_id="close_account_id", status="Terminating"
         ),
     )
-    context = TerminateContext.from_order(order)
+    context = TerminateContext(order=order)
     context.aws_client = aws_client
     return context
 

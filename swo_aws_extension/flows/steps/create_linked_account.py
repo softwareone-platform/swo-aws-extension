@@ -11,7 +11,7 @@ from swo_aws_extension.flows.error import (
     ERR_EMAIL_EMPTY,
 )
 from swo_aws_extension.flows.order import (
-    OrderContext,
+    PurchaseContext,
     switch_order_to_query,
 )
 from swo_aws_extension.parameters import (
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 class CreateLinkedAccount(Step):
-    def __call__(self, client: MPTClient, context: OrderContext, next_step):
+    def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         are_invalid_parameters = False
         if get_phase(context.order) != PhasesEnum.CREATE_ACCOUNT:
             logger.info(

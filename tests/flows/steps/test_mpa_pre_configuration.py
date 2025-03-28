@@ -1,7 +1,7 @@
 from swo.mpt.client import MPTClient
 
 from swo_aws_extension.constants import AccountTypesEnum, PhasesEnum
-from swo_aws_extension.flows.order import OrderContext
+from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.mpa_pre_configuration import MPAPreConfiguration
 from swo_aws_extension.parameters import set_phase
 
@@ -22,7 +22,7 @@ def test_mpa_pre_configuration_phase_preconfig_mpa(
         "Organization": {"Id": "test_organization"}
     }
 
-    context = OrderContext.from_order(order)
+    context = PurchaseContext(order=order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -59,7 +59,7 @@ def test_mpa_pre_configuration_phase_not_preconfig_mpa(
         config, "test_account_id", "test_role_name"
     )
 
-    context = OrderContext.from_order(order)
+    context = PurchaseContext(order=order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -94,7 +94,7 @@ def test_mpa_pre_configuration_phase_preconfig_mpa_next_step_transfer(
         "Organization": {"Id": "test_organization"}
     }
 
-    context = OrderContext.from_order(order)
+    context = PurchaseContext(order=order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 

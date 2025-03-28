@@ -16,6 +16,8 @@ class OrderParametersEnum(StrEnum):
     PARAM_ORDER_ACCOUNT_ID = "orderAccountId"
     TERMINATION = "terminationType"
     ACCOUNT_ID = "orderAccountId"
+    SUPPORT_TYPE = "supportType"
+    TRANSFER_TYPE = "transferType"
 
 
 class FulfillmentParametersEnum(StrEnum):
@@ -351,5 +353,43 @@ def get_termination_type_parameter(order):
     param = get_ordering_parameter(
         order,
         OrderParametersEnum.TERMINATION,
+    )
+    return param.get("value", None)
+
+
+def get_support_type(source):
+    """
+    Get the support type from the corresponding ordering parameter or an empty
+     string if it is not set.
+
+    Args:
+        source (dict): The business object from which the support type
+        should be retrieved.
+
+    Returns:
+        str: The support type of the order.
+    """
+    param = get_ordering_parameter(
+        source,
+        OrderParametersEnum.SUPPORT_TYPE,
+    )
+    return param.get("value", None)
+
+
+def get_transfer_type(source):
+    """
+    Get the transfer type from the corresponding ordering parameter or an empty
+     string if it is not set.
+
+    Args:
+        source (dict): The business object from which the transfer type
+        should be retrieved.
+
+    Returns:
+        str: The transfer type of the order.
+    """
+    param = get_ordering_parameter(
+        source,
+        OrderParametersEnum.TRANSFER_TYPE,
     )
     return param.get("value", None)

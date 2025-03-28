@@ -7,7 +7,7 @@ from swo.mpt.extensions.flows.pipeline import NextStep, Step
 
 from swo_aws_extension.constants import CRM_TICKET_COMPLETED_STATE
 from swo_aws_extension.crm_service_client.config import get_service_client
-from swo_aws_extension.flows.order import OrderContext, TerminateContext
+from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.parameters import get_crm_ticket_id, set_crm_ticket_id
 from swo_crm_service_client import ServiceRequest
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class AwaitCRMTicketStatusStep(Step):
     def __init__(
         self,
-        get_ticket_id: callable(TerminateContext),
+        get_ticket_id: callable(InitialAWSContext),
         target_status=None,
         skip_if_no_ticket=True,
     ):
@@ -40,7 +40,7 @@ class AwaitCRMTicketStatusStep(Step):
     def __call__(
         self,
         client: MPTClient,
-        context: TerminateContext,
+        context: InitialAWSContext,
         next_step: NextStep,
     ) -> None:
         ticket_id = self.get_ticket_id(context)
@@ -63,9 +63,9 @@ class AwaitCRMTicketStatusStep(Step):
 class CreateServiceRequestStep(Step):
     def __init__(
         self,
-        service_request_factory: Callable[[OrderContext], ServiceRequest],
-        ticket_id_saver: Callable[[MPTClient, OrderContext, str], None],
-        criteria: Callable[[OrderContext], bool] = None,
+        service_request_factory: Callable[[InitialAWSContext], ServiceRequest],
+        ticket_id_saver: Callable[[MPTClient, InitialAWSContext, str], None],
+        criteria: Callable[[InitialAWSContext], bool] = None,
     ):
         self.service_request_factory = service_request_factory
         self.ticket_id_saver = ticket_id_saver
@@ -77,7 +77,7 @@ class CreateServiceRequestStep(Step):
     def __call__(
         self,
         client: MPTClient,
-        context: TerminateContext,
+        context: InitialAWSContext,
         next_step: NextStep,
     ) -> None:
         if not self.meets_criteria(context):
@@ -109,7 +109,7 @@ class CreateMPADecomissionServiceRequestStep(CreateServiceRequestStep):
         num_active_accounts = len(active_accounts)
         return num_active_accounts <= 1
 
-    def should_create_ticket_criteria(self, context: TerminateContext) -> bool:
+    def should_create_ticket_criteria(self, context: InitialAWSContext) -> bool:
         """
         A Service Request to close the account has to be sent to service team when only one
         active account is left (the Master Payer Account)
@@ -122,7 +122,7 @@ class CreateMPADecomissionServiceRequestStep(CreateServiceRequestStep):
         ) and not get_crm_ticket_id(context.order)
 
     def build_service_request_for_close_account(
-        self, context: TerminateContext
+        self, context: InitialAWSContext
     ) -> ServiceRequest:
         if not context.mpa_account:
             raise RuntimeError(
@@ -157,7 +157,7 @@ class CreateMPADecomissionServiceRequestStep(CreateServiceRequestStep):
 
 
 class AwaitMPADecommissionServiceRequestTicketCompletionStep(AwaitCRMTicketStatusStep):
-    def get_crm_ticket(self, context: OrderContext):
+    def get_crm_ticket(self, context: InitialAWSContext):
         return get_crm_ticket_id(context.order)
 
     def __init__(self):

@@ -27,9 +27,7 @@ def test_close_account_with_crm_ticket_pipeline(
     data_aws_account_factory,
     service_request_ticket_factory,
 ):
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    _, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.close_account.return_value = {}
     mock_client.list_accounts.return_value = {
         "Accounts": [data_aws_account_factory(status="ACTIVE")]
@@ -38,7 +36,7 @@ def test_close_account_with_crm_ticket_pipeline(
     service_client.get_service_requests.return_value = service_request_ticket_factory(
         ticket_id="1234-5678", state="New"
     )
-    context = TerminateContext.from_order(order_close_account)
+    context = TerminateContext(order=order_close_account)
     mocker.patch(
         "swo_aws_extension.flows.steps.service_crm_steps.get_service_client",
         return_value=service_client,
@@ -85,9 +83,7 @@ def test_close_account_without_crm_ticket_pipeline(
     fulfillment_parameters_factory,
     data_aws_account_factory,
 ):
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    _, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.close_account.return_value = {}
     mock_client.list_accounts.return_value = {
         "Accounts": [
@@ -95,7 +91,7 @@ def test_close_account_without_crm_ticket_pipeline(
             data_aws_account_factory(id="MPA-5678", status="ACTIVE"),
         ]
     }
-    context = TerminateContext.from_order(order_close_account)
+    context = TerminateContext(order=order_close_account)
     mocker.patch(
         "swo_aws_extension.flows.steps.service_crm_steps.get_service_client",
         return_value=service_client,
@@ -136,9 +132,7 @@ def test_close_account_with_multiple_termination(
     data_aws_account_factory,
 ):
     accounts_to_close = ["000000001", "000000002", "000000003"]
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    _, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.close_account.return_value = {}
     list_accounts = [
         data_aws_account_factory(status="ACTIVE", id="000000001"),
@@ -150,7 +144,7 @@ def test_close_account_with_multiple_termination(
         data_aws_account_factory(status="ACTIVE", id="other_account"),
     ]
     mock_client.list_accounts.return_value = {"Accounts": list_accounts}
-    context = TerminateContext.from_order(order_termination_close_account_multiple)
+    context = TerminateContext(order=order_termination_close_account_multiple)
     mocker.patch(
         "swo_aws_extension.flows.steps.service_crm_steps.get_service_client",
         return_value=service_client,
@@ -230,12 +224,10 @@ def test_close_account_quota_reached(
         ]
     }
 
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    _, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.close_account.side_effect = aws_exception_unlink_account_quota_reached
     mock_client.list_accounts.return_value = list_accounts_all
-    context = TerminateContext.from_order(order_close_account)
+    context = TerminateContext(order=order_close_account)
     mocker.patch(
         "swo_aws_extension.flows.steps.terminate_aws_account.get_crm_ticket_id",
         return_value="",

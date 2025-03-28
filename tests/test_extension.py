@@ -8,6 +8,7 @@ from swo_aws_extension.extension import (
     jwt_secret_callback,
     process_order_fulfillment,
 )
+from swo_aws_extension.flows.order import InitialAWSContext
 
 
 def test_listener_registered():
@@ -58,7 +59,8 @@ def test_process_order_validation(client, mocker, order_factory, jwt_token, webh
     )
     assert resp.status_code == 200
     assert resp.json() == order
-    m_validate.assert_called_once_with(mocker.ANY, order)
+    context = InitialAWSContext(order=order)
+    m_validate.assert_called_once_with(mocker.ANY, context)
 
 
 def test_process_order_validation_error(client, mocker, jwt_token, webhook):

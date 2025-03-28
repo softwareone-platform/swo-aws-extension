@@ -9,11 +9,6 @@ from swo.mpt.client.mpt import (
 from swo.mpt.extensions.flows.pipeline import Step
 
 from swo_aws_extension.constants import PhasesEnum
-from swo_aws_extension.flows.order import (
-    OrderContext,
-    is_change_order,
-    is_purchase_order,
-)
 from swo_aws_extension.parameters import (
     FulfillmentParametersEnum,
     get_account_email,
@@ -26,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class CreateSubscription(Step):
-    def __call__(self, client: MPTClient, context: OrderContext, next_step):
+    def __call__(self, client: MPTClient, context, next_step):
         if get_phase(context.order) != PhasesEnum.CREATE_SUBSCRIPTIONS:
             logger.info(
                 f"Current phase is '{get_phase(context.order)}', "
@@ -34,7 +29,7 @@ class CreateSubscription(Step):
             )
             next_step(client, context)
             return
-        if is_purchase_order(context.order) or is_change_order(context.order):
+        if context.is_purchase_order() or context.is_change_order():
             account_id = context.account_creation_status.account_id
             order_subscription = get_order_subscription_by_external_id(
                 client,

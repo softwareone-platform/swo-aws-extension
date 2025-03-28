@@ -323,3 +323,10 @@ def get_agreement_subscription_by_external_id(
     subscriptions = response.json()
 
     return subscriptions["data"][0] if subscriptions["data"] else None
+
+
+@wrap_http_error
+def get_buyer(mpt_client, buyer_id):
+    response = mpt_client.get(f"/accounts/buyers/{buyer_id}")
+    response.raise_for_status()
+    return response.json()

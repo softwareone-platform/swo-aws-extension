@@ -25,3 +25,14 @@ CRM_TICKET_COMPLETED_STATE = "Completed"
 class TerminationParameterChoices(StrEnum):
     CLOSE_ACCOUNT = "CloseAccount"
     UNLINK_ACCOUNT = "UnlinkAccount"
+
+
+class SupportTypesEnum(StrEnum):
+    RESOLD_SUPPORT = "ResoldSupport"
+    PARTNER_LED_SUPPORT = "PartnerLedSupport"
+
+
+class TransferTypesEnum(StrEnum):
+    TRANSFER_WITHOUT_ORGANIZATION = "TransferWithoutOrganization"
+    TRANSFER_WITH_ORGANIZATION = "TransferWithOrganization"
+    SPLIT_BILLING = "SplitBilling"

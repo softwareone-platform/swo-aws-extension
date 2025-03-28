@@ -6,6 +6,8 @@ from contextlib import contextmanager
 
 import requests
 from django.conf import settings
+from django.utils.module_loading import import_string
+
 from swo.mpt.extensions.core.events import Event
 from swo.mpt.extensions.core.utils import setup_client
 
@@ -47,17 +49,21 @@ class OrderEventProducer(EventProducer):
     def __init__(self, dispatcher):
         super().__init__(dispatcher)
         self.client = setup_client()
+        self.setup_contexts = import_string(settings.MPT_SETUP_CONTEXTS_FUNC)
 
     def produce_events(self):
         while self.running:
             with self.sleep(settings.MPT_ORDERS_API_POLLING_INTERVAL_SECS):
                 orders = self.get_processing_orders()
                 logger.info(f"{len(orders)} orders found for processing...")
-                for order in orders:
-                    self.dispatcher.dispatch_event(Event(order["id"], "orders", order))
+                contexts = self.setup_contexts(self.client, orders)
+                for context in contexts:
+                    self.dispatcher.dispatch_event(
+                        Event(context.order_id, "orders", context)
+                    )
 
     def get_processing_orders(self):
-        products = ','.join(settings.MPT_PRODUCTS_IDS)
+        products = ",".join(settings.MPT_PRODUCTS_IDS)
         orders = []
         rql_query = f"and(in(agreement.product.id,({products})),eq(status,processing))"
         url = f"/commerce/orders?{rql_query}&select=audit,parameters,lines,subscriptions,subscriptions.lines&order=audit.created.at"
@@ -75,7 +81,9 @@ class OrderEventProducer(EventProducer):
                 page = response.json()
                 orders.extend(page["data"])
             else:
-                logger.warning(f"Order API error: {response.status_code} {response.content}")
+                logger.warning(
+                    f"Order API error: {response.status_code} {response.content}"
+                )
                 return []
             offset += limit
 

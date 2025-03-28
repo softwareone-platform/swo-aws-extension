@@ -9,6 +9,7 @@ import responses
 from django.conf import settings
 from rich.highlighter import ReprHighlighter as _ReprHighlighter
 from swo.mpt.extensions.core.events.dataclasses import Event
+from swo.mpt.extensions.flows.context import ORDER_TYPE_TERMINATION
 from swo.mpt.extensions.runtime.djapp.conf import get_for_product
 
 from swo_aws_extension.airtable.models import (
@@ -21,9 +22,9 @@ from swo_aws_extension.aws.config import get_config
 from swo_aws_extension.constants import (
     AccountTypesEnum,
     PhasesEnum,
+    SupportTypesEnum,
     TerminationParameterChoices,
 )
-from swo_aws_extension.flows.order import ORDER_TYPE_TERMINATION
 from swo_aws_extension.parameters import FulfillmentParametersEnum, OrderParametersEnum
 
 PARAM_COMPANY_NAME = "ACME Inc"
@@ -55,6 +56,8 @@ def order_parameters_factory(constraints):
         account_type=AccountTypesEnum.NEW_ACCOUNT,
         account_id="account_id",
         termination_type=TerminationParameterChoices.CLOSE_ACCOUNT,
+        support_type=SupportTypesEnum.PARTNER_LED_SUPPORT,
+        transfer_type=None,
     ):
         return [
             {
@@ -95,6 +98,20 @@ def order_parameters_factory(constraints):
                 "externalId": OrderParametersEnum.TERMINATION,
                 "type": "Choice",
                 "value": termination_type,
+            },
+            {
+                "id": "PAR-1234-5679",
+                "name": "Support Type",
+                "externalId": OrderParametersEnum.SUPPORT_TYPE,
+                "type": "Chice",
+                "value": support_type,
+            },
+            {
+                "id": "PAR-1234-5680",
+                "name": "Transfer Type",
+                "externalId": OrderParametersEnum.TRANSFER_TYPE,
+                "type": "Choice",
+                "value": transfer_type,
             },
         ]
 
@@ -517,6 +534,7 @@ def order_factory(
             },
             "product": {"id": "PRD-1111-1111", "name": "AWS"},
             "seller": {"id": "SEL-1111-1111"},
+            "buyer": {"id": "BUY-1111-1111"},
             "audit": {
                 "created": {
                     "at": CREATED_AT,
@@ -553,6 +571,11 @@ def buyer():
             "addressLine1": "3601 Lyon St",
             "addressLine2": "",
             "postCode": "94123",
+        },
+        "externalIds": {
+            "erpCompanyContact": "US-CON-111111",
+            "erpCustomer": "US-SCU-111111",
+            "accountExternalId": "US-999999",
         },
         "contact": {
             "firstName": "Cic",
@@ -1234,9 +1257,11 @@ def order_termination_close_account_multiple(
     )
     return order_close_account
 
+
 @pytest.fixture()
 def base_info():
     return AirTableBaseInfo(api_key="api_key", base_id="base_id")
+
 
 @pytest.fixture()
 def mpa_pool(mocker):
@@ -1251,6 +1276,7 @@ def mpa_pool(mocker):
     mpa_pool.scu = ""
 
     return mpa_pool
+
 
 @pytest.fixture()
 def pool_notification(mocker):
