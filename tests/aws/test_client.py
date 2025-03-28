@@ -20,27 +20,19 @@ def test_instance_aws_client(config, aws_client_factory):
 def test_instance_aws_client_empty_mpa_account_id(config, aws_client_factory):
     with pytest.raises(AWSError) as e:
         aws_client_factory(config, None, "test_role_name")
-    assert "Parameter 'mpa_account_id' must be provided to assume the role." in str(
-        e.value
-    )
+    assert "Parameter 'mpa_account_id' must be provided to assume the role." in str(e.value)
 
 
 def test_create_organization_success(config, aws_client_factory):
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
-    mock_client.create_organization.return_value = {
-        "Organization": {"Id": "test_organization"}
-    }
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.create_organization.return_value = {"Organization": {"Id": "test_organization"}}
 
     aws_client.create_organization()
     mock_client.create_organization.assert_called_once_with(FeatureSet="ALL")
 
 
 def test_create_organization_already_exists(config, aws_client_factory):
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     error_response = {
         "Error": {
             "Code": "AlreadyInOrganizationException",
@@ -56,9 +48,7 @@ def test_create_organization_already_exists(config, aws_client_factory):
 
 
 def test_create_organization_error(config, aws_client_factory):
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     error_response = {
         "Error": {
             "Code": "AccessDeniedForDependencyException",
@@ -70,28 +60,20 @@ def test_create_organization_error(config, aws_client_factory):
         error_response, "CreateOrganization"
     )
 
-    with pytest.raises(botocore.exceptions.ClientError) as e:
+    with pytest.raises(AWSError) as e:
         aws_client.create_organization()
     assert "AccessDeniedForDependencyException" in str(e.value)
 
 
-def test_aws_client_list_accounts(
-    mocker, config, aws_client_factory, data_aws_account_factory
-):
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+def test_aws_client_list_accounts(mocker, config, aws_client_factory, data_aws_account_factory):
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.list_accounts.side_effect = [
         {
-            "Accounts": [
-                data_aws_account_factory(id=f"0000-{0:04}-{j:04}") for j in range(10)
-            ],
+            "Accounts": [data_aws_account_factory(id=f"0000-{0:04}-{j:04}") for j in range(10)],
             "NextToken": "token0",
         },
         {
-            "Accounts": [
-                data_aws_account_factory(id=f"0000-{1:04}-{j:04}") for j in range(10)
-            ],
+            "Accounts": [data_aws_account_factory(id=f"0000-{1:04}-{j:04}") for j in range(10)],
         },
     ]
 
@@ -102,9 +84,7 @@ def test_aws_client_list_accounts(
 
 
 def test_aws_client_close_account(config, aws_client_factory):
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     error_response = {
         "Error": {
             "Code": "AccountAlreadyClosedException",
@@ -121,9 +101,7 @@ def test_aws_client_close_account(config, aws_client_factory):
 
 
 def test_aws_client_close_account_raise_exception(config, aws_client_factory):
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     error_response = {
         "Error": {
             "Code": "AlternativeError",
@@ -134,5 +112,5 @@ def test_aws_client_close_account_raise_exception(config, aws_client_factory):
     mock_client.close_account.side_effect = botocore.exceptions.ClientError(
         error_response, "CloseAccount"
     )
-    with pytest.raises(botocore.exceptions.ClientError):
+    with pytest.raises(AWSError):
         aws_client.close_account("account-id")

@@ -1,10 +1,10 @@
 import copy
 from dataclasses import dataclass
 
+from pyairtable.orm import Model
 from swo.mpt.client.mpt import get_product_template_or_default, query_order
 from swo.mpt.extensions.flows.context import Context as BaseContext
 
-from swo_aws_extension.airtable.models import AirTableBaseInfo
 from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
 from swo_aws_extension.constants import SupportTypesEnum
 from swo_aws_extension.notifications import send_email_notification
@@ -26,7 +26,7 @@ def is_partner_led_support_enabled(order):
 class InitialAWSContext(BaseContext):
     validation_succeeded: bool = True
     aws_client: AWSClient | None = None
-    airtable_mpa: AirTableBaseInfo | None = None
+    airtable_mpa: Model | None = None
     account_creation_status: AccountCreationStatus | None = None
 
     @property
@@ -35,6 +35,10 @@ class InitialAWSContext(BaseContext):
             return get_mpa_account_id(self.order)
         except (AttributeError, KeyError, TypeError):
             return None
+
+    @property
+    def pls_enabled(self):
+        return is_partner_led_support_enabled(self.order)
 
 
 @dataclass

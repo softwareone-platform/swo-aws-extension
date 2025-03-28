@@ -57,21 +57,13 @@ def test_setup_contexts_without_mpa_account_id(
         return_value=mocked_master_payer_account_pool_model,
     )
     mocked_master_payer_account_pool_model.all.return_value = [mpa_pool]
-    mocked_get_buyer = mocker.patch(
-        "swo_aws_extension.flows.fulfillment.base.get_buyer",
-        return_value=buyer,
-    )
 
     contexts = setup_contexts(mpt_client, orders)
     assert len(contexts) == 1
-    assert contexts[0] == InitialAWSContext(
-        order=order_without_mpa, airtable_mpa=mpa_pool
-    )
-    assert contexts[0].order["buyer"]["externalIds"]["erpCustomer"] == "US-SCU-111111"
+    assert contexts[0] == InitialAWSContext(order=order_without_mpa, airtable_mpa=mpa_pool)
     assert contexts[0].airtable_mpa == mpa_pool
 
     mocked_master_payer_account_pool_model.all.assert_called_once()
-    mocked_get_buyer.assert_called_once_with(mpt_client, "BUY-1111-1111")
 
 
 def test_setup_contexts_without_mpa_account_id_empty_pool(
@@ -94,16 +86,10 @@ def test_setup_contexts_without_mpa_account_id_empty_pool(
         return_value=mocked_master_payer_account_pool_model,
     )
     mocked_master_payer_account_pool_model.all.return_value = []
-    mocked_get_buyer = mocker.patch(
-        "swo_aws_extension.flows.fulfillment.base.get_buyer",
-        return_value=buyer,
-    )
 
     contexts = setup_contexts(mpt_client, orders)
     assert len(contexts) == 1
     assert contexts[0].order == order_without_mpa
-    assert "externalIds" not in contexts[0].order["buyer"]
     assert contexts[0].airtable_mpa is None
 
     mocked_master_payer_account_pool_model.all.assert_called_once()
-    mocked_get_buyer.assert_not_called()

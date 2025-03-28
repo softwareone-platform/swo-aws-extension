@@ -63,7 +63,7 @@ def order_parameters_factory(constraints):
             {
                 "id": "PAR-1234-5678",
                 "name": "AWS account email",
-                "externalId": OrderParametersEnum.PARAM_ORDER_ROOT_ACCOUNT_EMAIL,
+                "externalId": OrderParametersEnum.ROOT_ACCOUNT_EMAIL,
                 "type": "SingleLineText",
                 "value": account_email,
                 "constraints": constraints,
@@ -71,7 +71,7 @@ def order_parameters_factory(constraints):
             {
                 "id": "PAR-1234-5679",
                 "name": "Account Name",
-                "externalId": OrderParametersEnum.PARAM_ORDER_ACCOUNT_NAME,
+                "externalId": OrderParametersEnum.ACCOUNT_NAME,
                 "type": "SingleLineText",
                 "value": account_name,
                 "constraints": constraints,
@@ -79,7 +79,7 @@ def order_parameters_factory(constraints):
             {
                 "id": "PAR-1234-5680",
                 "name": "Account type",
-                "externalId": OrderParametersEnum.PARAM_ACCOUNT_TYPE,
+                "externalId": OrderParametersEnum.ACCOUNT_TYPE,
                 "type": "choice",
                 "value": account_type,
                 "constraints": constraints,
@@ -87,7 +87,7 @@ def order_parameters_factory(constraints):
             {
                 "id": "PAR-1234-5681",
                 "name": "Account ID",
-                "externalId": OrderParametersEnum.PARAM_ORDER_ACCOUNT_ID,
+                "externalId": OrderParametersEnum.ACCOUNT_ID,
                 "type": "SingleLineText",
                 "value": account_id,
                 "constraints": constraints,
@@ -127,21 +127,21 @@ def fulfillment_parameters_factory():
             {
                 "id": "PAR-1234-5677",
                 "name": "MPA account ID",
-                "externalId": FulfillmentParametersEnum.PARAM_MPA_ACCOUNT_ID,
+                "externalId": FulfillmentParametersEnum.MPA_ACCOUNT_ID,
                 "type": "SingleLineText",
                 "value": mpa_account_id,
             },
             {
                 "id": "PAR-1234-5678",
                 "name": "Phase",
-                "externalId": FulfillmentParametersEnum.PARAM_PHASE,
+                "externalId": FulfillmentParametersEnum.PHASE,
                 "type": "Dropdown",
                 "value": phase,
             },
             {
                 "id": "PAR-1234-5679",
                 "name": "Account Request ID",
-                "externalId": FulfillmentParametersEnum.PARAM_ACCOUNT_REQUEST_ID,
+                "externalId": FulfillmentParametersEnum.ACCOUNT_REQUEST_ID,
                 "type": "SingleLineText",
                 "value": account_request_id,
             },
@@ -248,9 +248,7 @@ def subscriptions_factory(lines_factory):
         lines=None,
         status="Terminating",
     ):
-        start_date = (
-            start_date.isoformat() if start_date else datetime.now(UTC).isoformat()
-        )
+        start_date = start_date.isoformat() if start_date else datetime.now(UTC).isoformat()
         lines = lines_factory() if lines is None else lines
         return [
             {
@@ -271,9 +269,7 @@ def subscriptions_factory(lines_factory):
 
 
 @pytest.fixture()
-def agreement_factory(
-    buyer, order_parameters_factory, fulfillment_parameters_factory, seller
-):
+def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_factory, seller):
     def _agreement(
         licensee_name="My beautiful licensee",
         licensee_address=None,
@@ -356,8 +352,7 @@ def agreement_factory(
             "subscriptions": subscriptions,
             "parameters": {
                 "ordering": ordering_parameters or order_parameters_factory(),
-                "fulfillment": fulfillment_parameters
-                or fulfillment_parameters_factory(),
+                "fulfillment": fulfillment_parameters or fulfillment_parameters_factory(),
             },
         }
 
@@ -995,9 +990,7 @@ def aws_client_factory(mocker, requests_mocker):
             "SecretAccessKey": "test_secret_key",
             "SessionToken": "test_session_token",
         }
-        mock_client.assume_role_with_web_identity.return_value = {
-            "Credentials": credentials
-        }
+        mock_client.assume_role_with_web_identity.return_value = {"Credentials": credentials}
         return AWSClient(config, mpa_account_id, role_name), mock_client
 
     return _aws_client
@@ -1111,9 +1104,7 @@ def order_close_account(
             account_id="1234-5678",
             termination_type=TerminationParameterChoices.CLOSE_ACCOUNT,
         ),
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.COMPLETED
-        ),
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED),
         subscriptions=subscriptions_factory(
             vendor_id="1234-5678",
             status="Terminating",
@@ -1123,9 +1114,7 @@ def order_close_account(
 
 
 @pytest.fixture()
-def order_unlink_account(
-    order_factory, order_parameters_factory, subscriptions_factory
-):
+def order_unlink_account(order_factory, order_parameters_factory, subscriptions_factory):
     order = order_factory(
         order_type=ORDER_TYPE_TERMINATION,
         order_parameters=order_parameters_factory(
@@ -1142,13 +1131,11 @@ def order_unlink_account(
 
 
 @pytest.fixture()
-def order_terminate_without_type(
-    order_factory, order_parameters_factory, subscriptions_factory
-):
+def order_terminate_without_type(order_factory, order_parameters_factory, subscriptions_factory):
     order = order_factory(
         order_type=ORDER_TYPE_TERMINATION,
         order_parameters=order_parameters_factory(
-            account_email="test@aws.com",
+            account_email=ACCOUNT_EMAIL,
             account_id="1234-5678",
             termination_type="",
         ),
@@ -1167,7 +1154,7 @@ def order_terminate_with_invalid_terminate_type(
     order = order_factory(
         order_type=ORDER_TYPE_TERMINATION,
         order_parameters=order_parameters_factory(
-            account_email="test@aws.com",
+            account_email=ACCOUNT_EMAIL,
             account_id="1234-5678",
             termination_type="invalid_type",
         ),
@@ -1216,9 +1203,7 @@ def service_request_ticket_factory():
 
 
 @pytest.fixture()
-def order_termination_close_account_multiple(
-    order_close_account, subscriptions_factory
-):
+def order_termination_close_account_multiple(order_close_account, subscriptions_factory):
     order_close_account["subscriptions"] = []
     order_close_account["subscriptions"].append(
         subscriptions_factory(

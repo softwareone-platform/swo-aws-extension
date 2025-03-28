@@ -63,7 +63,7 @@ class CreateLinkedAccount(Step):
                     )
                     context.order = set_ordering_parameter_error(
                         context.order,
-                        OrderParametersEnum.PARAM_ORDER_ROOT_ACCOUNT_EMAIL,
+                        OrderParametersEnum.ROOT_ACCOUNT_EMAIL,
                         ERR_EMAIL_ALREADY_EXIST.to_dict(),
                     )
                     context.order = set_account_request_id(context.order, "")
@@ -82,7 +82,7 @@ class CreateLinkedAccount(Step):
             logger.error("Email not found in order parameters")
             context.order = set_ordering_parameter_error(
                 context.order,
-                OrderParametersEnum.PARAM_ORDER_ROOT_ACCOUNT_EMAIL,
+                OrderParametersEnum.ROOT_ACCOUNT_EMAIL,
                 ERR_EMAIL_EMPTY.to_dict(),
             )
             are_invalid_parameters = True
@@ -92,7 +92,7 @@ class CreateLinkedAccount(Step):
             logger.error("Account name not found in order parameters")
             context.order = set_ordering_parameter_error(
                 context.order,
-                OrderParametersEnum.PARAM_ORDER_ACCOUNT_NAME,
+                OrderParametersEnum.ACCOUNT_NAME,
                 ERR_ACCOUNT_NAME_EMPTY.to_dict(),
             )
             are_invalid_parameters = True

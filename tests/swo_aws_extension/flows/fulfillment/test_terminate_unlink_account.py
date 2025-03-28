@@ -1,6 +1,7 @@
 import pytest
 from botocore.exceptions import ClientError
 
+from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import (
     CRM_TICKET_COMPLETED_STATE,
 )
@@ -117,8 +118,6 @@ def test_full_successful_termination_flow_for_unlink_account_with_crm_ticket_pip
 
 @pytest.fixture()
 def remove_account_from_organization_prerequisites_exception():
-    from botocore.exceptions import ClientError
-
     error_response = {
         "Error": {
             "Code": "ConstraintViolationException",
@@ -138,8 +137,6 @@ def remove_account_from_organization_prerequisites_exception():
 
 @pytest.fixture()
 def remove_account_from_organization_cool_off_exception():
-    from botocore.exceptions import ClientError
-
     error_response = {
         "Error": {
             "Code": "ConstraintViolationException",
@@ -342,6 +339,6 @@ def test_unknown_client_error(
         "swo_aws_extension.flows.steps.service_crm_steps.CreateServiceRequestStep.__call__"
     )
     # Creates tickets and awaits completion
-    with pytest.raises(ClientError):
+    with pytest.raises(AWSError):
         terminate_pipeline.run(mpt_client, context)
     next_step_call.assert_not_called()

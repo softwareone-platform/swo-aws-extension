@@ -9,6 +9,7 @@ class AccountTypesEnum(StrEnum):
 
 
 class PhasesEnum(StrEnum):
+    ASSIGN_MPA = "assignMPA"
     PRECONFIGURATION_MPA = "preConfigurationMPA"
     CREATE_ACCOUNT = "createAccount"
     TRANSFER_ACCOUNT = "transferAccount"

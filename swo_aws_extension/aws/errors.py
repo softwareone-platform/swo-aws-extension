@@ -130,14 +130,10 @@ def wrap_http_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]:
             try:
                 raise AWSOpenIdError(e.response.status_code, e.response.json()) from e
             except JSONDecodeError:
-                raise AWSHttpError(
-                    e.response.status_code, e.response.content.decode()
-                ) from e
+                raise AWSHttpError(e.response.status_code, e.response.content.decode()) from e
         except RequestException as e:
             logging.exception(f"Unexpected HTTP error in {func.__name__}: {e}")
-            raise AWSHttpError(
-                e.response.status_code, e.response.content.decode()
-            ) from e
+            raise AWSHttpError(e.response.status_code, e.response.content.decode()) from e
 
     return _wrapper
 
@@ -150,7 +146,7 @@ def wrap_boto3_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]
         except AWSError as e:
             raise e
         except botocore.exceptions.ClientError as e:
-            raise e
+            raise AWSError(f"AWS Client error: {e}") from e
         except botocore.exceptions.BotoCoreError as e:
             logging.exception(f"Boto3 SDK error in {func.__name__}: {e}")
             raise AWSError(f"Boto3 SDK error: {e}") from e
@@ -161,9 +157,7 @@ def wrap_boto3_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]
     return _wrapper
 
 
-def transform_terminating_aws_exception(
-    exception: botocore.exceptions.ClientError, account_id=""
-):
+def transform_terminating_aws_exception(exception: botocore.exceptions.ClientError, account_id=""):
     if AWSTerminationCoolOffPeriodError.match(exception):
         return AWSTerminationCoolOffPeriodError(
             exception.response["Error"]["Code"],

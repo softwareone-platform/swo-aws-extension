@@ -45,9 +45,7 @@ class AccountCreationStatus:
         )
 
     def __str__(self):
-        failure_info = (
-            f", Failure Reason: {self.failure_reason}" if self.failure_reason else ""
-        )
+        failure_info = f", Failure Reason: {self.failure_reason}" if self.failure_reason else ""
         account_info = f", Account ID: {self.account_id}" if self.account_id else ""
         return (
             f"AccountCreationStatus(Name: {self.account_name}, "
@@ -94,9 +92,7 @@ class AWSClient:
         :return: dict() The credentials for the assumed role.
         """
         if not self.mpa_account_id:
-            raise AWSError(
-                "Parameter 'mpa_account_id' must be provided to assume the role."
-            )
+            raise AWSError("Parameter 'mpa_account_id' must be provided to assume the role.")
 
         role_arn = f"arn:aws:iam::{self.mpa_account_id}:role/{self.role_name}"
         response = boto3.client("sts").assume_role_with_web_identity(
@@ -131,6 +127,28 @@ class AWSClient:
             region_name=self.config.aws_region,
         )
 
+    def _get_sts_client(self):
+        """
+        Get the STS client.
+        :return: The STS client.
+        """
+        return boto3.client(
+            "sts",
+            aws_access_key_id=self.credentials["AccessKeyId"],
+            aws_secret_access_key=self.credentials["SecretAccessKey"],
+            aws_session_token=self.credentials["SessionToken"],
+        )
+
+    @wrap_boto3_error
+    def get_caller_identity(self):
+        """
+        Method used to validate credentials.
+
+        :return: None
+        """
+        sts_client = self._get_sts_client()
+        sts_client.get_caller_identity()
+
     @wrap_boto3_error
     def create_organization(self):
         """
@@ -142,9 +160,7 @@ class AWSClient:
         org_client = self._get_organization_client()
         try:
             response = org_client.create_organization(FeatureSet="ALL")
-            logger.info(
-                f"Organization created with Id {response['Organization']['Id']}"
-            )
+            logger.info(f"Organization created with Id {response['Organization']['Id']}")
         except botocore.exceptions.ClientError as e:
             if e.response["Error"]["Code"] == "AlreadyInOrganizationException":
                 logger.warning("Organization already exists. Skipping creation.")
@@ -167,9 +183,7 @@ class AWSClient:
         logger.info("Organizations access activated")
 
     @wrap_boto3_error
-    def create_linked_account(
-        self, email, account_name, role_name="OrganizationAccountAccessRole"
-    ):
+    def create_linked_account(self, email, account_name, role_name="OrganizationAccountAccessRole"):
         """
         Create a linked account.
 
@@ -244,9 +258,7 @@ class AWSClient:
                 logger.info(f"Account {account_id} already closed")
                 return None
             elif e.response["Error"]["Code"] == "ConstraintViolationException":
-                extension_exception = transform_terminating_aws_exception(
-                    e, account_id=account_id
-                )
+                extension_exception = transform_terminating_aws_exception(e, account_id=account_id)
                 raise extension_exception from e
             else:
                 raise
@@ -268,9 +280,7 @@ class AWSClient:
             return org_client.remove_account_from_organization(AccountId=account_id)
         except botocore.exceptions.ClientError as e:
             if e.response["Error"]["Code"] == "ConstraintViolationException":
-                extension_exception = transform_terminating_aws_exception(
-                    e, account_id=account_id
-                )
+                extension_exception = transform_terminating_aws_exception(e, account_id=account_id)
                 raise extension_exception from e
             else:
                 raise

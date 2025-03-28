@@ -46,11 +46,11 @@ class CreateSubscription(Step):
                     "parameters": {
                         "fulfillment": [
                             {
-                                "externalId": FulfillmentParametersEnum.PARAM_ACCOUNT_EMAIL,
+                                "externalId": FulfillmentParametersEnum.ACCOUNT_EMAIL,
                                 "value": account_email,
                             },
                             {
-                                "externalId": FulfillmentParametersEnum.PARAM_ACCOUNT_NAME,
+                                "externalId": FulfillmentParametersEnum.ACCOUNT_NAME,
                                 "value": account_name,
                             },
                         ]
