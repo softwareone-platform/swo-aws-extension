@@ -26,70 +26,77 @@ class AssignMPA(Step):
         self._role_name = role_name
 
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
-        if get_phase(context.order) != PhasesEnum.ASSIGN_MPA:
+        phase = get_phase(context.order)
+        if phase and phase != PhasesEnum.ASSIGN_MPA:
             logger.info(
-                f"- Next - Current phase is '{get_phase(context.order)}', "
+                f"- Next - Current phase is '{phase}', "
                 f"skipping as it is not '{PhasesEnum.ASSIGN_MPA}'"
             )
             next_step(client, context)
             return
 
         if context.mpa_account:
+            context.order = set_phase(context.order, PhasesEnum.PRECONFIGURATION_MPA)
+            context.order = update_order(
+                client, context.order_id, parameters=context.order["parameters"]
+            )
             logger.info(
                 f"- Next - MPA account {context.mpa_account} "
                 f"already assigned to order {context.order_id}. Continue"
             )
-        else:
-            if not context.airtable_mpa:
-                logger.error(
-                    "No MPA available in the pool with PLS " + "enabled"
-                    if context.pls_enabled
-                    else "disabled"
-                )
-                return
+            next_step(client, context)
+            return
 
-            # validate mpa_id
-            are_credentials_valid = True
-            credentials_error = ""
-            try:
-                context.aws_client = AWSClient(
-                    self._config, context.airtable_mpa.account_id, self._role_name
-                )
-                context.aws_client.get_caller_identity()
-            except AWSError as e:
-                logger.error(
-                    f"- Error- Failed to retrieve MPA credentials for "
-                    f"{context.airtable_mpa.account_id}: {e}"
-                )
-                are_credentials_valid = False
-                credentials_error = str(e)
-
-            if not are_credentials_valid:
-                context.airtable_mpa.status = MPAStatusEnum.ERROR
-                context.airtable_mpa.error_description = str(credentials_error)
-                context.airtable_mpa.save()
-                mpa_view_link = get_mpa_view_link()
-                send_error(
-                    f"Master Payer account {context.airtable_mpa.account_id} "
-                    f"failed to retrieve credentials",
-                    f"The Master Payer Account {context.airtable_mpa.account_id} is "
-                    f"failing with error: {credentials_error}",
-                    button=Button("Open Master Payer Accounts View", mpa_view_link),
-                )
-                return
-            logger.info(
-                f"- Action - MPA credentials for {context.airtable_mpa.account_id} "
-                f"retrieved successfully"
+        if not context.airtable_mpa:
+            logger.error(
+                "No MPA available in the pool with PLS "
+                + ("enabled" if context.pls_enabled else "disabled")
             )
+            return
 
-            context.airtable_mpa.status = MPAStatusEnum.ASSIGNED
-            context.airtable_mpa.agreement_id = context.order.get("agreement", {}).get("id")
-            scu = context.order.get("buyer", {}).get("externalId", {}).get("erpCustomer", "")
-            context.airtable_mpa.scu = scu
-            context.airtable_mpa.client_id = context.order.get("client", {}).get("id")
-            context.airtable_mpa.error_description = ""
+        # validate mpa_id
+        are_credentials_valid = True
+        credentials_error = ""
+        try:
+            context.aws_client = AWSClient(
+                self._config, context.airtable_mpa.account_id, self._role_name
+            )
+            context.aws_client.get_caller_identity()
+        except AWSError as e:
+            logger.error(
+                f"- Error- Failed to retrieve MPA credentials for "
+                f"{context.airtable_mpa.account_id}: {e}"
+            )
+            are_credentials_valid = False
+            credentials_error = str(e)
+
+        if not are_credentials_valid:
+            context.airtable_mpa.status = MPAStatusEnum.ERROR
+            context.airtable_mpa.error_description = str(credentials_error)
             context.airtable_mpa.save()
-            context.order = set_mpa_account_id(context.order, context.airtable_mpa.account_id)
+            mpa_view_link = get_mpa_view_link()
+            send_error(
+                f"Master Payer account {context.airtable_mpa.account_id} "
+                f"failed to retrieve credentials",
+                f"The Master Payer Account {context.airtable_mpa.account_id} is "
+                f"failing with error: {credentials_error}",
+                button=Button("Open Master Payer Accounts View", mpa_view_link),
+            )
+            return
+        logger.info(
+            f"- Action - MPA credentials for {context.airtable_mpa.account_id} "
+            f"retrieved successfully"
+        )
+
+        context.airtable_mpa.status = MPAStatusEnum.ASSIGNED
+        context.airtable_mpa.agreement_id = context.order.get("agreement", {}).get("id")
+        scu = context.order.get("buyer", {}).get("externalId", {}).get("erpCustomer", "")
+        context.airtable_mpa.scu = scu
+        context.airtable_mpa.buyer_id = context.order.get("buyer", {}).get("id", {})
+        context.airtable_mpa.client_id = context.order.get("client", {}).get("id")
+        context.airtable_mpa.error_description = ""
+        context.airtable_mpa.save()
+        context.order = set_mpa_account_id(context.order, context.airtable_mpa.account_id)
 
         context.order = set_phase(context.order, PhasesEnum.PRECONFIGURATION_MPA)
         context.order = update_order(

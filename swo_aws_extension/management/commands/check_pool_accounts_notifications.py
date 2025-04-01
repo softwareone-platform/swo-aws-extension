@@ -1,8 +1,10 @@
 from django.core.management.base import BaseCommand
 
+from swo_aws_extension.flows.jobs.pool_notifications import check_pool_accounts_notifications
+
 
 class Command(BaseCommand):
-    help = "Demo command"
+    help = "Check Pool Account Notifications"
 
     def success(self, message):
         self.stdout.write(self.style.SUCCESS(message), ending="\n")
@@ -17,7 +19,6 @@ class Command(BaseCommand):
         self.stderr.write(self.style.ERROR(message), ending="\n")
 
     def handle(self, *args, **options):
-        self.success("Success message")
-        self.info("Info message")
-        self.warning("Warning message")
-        self.error("Error message")
+        self.info("Start processing Check Pool Accounts Notifications...")
+        check_pool_accounts_notifications()
+        self.success("Processing Check Pool Accounts Notifications completed.")

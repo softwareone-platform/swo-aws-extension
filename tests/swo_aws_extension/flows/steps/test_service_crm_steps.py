@@ -3,7 +3,7 @@ from unittest.mock import Mock, create_autospec
 import pytest
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
-from swo_aws_extension.constants import CRM_TICKET_COMPLETED_STATE
+from swo_aws_extension.constants import CRM_TICKET_RESOLVED_STATE
 from swo_aws_extension.flows.order import TerminateContext
 from swo_aws_extension.flows.steps.service_crm_steps import (
     AwaitCRMTicketStatusStep,
@@ -150,7 +150,7 @@ def await_crm_ticket_status(mocker, crm_service_client, get_ticket_id):
         "swo_aws_extension.flows.steps.service_crm_steps.get_service_client",
         return_value=crm_service_client,
     )
-    return AwaitCRMTicketStatusStep(get_ticket_id, target_status=CRM_TICKET_COMPLETED_STATE)
+    return AwaitCRMTicketStatusStep(get_ticket_id, target_status=CRM_TICKET_RESOLVED_STATE)
 
 
 def test_await_crm_ticket_status_initialization():
@@ -158,20 +158,20 @@ def test_await_crm_ticket_status_initialization():
     skip_if_no_ticket = True
 
     await_crm_ticket_status = AwaitCRMTicketStatusStep(
-        get_ticket_id, CRM_TICKET_COMPLETED_STATE, skip_if_no_ticket=True
+        get_ticket_id, CRM_TICKET_RESOLVED_STATE, skip_if_no_ticket=True
     )
 
     assert await_crm_ticket_status.get_ticket_id == get_ticket_id
-    assert await_crm_ticket_status.target_status == [CRM_TICKET_COMPLETED_STATE]
+    assert await_crm_ticket_status.target_status == [CRM_TICKET_RESOLVED_STATE]
     assert await_crm_ticket_status.skip_if_no_ticket == skip_if_no_ticket
 
     await_crm_ticket_status = AwaitCRMTicketStatusStep(
-        get_ticket_id, [CRM_TICKET_COMPLETED_STATE, "Closed"], skip_if_no_ticket=False
+        get_ticket_id, [CRM_TICKET_RESOLVED_STATE, "Closed"], skip_if_no_ticket=False
     )
 
     assert await_crm_ticket_status.get_ticket_id == get_ticket_id
     assert await_crm_ticket_status.target_status == [
-        CRM_TICKET_COMPLETED_STATE,
+        CRM_TICKET_RESOLVED_STATE,
         "Closed",
     ]
     assert await_crm_ticket_status.skip_if_no_ticket is False
@@ -237,7 +237,7 @@ def test_await_crm_ticket_status_ticket_in_target_status(
     client = Mock(spec=MPTClient)
     get_ticket_id.return_value = "CS001"
     crm_service_client.get_service_requests.return_value = service_request_ticket_factory(
-        ticket_id="CS001", state=CRM_TICKET_COMPLETED_STATE
+        ticket_id="CS001", state=CRM_TICKET_RESOLVED_STATE
     )
 
     await_crm_ticket_status(client, context, next_step)

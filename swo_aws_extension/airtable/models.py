@@ -27,7 +27,6 @@ class NotificationTicketStatusEnum(StrEnum):
 
 class NotificationStatusEnum(StrEnum):
     PENDING = "Pending"
-    IN_PROGRESS = "In Progress"
     DONE = "Done"
 
 
@@ -78,6 +77,7 @@ def get_master_payer_account_pool_model(base_info):
         agreement_id = fields.TextField("Agreement Id")
         client_id = fields.TextField("Client Id")
         scu = fields.TextField("SCU")
+        buyer_id = fields.TextField("Buyer Id")
         error_description = fields.TextField("Error Description")
 
         class Meta:
@@ -102,11 +102,11 @@ def get_pool_notification_model(base_info):
     """
 
     class PoolNotification(Model):
-        notification_id = fields.NumberField("Id")
+        notification_id = fields.AutoNumberField("Id")
         notification_type = fields.SelectField("Notification Type")
         pls_enabled = fields.CheckboxField(PLS_ENABLED)
         ticket_id = fields.TextField("Ticket Id")
-        ticket_status = fields.SelectField("Ticket Status")
+        ticket_state = fields.TextField("Ticket State")
         status = fields.SelectField("Status")
 
         class Meta:
@@ -117,11 +117,11 @@ def get_pool_notification_model(base_info):
     return PoolNotification
 
 
-def get_available_mpa_from_pool(pls_enabled=False):
+def get_available_mpa_from_pool(pls_enabled):
     """
-    Returns the available MPAs from the pool for a given region.
+    Returns the available MPAs from the pool for a given PLS value.
     Args:
-        pls_enabled (bool): Whether the MPA is activated in PLS.
+        pls_enabled (bool): Whether the MPA has PLS enabled.
 
     Returns:
         list: The available MPAs.
@@ -139,22 +139,36 @@ def get_available_mpa_from_pool(pls_enabled=False):
 
 def get_pending_notifications():
     """
-    Returns the pending notifications from the pool.
+    Returns the pending notifications from the pool for the selected PLS status.
+
     Returns:
-        list: The pending notifications.
+        list[PoolNotification]: The pending notifications for the selected PLS status.
     """
     pool_notification = get_pool_notification_model(AirTableBaseInfo.for_mpa_pool())
-    return pool_notification.all(EQUAL("Status", NotificationStatusEnum.PENDING))
+    pending_notifications = pool_notification.all(
+        formula=EQUAL(FIELD("Status"), STR_VALUE(NotificationStatusEnum.PENDING))
+    )
+    return pending_notifications
 
 
-def get_in_progress_notifications():
+def has_pending_notifications(pls_enabled):
     """
-    Returns the in progress notifications from the pool.
+    Returns whether there are pending notifications for the selected PLS status.
+
+    Args:
+        pls_enabled (bool): Whether the MPA has PLS enabled.
+
     Returns:
-        list: The in progress notifications.
+        bool: Whether there are pending notifications for the selected PLS status.
     """
     pool_notification = get_pool_notification_model(AirTableBaseInfo.for_mpa_pool())
-    return pool_notification.all(EQUAL("Status", NotificationStatusEnum.IN_PROGRESS))
+    pending_notifications = pool_notification.all(
+        formula=AND(
+            FIELD(PLS_ENABLED) if pls_enabled else f"NOT({FIELD(PLS_ENABLED)})",
+            EQUAL(FIELD("Status"), STR_VALUE(NotificationStatusEnum.PENDING)),
+        )
+    )
+    return len(pending_notifications) > 0
 
 
 def get_mpa_view_link():
@@ -173,3 +187,16 @@ def get_mpa_view_link():
         return f"https://airtable.com/{base_id}/{table_id}/{view_id}/{record_id}"
     except HTTPError:
         pass
+
+
+def create_pool_notification(notification):
+    """
+    Create a pool notification in the AirTable Pool Notifications table.
+
+    Args:
+        notification (dict): The notification to create.
+
+    """
+
+    pool_notification = get_pool_notification_model(AirTableBaseInfo.for_mpa_pool())
+    pool_notification(**notification).save()

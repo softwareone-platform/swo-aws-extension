@@ -3,11 +3,11 @@ from requests import HTTPError
 from swo_aws_extension.airtable.models import (
     NotificationStatusEnum,
     get_available_mpa_from_pool,
-    get_in_progress_notifications,
     get_master_payer_account_pool_model,
     get_mpa_view_link,
     get_pending_notifications,
     get_pool_notification_model,
+    has_pending_notifications,
 )
 
 
@@ -37,18 +37,16 @@ def test_get_master_payer_account_pool_model(base_info):
 def test_get_pool_notification_model(base_info):
     pool_notification_model = get_pool_notification_model(base_info)
     record = pool_notification_model(
-        notification_id=1,
         notification_type="Notification Type",
         pls_enabled=True,
         ticket_id="Ticket Id",
-        ticket_status="Ticket Status",
+        ticket_state="Ticket State",
         status="Status",
     )
 
     assert record.ticket_id == "Ticket Id"
-    assert record.ticket_status == "Ticket Status"
+    assert record.ticket_state == "Ticket State"
     assert record.status == "Status"
-    assert record.notification_id == 1
     assert record.notification_type == "Notification Type"
     assert record.pls_enabled
 
@@ -77,14 +75,13 @@ def test_get_pending_notifications(mocker, base_info, pool_notification):
     mock_pool_notification.return_value.all.assert_called_once()
 
 
-def test_get_in_progress_notifications(mocker, base_info, pool_notification):
+def test_has_pending_notifications(mocker, base_info, pool_notification):
     mock_pool_notification = mocker.patch(
         "swo_aws_extension.airtable.models.get_pool_notification_model"
     )
     mock_pool_notification.return_value.all.return_value = [pool_notification]
-    result = get_in_progress_notifications()
-    assert result == [pool_notification]
-    assert result[0].status == NotificationStatusEnum.IN_PROGRESS
+    result = has_pending_notifications(True)
+    assert result
     mock_pool_notification.assert_called_once_with(base_info)
     mock_pool_notification.return_value.all.assert_called_once()
 
