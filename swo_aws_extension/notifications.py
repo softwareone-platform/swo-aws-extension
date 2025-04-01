@@ -9,7 +9,7 @@ import pymsteams
 from django.conf import settings
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from markdown_it import MarkdownIt
-from swo.mpt.client.mpt import get_rendered_template
+from mpt_extension_sdk.mpt_http.mpt import get_rendered_template
 
 from swo_aws_extension.parameters import OrderParametersEnum, get_ordering_parameter
 

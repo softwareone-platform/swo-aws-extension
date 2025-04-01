@@ -57,7 +57,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "swo.mpt.extensions.runtime.djapp.middleware.MPTClientMiddleware",
+    "mpt_extension_sdk.runtime.djapp.middleware.MPTClientMiddleware",
 ]
 
 ROOT_URLCONF = "swo.mpt.extensions.runtime.djapp.conf.urls"
@@ -165,7 +165,7 @@ LOGGING = {
             "formatter": "verbose",
         },
         "rich": {
-            "class": "swo.mpt.extensions.runtime.logging.RichHandler",
+            "class": "mpt_extension_sdk.runtime.logging.RichHandler",
             "formatter": "rich",
             "log_time_format": lambda x: x.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
             "rich_tracebacks": True,
@@ -220,5 +220,5 @@ EXTENSION_CONFIG = {
 
 MPT_SETUP_CONTEXTS_FUNC = os.getenv(
     "MPT_SETUP_CONTEXTS_FUNC",
-    "swo.mpt.extensions.runtime.events.utils.setup_contexts",
+    "mpt_extension_sdk.runtime.events.utils.setup_contexts",
 )

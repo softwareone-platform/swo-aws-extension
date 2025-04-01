@@ -1,4 +1,4 @@
-from swo.mpt.extensions.flows.pipeline import Pipeline
+from mpt_extension_sdk.flows.pipeline import Pipeline
 
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import SWO_EXTENSION_MANAGEMENT_ROLE

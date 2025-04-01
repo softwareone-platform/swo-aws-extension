@@ -3,7 +3,7 @@ from urllib.parse import urljoin
 import pytest
 from freezegun import freeze_time
 from responses import matchers
-from swo.mpt.client.mpt import (
+from mpt_extension_sdk.mpt_http.mpt import (
     complete_order,
     create_agreement,
     create_agreement_subscription,
@@ -34,13 +34,18 @@ from swo.mpt.client.mpt import (
 )
 
 
-from swo.mpt.client.errors import MPTAPIError
+from mpt_extension_sdk.mpt_http.wrap_http_error import MPTAPIError
 
 
 def test_fail_order_error(mpt_client, requests_mocker, mpt_error_factory):
     """
     Test the call to switch an order to Failed when it fails.
     """
+    mock_status_notes = {
+        "id": "ORD-0000",
+        "message": "Order can't be processed. Failure reason: a-reason",
+    }
+
     requests_mocker.post(
         urljoin(mpt_client.base_url, "commerce/orders/ORD-0000/fail"),
         status=404,
@@ -48,7 +53,7 @@ def test_fail_order_error(mpt_client, requests_mocker, mpt_error_factory):
     )
 
     with pytest.raises(MPTAPIError) as cv:
-        fail_order(mpt_client, "ORD-0000", "a-reason")
+        fail_order(mpt_client, "ORD-0000", "a-reason", mock_status_notes)
 
     assert cv.value.payload["status"] == 404
 
@@ -716,7 +721,7 @@ def test_get_all_agreements(mocker, settings):
     )
 
     mocked_get_by_query = mocker.patch(
-        "swo.mpt.client.mpt.get_agreements_by_query",
+        "mpt_extension_sdk.mpt_http.mpt.get_agreements_by_query",
         return_value=[{"id": "AGR-0001"}],
     )
 

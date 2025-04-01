@@ -1,7 +1,7 @@
 from unittest import mock
 
 import pytest
-from swo.mpt.client import MPTClient
+from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.flows.order import PurchaseContext
@@ -11,9 +11,7 @@ from swo_aws_extension.flows.steps.setup_context import (
 )
 
 
-def test_setup_context_get_mpa_credentials(
-    mocker, order_factory, config, requests_mocker
-):
+def test_setup_context_get_mpa_credentials(mocker, order_factory, config, requests_mocker):
     role_name = "test_role"
     order = order_factory()
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -29,19 +27,13 @@ def test_setup_context_get_mpa_credentials(
     mock_boto3_client = mocker.patch("boto3.client")
     mock_client = mock_boto3_client.return_value
 
-    mock_client.assume_role_with_web_identity.return_value = {
-        "Credentials": credentials
-    }
+    mock_client.assume_role_with_web_identity.return_value = {"Credentials": credentials}
     next_step_mock = mocker.Mock()
 
     context = PurchaseContext(order=order)
 
-    mocker.patch(
-        "swo_aws_extension.parameters.get_mpa_account_id", return_value="123456789012"
-    )
-    mocker.patch(
-        "swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient)
-    )
+    mocker.patch("swo_aws_extension.parameters.get_mpa_account_id", return_value="123456789012")
+    mocker.patch("swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient))
 
     setup_context = SetupContext(config, role_name)
     setup_context(mpt_client_mock, context, next_step_mock)
@@ -75,9 +67,7 @@ def test_setup_context_without_account_id_raise_exception(
         setup_context(mpt_client_mock, context, next_step_mock)
 
 
-def test_setup_purchase_context_get_mpa_credentials(
-    mocker, order_factory, config, requests_mocker
-):
+def test_setup_purchase_context_get_mpa_credentials(mocker, order_factory, config, requests_mocker):
     role_name = "test_role"
     order = order_factory()
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -93,19 +83,13 @@ def test_setup_purchase_context_get_mpa_credentials(
     mock_boto3_client = mocker.patch("boto3.client")
     mock_client = mock_boto3_client.return_value
 
-    mock_client.assume_role_with_web_identity.return_value = {
-        "Credentials": credentials
-    }
+    mock_client.assume_role_with_web_identity.return_value = {"Credentials": credentials}
     next_step_mock = mocker.Mock()
 
     context = PurchaseContext(order=order)
 
-    mocker.patch(
-        "swo_aws_extension.parameters.get_mpa_account_id", return_value="123456789012"
-    )
-    mocker.patch(
-        "swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient)
-    )
+    mocker.patch("swo_aws_extension.parameters.get_mpa_account_id", return_value="123456789012")
+    mocker.patch("swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient))
 
     setup_context = SetupPurchaseContext(config, role_name)
     setup_context(mpt_client_mock, context, next_step_mock)
@@ -133,9 +117,7 @@ def test_setup_context_get_account_creation_status(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
 
     next_step_mock = mocker.Mock()
-    aws_client, mock_client = aws_client_factory(
-        config, "test_account_id", "test_role_name"
-    )
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.describe_create_account_status.return_value = create_account_status()
 
     context = PurchaseContext(order=order)

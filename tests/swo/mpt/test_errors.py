@@ -3,10 +3,10 @@ import json
 import pytest
 from requests import HTTPError, JSONDecodeError
 
-from swo.mpt.client.errors import (
+from mpt_extension_sdk.mpt_http.wrap_http_error import (
     MPTAPIError,
     MPTError,
-    wrap_http_error,
+    wrap_mpt_http_error,
 )
 
 
@@ -57,7 +57,7 @@ def test_wrap_http_error(mocker, mpt_error_factory):
         response.json.return_value = error_data
         raise HTTPError(response=response)
 
-    wrapped_func = wrap_http_error(func)
+    wrapped_func = wrap_mpt_http_error(func)
 
     with pytest.raises(MPTAPIError) as cv:
         wrapped_func()
@@ -78,7 +78,7 @@ def test_wrap_http_error_json_decode_error(mocker):
         response.json.side_effect = JSONDecodeError("msg", "doc", 0)
         raise HTTPError(response=response)
 
-    wrapped_func = wrap_http_error(func)
+    wrapped_func = wrap_mpt_http_error(func)
 
     with pytest.raises(MPTError) as cv:
         wrapped_func()

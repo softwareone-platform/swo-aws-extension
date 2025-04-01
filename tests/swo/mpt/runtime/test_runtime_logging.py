@@ -1,4 +1,4 @@
-from swo.mpt.extensions.runtime.logging import ReprHighlighter
+from mpt_extension_sdk.runtime.logging import ReprHighlighter
 
 
 def test_repr_highlighter(

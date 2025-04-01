@@ -1,9 +1,11 @@
-from swo.mpt.extensions.core.events.registry import EventsRegistry
-from swo.mpt.extensions.runtime.utils import get_events_registry
+from mpt_extension_sdk.core.events.registry import EventsRegistry
+from mpt_extension_sdk.runtime.utils import get_events_registry
 
 
 def test_get_events_registry():
-    registry = get_events_registry()
+    group = "swo.mpt.ext"
+    name = "app_config"
+    registry = get_events_registry(group=group, name=name)
     assert isinstance(registry, EventsRegistry)
 
 

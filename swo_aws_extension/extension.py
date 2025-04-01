@@ -3,11 +3,12 @@ from pprint import pformat
 from typing import Any, Mapping
 
 from django.conf import settings
+from mpt_extension_sdk.core.extension import Extension
+from mpt_extension_sdk.core.security import JWTAuth
+from mpt_extension_sdk.mpt_http.base import MPTClient
+from mpt_extension_sdk.mpt_http.mpt import get_webhook
+from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 from ninja import Body
-from swo.mpt.client import MPTClient
-from swo.mpt.client.mpt import get_webhook
-from swo.mpt.extensions.core import Extension, JWTAuth
-from swo.mpt.extensions.runtime.djapp.conf import get_for_product
 
 from swo_aws_extension.flows.fulfillment import fulfill_order
 from swo_aws_extension.flows.order import InitialAWSContext

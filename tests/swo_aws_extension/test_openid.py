@@ -8,9 +8,7 @@ def test_get_openid_token_success(mocker):
     mock_response = mocker.Mock()
     mock_response.json.return_value = {"access_token": "test_token"}
     mock_response.raise_for_status = mocker.Mock()
-    mock_post = mocker.patch(
-        "swo_aws_extension.openid.requests.post", return_value=mock_response
-    )
+    mock_post = mocker.patch("swo_aws_extension.openid.requests.post", return_value=mock_response)
 
     endpoint = "https://auth.example.com/oauth/token"
     client_id = "client_id"
@@ -37,9 +35,7 @@ def test_get_openid_token_success(mocker):
 def test_get_openid_token_failure(mocker):
     mock_response = mocker.Mock()
     mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("Error")
-    mock_post = mocker.patch(
-        "swo_aws_extension.openid.requests.post", return_value=mock_response
-    )
+    mock_post = mocker.patch("swo_aws_extension.openid.requests.post", return_value=mock_response)
 
     endpoint = "https://auth.example.com/oauth/token"
     client_id = "client_id"

@@ -7,9 +7,9 @@ import jwt
 import pytest
 import responses
 from django.conf import settings
+from mpt_extension_sdk.core.events.dataclasses import Event
+from mpt_extension_sdk.flows.context import ORDER_TYPE_TERMINATION
 from rich.highlighter import ReprHighlighter as _ReprHighlighter
-from swo.mpt.extensions.core.events.dataclasses import Event
-from swo.mpt.extensions.flows.context import ORDER_TYPE_TERMINATION
 from swo.mpt.extensions.runtime.djapp.conf import get_for_product
 
 from swo_aws_extension.airtable.models import (
@@ -625,7 +625,7 @@ def mpt_client(settings):
     Create an instance of the MPT client used by the extension.
     """
     settings.MPT_API_BASE_URL = "https://localhost"
-    from swo.mpt.extensions.core.utils import setup_client
+    from mpt_extension_sdk.core.utils import setup_client
 
     return setup_client()
 
@@ -934,6 +934,13 @@ def mock_ext_expected_environment_values(
 @pytest.fixture()
 def mock_env_webhook_secret():
     return '{ "webhook_secret": "WEBHOOK_SECRET" }'
+
+
+@pytest.fixture()
+def mock_json_ext_variables():
+    return {
+        "EXT_WEBHOOKS_SECRETS",
+    }
 
 
 @pytest.fixture()

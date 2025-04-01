@@ -1,5 +1,5 @@
 import regex as re
-from swo.mpt.client.errors import ValidationError
+from mpt_extension_sdk.mpt_http.wrap_http_error import ValidationError
 
 TRACE_ID_REGEX = re.compile(r"(\(00-[0-9a-f]{32}-[0-9a-f]{16}-01\))")
 

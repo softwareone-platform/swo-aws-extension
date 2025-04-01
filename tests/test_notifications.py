@@ -208,8 +208,7 @@ def test_send_email_exception(mocker, settings, caplog):
         )
 
     assert (
-        "Cannot send notification email with "
-        "subject 'email-subject' to: customer@domain.com"
+        "Cannot send notification email with " "subject 'email-subject' to: customer@domain.com"
     ) in caplog.text
 
 

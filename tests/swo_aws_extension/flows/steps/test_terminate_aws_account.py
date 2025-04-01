@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 
 import pytest
-from swo.mpt.client import MPTClient
+from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.order import TerminateContext
@@ -26,9 +26,7 @@ def context(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.PRECONFIGURATION_MPA
         ),
-        subscriptions=subscriptions_factory(
-            vendor_id="close_account_id", status="Terminating"
-        ),
+        subscriptions=subscriptions_factory(vendor_id="close_account_id", status="Terminating"),
     )
     context = TerminateContext(order=order)
     context.aws_client = aws_client
@@ -40,9 +38,7 @@ def next_step():
     return Mock()
 
 
-def test_close_aws_account_success(
-    aws_client, context, next_step, data_aws_account_factory
-):
+def test_close_aws_account_success(aws_client, context, next_step, data_aws_account_factory):
     client = Mock(spec=MPTClient)
 
     aws_client.list_accounts.return_value = [

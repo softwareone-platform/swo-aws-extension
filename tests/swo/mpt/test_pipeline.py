@@ -1,5 +1,5 @@
 import pytest
-from swo.mpt.extensions.flows.pipeline import Cursor, Pipeline, Step
+from mpt_extension_sdk.flows.pipeline import Cursor, Pipeline, Step
 
 
 def test_pipeline_completes(mocker):

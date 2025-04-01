@@ -1,8 +1,8 @@
 import logging
 
-from swo.mpt.client import MPTClient
-from swo.mpt.client.errors import ValidationError
-from swo.mpt.extensions.flows.pipeline import NextStep, Step
+from mpt_extension_sdk.flows.pipeline import NextStep, Step
+from mpt_extension_sdk.mpt_http.base import MPTClient
+from mpt_extension_sdk.mpt_http.wrap_http_error import ValidationError
 
 from swo_aws_extension.aws.errors import (
     AWSRequerimentsNotMeetError,
@@ -79,14 +79,10 @@ class TerminateAWSAccount(Step):
         try:
             if termination_type == TerminationParameterChoices.CLOSE_ACCOUNT:
                 context.aws_client.close_account(account_id)
-                logger.info(
-                    f"{context.order_id} - Action - Closed AWS Account {account_id}"
-                )
+                logger.info(f"{context.order_id} - Action - Closed AWS Account {account_id}")
             elif termination_type == TerminationParameterChoices.UNLINK_ACCOUNT:
                 context.aws_client.remove_account_from_organization(account_id)
-                logger.info(
-                    f"{context.order_id} - Action - Unlinked AWS Account {account_id}"
-                )
+                logger.info(f"{context.order_id} - Action - Unlinked AWS Account {account_id}")
         except AWSTerminationCoolOffPeriodError as cool_off_exception:
             """
             If the account is in a cool off period, we will not terminate it.

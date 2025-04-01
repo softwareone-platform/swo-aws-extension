@@ -1,7 +1,7 @@
 import logging
 
-from swo.mpt.client.mpt import complete_order, get_product_template_or_default
-from swo.mpt.extensions.flows.pipeline import Step
+from mpt_extension_sdk.flows.pipeline import Step
+from mpt_extension_sdk.mpt_http.mpt import complete_order, get_product_template_or_default
 
 from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.order import MPT_ORDER_STATUS_COMPLETED
