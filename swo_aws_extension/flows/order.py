@@ -11,6 +11,7 @@ from swo_aws_extension.notifications import send_email_notification
 from swo_aws_extension.parameters import (
     get_mpa_account_id,
     get_support_type,
+    get_termination_type_parameter,
 )
 
 MPT_ORDER_STATUS_PROCESSING = "Processing"
@@ -111,6 +112,14 @@ class TerminateContext(InitialAWSContext):
             for s in self.order.get("subscriptions", [])
             if s.get("status") == "Terminating"
         ]
+
+    @property
+    def termination_type(self):
+        """
+        Return the termination type
+        :return: "CloseAccount" or "UnlinkAccount"
+        """
+        return get_termination_type_parameter(self.order)
 
     def __str__(self):
         return (

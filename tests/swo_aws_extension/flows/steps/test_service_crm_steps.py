@@ -7,7 +7,6 @@ from swo_aws_extension.constants import CRM_TICKET_COMPLETED_STATE
 from swo_aws_extension.flows.order import TerminateContext
 from swo_aws_extension.flows.steps.service_crm_steps import (
     AwaitCRMTicketStatusStep,
-    CreateMPADecomissionServiceRequestStep,
     CreateServiceRequestStep,
 )
 from swo_crm_service_client.client import CRMServiceClient, ServiceRequest
@@ -246,21 +245,3 @@ def test_await_crm_ticket_status_ticket_in_target_status(
     get_ticket_id.assert_called_once_with(context)
     crm_service_client.get_service_requests.assert_called_once_with(context.order_id, "CS001")
     next_step.assert_called_once_with(client, context)
-
-
-def test_errors_create_mpa_service_request(context):
-    client = Mock(spec=MPTClient)
-    context = TerminateContext(order={}, aws_client=None)
-    step = CreateMPADecomissionServiceRequestStep()
-
-    with pytest.raises(RuntimeError):
-        step.build_service_request_for_close_account(context)
-
-    with pytest.raises(RuntimeError):
-        step.is_only_mpa_account_in_organization(None)
-
-    with pytest.raises(ValueError):
-        step.save_ticket(client, context, "")
-
-    with pytest.raises(ValueError):
-        step.save_ticket(client, context, None)

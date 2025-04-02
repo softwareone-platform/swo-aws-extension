@@ -8,25 +8,23 @@ from swo_aws_extension.flows.steps.create_subscription import CreateSubscription
 from swo_aws_extension.flows.steps.mpa_pre_configuration import MPAPreConfiguration
 from swo_aws_extension.flows.steps.service_crm_steps import (
     AwaitCRMTicketStatusStep,
-    AwaitMPADecommissionServiceRequestTicketCompletionStep,
-    CreateMPADecomissionServiceRequestStep,
+    AwaitTerminationServiceRequestStep,
     CreateServiceRequestStep,
+    CreateTerminationServiceRequestStep,
 )
 from swo_aws_extension.flows.steps.setup_context import (
     SetupContext,
     SetupPurchaseContext,
 )
-from swo_aws_extension.flows.steps.terminate_aws_account import TerminateAWSAccount
 
 __all__ = [
     "AwaitCRMTicketStatusStep",
-    "AwaitMPADecommissionServiceRequestTicketCompletionStep",
-    "TerminateAWSAccount",
+    "AwaitTerminationServiceRequestStep",
     "CompleteOrder",
     "CompletePurchaseOrder",
     "CreateLinkedAccount",
     "CreateServiceRequestStep",
-    "CreateMPADecomissionServiceRequestStep",
+    "CreateTerminationServiceRequestStep",
     "CreateSubscription",
     "MPAPreConfiguration",
     "SetupContext",
