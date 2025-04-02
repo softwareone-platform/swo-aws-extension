@@ -94,7 +94,7 @@ class CRMServiceClient(Session):
         response.raise_for_status()
         return response.json()
 
-    def get_service_requests(self, order_id, service_request_id: str) -> ServiceRequest:
+    def get_service_requests(self, order_id, service_request_id: str):
         response = self.get(
             url=f"/ticketing/ServiceRequests/{service_request_id}",
             headers=self._prepare_headers(order_id),

@@ -1,4 +1,5 @@
 import logging
+import textwrap
 from typing import Callable
 
 from mpt_extension_sdk.flows.pipeline import NextStep, Step
@@ -8,6 +9,7 @@ from mpt_extension_sdk.mpt_http.mpt import update_order
 from swo_aws_extension.constants import CRM_TICKET_COMPLETED_STATE
 from swo_aws_extension.crm_service_client.config import get_service_client
 from swo_aws_extension.flows.order import InitialAWSContext
+from swo_aws_extension.notifications import get_notifications_recipient
 from swo_aws_extension.parameters import get_crm_ticket_id, set_crm_ticket_id
 from swo_crm_service_client import ServiceRequest
 
@@ -77,7 +79,7 @@ class CreateServiceRequestStep(Step):
     def __call__(
         self,
         client: MPTClient,
-        context: InitialAWSContext,
+        context,
         next_step: NextStep,
     ) -> None:
         if not self.meets_criteria(context):
@@ -97,46 +99,47 @@ class CreateServiceRequestStep(Step):
         next_step(client, context)
 
 
-class CreateMPADecomissionServiceRequestStep(CreateServiceRequestStep):
-    def is_only_mpa_account_in_organization(self, aws_client) -> bool:
-        if aws_client is None:
-            raise RuntimeError(
-                "IsLastAccountActiveCriteria requires an AWSClient "
-                "instance set in context.aws_client"
-            )
-        accounts = aws_client.list_accounts()
-        active_accounts = list(filter(lambda a: a.get("Status") == "ACTIVE", accounts))
-        num_active_accounts = len(active_accounts)
-        return num_active_accounts <= 1
-
+class CreateTerminationServiceRequestStep(CreateServiceRequestStep):
     def should_create_ticket_criteria(self, context: InitialAWSContext) -> bool:
         """
-        A Service Request to close the account has to be sent to service team when only one
-        active account is left (the Master Payer Account)
-
         :param context:
         :return:
         """
-        return self.is_only_mpa_account_in_organization(
-            context.aws_client
-        ) and not get_crm_ticket_id(context.order)
+        return not get_crm_ticket_id(context.order)
 
-    def build_service_request_for_close_account(self, context: InitialAWSContext) -> ServiceRequest:
+    def build_service_request(self, context) -> ServiceRequest:
         if not context.mpa_account:
             raise RuntimeError(
                 "Unable to create a service request ticket for an order missing an "
                 "MPA account in the fulfillment parameters"
             )
 
+        summary_template = textwrap.dedent("""
+        Request of termination of AWS accounts.
+
+        MPA: {mpa_account}
+        Termination type: {termination_type}
+
+        AWS Account to terminate: {accounts}
+        """)
+        accounts = ", ".join(context.terminating_subscriptions_aws_account_ids)
+        summary = summary_template.format(
+            accounts=accounts,
+            termination_type=context.termination_type,
+            mpa_account=context.mpa_account,
+        )
+
+        title = f"Termination of account(s) linked to MPA {context.mpa_account}"
+
         return ServiceRequest(
-            external_user_email="test@example.com",
-            external_username="test@example.com",
+            external_user_email=get_notifications_recipient(context.order),
+            external_username=get_notifications_recipient(context.order),
             requester="Supplier.Portal",
             sub_service="Service Activation",
             global_academic_ext_user_id="globalacademicExtUserId",
             additional_info="additionalInfo",
-            summary="test",
-            title=f"test - Close MPA Account {context.mpa_account}",
+            title=title,
+            summary=summary,
             service_type="MarketPlaceServiceActivation",
         )
 
@@ -148,13 +151,13 @@ class CreateMPADecomissionServiceRequestStep(CreateServiceRequestStep):
 
     def __init__(self):
         super().__init__(
-            service_request_factory=self.build_service_request_for_close_account,
+            service_request_factory=self.build_service_request,
             ticket_id_saver=self.save_ticket,
             criteria=self.should_create_ticket_criteria,
         )
 
 
-class AwaitMPADecommissionServiceRequestTicketCompletionStep(AwaitCRMTicketStatusStep):
+class AwaitTerminationServiceRequestStep(AwaitCRMTicketStatusStep):
     def get_crm_ticket(self, context: InitialAWSContext):
         return get_crm_ticket_id(context.order)
 

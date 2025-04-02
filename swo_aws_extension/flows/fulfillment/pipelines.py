@@ -4,16 +4,15 @@ from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import SWO_EXTENSION_MANAGEMENT_ROLE
 from swo_aws_extension.flows.steps import (
     AssignMPA,
-    AwaitMPADecommissionServiceRequestTicketCompletionStep,
+    AwaitTerminationServiceRequestStep,
     CompleteOrder,
     CompletePurchaseOrder,
     CreateLinkedAccount,
-    CreateMPADecomissionServiceRequestStep,
     CreateSubscription,
+    CreateTerminationServiceRequestStep,
     MPAPreConfiguration,
     SetupContext,
     SetupPurchaseContext,
-    TerminateAWSAccount,
 )
 
 config = Config()
@@ -33,8 +32,7 @@ change_order = Pipeline(
 
 terminate = Pipeline(
     SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
-    TerminateAWSAccount(),
-    CreateMPADecomissionServiceRequestStep(),
-    AwaitMPADecommissionServiceRequestTicketCompletionStep(),
+    CreateTerminationServiceRequestStep(),
+    AwaitTerminationServiceRequestStep(),
     CompleteOrder("purchase_order"),
 )
