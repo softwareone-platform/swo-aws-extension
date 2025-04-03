@@ -8,9 +8,15 @@ from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.constants import CRM_TICKET_RESOLVED_STATE
 from swo_aws_extension.crm_service_client.config import get_service_client
-from swo_aws_extension.flows.order import InitialAWSContext
+from swo_aws_extension.flows.order import InitialAWSContext, PurchaseContext
 from swo_aws_extension.notifications import get_notifications_recipient
-from swo_aws_extension.parameters import get_crm_ticket_id, set_crm_ticket_id
+from swo_aws_extension.parameters import (
+    get_crm_ticket_id,
+    get_link_account_service_ticket_id,
+    get_master_payer_id,
+    set_crm_ticket_id,
+    set_link_account_service_ticket_id,
+)
 from swo_crm_service_client import ServiceRequest
 
 logger = logging.getLogger(__name__)
@@ -27,7 +33,7 @@ class AwaitCRMTicketStatusStep(Step):
         Await for a CRM ticket to reach any of the target status before proceeding.
         :param get_ticket_id: Callable[[CloseAccountContext], str|None] - Get ticket ID from context
         :param target_status: Optional[str | List[str]]
-            Example: ["Completed", "Closed"] Default: [CRM_TICKET_COMPLETED_STATE]
+            Example: ["Completed", "Closed"] Default: [CRM_TICKET_RESOLVED_STATE]
         :param skip_if_no_ticket: bool - Skip if no ticket ID is found
 
         :raise ValueError: If ticket ID is required and not found
@@ -160,6 +166,74 @@ class CreateTerminationServiceRequestStep(CreateServiceRequestStep):
 class AwaitTerminationServiceRequestStep(AwaitCRMTicketStatusStep):
     def get_crm_ticket(self, context: InitialAWSContext):
         return get_crm_ticket_id(context.order)
+
+    def __init__(self):
+        super().__init__(
+            get_ticket_id=self.get_crm_ticket,
+            target_status=CRM_TICKET_RESOLVED_STATE,
+            skip_if_no_ticket=True,
+        )
+
+
+class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
+    def build_service_request(self, context: PurchaseContext):
+        email_address = get_notifications_recipient(context.order)
+        master_payer_id = get_master_payer_id(context.order)
+        if not master_payer_id:
+            raise ValueError(
+                f"Unable to create a transfer service request ticket for order={context.order_id}. "
+                f"Reason: Missing master payer id."
+            )
+        summary_template = textwrap.dedent("""
+                Transfer request for AWS MPA Account with organization.
+
+                MPA: {master_payer_id}
+                Contact: {email_address}
+                """)
+        summary = summary_template.format(
+            master_payer_id=master_payer_id,
+            email_address=email_address,
+        )
+
+        title = f"MPA AWS Transfer {master_payer_id} {email_address}"
+
+        return ServiceRequest(
+            external_user_email=get_notifications_recipient(context.order),
+            external_username=get_notifications_recipient(context.order),
+            requester="Supplier.Portal",
+            sub_service="Service Activation",
+            global_academic_ext_user_id="globalacademicExtUserId",
+            additional_info="additionalInfo",
+            title=title,
+            summary=summary,
+            service_type="MarketPlaceServiceActivation",
+        )
+
+    def save_ticket(self, client, context, crm_ticket_id):
+        if not crm_ticket_id:
+            raise ValueError("Updating crm service ticket id - Ticket id is required.")
+        context.order = set_link_account_service_ticket_id(context.order, crm_ticket_id)
+        update_order(client, context.order_id, parameters=context.order["parameters"])
+
+    def should_create_ticket_criteria(self, context):
+        """
+        :param context:
+        :return:
+        """
+        has_ticket = bool(get_link_account_service_ticket_id(context.order))
+        return not has_ticket and context.is_type_transfer_with_organization()
+
+    def __init__(self):
+        super().__init__(
+            service_request_factory=self.build_service_request,
+            ticket_id_saver=self.save_ticket,
+            criteria=self.should_create_ticket_criteria,
+        )
+
+
+class AwaitTransferRequestTicketWithOrganizationStep(AwaitCRMTicketStatusStep):
+    def get_crm_ticket(self, context: InitialAWSContext):
+        return get_link_account_service_ticket_id(context.order)
 
     def __init__(self):
         super().__init__(

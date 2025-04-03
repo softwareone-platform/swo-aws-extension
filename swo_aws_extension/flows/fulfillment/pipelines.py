@@ -5,19 +5,25 @@ from swo_aws_extension.constants import SWO_EXTENSION_MANAGEMENT_ROLE
 from swo_aws_extension.flows.steps import (
     AssignMPA,
     AwaitTerminationServiceRequestStep,
+    AwaitTransferRequestTicketWithOrganizationStep,
     CompleteOrder,
     CompletePurchaseOrder,
     CreateLinkedAccount,
     CreateSubscription,
     CreateTerminationServiceRequestStep,
+    CreateTransferRequestTicketWithOrganizationStep,
     MPAPreConfiguration,
     SetupContext,
     SetupPurchaseContext,
+    ValidateLinkedMPAStep,
 )
 
 config = Config()
 purchase = Pipeline(
+    CreateTransferRequestTicketWithOrganizationStep(),
+    AwaitTransferRequestTicketWithOrganizationStep(),
     SetupPurchaseContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    ValidateLinkedMPAStep(),
     AssignMPA(config, SWO_EXTENSION_MANAGEMENT_ROLE),
     MPAPreConfiguration(),
     CreateLinkedAccount(),
