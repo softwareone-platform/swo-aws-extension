@@ -17,6 +17,7 @@ class OrderParametersEnum(StrEnum):
     SUPPORT_TYPE = "supportType"
     TRANSFER_TYPE = "transferType"
     PARAM_CONTACT = "contact"
+    MASTER_PAYER_ID = "masterPayerId"
 
 
 class FulfillmentParametersEnum(StrEnum):
@@ -26,6 +27,7 @@ class FulfillmentParametersEnum(StrEnum):
     ACCOUNT_EMAIL = "accountEmail"
     ACCOUNT_NAME = "accountName"
     CRM_TICKET_ID = "crmTicketId"
+    EXISTING_ACCOUNT_CRM_TICKET = "existingAccountCRMTicket"
 
 
 def get_parameter(parameter_phase, source, param_external_id):
@@ -390,3 +392,83 @@ def get_transfer_type(source):
         OrderParametersEnum.TRANSFER_TYPE,
     )
     return param.get("value", None)
+
+
+def get_master_payer_id(source):
+    """
+    Get the master payer ID from the corresponding ordering
+    parameter or None if it is not set.
+
+    Args:
+        source (dict): The business object from which the master payer ID
+        should be retrieved.
+
+    Returns:
+        str: The master payer ID provided by client or None if it isn't set.
+    """
+    param = get_ordering_parameter(
+        source,
+        OrderParametersEnum.MASTER_PAYER_ID,
+    )
+    return param.get("value", None)
+
+
+def set_master_payer_id(order, master_payer_id):
+    """
+    Set the master payer ID on the ordering parameters.
+
+    Args:
+        order (dict): The order that contains the parameter.
+        master_payer_id (str): The master payer ID provided by client.
+
+    Returns:
+        dict: The order updated.
+    """
+    updated_order = copy.deepcopy(order)
+    param = get_ordering_parameter(
+        updated_order,
+        OrderParametersEnum.MASTER_PAYER_ID,
+    )
+    param["value"] = master_payer_id
+    return updated_order
+
+
+def get_link_account_service_ticket_id(source):
+    """
+    Get the link account service ticket ID from the corresponding fulfillment
+    parameter or None if it is not set.
+
+    Args:
+        source (dict): The business object from which the link account service ticket ID
+        should be retrieved.
+
+    Returns:
+        str: The link account service ticket ID provided by client or None if it isn't set.
+    """
+    param = get_fulfillment_parameter(
+        source,
+        FulfillmentParametersEnum.EXISTING_ACCOUNT_CRM_TICKET,
+    )
+    return param.get("value", None)
+
+
+def set_link_account_service_ticket_id(order, crm_ticket_id):
+    """
+    Set the link account service ticket ID from the corresponding fulfillment
+    parameter or None if it is not set.
+
+    Args:
+        order (dict): The business object from which the link account service ticket ID
+        should be retrieved.
+        crm_ticket_id (str): The link account service ticket ID provided by client.
+
+    Returns:
+        str: The link account service ticket ID provided by client or None if it isn't set.
+    """
+    updated_order = copy.deepcopy(order)
+    param = get_fulfillment_parameter(
+        updated_order,
+        FulfillmentParametersEnum.EXISTING_ACCOUNT_CRM_TICKET,
+    )
+    param["value"] = crm_ticket_id
+    return updated_order

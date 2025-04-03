@@ -9,6 +9,7 @@ from mpt_extension_sdk.mpt_http.mpt import (
 )
 
 from swo_aws_extension.constants import PhasesEnum
+from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.parameters import (
     FulfillmentParametersEnum,
     get_account_email,
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class CreateSubscription(Step):
-    def __call__(self, client: MPTClient, context, next_step):
+    def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         if get_phase(context.order) != PhasesEnum.CREATE_SUBSCRIPTIONS:
             logger.info(
                 f"Current phase is '{get_phase(context.order)}', "
@@ -29,45 +30,10 @@ class CreateSubscription(Step):
             )
             next_step(client, context)
             return
-        if context.is_purchase_order() or context.is_change_order():
-            account_id = context.account_creation_status.account_id
-            order_subscription = get_order_subscription_by_external_id(
-                client,
-                context.order["id"],
-                account_id,
-            )
-            if not order_subscription:
-                logger.info(f"Creating subscription for account {account_id}")
-                account_email = get_account_email(context.order)
-                account_name = get_account_name(context.order)
-
-                subscription = {
-                    "name": f"Subscription for {account_id}",
-                    "parameters": {
-                        "fulfillment": [
-                            {
-                                "externalId": FulfillmentParametersEnum.ACCOUNT_EMAIL,
-                                "value": account_email,
-                            },
-                            {
-                                "externalId": FulfillmentParametersEnum.ACCOUNT_NAME,
-                                "value": account_name,
-                            },
-                        ]
-                    },
-                    "externalIds": {
-                        "vendor": account_id,
-                    },
-                    "lines": [
-                        {
-                            "id": context.order["lines"][0]["id"],
-                        },
-                    ],
-                }
-                subscription = create_subscription(client, context.order_id, subscription)
-                logger.info(
-                    f"{context}: subscription for {account_id} " f'({subscription["id"]}) created'
-                )
+        if context.is_purchase_order() and context.is_type_transfer_with_organization():
+            self.create_subscriptions_from_organization(client, context)
+        elif context.is_purchase_order() or context.is_change_order():
+            self.create_subscription_from_new_account(client, context)
         context.order = set_phase(context.order, PhasesEnum.COMPLETED)
         update_order(client, context.order_id, parameters=context.order["parameters"])
         logger.info(
@@ -75,3 +41,80 @@ class CreateSubscription(Step):
             f"Proceeding to next phase '{PhasesEnum.COMPLETED}'"
         )
         next_step(client, context)
+
+    def create_subscription_from_new_account(self, client, context):
+        account_id = context.account_creation_status.account_id
+        if not self.subscription_exist_for_account_id(client, context.order_id, account_id):
+            logger.info(f"Creating subscription for account {account_id}")
+            account_email = get_account_email(context.order)
+            account_name = get_account_name(context.order)
+
+            self.add_subscription(
+                client,
+                context,
+                account_id,
+                account_email,
+                account_name,
+            )
+
+    def subscription_exist_for_account_id(self, client, order_id, account_id):
+        """
+        Check if a subscription for the account already exists
+        """
+        order_subscription = get_order_subscription_by_external_id(
+            client,
+            order_id,
+            account_id,
+        )
+        return order_subscription is not None
+
+    def create_subscriptions_from_organization(self, client, context):
+        # list aws organization accounts
+        # check if a subscriptioon for the account already exists. if exist, continue
+        # create a subscription for each organization account
+        accounts = context.aws_client.list_accounts()
+
+        for account in accounts:
+            account_id = account["Id"]
+            account_email = account["Email"]
+            account_name = account["Name"]
+            if self.subscription_exist_for_account_id(client, context.order_id, account_id):
+                logger.info(
+                    f"{context.order_id} - Skipping - Create subscription for "
+                    f"account={account_id} email={account_email} as it already exist"
+                )
+                continue
+            self.add_subscription(
+                client,
+                context,
+                account_id,
+                account_email,
+                account_name,
+            )
+
+    def add_subscription(self, client, context, account_id, account_email, account_name):
+        subscription = {
+            "name": f"Subscription for {account_id}",
+            "parameters": {
+                "fulfillment": [
+                    {
+                        "externalId": FulfillmentParametersEnum.ACCOUNT_EMAIL,
+                        "value": account_email,
+                    },
+                    {
+                        "externalId": FulfillmentParametersEnum.ACCOUNT_NAME,
+                        "value": account_name,
+                    },
+                ]
+            },
+            "externalIds": {
+                "vendor": account_id,
+            },
+            "lines": [
+                {
+                    "id": context.order["lines"][0]["id"],
+                },
+            ],
+        }
+        subscription = create_subscription(client, context.order_id, subscription)
+        logger.info(f"{context}: subscription for {account_id} " f'({subscription["id"]}) created')

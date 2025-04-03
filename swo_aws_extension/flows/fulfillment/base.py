@@ -7,6 +7,7 @@ from swo_aws_extension.flows.error import strip_trace_id
 from swo_aws_extension.flows.fulfillment.pipelines import (
     change_order,
     purchase,
+    purchase_transfer_with_organization,
     terminate,
 )
 from swo_aws_extension.flows.order import (
@@ -37,6 +38,9 @@ def fulfill_order(client, context):
     try:
         if context.is_purchase_order():
             purchase_context = PurchaseContext.from_context(context)
+            if context.is_type_transfer_with_organization():
+                purchase_transfer_with_organization.run(client, purchase_context)
+                return
             purchase.run(client, purchase_context)
         elif context.is_change_order():
             logger.info("Processing change order")
