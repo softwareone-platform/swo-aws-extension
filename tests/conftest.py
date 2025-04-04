@@ -26,6 +26,7 @@ from swo_aws_extension.constants import (
     TerminationParameterChoices,
 )
 from swo_aws_extension.parameters import FulfillmentParametersEnum, OrderParametersEnum
+from swo_crm_service_client import CRMServiceClient
 
 PARAM_COMPANY_NAME = "ACME Inc"
 AWESOME_PRODUCT = "Awesome product"
@@ -58,6 +59,7 @@ def order_parameters_factory(constraints):
         termination_type=TerminationParameterChoices.CLOSE_ACCOUNT,
         support_type=SupportTypesEnum.PARTNER_LED_SUPPORT,
         transfer_type=None,
+        master_payer_id=None,
     ):
         return [
             {
@@ -113,6 +115,13 @@ def order_parameters_factory(constraints):
                 "type": "Choice",
                 "value": transfer_type,
             },
+            {
+                "id": "PAR-1234-5681",
+                "name": "Transfer Type",
+                "externalId": OrderParametersEnum.MASTER_PAYER_ID,
+                "type": "Choice",
+                "value": master_payer_id,
+            },
         ]
 
     return _order_parameters
@@ -121,7 +130,11 @@ def order_parameters_factory(constraints):
 @pytest.fixture()
 def fulfillment_parameters_factory():
     def _fulfillment_parameters(
-        mpa_account_id="123456789012", phase="", account_request_id="", crm_ticket_id=""
+        mpa_account_id="123456789012",
+        phase="",
+        account_request_id="",
+        crm_ticket_id="",
+        existing_account_crm_ticket="",
     ):
         return [
             {
@@ -151,6 +164,13 @@ def fulfillment_parameters_factory():
                 "externalId": FulfillmentParametersEnum.CRM_TICKET_ID,
                 "type": "SingleLineText",
                 "value": crm_ticket_id,
+            },
+            {
+                "id": "PAR-1234-5677",
+                "name": "Service Now Ticket for Link Account",
+                "externalId": FulfillmentParametersEnum.EXISTING_ACCOUNT_CRM_TICKET,
+                "type": "SingleLineText",
+                "value": existing_account_crm_ticket,
             },
         ]
 
@@ -1282,3 +1302,13 @@ def pool_notification(mocker):
     pool_notification.status = NotificationStatusEnum.PENDING
 
     return pool_notification
+
+
+@pytest.fixture()
+def service_client(mocker):
+    service_client_mock = mocker.Mock(spec=CRMServiceClient)
+    mocker.patch(
+        "swo_aws_extension.flows.steps.service_crm_steps.get_service_client",
+        return_value=service_client_mock,
+    )
+    return service_client_mock
