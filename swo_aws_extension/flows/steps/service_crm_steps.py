@@ -6,7 +6,7 @@ from mpt_extension_sdk.flows.pipeline import NextStep, Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
-from swo_aws_extension.constants import CRM_TICKET_COMPLETED_STATE
+from swo_aws_extension.constants import CRM_TICKET_RESOLVED_STATE
 from swo_aws_extension.crm_service_client.config import get_service_client
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.notifications import get_notifications_recipient
@@ -33,7 +33,7 @@ class AwaitCRMTicketStatusStep(Step):
         :raise ValueError: If ticket ID is required and not found
         """
         self.get_ticket_id = get_ticket_id
-        target_status = target_status or [CRM_TICKET_COMPLETED_STATE]
+        target_status = target_status or [CRM_TICKET_RESOLVED_STATE]
         if not isinstance(target_status, list):
             target_status = [target_status]
         self.target_status = target_status
@@ -164,6 +164,6 @@ class AwaitTerminationServiceRequestStep(AwaitCRMTicketStatusStep):
     def __init__(self):
         super().__init__(
             get_ticket_id=self.get_crm_ticket,
-            target_status=CRM_TICKET_COMPLETED_STATE,
+            target_status=CRM_TICKET_RESOLVED_STATE,
             skip_if_no_ticket=True,
         )

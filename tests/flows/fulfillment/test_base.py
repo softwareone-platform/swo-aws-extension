@@ -1,7 +1,7 @@
 import pytest
 
 from swo_aws_extension.aws.errors import AWSHttpError
-from swo_aws_extension.constants import CRM_TICKET_COMPLETED_STATE
+from swo_aws_extension.constants import CRM_TICKET_RESOLVED_STATE
 from swo_aws_extension.flows.error import strip_trace_id
 from swo_aws_extension.flows.fulfillment import fulfill_order
 from swo_aws_extension.flows.fulfillment.base import setup_contexts
@@ -169,7 +169,7 @@ def test_fulfill_terminate_account_flow(
 
     # Ticket is completed
     service_client.get_service_requests.return_value = service_request_ticket_factory(
-        ticket_id="1234-5678", state=CRM_TICKET_COMPLETED_STATE
+        ticket_id="1234-5678", state=CRM_TICKET_RESOLVED_STATE
     )
     complete_order_mock.assert_not_called()
     # Next run of the pipeline should finish the order

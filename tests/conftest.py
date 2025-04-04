@@ -1266,6 +1266,7 @@ def mpa_pool(mocker):
     mpa_pool.agreement_id = ""
     mpa_pool.client_id = ""
     mpa_pool.scu = ""
+    mpa_pool.buyer_id = ""
 
     return mpa_pool
 
@@ -1277,7 +1278,7 @@ def pool_notification(mocker):
     pool_notification.notification_type = NotificationTypeEnum.WARNING
     pool_notification.pls_enabled = True
     pool_notification.ticket_id = "Ticket Id"
-    pool_notification.ticket_status = "Ticket Status"
-    pool_notification.status = NotificationStatusEnum.IN_PROGRESS
+    pool_notification.ticket_state = "New"
+    pool_notification.status = NotificationStatusEnum.PENDING
 
     return pool_notification
