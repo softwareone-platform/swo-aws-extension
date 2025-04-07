@@ -171,6 +171,8 @@ MPT_API_TOKEN_OPERATIONS = os.getenv("MPT_API_TOKEN_OPERATIONS", "change-me!")
 MPT_PRODUCTS_IDS = ["PRD-1111-1111"]
 MPT_ORDERS_API_POLLING_INTERVAL_SECS = 30
 MPT_PORTAL_BASE_URL = "https://portal.s1.local"
+MPT_KEY_VAULT_NAME = os.getenv("MPT_KEY_VAULT_NAME", "change-me!")
+
 
 EXTENSION_CONFIG = {
     "WEBHOOKS_SECRETS": {"PRD-1111-1111": "that's my awesome test secret"},
@@ -179,9 +181,17 @@ EXTENSION_CONFIG = {
     "CCP_CLIENT_ID": "client_id",
     "CCP_CLIENT_SECRET": "client_secret",
     "AWS_OPENID_SCOPE": "scope",
-    "CCP_OAUTH_URL": "https://ccpoauth.com/oauth2/token",
+    "CCP_OAUTH_URL": "https://example.com/oauth2/token",
     "AWS_REGION": "us-east-1",
     "AIRTABLE_API_TOKEN": "api_key",
     "AIRTABLE_BASES": "base_id",
+    "CCP_SCOPE": "ccp-scope",
+    "MPT_KEY_VAULT_NAME": "mpt-key-vault",
+    "CCP_KEY_VAULT_SECRET_NAME": "ccp-openid-token-secret-name",
+    "CCP_MPT_API_URL": "mpt-api-url",
+    "AZURE_CLIENT_ID": "azure_client_id",
+    "AZURE_TENANT_ID": "azure_tenant_id",
+    "AZURE_CLIENT_CERTIFICATE_PASSWORD": "azure_client_certificate_password",
+    "AZURE_CLIENT_CERTIFICATE_PATH": "azure_client_certificate_path",
 }
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"

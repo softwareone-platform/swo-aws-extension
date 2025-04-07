@@ -1282,3 +1282,18 @@ def pool_notification(mocker):
     pool_notification.status = NotificationStatusEnum.PENDING
 
     return pool_notification
+
+
+@pytest.fixture()
+def mock_key_vault_secret_value():
+    return "secret-value"
+
+
+@pytest.fixture()
+def mock_valid_access_token_response():
+    return {"access_token": "access-token"}
+
+
+@pytest.fixture()
+def mock_oauth_post_url():
+    return "https://example.com/oauth2/token"
