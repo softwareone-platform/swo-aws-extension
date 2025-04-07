@@ -284,3 +284,31 @@ class AWSClient:
                 raise extension_exception from e
             else:
                 raise
+
+    @wrap_boto3_error
+    def describe_organization(self):
+        """
+        Describe organization.
+
+        :param email: The email of the account.
+        :param account_name: The name of the account.
+        :param role_name: The role name. By defaults: OrganizationAccountAccessRole
+        :response {
+                        "MasterAccountArn":
+                        "arn:aws:organizations::111111111111:account/o-exampleorgid/111111111111",
+                        "MasterAccountEmail": "bill@example.com",
+                        "MasterAccountId": "111111111111",
+                        "Id": "o-exampleorgid",
+                        "FeatureSet": "ALL",
+                        "Arn": "arn:aws:organizations::111111111111:organization/o-exampleorgid",
+                        "AvailablePolicyTypes": [
+                                {
+                                        "Status": "ENABLED",
+                                        "Type": "SERVICE_CONTROL_POLICY"
+                                }
+                        ]
+                }
+        """
+        org_client = self._get_organization_client()
+        response = org_client.describe_organization()
+        return response.get("Organization", None)

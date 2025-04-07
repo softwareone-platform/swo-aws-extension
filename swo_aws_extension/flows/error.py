@@ -35,3 +35,8 @@ ERR_TERMINATION_AWS = ValidationError(
     "account using the AWS Organizations console, then select to leave the organization. "
     "You will then be prompted to enter any missing information.",
 )
+
+ERR_TRANSFER_WITH_ORG_MISSING_MPA_ID = ValidationError(
+    "AWS006",
+    "Account id is empty. Please provide an account id.",
+)

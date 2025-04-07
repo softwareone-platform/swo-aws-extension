@@ -1,6 +1,6 @@
 import logging
 
-from mpt_extension_sdk.flows.pipeline import Step
+from mpt_extension_sdk.flows.pipeline import NextStep, Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
@@ -105,3 +105,83 @@ class AssignMPA(Step):
 
         logger.info(f"- Next - Master Payer Account {context.mpa_account} assigned.")
         next_step(client, context)
+
+
+class AssignTransferMPAStep(Step):
+    def __init__(self, config, role_name):
+        self._config = config
+        self._role_name = role_name
+
+    def setup_aws(self, context: PurchaseContext):
+        context.aws_client = AWSClient(self._config, context.mpa_account, self._role_name)
+
+    def validate_mpa_credentials(self, context: PurchaseContext):
+        if not context.aws_client:
+            raise RuntimeError("AssignTransferMPAStep - AWS client is not set in context")
+        context.aws_client.describe_organization()
+
+    def __call__(self, client: MPTClient, context: PurchaseContext, next_step: NextStep):
+        """
+        If is a transfer account in phase ASSIGN_MPA:
+        - Copy the master payer id to fulfillment mpa account id
+        - Check access to the account
+        - Set the phase to CREATE_SUBSCRIPTIONS
+        """
+        is_transfer_with_organization = (
+            context.is_type_transfer_with_organization() and context.is_purchase_order()
+        )
+        if not is_transfer_with_organization:
+            logger.info(f"{context.order_id} - Skipping - It is not a transfer with organization")
+            next_step(client, context)
+            return
+
+        if get_phase(context.order) != PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION:
+            logger.info(
+                f"{context.order_id} - Skipping - Current phase is '{get_phase(context.order)}',"
+                f" skipping as it is not '{PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION}'"
+            )
+            next_step(client, context)
+            return
+
+        if not context.mpa_account:
+            logger.info(
+                f"{context.order_id} - Action - MPA account is not set in context. "
+                f"Setting to {context.order_master_payer_id}"
+            )
+            context.order = set_mpa_account_id(
+                context.order,
+                context.order_master_payer_id,
+            )
+            update_order(client, context.order_id, parameters=context.order["parameters"])
+            logger.info(
+                f"{context.order_id} - Action - Order updated with MPA account "
+                f"`{context.mpa_account}`. "
+            )
+
+        try:
+            if not context.aws_client:
+                self.setup_aws(context)
+            self.validate_mpa_credentials(context)
+            context.order = set_phase(context.order, PhasesEnum.CREATE_SUBSCRIPTIONS)
+            logger.info(
+                f"{context.order_id} - Action - Update phase to {PhasesEnum.CREATE_SUBSCRIPTIONS}"
+            )
+            update_order(client, context.order_id, parameters=context.order["parameters"])
+            logger.info(
+                f"{context.order_id} - Next - Validated Linked MPA account done."
+                f" Proceeding to next step"
+            )
+            next_step(client, context)
+        except AWSError as e:
+            logger.exception(
+                f"- Error- Failed to retrieve MPA credentials for {context.mpa_account}: {e}"
+            )
+            credentials_error = str(e)
+            title = (f"Transfer with Organization MPA: {context.mpa_account} "
+                     f"failed to retrieve credentials.")
+            message = (
+                f"The transfer with organization Master Payer Account {context.mpa_account} is "
+                f"failing with error: {credentials_error}"
+            )
+            send_error(title, message)
+            return
