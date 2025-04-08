@@ -183,5 +183,8 @@ EXTENSION_CONFIG = {
     "AWS_REGION": "us-east-1",
     "AIRTABLE_API_TOKEN": "api_key",
     "AIRTABLE_BASES": "base_id",
+    "CCP_OAUTH_SCOPE": "oauth_scope",
+    "CCP_API_BASE_URL": "https://example.com",
+    "MINIMUM_MPA_THRESHOLD": 3,
 }
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"

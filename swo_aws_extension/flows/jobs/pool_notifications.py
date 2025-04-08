@@ -87,7 +87,7 @@ def create_new_notification(crm_client, pls_enabled, notification_type, summary,
     logger.info(f"Airtable Pending notifications created for PLS enabled: {pls_enabled}")
 
 
-def check_pool_accounts_notifications() -> None:
+def check_pool_accounts_notifications(config) -> None:
     """
     Check the pool accounts notifications.
     """
@@ -111,7 +111,7 @@ def check_pool_accounts_notifications() -> None:
             create_new_notification(
                 crm_client, pls_enabled, NotificationTypeEnum.EMPTY, EMPTY_SUMMARY, EMPTY_TITLE
             )
-        elif len(available_mpa) <= 3:
+        elif len(available_mpa) <= config.minimum_mpa_threshold:
             create_new_notification(
                 crm_client,
                 pls_enabled,

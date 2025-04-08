@@ -23,6 +23,7 @@ from swo_aws_extension.flows.steps import (
     SetupPurchaseContext,
     ValidatePurchaseTransferWithoutOrganizationStep,
 )
+from swo_aws_extension.flows.steps.ccp_onboard import CCPOnboard
 
 config = Config()
 
@@ -33,6 +34,7 @@ purchase = Pipeline(
     MPAPreConfiguration(),
     CreateLinkedAccount(),
     CreateSubscription(),
+    CCPOnboard(config),
     CompletePurchaseOrder("purchase_order"),
 )
 

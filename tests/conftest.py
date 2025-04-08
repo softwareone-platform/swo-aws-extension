@@ -26,6 +26,7 @@ from swo_aws_extension.constants import (
     TerminationParameterChoices,
 )
 from swo_aws_extension.parameters import FulfillmentParametersEnum, OrderParametersEnum
+from swo_ccp_client.client import CCPClient
 from swo_crm_service_client import CRMServiceClient
 
 PARAM_COMPANY_NAME = "ACME Inc"
@@ -33,6 +34,7 @@ AWESOME_PRODUCT = "Awesome product"
 CREATED_AT = "2023-12-14T18:02:16.9359"
 META = "$meta"
 ACCOUNT_EMAIL = "test@aws.com"
+ACCOUNT_NAME = "Account Name"
 
 
 @pytest.fixture()
@@ -72,7 +74,7 @@ def order_parameters_factory(constraints):
             },
             {
                 "id": "PAR-1234-5679",
-                "name": "Account Name",
+                "name": ACCOUNT_NAME,
                 "externalId": OrderParametersEnum.ACCOUNT_NAME,
                 "type": "SingleLineText",
                 "value": account_name,
@@ -135,6 +137,7 @@ def fulfillment_parameters_factory():
         account_request_id="",
         crm_ticket_id="",
         existing_account_crm_ticket="",
+        ccp_engagement_id="",
     ):
         return [
             {
@@ -171,6 +174,13 @@ def fulfillment_parameters_factory():
                 "externalId": FulfillmentParametersEnum.EXISTING_ACCOUNT_CRM_TICKET,
                 "type": "SingleLineText",
                 "value": existing_account_crm_ticket,
+            },
+            {
+                "id": "PAR-1234-5679",
+                "name": "CCP Engagement ID",
+                "externalId": FulfillmentParametersEnum.CCP_ENGAGEMENT_ID,
+                "type": "SingleLineText",
+                "value": ccp_engagement_id,
             },
         ]
 
@@ -1280,12 +1290,12 @@ def mpa_pool(mocker):
     mpa_pool = mocker.MagicMock()
     mpa_pool.account_id = "Account Id"
     mpa_pool.account_email = "test@email.com"
-    mpa_pool.account_name = "Account Name"
+    mpa_pool.account_name = ACCOUNT_NAME
     mpa_pool.pls_enabled = True
     mpa_pool.status = "Ready"
     mpa_pool.agreement_id = ""
     mpa_pool.client_id = ""
-    mpa_pool.scu = ""
+    mpa_pool.scu = "XX-SCU-200500"
     mpa_pool.buyer_id = ""
 
     return mpa_pool
@@ -1312,3 +1322,162 @@ def service_client(mocker):
         return_value=service_client_mock,
     )
     return service_client_mock
+
+
+@pytest.fixture()
+def ccp_client(mocker, config):
+    mocker.patch(
+        "swo_ccp_client.client.get_openid_token", return_value={"access_token": "test_access_token"}
+    )
+    return CCPClient(config)
+
+
+@pytest.fixture()
+def mock_onboard_customer_response():
+    return [
+        {
+            "id": "73ae391e-69de-472c-8d05-2f7feb173207",
+            "link": {
+                "href": "https://api-dev.softwareone.cloud/services/aws-essentials/customer/XX-SCU-200500/account/626581064822?api-version=v2"
+            },
+        },
+        {
+            "id": "73ae391e-69de-472c-8d05-2f7feb173207",
+            "engagement": {
+                "href": "https://api-dev.softwareone.cloud/services/aws-essentials/customer/engagement/73ae391e-69de-472c-8d05-2f7feb173207?api-version=v2"
+            },
+        },
+    ]
+
+
+@pytest.fixture()
+def onboard_customer_factory():
+    def _onboard_customer(
+        feature_pls="enabled",
+    ):
+        return {
+            "customerName": ACCOUNT_NAME,
+            "customerSCU": "XX-SCU-200500",
+            "accountId": "123456789012",
+            "services": {"isManaged": True, "isSamlEnabled": True, "isBillingEnabled": True},
+            "featurePLS": feature_pls,
+        }
+
+    return _onboard_customer
+
+
+@pytest.fixture()
+def onboard_customer_status_factory():
+    def _onboard_customer_status(
+        engagement_state="Running",
+    ):
+        return {
+            "engagementId": "73ae391e-69de-472c-8d05-2f7feb173207",
+            "numberOfEvents": 1,
+            "events": [
+                {
+                    "eventId": "241d3696-dbde-4877-91ce-0412d8c15ce4",
+                    "eventName": "AWS Essentials Onboarding",
+                    "numberOfTasks": 11,
+                    "tasks": [
+                        {
+                            "taskId": "b5b7900c-51ad-47b1-a44d-55ee0093aa2a",
+                            "taskName": "Notify CDE api",
+                            "taskState": "Succeeded",
+                            "message": "",
+                            "startedAt": 1743768528,
+                            "endedAt": 1743768528,
+                        },
+                        {
+                            "taskId": "fe26123f-4e27-4884-b658-b8e5ca880047",
+                            "taskName": "Write customer data into database",
+                            "taskState": "Succeeded",
+                            "message": "",
+                            "startedAt": 1743768528,
+                            "endedAt": 1743768528,
+                        },
+                        {
+                            "taskId": "fc5047c4-82ad-4292-b0fe-3740d58c2771",
+                            "taskName": "Create EntraID Enterprise Application",
+                            "taskState": "Succeeded",
+                            "message": "",
+                            "startedAt": 1743768528,
+                            "endedAt": 1743768528,
+                        },
+                        {
+                            "taskId": "59d8ffa7-4a6b-41fd-afc5-6bdb99fa7539",
+                            "taskName": "Create EntraID customer groups",
+                            "taskState": "Succeeded",
+                            "message": "",
+                            "startedAt": 1743768528,
+                            "endedAt": 1743768528,
+                        },
+                        {
+                            "taskId": "382ef3e4-8067-4e30-b85e-53f91a091e8b",
+                            "taskName": "Configure Enterprise Application for SAML federation",
+                            "taskState": "Succeeded",
+                            "message": "",
+                            "startedAt": 1743768557,
+                            "endedAt": 1743768557,
+                        },
+                        {
+                            "taskId": "2bcf8889-52b1-4f53-9917-4bd78cb0103c",
+                            "taskName": "Probe SAML credentials",
+                            "taskState": "Succeeded",
+                            "message": "",
+                            "startedAt": 1743772412,
+                            "endedAt": 1743772412,
+                        },
+                        {
+                            "taskId": "cc1edf34-a5b3-4d30-ade6-2e581d0893aa",
+                            "taskName": "Trigger Enterprise Application provisioning job",
+                            "taskState": "Succeeded",
+                            "message": "",
+                            "startedAt": 1743772412,
+                            "endedAt": 1743772412,
+                        },
+                        {
+                            "taskId": "8d7db215-ef1e-4570-ac88-d21e9bdfe02b",
+                            "taskName": "Create Provisioning job for SAML federation",
+                            "taskState": "Succeeded",
+                            "message": "",
+                            "startedAt": 1743772416,
+                            "endedAt": 1743772416,
+                        },
+                        {
+                            "taskId": "b91de185-3a9f-4763-870f-f7ebcd5d78cc",
+                            "taskName": "Save AWS Credentials",
+                            "taskState": "succeeded",
+                            "message": "",
+                            "startedAt": 1743772453,
+                            "endedAt": 1743772453,
+                        },
+                        {
+                            "taskId": "ec3e7626-036b-4b3d-b31e-39262b779bbc",
+                            "taskName": "Assign SAML roles to customer groups",
+                            "taskState": "Succeeded",
+                            "message": "",
+                            "startedAt": 1743772827,
+                            "endedAt": 1743772827,
+                        },
+                        {
+                            "taskId": "08db11d3-ef3f-48ed-b068-5838e4b5f8c3",
+                            "taskName": "Execute AWS stacks",
+                            "taskState": "Succeeded",
+                            "message": "Instance 1b0a2452-b2b9-4777-9dfd-9548dbbd3aa7 was"
+                            " successfully created",
+                            "startedAt": 1743773642,
+                            "endedAt": 1743773642,
+                        },
+                    ],
+                    "eventState": "Succeeded",
+                    "startedAt": 1743768528,
+                    "endedAt": 1743773642,
+                }
+            ],
+            "engagementState": engagement_state,
+            "startedAt": 1743768528,
+            "endedAt": 1743773642,
+        }
+
+    return _onboard_customer_status

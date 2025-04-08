@@ -30,6 +30,7 @@ class FulfillmentParametersEnum(StrEnum):
     ACCOUNT_NAME = "accountName"
     CRM_TICKET_ID = "crmTicketId"
     EXISTING_ACCOUNT_CRM_TICKET = "existingAccountCRMTicket"
+    CCP_ENGAGEMENT_ID = "ccpEngagementId"
 
 
 def get_parameter(parameter_phase, source, param_external_id):
@@ -473,6 +474,40 @@ def set_link_account_service_ticket_id(order, crm_ticket_id):
         FulfillmentParametersEnum.EXISTING_ACCOUNT_CRM_TICKET,
     )
     param["value"] = crm_ticket_id
+    return updated_order
+
+
+def get_ccp_engagement_id(source):
+    """
+    Get the CCP engagement ID from the corresponding fulfillment
+    parameter or None if it is not set.
+    Args:
+        source (dict): The order that contains the parameter.
+    Returns:
+        str: The CCP engagement ID provided by client or None if it isn't set.
+    """
+    param = get_fulfillment_parameter(
+        source,
+        FulfillmentParametersEnum.CCP_ENGAGEMENT_ID,
+    )
+    return param.get("value", None)
+
+
+def set_ccp_engagement_id(source, ccp_customer_url):
+    """
+    Set the CCP engagement ID on the fulfillment parameters.
+    Args:
+        source (dict): The order that contains the parameter.
+        ccp_customer_url (str): The CCP engagement ID provided by client.
+    Returns:
+        dict: The order updated.
+    """
+    updated_order = copy.deepcopy(source)
+    param = get_fulfillment_parameter(
+        updated_order,
+        FulfillmentParametersEnum.CCP_ENGAGEMENT_ID,
+    )
+    param["value"] = ccp_customer_url
     return updated_order
 
 
