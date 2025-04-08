@@ -32,13 +32,10 @@ class CreateSubscription(Step):
             return
         if context.is_purchase_order() and context.is_type_transfer_with_organization():
             self.create_subscriptions_from_organization(client, context)
-        elif context.is_purchase_order() and context.is_type_transfer_without_organization():
-            self.create_subscriptions_from_organization(client, context)
         elif context.is_purchase_order() or context.is_change_order():
             self.create_subscription_from_new_account(client, context)
         context.order = set_phase(context.order, PhasesEnum.CCP_ONBOARD)
         update_order(client, context.order_id, parameters=context.order["parameters"])
-
         logger.info(
             f"'{PhasesEnum.CREATE_SUBSCRIPTIONS}' completed successfully. "
             f"Proceeding to next phase '{PhasesEnum.CCP_ONBOARD}'"

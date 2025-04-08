@@ -103,7 +103,6 @@ def test_no_account_ids(mocker, order_factory, order_parameters_factory):
 def test_too_many_accounts(mocker, order_factory, order_parameters_factory):
     logger_mock = mocker.patch("swo_aws_extension.flows.steps.validate.logger")
     accounts = [f"{i:012}" for i in range(1, 22)]
-    print(accounts)
     order = order_factory(
         order_parameters=order_parameters_factory(
             transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
