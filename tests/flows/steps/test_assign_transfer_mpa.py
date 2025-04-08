@@ -128,12 +128,13 @@ def test_assign_transfer_failed_aws_access(
     mock_steup_aws.assert_called_once()
     assert get_phase(context.order) == PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION
     next_step_mock.assert_not_called()
-    expected_error_title = ('Transfer with Organization MPA: 111111111111 '
-                            'failed to retrieve credentials.')
+    expected_error_title = (
+        "Transfer with Organization MPA: 111111111111 " "failed to retrieve credentials."
+    )
     expected_message = (
-            "The transfer with organization Master Payer Account 111111111111 is failing "
-            "with error: ('301', 'Failed to assume role')"
-        )
+        "The transfer with organization Master Payer Account 111111111111 is failing "
+        "with error: ('301', 'Failed to assume role')"
+    )
     mock_send_error.assert_called_once_with(expected_error_title, expected_message)
 
 
@@ -164,8 +165,9 @@ def test_skip_by_phase(
     context = PurchaseContext(aws_client=None, order=order)
     step = AssignTransferMPAStep(config, "role_name")
     step(mpt_client_mock, context, next_step_mock)
-    mock_validate.assert_not_called() # First method in step processing
+    mock_validate.assert_not_called()  # First method in step processing
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
+
 
 def test_skip_not_transfer(
     mocker,
@@ -194,6 +196,5 @@ def test_skip_not_transfer(
     context = PurchaseContext(aws_client=None, order=order)
     step = AssignTransferMPAStep(config, "role_name")
     step(mpt_client_mock, context, next_step_mock)
-    mock_validate.assert_not_called() # First method in step processing
+    mock_validate.assert_not_called()  # First method in step processing
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
-

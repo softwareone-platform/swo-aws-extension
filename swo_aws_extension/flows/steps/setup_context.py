@@ -86,7 +86,7 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
             context.order = set_phase(context.order, PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION)
             update_order(client, context.order_id, parameters=context.order["parameters"])
             logger.info(
-                f"{context.order_id} - Action - Updated phase " f"to {get_phase(context.order)}"
+                f"{context.order_id} - Action - Updated phase to {get_phase(context.order)}"
             )
 
         if not context.order_master_payer_id:
@@ -109,4 +109,21 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
             f"{context.order_id} - Continue - Setup purchase transfer with organization completed "
             f"successfully"
         )
+        next_step(client, context)
+
+
+class SetupContextPurchaseTransferWithoutOrganizationStep(SetupContext):
+    def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
+        phase = get_phase(context.order)
+        if not phase:
+            context.order = set_phase(context.order, PhasesEnum.ASSIGN_MPA)
+            context.order = update_order(
+                client, context.order_id, parameters=context.order["parameters"]
+            )
+            logger.info(
+                f"{context.order_id} - Action - Updated phase  to {get_phase(context.order)}"
+            )
+        if context.mpa_account:
+            self.setup_aws(context)
+        logger.info(f"{context.order_id} - Next - SetupPurchaseContext completed successfully")
         next_step(client, context)

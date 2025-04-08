@@ -40,3 +40,40 @@ def test_close_account_context_multiple(
         "000000002",
         "000000003",
     ]
+
+
+def test_purchase_context_get_account_ids(
+    mocker, order_factory, order_parameters_factory, fulfillment_parameters_factory
+):
+    def create_order(order_ids):
+        return order_factory(
+            order_parameters=order_parameters_factory(account_id=order_ids),
+            fulfillment_parameters=fulfillment_parameters_factory(),
+        )
+
+    order_ids = """
+    123456789
+    123456788
+    123456787
+    123456789
+
+    """
+
+    context = PurchaseContext(order=create_order(order_ids))
+    assert context.get_account_ids() == {"123456789", "123456787", "123456788"}
+
+    order_ids = ""
+    context = PurchaseContext(order=create_order(order_ids))
+    assert context.get_account_ids() == set()
+
+    order_ids = " "
+    context = PurchaseContext(order=create_order(order_ids))
+    assert context.get_account_ids() == set()
+
+    order_ids = None
+    context = PurchaseContext(order=create_order(order_ids))
+    assert context.get_account_ids() == set()
+
+    order_ids = "123456789"
+    context = PurchaseContext(order=create_order(order_ids))
+    assert context.get_account_ids() == {"123456789"}

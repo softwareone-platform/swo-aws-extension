@@ -22,19 +22,35 @@ def test_aws_http_error():
 
 
 def test_aws_openid_error():
-    payload = {"code": "InvalidToken", "message": "The provided token is invalid."}
+    payload = {
+        "error": "invalid_client",
+        "error_description": "XXXYYYZZZ: The provided client secret keys for app [...]",
+        "error_codes": [7000222],
+        "timestamp": "2025-04-10 13:54:58Z",
+        "trace_id": "69f6231f-ceea-474a-8c9e-fb5355124900",
+        "correlation_id": "8968464e-aee5-4469-923e-d1960b29f51d",
+        "error_uri": "https://login.microsoftonline.com/error?code=7000222",
+    }
     error = AWSOpenIdError(401, payload)
-    assert str(error) == "InvalidToken - The provided token is invalid."
+    assert str(error) == "invalid_client - XXXYYYZZZ: The provided client secret keys for app [...]"
 
 
 def test_aws_openid_error_additional_details():
     payload = {
-        "code": "InvalidToken",
-        "message": "The provided token is invalid.",
+        "error": "invalid_client",
+        "error_description": "XXXYYYZZZ: The provided client secret keys for app [...]",
+        "error_codes": [7000222],
+        "timestamp": "2025-04-10 13:54:58Z",
+        "trace_id": "69f6231f-ceea-474a-8c9e-fb5355124900",
+        "correlation_id": "8968464e-aee5-4469-923e-d1960b29f51d",
+        "error_uri": "https://login.microsoftonline.com/error?code=7000222",
         "additionalDetails": ["Detail1", "Detail2"],
     }
     error = AWSOpenIdError(401, payload)
-    assert str(error) == "InvalidToken - The provided token is invalid.: Detail1, Detail2"
+    assert str(error) == (
+        "invalid_client - XXXYYYZZZ: The provided client secret keys for app [...]: "
+        "Detail1, Detail2"
+    )
 
 
 def test_wrap_http_error_http_error(mocker):

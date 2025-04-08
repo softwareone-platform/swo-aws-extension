@@ -8,6 +8,7 @@ from swo_aws_extension.flows.fulfillment.pipelines import (
     change_order,
     purchase,
     purchase_transfer_with_organization,
+    purchase_transfer_without_organization,
     terminate,
 )
 from swo_aws_extension.flows.order import (
@@ -37,11 +38,24 @@ def fulfill_order(client, context):
     logger.info(f"Start processing {context.order_type} order {context.order_id}")
     try:
         if context.is_purchase_order():
-            purchase_context = PurchaseContext.from_context(context)
+            context = PurchaseContext.from_context(context)  # type: PurchaseContext
+            logger.info(f"Context type: {type(context)} {context}")
             if context.is_type_transfer_with_organization():
-                purchase_transfer_with_organization.run(client, purchase_context)
+                logger.info(
+                    f"{context.order_id} - Pipeline - Starting: "
+                    f"purchase_transfer_with_organization"
+                )
+                purchase_transfer_with_organization.run(client, context)
                 return
-            purchase.run(client, purchase_context)
+            elif context.is_type_transfer_without_organization():
+                logger.info(
+                    f"{context.order_id} - Pipeline - Starting: "
+                    f"purchase_transfer_without_organization"
+                )
+                purchase_transfer_without_organization.run(client, context)
+            else:
+                logger.info(f"{context.order_id} - Pipeline - Starting: purchase")
+                purchase.run(client, context)
         elif context.is_change_order():
             logger.info("Processing change order")
             change_order.run(client, context)

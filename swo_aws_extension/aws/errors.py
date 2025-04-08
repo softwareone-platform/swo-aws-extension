@@ -27,8 +27,8 @@ class AWSOpenIdError(AWSHttpError):
     def __init__(self, status_code: int, payload: dict) -> None:
         super().__init__(status_code, json.dumps(payload))
         self.payload: dict = payload
-        self.code: str = payload["code"]
-        self.message: str = payload["message"]
+        self.code: str = payload["error"]
+        self.message: str = payload["error_description"]
         self.details: list = payload.get("additionalDetails", [])
 
     def __str__(self) -> str:
