@@ -312,3 +312,83 @@ class AWSClient:
         org_client = self._get_organization_client()
         response = org_client.describe_organization()
         return response.get("Organization", None)
+
+    def invite_account_to_organization(self, account_id, notes=None):
+        """
+        Invite an AWS account to join the organization.
+
+        Args:
+            account_id (str): The AWS account ID to invite.
+
+        Returns (Handshake):
+            dict: A dictionary containing details of the handshake, including:
+                - Id (str): The handshake ID.
+                - Arn (str): The Amazon Resource Name (ARN) of the handshake.
+                - Parties (list[dict]): A list of parties involved in the handshake, each with:
+                    - Id (str): The identifier of the party.
+                    - Type (str): The type of the party ('ACCOUNT', 'ORGANIZATION', or 'EMAIL').
+                - State (str): The current state of the handshake
+                   ('REQUESTED', 'OPEN', 'CANCELED', 'ACCEPTED', 'DECLINED', 'EXPIRED').
+                - RequestedTimestamp (datetime): The time the handshake was requested.
+                - ExpirationTimestamp (datetime): The time the handshake expires.
+                - Action (str): The action associated with the handshake
+                    ('INVITE', 'ENABLE_ALL_FEATURES', etc.).
+                - Resources (list[dict]): A list of resources associated with the handshake.
+
+        Raises:
+            Organizations.Client.exceptions.AccessDeniedException: If access is denied.
+            Organizations.Client.exceptions.AWSOrganizationsNotInUseException:
+                If AWS Organizations is not in use.
+            Organizations.Client.exceptions.AccountOwnerNotVerifiedException:
+                If the account owner is not verified.
+            Organizations.Client.exceptions.ConcurrentModificationException:
+                If a concurrent modification occurs.
+            Organizations.Client.exceptions.HandshakeConstraintViolationException:
+                If handshake constraints are violated.
+            Organizations.Client.exceptions.DuplicateHandshakeException:
+                If a duplicate handshake is detected.
+            Organizations.Client.exceptions.ConstraintViolationException:
+                If a constraint is violated.
+            Organizations.Client.exceptions.InvalidInputException: If the input is invalid.
+            Organizations.Client.exceptions.FinalizingOrganizationException:
+                If the organization is being finalized.
+            Organizations.Client.exceptions.ServiceException: If a service error occurs.
+            Organizations.Client.exceptions.TooManyRequestsException: If too many requests are made.
+
+        see: https://boto3.amazonaws.com/v1/documentation/api/1.26.92/reference/services/organizations/client/invite_account_to_organization.html
+
+        """
+        org_client = self._get_organization_client()
+        response = org_client.invite_account_to_organization(
+            Target={"Id": account_id, "Type": "ACCOUNT"},
+            Notes=notes,
+        )
+        return response.get("Handshake", None)
+
+    def list_handshakes_for_organization(self):
+        """
+        List all handshakes in the organization.
+
+        returns: list(dict) - List of handshakes
+        """
+
+        org_client = self._get_organization_client()
+        filter_handshake = {"ActionType": "INVITE"}
+        response = org_client.list_handshakes_for_organization(Filter=filter_handshake)
+        handshakes = response.get("Handshakes", [])
+        while response.get("NextToken"):
+            response = org_client.list_handshakes_for_organization(
+                NextToken=response["NextToken"], Filter=filter_handshake
+            )
+            handshakes.extend(response.get("Handshakes", []))
+        return handshakes
+
+    def cancel_handshake(self, handshake_id):
+        """
+        Cancel a handshake.
+
+        :param handshake_id: The ID of the handshake to cancel.
+        :return: None
+        """
+        org_client = self._get_organization_client()
+        return org_client.cancel_handshake(HandshakeId=handshake_id)

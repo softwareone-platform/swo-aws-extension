@@ -4,11 +4,14 @@ import pytest
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.aws.client import AWSClient
+from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.setup_context import (
     SetupContext,
+    SetupContextPurchaseTransferWithoutOrganizationStep,
     SetupPurchaseContext,
 )
+from swo_aws_extension.parameters import get_phase
 
 
 def test_setup_context_get_mpa_credentials(mocker, order_factory, config, requests_mocker):
@@ -131,3 +134,41 @@ def test_setup_context_get_account_creation_status(
         CreateAccountRequestId="account_request_id"
     )
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
+
+
+def test_transfer_without_organization(
+    mocker, config, order_factory, fulfillment_parameters_factory
+):
+    """
+    Tests:
+    - Next step is called
+    - phase is initialized
+    """
+
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase="",
+            mpa_account_id="123456789012",
+        ),
+    )
+
+    def dummy_update_order(_client, _id, parameters):
+        order["parameters"] = parameters
+        return order
+
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.update_order",
+        side_effect=dummy_update_order,
+    )
+
+    setup_aws_mock = mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.SetupContextPurchaseTransferWithoutOrganizationStep.setup_aws"
+    )
+
+    context = PurchaseContext(order=order)
+    next_step = mocker.MagicMock()
+    step = SetupContextPurchaseTransferWithoutOrganizationStep(config, "role_name")
+    step(mocker.MagicMock(), context, next_step)
+    next_step.assert_called_once()
+    assert get_phase(context.order) == PhasesEnum.ASSIGN_MPA
+    setup_aws_mock.assert_called_once()

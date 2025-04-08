@@ -7,6 +7,8 @@ from swo_aws_extension.utils import find_first
 PARAM_PHASE_ORDERING = "ordering"
 PARAM_PHASE_FULFILLMENT = "fulfillment"
 
+MAX_ACCOUNT_TRANSFER = 20
+
 
 class OrderParametersEnum(StrEnum):
     ACCOUNT_TYPE = "accountType"
@@ -221,6 +223,26 @@ def get_account_email(source):
         OrderParametersEnum.ROOT_ACCOUNT_EMAIL,
     )
     return param.get("value", None)
+
+
+def set_account_email(order, account_email):
+    """
+    Set the email on the ordering parameters.
+
+    Args:
+        order (dict): The order that contains the parameter.
+        account_email (str): The email of the order.
+
+    Returns:
+        dict: The order updated.
+    """
+    updated_order = copy.deepcopy(order)
+    param = get_ordering_parameter(
+        updated_order,
+        OrderParametersEnum.ROOT_ACCOUNT_EMAIL,
+    )
+    param["value"] = account_email
+    return updated_order
 
 
 def get_account_name(source):
@@ -472,3 +494,22 @@ def set_link_account_service_ticket_id(order, crm_ticket_id):
     )
     param["value"] = crm_ticket_id
     return updated_order
+
+
+def get_account_id(source):
+    """
+    Get the account ID from the corresponding ordering parameter or an empty
+     string if it is not set.
+
+    Args:
+        source (dict): The business object from which the account ID
+        should be retrieved.
+
+    Returns:
+        str: The account ID of the order.
+    """
+    param = get_ordering_parameter(
+        source,
+        OrderParametersEnum.ACCOUNT_ID,
+    )
+    return param.get("value", None)

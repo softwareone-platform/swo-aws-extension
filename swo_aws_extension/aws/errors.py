@@ -27,8 +27,8 @@ class AWSOpenIdError(AWSHttpError):
     def __init__(self, status_code: int, payload: dict) -> None:
         super().__init__(status_code, json.dumps(payload))
         self.payload: dict = payload
-        self.code: str = payload["code"]
-        self.message: str = payload["message"]
+        self.code: str = payload["error"]
+        self.message: str = payload["error_description"]
         self.details: list = payload.get("additionalDetails", [])
 
     def __str__(self) -> str:
@@ -128,6 +128,7 @@ def wrap_http_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]:
         except HTTPError as e:
             logging.exception(f"HTTP error in {func.__name__}: {e}")
             try:
+                print(f"Response: {e.response.json()}")
                 raise AWSOpenIdError(e.response.status_code, e.response.json()) from e
             except JSONDecodeError:
                 raise AWSHttpError(e.response.status_code, e.response.content.decode()) from e
