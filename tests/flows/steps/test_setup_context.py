@@ -12,11 +12,27 @@ from swo_aws_extension.flows.steps.setup_context import (
     SetupPurchaseContext,
 )
 from swo_aws_extension.parameters import get_phase
+from swo_ccp_client.client import CCPClient
 
 
 def test_setup_context_get_mpa_credentials(
-    mocker, order_factory, config, requests_mocker, agreement_factory
+    mocker,
+    monkeypatch,
+    order_factory,
+    config,
+    requests_mocker,
+    agreement_factory,
+    mock_mpt_key_vault_name
 ):
+    monkeypatch.setenv("MPT_KEY_VAULT_NAME", mock_mpt_key_vault_name)
+    mocker.patch(
+        "swo_ccp_client.client.CCPClient.get_secret_from_key_vault", return_value="client_secret"
+    )
+    mocker.patch.object(
+        CCPClient,
+        "get_secret_from_key_vault",
+        return_value="client_secret",
+    )
     role_name = "test_role"
     order = order_factory(agreement=agreement_factory(vendor_id="123456789012"))
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -85,6 +101,11 @@ def test_setup_purchase_context_get_mpa_credentials(
     requests_mocker.post(
         config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=200
     )
+    mocker.patch.object(
+        CCPClient,
+        "get_secret_from_key_vault",
+        return_value="client_secret",
+    )
 
     mock_boto3_client = mocker.patch("boto3.client")
     mock_client = mock_boto3_client.return_value
@@ -105,6 +126,7 @@ def test_setup_purchase_context_get_mpa_credentials(
 
 
 def test_setup_context_get_account_creation_status(
+    settings,
     mocker,
     order_factory,
     config,
@@ -120,6 +142,14 @@ def test_setup_context_get_account_creation_status(
         )
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
+    mocker.patch(
+        "swo_ccp_client.client.CCPClient.get_secret_from_key_vault", return_value="client_secret"
+    )
+    mocker.patch.object(
+        CCPClient,
+        "get_secret_from_key_vault",
+        return_value="client_secret",
+    )
 
     next_step_mock = mocker.Mock()
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
