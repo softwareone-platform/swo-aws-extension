@@ -177,8 +177,10 @@ class AssignTransferMPAStep(Step):
                 f"- Error- Failed to retrieve MPA credentials for {context.mpa_account}: {e}"
             )
             credentials_error = str(e)
-            title = (f"Transfer with Organization MPA: {context.mpa_account} "
-                     f"failed to retrieve credentials.")
+            title = (
+                f"Transfer with Organization MPA: {context.mpa_account} "
+                f"failed to retrieve credentials."
+            )
             message = (
                 f"The transfer with organization Master Payer Account {context.mpa_account} is "
                 f"failing with error: {credentials_error}"

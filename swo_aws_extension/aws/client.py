@@ -12,6 +12,7 @@ from swo_aws_extension.aws.errors import (
     wrap_boto3_error,
     wrap_http_error,
 )
+from swo_aws_extension.key_vault.ccp import get_ccp_openid_secret
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ class AWSClient:
         url = self.config.ccp_oauth_url
         payload = {
             "client_id": self.config.ccp_client_id,
-            "client_secret": self.config.ccp_client_secret,
+            "client_secret": self._get_client_secret(),
             "grant_type": "client_credentials",
             "scope": self.config.aws_openid_scope,
         }
@@ -83,6 +84,10 @@ class AWSClient:
         logger.info("OpenId Access token issued")
         response_data = response.json()
         return response_data["access_token"]
+
+
+    def _get_client_secret(self):
+        return get_ccp_openid_secret()
 
     @wrap_boto3_error
     def _get_credentials(self):
