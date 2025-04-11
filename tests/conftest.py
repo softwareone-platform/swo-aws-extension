@@ -1004,7 +1004,7 @@ def mock_get_order_for_producer(order, order_factory):
 
 
 @pytest.fixture()
-def aws_client_factory(mocker, requests_mocker):
+def aws_client_factory(mocker, settings, requests_mocker):
     def _aws_client(config, mpa_account_id, role_name):
         requests_mocker.post(
             config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=200
@@ -1018,6 +1018,10 @@ def aws_client_factory(mocker, requests_mocker):
             "SessionToken": "test_session_token",
         }
         mock_client.assume_role_with_web_identity.return_value = {"Credentials": credentials}
+        mocker.patch(
+            "swo_aws_extension.aws.client.AWSClient._get_client_secret",
+            return_value="client_secret"
+        )
         return AWSClient(config, mpa_account_id, role_name), mock_client
 
     return _aws_client
@@ -1312,3 +1316,37 @@ def service_client(mocker):
         return_value=service_client_mock,
     )
     return service_client_mock
+
+
+@pytest.fixture()
+def mock_key_vault_secret_value():
+    return "secret-value"
+
+
+@pytest.fixture()
+def mock_mpt_key_vault_name():
+    return "test-key-vault-name"
+
+
+@pytest.fixture()
+def mock_valid_access_token_response():
+    return {"access_token": "access-token"}
+
+
+@pytest.fixture()
+def mock_oauth_post_url():
+    return "https://ccpoauth.com/oauth2/token"
+
+
+@pytest.fixture()
+def mock_get_secret_response(mock_key_vault_secret_value):
+    return {
+        "clientSecret": mock_key_vault_secret_value
+    }
+
+
+@pytest.fixture()
+def mock_retrieve_secret_url(settings):
+    api_url = settings.EXTENSION_CONFIG["CCP_MPT_API_URL"]
+    client_id = settings.EXTENSION_CONFIG["CCP_CLIENT_ID"]
+    return f"https://{api_url}/process/lighthouse/ad/retrieve/secret/{client_id}?api-version=v1"
