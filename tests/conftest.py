@@ -1531,3 +1531,23 @@ def mock_get_secret_response(mock_key_vault_secret_value):
 @pytest.fixture()
 def mock_token():
     return "test-token"
+
+
+@pytest.fixture()
+def roots_factory():
+    def _roots(
+        policy_types=None,
+    ):
+        policy_types = policy_types or []
+        return {
+            "Roots": [
+                {
+                    "Id": "root_id",
+                    "Arn": "arn:aws:organizations::111111111111:root/o-8ityo3gjdv/root_id",
+                    "Name": "Root",
+                    "PolicyTypes": policy_types,
+                }
+            ]
+        }
+
+    return _roots

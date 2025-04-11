@@ -144,7 +144,6 @@ class CCPClient(Session):
         api_response_data = api_response.json()
         new_client_secret = api_response_data.get("clientSecret", None)
         if not new_client_secret:
-            error = f"{FAILED_TO_GET_SECRET}: " f"{key_vault_name} and secret name: {secret_name}."
             error = f"{FAILED_TO_GET_SECRET}: {key_vault_name} " f"and secret name: {secret_name}."
             logger.error(error)
             send_error(
