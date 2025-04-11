@@ -9,6 +9,7 @@ from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
 from swo_aws_extension.constants import SupportTypesEnum, TransferTypesEnum
 from swo_aws_extension.notifications import send_email_notification
 from swo_aws_extension.parameters import (
+    get_account_id,
     get_master_payer_id,
     get_mpa_account_id,
     get_support_type,
@@ -46,6 +47,9 @@ class InitialAWSContext(BaseContext):
     def is_type_transfer_with_organization(self):
         return get_transfer_type(self.order) == TransferTypesEnum.TRANSFER_WITH_ORGANIZATION
 
+    def is_type_transfer_without_organization(self):
+        return get_transfer_type(self.order) == TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION
+
 
 @dataclass
 class PurchaseContext(InitialAWSContext):
@@ -59,8 +63,19 @@ class PurchaseContext(InitialAWSContext):
         except (AttributeError, KeyError, TypeError):
             return None
 
+    def get_account_ids(self) -> set[str]:
+        """
+        Return the account ids of the order parameter (orderAccountId)
+        cleaned and as a set of strings
+        """
+        accounts_txt = get_account_id(self.order)
+        if not accounts_txt:
+            return set()
+        accounts = {line.strip() for line in accounts_txt.split("\n") if line.strip()}
+        return set(accounts)
+
     def __str__(self):
-        return f"Context: {self.order_id} {self.order_type} - MPA: {self.mpa_account}"
+        return f"PurchaseContext: {self.order_id} {self.order_type} - MPA: {self.mpa_account}"
 
 
 def switch_order_to_query(client, order, template_name=None):

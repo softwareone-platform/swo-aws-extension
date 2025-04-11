@@ -32,10 +32,14 @@ class CreateSubscription(Step):
             return
         if context.is_purchase_order() and context.is_type_transfer_with_organization():
             self.create_subscriptions_from_organization(client, context)
+        elif context.is_purchase_order() and context.is_type_transfer_without_organization():
+            self.create_subscriptions_from_organization(client, context)
         elif context.is_purchase_order() or context.is_change_order():
             self.create_subscription_from_new_account(client, context)
+
         context.order = set_phase(context.order, PhasesEnum.COMPLETED)
         update_order(client, context.order_id, parameters=context.order["parameters"])
+
         logger.info(
             f"'{PhasesEnum.CREATE_SUBSCRIPTIONS}' completed successfully. "
             f"Proceeding to next phase '{PhasesEnum.COMPLETED}'"
@@ -78,12 +82,20 @@ class CreateSubscription(Step):
             account_id = account["Id"]
             account_email = account["Email"]
             account_name = account["Name"]
+            account_state = account["Status"]
+            if account_state != "ACTIVE":
+                logger.info(
+                    f"{context.order_id} - Skipping - "
+                    f"Import Account {account_id} as it is not active"
+                )
+                continue
             if self.subscription_exist_for_account_id(client, context.order_id, account_id):
                 logger.info(
                     f"{context.order_id} - Skipping - Create subscription for "
                     f"account={account_id} email={account_email} as it already exist"
                 )
                 continue
+
             self.add_subscription(
                 client,
                 context,
@@ -118,3 +130,11 @@ class CreateSubscription(Step):
         }
         subscription = create_subscription(client, context.order_id, subscription)
         logger.info(f"{context}: subscription for {account_id} " f'({subscription["id"]}) created')
+
+
+class CreateOrganizationSubscriptions(CreateSubscription):
+    def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+        logger.info(f"{context.order_id} - Start - Create organization subscriptions")
+        self.create_subscriptions_from_organization(client, context)
+        logger.info(f"{context.order_id} - Completed - Create organization subscriptions")
+        next_step(client, context)
