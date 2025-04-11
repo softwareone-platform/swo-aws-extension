@@ -1,4 +1,5 @@
 from swo_aws_extension.flows.steps.assign_mpa import AssignMPA, AssignTransferMPAStep
+from swo_aws_extension.flows.steps.ccp_onboard import CCPOnboard
 from swo_aws_extension.flows.steps.complete_order import (
     CompleteOrder,
     CompletePurchaseOrder,
@@ -47,6 +48,7 @@ __all__ = [
     "SetupContextPurchaseTransferWithOrganizationStep",
     "SetupContextPurchaseTransferWithoutOrganizationStep",
     "AssignMPA",
+    "CCPOnboard",
     "AssignTransferMPAStep",
     "ValidatePurchaseTransferWithoutOrganizationStep",
     "SendInvitationLinksStep",

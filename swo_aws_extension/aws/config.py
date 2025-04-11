@@ -30,6 +30,27 @@ class Config:
         # TODO Logic to get the Secrent from Azure key vault will be done in separate PR
         return settings.EXTENSION_CONFIG["CCP_CLIENT_SECRET"]
 
+    @property
+    def ccp_api_base_url(self) -> str:
+        """
+        Get the base URL for the CCP API.
+        """
+        return settings.EXTENSION_CONFIG["CCP_API_BASE_URL"]
+
+    @property
+    def ccp_oauth_scope(self) -> str:
+        """
+        Get the scope for the CCP OAuth.
+        """
+        return settings.EXTENSION_CONFIG["CCP_OAUTH_SCOPE"]
+
+    @property
+    def minimum_mpa_threshold(self) -> int:
+        """
+        Get the minimum MPA threshold.
+        """
+        return settings.EXTENSION_CONFIG["MINIMUM_MPA_THRESHOLD"]
+
 
 _CONFIG = None
 

@@ -162,13 +162,13 @@ def has_pending_notifications(pls_enabled):
         bool: Whether there are pending notifications for the selected PLS status.
     """
     pool_notification = get_pool_notification_model(AirTableBaseInfo.for_mpa_pool())
-    pending_notifications = pool_notification.all(
+    pending_notifications = pool_notification.first(
         formula=AND(
             FIELD(PLS_ENABLED) if pls_enabled else f"NOT({FIELD(PLS_ENABLED)})",
             EQUAL(FIELD("Status"), STR_VALUE(NotificationStatusEnum.PENDING)),
         )
     )
-    return len(pending_notifications) > 0
+    return bool(pending_notifications)
 
 
 def get_mpa_view_link():
@@ -200,3 +200,19 @@ def create_pool_notification(notification):
 
     pool_notification = get_pool_notification_model(AirTableBaseInfo.for_mpa_pool())
     pool_notification(**notification).save()
+
+
+def get_mpa_account(mpa_account_id):
+    """
+    Get the MPA account from the pool.
+
+    Args:
+        mpa_account_id (str): The MPA account id.
+
+    Returns:
+        MPAAccount: The MPA account.
+    """
+
+    mpa_pool = get_master_payer_account_pool_model(AirTableBaseInfo.for_mpa_pool())
+
+    return mpa_pool.first(formula=EQUAL(FIELD("Account Id"), mpa_account_id))

@@ -39,6 +39,12 @@ class TransferTypesEnum(StrEnum):
     SPLIT_BILLING = "SplitBilling"
 
 
+class CCPOnboardStatusEnum(StrEnum):
+    RUNNING = "Running"
+    SUCCEEDED = "Succeeded"
+    FAILED = "Failed"
+
+
 EMPTY_SUMMARY = (
     "Dear MCoE Team,<br><br>A notification has been generated on the Marketplace "
     "Platform regarding lack of accounts available for {order.awsRegion} .<br>"

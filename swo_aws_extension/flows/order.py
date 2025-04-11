@@ -10,6 +10,7 @@ from swo_aws_extension.constants import SupportTypesEnum, TransferTypesEnum
 from swo_aws_extension.notifications import send_email_notification
 from swo_aws_extension.parameters import (
     get_account_id,
+    get_ccp_engagement_id,
     get_master_payer_id,
     get_mpa_account_id,
     get_support_type,
@@ -73,6 +74,10 @@ class PurchaseContext(InitialAWSContext):
             return set()
         accounts = {line.strip() for line in accounts_txt.split("\n") if line.strip()}
         return set(accounts)
+
+    @property
+    def ccp_engagement_id(self):
+        return get_ccp_engagement_id(self.order)
 
     def __str__(self):
         return f"PurchaseContext: {self.order_id} {self.order_type} - MPA: {self.mpa_account}"

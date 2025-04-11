@@ -8,8 +8,12 @@ from swo_aws_extension.notifications import Button
 from swo_aws_extension.parameters import set_mpa_account_id, set_phase
 
 
-def test_assign_mpa_phase_not_assign_mpa(mocker, order_factory, config, aws_client_factory):
-    order = order_factory()
+def test_assign_mpa_phase_not_assign_mpa(
+    mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED)
+    )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")

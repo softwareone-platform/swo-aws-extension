@@ -4,6 +4,7 @@ from swo_aws_extension.airtable.models import (
     NotificationStatusEnum,
     get_available_mpa_from_pool,
     get_master_payer_account_pool_model,
+    get_mpa_account,
     get_mpa_view_link,
     get_pending_notifications,
     get_pool_notification_model,
@@ -79,11 +80,11 @@ def test_has_pending_notifications(mocker, base_info, pool_notification):
     mock_pool_notification = mocker.patch(
         "swo_aws_extension.airtable.models.get_pool_notification_model"
     )
-    mock_pool_notification.return_value.all.return_value = [pool_notification]
+    mock_pool_notification.return_value.first.return_value = [pool_notification]
     result = has_pending_notifications(True)
     assert result
     mock_pool_notification.assert_called_once_with(base_info)
-    mock_pool_notification.return_value.all.assert_called_once()
+    mock_pool_notification.return_value.first.assert_called_once()
 
 
 def test_get_mpa_view_link(mocker, base_info):
@@ -115,3 +116,14 @@ def test_get_mpa_view_link_error(mocker, base_info):
     mock_mpa_pool.get_table.side_effect = HTTPError()
 
     assert get_mpa_view_link() is None
+
+
+def test_get_mpa_account(mocker, base_info, mpa_pool):
+    master_payer_account_pool = mocker.patch(
+        "swo_aws_extension.airtable.models.get_master_payer_account_pool_model"
+    )
+    master_payer_account_pool.return_value.first.return_value = mpa_pool
+    result = get_mpa_account("Account Id")
+    assert result
+    master_payer_account_pool.assert_called_once_with(base_info)
+    master_payer_account_pool.return_value.first.assert_called_once()
