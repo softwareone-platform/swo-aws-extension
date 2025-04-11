@@ -18,7 +18,7 @@ from swo_aws_extension.flows.order import (
     is_partner_led_support_enabled,
 )
 from swo_aws_extension.notifications import notify_unhandled_exception_in_teams
-from swo_aws_extension.parameters import get_mpa_account_id, get_transfer_type
+from swo_aws_extension.parameters import get_transfer_type
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ def setup_contexts(mpt_client, orders):
     purchase_orders_pls_status_map = {
         order["id"]: is_partner_led_support_enabled(order)
         for order in orders
-        if not get_mpa_account_id(order)
+        if not order.get("agreement", {}).get("externalIds", {}).get("vendor", "")
         and get_transfer_type(order)
         not in [
             TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
