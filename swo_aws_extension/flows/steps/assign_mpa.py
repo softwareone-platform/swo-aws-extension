@@ -2,7 +2,7 @@ import logging
 
 from mpt_extension_sdk.flows.pipeline import NextStep, Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
-from mpt_extension_sdk.mpt_http.mpt import update_order
+from mpt_extension_sdk.mpt_http.mpt import update_agreement, update_order
 
 from swo_aws_extension.airtable.models import (
     MPAStatusEnum,
@@ -15,9 +15,20 @@ from swo_aws_extension.flows.order import (
     PurchaseContext,
 )
 from swo_aws_extension.notifications import Button, send_error
-from swo_aws_extension.parameters import get_phase, set_mpa_account_id, set_phase
+from swo_aws_extension.parameters import get_phase, set_phase
 
 logger = logging.getLogger(__name__)
+
+
+def setup_agreement_external_id(client, context, account_id):
+    context.order["agreement"] = update_agreement(
+        client,
+        context.order["agreement"]["id"],
+        externalIds={"vendor": account_id},
+    )
+    logger.info(
+        f"Updating agreement {context.order["agreement"]["id"]} external id to {account_id}"
+    )
 
 
 class AssignMPA(Step):
@@ -96,7 +107,8 @@ class AssignMPA(Step):
         context.airtable_mpa.client_id = context.order.get("client", {}).get("id")
         context.airtable_mpa.error_description = ""
         context.airtable_mpa.save()
-        context.order = set_mpa_account_id(context.order, context.airtable_mpa.account_id)
+
+        setup_agreement_external_id(client, context, context.airtable_mpa.account_id)
 
         context.order = set_phase(context.order, PhasesEnum.PRECONFIGURATION_MPA)
         context.order = update_order(
@@ -148,16 +160,7 @@ class AssignTransferMPAStep(Step):
                 f"{context.order_id} - Action - MPA account is not set in context. "
                 f"Setting to {context.order_master_payer_id}"
             )
-            context.order = set_mpa_account_id(
-                context.order,
-                context.order_master_payer_id,
-            )
-            update_order(client, context.order_id, parameters=context.order["parameters"])
-            logger.info(
-                f"{context.order_id} - Action - Order updated with MPA account "
-                f"`{context.mpa_account}`. "
-            )
-
+            setup_agreement_external_id(client, context, context.order_master_payer_id)
         try:
             if not context.aws_client:
                 self.setup_aws(context)

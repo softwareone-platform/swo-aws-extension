@@ -18,9 +18,11 @@ def test_onboard_ccp_customer(
     mpa_pool,
     mock_onboard_customer_response,
     onboard_customer_factory,
+    agreement_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CCP_ONBOARD)
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CCP_ONBOARD),
+        agreement=agreement_factory(vendor_id="123456789012"),
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)

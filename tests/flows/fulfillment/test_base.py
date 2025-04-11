@@ -32,8 +32,8 @@ def test_fulfill_order_exception(mocker, mpt_error_factory, order_factory):
     assert strip_trace_id(str(error)) in tb
 
 
-def test_setup_contexts(mpt_client, order_factory):
-    orders = [order_factory()]
+def test_setup_contexts(mpt_client, order_factory, agreement_factory):
+    orders = [order_factory(agreement=agreement_factory(vendor_id="123456789012"))]
     contexts = setup_contexts(mpt_client, orders)
     assert len(contexts) == 1
     assert contexts[0].order == orders[0]
@@ -50,7 +50,7 @@ def test_setup_contexts_without_mpa_account_id(
 ):
     order_without_mpa = order_factory(
         order_id="ORD-1",
-        fulfillment_parameters=fulfillment_parameters_factory(mpa_account_id=""),
+        fulfillment_parameters=fulfillment_parameters_factory(),
     )
 
     orders = [order_without_mpa]
@@ -79,7 +79,7 @@ def test_setup_contexts_without_mpa_account_id_empty_pool(
 ):
     order_without_mpa = order_factory(
         order_id="ORD-1",
-        fulfillment_parameters=fulfillment_parameters_factory(mpa_account_id=""),
+        fulfillment_parameters=fulfillment_parameters_factory(),
     )
 
     orders = [order_without_mpa]

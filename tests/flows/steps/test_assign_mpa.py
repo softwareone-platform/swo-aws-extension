@@ -5,14 +5,20 @@ from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps import AssignMPA
 from swo_aws_extension.notifications import Button
-from swo_aws_extension.parameters import set_mpa_account_id, set_phase
+from swo_aws_extension.parameters import set_phase
 
 
 def test_assign_mpa_phase_not_assign_mpa(
-    mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
+    mocker,
+    order_factory,
+    config,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    agreement_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED)
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED),
+        agreement=agreement_factory(vendor_id="123456789012"),
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -30,12 +36,16 @@ def test_assign_mpa_phase_not_assign_mpa(
 
 
 def test_assign_mpa_phase_mpa_already_assigned(
-    mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
+    mocker,
+    order_factory,
+    config,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    agreement_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            mpa_account_id="test_mpa_account", phase=PhasesEnum.ASSIGN_MPA
-        )
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA),
+        agreement=agreement_factory(vendor_id="123456789012"),
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -64,12 +74,16 @@ def test_assign_mpa_phase_mpa_already_assigned(
 
 
 def test_assign_mpa_phase_assign_mpa(
-    mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory, mpa_pool
+    mocker,
+    order_factory,
+    config,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    mpa_pool,
+    agreement_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.ASSIGN_MPA, mpa_account_id=""
-        )
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA)
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -82,10 +96,13 @@ def test_assign_mpa_phase_assign_mpa(
     next_step_mock = mocker.Mock()
 
     updated_order = set_phase(order, PhasesEnum.PRECONFIGURATION_MPA)
-    updated_order = set_mpa_account_id(updated_order, "Account Id")
     mocked_update_order = mocker.patch(
         "swo_aws_extension.flows.steps.assign_mpa.update_order",
         return_value=updated_order,
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.steps.assign_mpa.update_agreement",
+        return_value=agreement_factory(vendor_id="123456789012"),
     )
 
     assign_mpa = AssignMPA(config, "test_role_name")
@@ -104,9 +121,7 @@ def test_assign_mpa_phase_assign_mpa_credentials_error(
     mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory, mpa_pool
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.ASSIGN_MPA, mpa_account_id=""
-        )
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA)
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -157,9 +172,7 @@ def test_assign_mpa_phase_not_mpa_account(
     mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.ASSIGN_MPA, mpa_account_id=""
-        )
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA)
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)

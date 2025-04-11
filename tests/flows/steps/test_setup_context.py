@@ -14,9 +14,11 @@ from swo_aws_extension.flows.steps.setup_context import (
 from swo_aws_extension.parameters import get_phase
 
 
-def test_setup_context_get_mpa_credentials(mocker, order_factory, config, requests_mocker):
+def test_setup_context_get_mpa_credentials(
+    mocker, order_factory, config, requests_mocker, agreement_factory
+):
     role_name = "test_role"
-    order = order_factory()
+    order = order_factory(agreement=agreement_factory(vendor_id="123456789012"))
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     credentials = {
         "AccessKeyId": "test_access_key",
@@ -35,7 +37,6 @@ def test_setup_context_get_mpa_credentials(mocker, order_factory, config, reques
 
     context = PurchaseContext(order=order)
 
-    mocker.patch("swo_aws_extension.parameters.get_mpa_account_id", return_value="123456789012")
     mocker.patch("swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient))
 
     setup_context = SetupContext(config, role_name)
@@ -58,7 +59,7 @@ def test_setup_context_without_account_id_raise_exception(
     role_name = "test_role"
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            account_request_id="account_request_id", mpa_account_id=""
+            account_request_id="account_request_id"
         )
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -70,9 +71,11 @@ def test_setup_context_without_account_id_raise_exception(
         setup_context(mpt_client_mock, context, next_step_mock)
 
 
-def test_setup_purchase_context_get_mpa_credentials(mocker, order_factory, config, requests_mocker):
+def test_setup_purchase_context_get_mpa_credentials(
+    mocker, order_factory, config, requests_mocker, agreement_factory
+):
     role_name = "test_role"
-    order = order_factory()
+    order = order_factory(agreement=agreement_factory(vendor_id="123456789012"))
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     credentials = {
         "AccessKeyId": "test_access_key",
@@ -91,7 +94,6 @@ def test_setup_purchase_context_get_mpa_credentials(mocker, order_factory, confi
 
     context = PurchaseContext(order=order)
 
-    mocker.patch("swo_aws_extension.parameters.get_mpa_account_id", return_value="123456789012")
     mocker.patch("swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient))
 
     setup_context = SetupPurchaseContext(config, role_name)
@@ -114,7 +116,7 @@ def test_setup_context_get_account_creation_status(
     role_name = "test_role"
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            account_request_id="account_request_id", mpa_account_id=""
+            account_request_id="account_request_id"
         )
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -137,7 +139,7 @@ def test_setup_context_get_account_creation_status(
 
 
 def test_transfer_without_organization(
-    mocker, config, order_factory, fulfillment_parameters_factory
+    mocker, config, order_factory, fulfillment_parameters_factory, agreement_factory
 ):
     """
     Tests:
@@ -146,10 +148,8 @@ def test_transfer_without_organization(
     """
 
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase="",
-            mpa_account_id="123456789012",
-        ),
+        fulfillment_parameters=fulfillment_parameters_factory(phase=""),
+        agreement=agreement_factory(vendor_id="123456789012"),
     )
 
     def dummy_update_order(_client, _id, parameters):

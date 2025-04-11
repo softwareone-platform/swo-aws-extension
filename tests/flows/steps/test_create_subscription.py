@@ -122,11 +122,13 @@ def test_create_subscriptions_from_organization(
     order_parameters_factory,
     account_creation_status_factory,
     data_aws_account_factory,
+    agreement_factory,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTIONS, mpa_account_id="111111111111"
+            phase=PhasesEnum.CREATE_SUBSCRIPTIONS
         ),
+        agreement=agreement_factory(vendor_id="123456789012"),
         order_parameters=order_parameters_factory(
             account_id="",
             transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,

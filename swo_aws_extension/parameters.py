@@ -23,7 +23,6 @@ class OrderParametersEnum(StrEnum):
 
 
 class FulfillmentParametersEnum(StrEnum):
-    MPA_ACCOUNT_ID = "mpaAccountId"
     PHASE = "phase"
     ACCOUNT_REQUEST_ID = "accountRequestId"
     ACCOUNT_EMAIL = "accountEmail"
@@ -126,45 +125,6 @@ def update_ordering_parameter_constraints(order, param_external_id, hidden, requ
         "required": required,
         "readonly": readonly,
     }
-    return updated_order
-
-
-def get_mpa_account_id(source):
-    """
-    Get the MPA Account ID from the corresponding fulfillment
-    parameter or None if it is not set.
-
-    Args:
-        source (dict): The business object from which the MPA Account ID
-        should be retrieved.
-
-    Returns:
-        str: The MPA Account ID provided by client or None if it isn't set.
-    """
-    param = get_fulfillment_parameter(
-        source,
-        FulfillmentParametersEnum.MPA_ACCOUNT_ID,
-    )
-    return param.get("value", None)
-
-
-def set_mpa_account_id(order, mpa_account_id):
-    """
-    Set the MPA Account ID on the fulfillment parameters.
-
-    Args:
-        order (dict): The order that contains the parameter.
-        mpa_account_id (str): The MPA Account ID provided by client.
-
-    Returns:
-        dict: The order updated.
-    """
-    updated_order = copy.deepcopy(order)
-    param = get_fulfillment_parameter(
-        updated_order,
-        FulfillmentParametersEnum.MPA_ACCOUNT_ID,
-    )
-    param["value"] = mpa_account_id
     return updated_order
 
 
