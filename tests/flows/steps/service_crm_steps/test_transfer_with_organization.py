@@ -1,7 +1,7 @@
 import pytest
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
-from swo_aws_extension.constants import CRM_TICKET_RESOLVED_STATE, TransferTypesEnum
+from swo_aws_extension.constants import CRM_TICKET_RESOLVED_STATE, AccountTypeEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.service_crm_steps import (
     AwaitTransferRequestTicketWithOrganizationStep,
@@ -18,7 +18,7 @@ def order_transfer_with_organization(
 ):
     return order_factory(
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITH_ORGANIZATION,
             master_payer_id="123456789",
         ),
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -35,7 +35,7 @@ def order_transfer_with_organization_without_master_payer_id(
 ):
     return order_factory(
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITH_ORGANIZATION,
             master_payer_id="",
         ),
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -52,7 +52,7 @@ def order_transfer_with_organization_and_ticket(
 ):
     return order_factory(
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITH_ORGANIZATION,
         ),
         fulfillment_parameters=fulfillment_parameters_factory(
             existing_account_crm_ticket="CS0004728",

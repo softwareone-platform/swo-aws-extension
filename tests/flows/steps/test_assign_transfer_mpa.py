@@ -1,7 +1,7 @@
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.aws.errors import AWSError
-from swo_aws_extension.constants import PhasesEnum, TransferTypesEnum
+from swo_aws_extension.constants import PhasesEnum, AccountTypeEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps import AssignTransferMPAStep
 from swo_aws_extension.parameters import get_phase
@@ -29,7 +29,7 @@ def test_assign_transfer_mpa_first_run(
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="111111111111",
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITH_ORGANIZATION,
         ),
     )
 
@@ -72,7 +72,7 @@ def test_assign_transfer_initialize_aws(
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="111111111111",
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITH_ORGANIZATION,
         ),
     )
     context = PurchaseContext(aws_client=None, order=order)
@@ -110,7 +110,7 @@ def test_assign_transfer_failed_aws_access(
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="111111111111",
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITH_ORGANIZATION,
         ),
     )
     context = PurchaseContext(aws_client=None, order=order)
@@ -159,7 +159,7 @@ def test_skip_by_phase(
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="111111111111",
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITH_ORGANIZATION,
         ),
     )
     context = PurchaseContext(aws_client=None, order=order)

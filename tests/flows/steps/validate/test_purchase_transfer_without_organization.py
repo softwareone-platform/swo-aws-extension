@@ -1,6 +1,6 @@
 from mpt_extension_sdk.flows.context import ORDER_TYPE_CHANGE, ORDER_TYPE_PURCHASE
 
-from swo_aws_extension.constants import TransferTypesEnum
+from swo_aws_extension.constants import AccountTypeEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps import ValidatePurchaseTransferWithoutOrganizationStep
 
@@ -8,7 +8,7 @@ from swo_aws_extension.flows.steps import ValidatePurchaseTransferWithoutOrganiz
 def test_validate_with_all_ok(mocker, order_factory, order_parameters_factory):
     order = order_factory(
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITHOUT_ORGANIZATION,
             account_id="123456789012\n\n123456789012\n123456789012",
         ),
         order_type=ORDER_TYPE_PURCHASE,
@@ -27,7 +27,7 @@ def test_is_not_purchase_order(mocker, order_factory, order_parameters_factory):
     logger_mock = mocker.patch("swo_aws_extension.flows.steps.validate.logger")
     order = order_factory(
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITH_ORGANIZATION,
         ),
         order_type=ORDER_TYPE_CHANGE,
     )
@@ -46,7 +46,7 @@ def test_is_not_transfer_without_organization(mocker, order_factory, order_param
     logger_mock = mocker.patch("swo_aws_extension.flows.steps.validate.logger")
     order = order_factory(
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION
+            transfer_type=AccountTypeEnum.ACCOUNT_WITH_ORGANIZATION
         ),
         order_type=ORDER_TYPE_PURCHASE,
     )
@@ -65,7 +65,7 @@ def test_is_not_transfer_without_organization(mocker, order_factory, order_param
 def test_invalid_account_ids(mocker, order_factory, order_parameters_factory):
     order = order_factory(
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITHOUT_ORGANIZATION,
             account_id="164565\n5245646456",
         ),
         order_type=ORDER_TYPE_PURCHASE,
@@ -84,7 +84,7 @@ def test_invalid_account_ids(mocker, order_factory, order_parameters_factory):
 def test_no_account_ids(mocker, order_factory, order_parameters_factory):
     order = order_factory(
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITHOUT_ORGANIZATION,
             account_id="",
         ),
         order_type=ORDER_TYPE_PURCHASE,
@@ -106,7 +106,7 @@ def test_too_many_accounts(mocker, order_factory, order_parameters_factory):
     print(accounts)
     order = order_factory(
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITHOUT_ORGANIZATION,
             account_id="\n".join(accounts),
         ),
         order_type=ORDER_TYPE_PURCHASE,

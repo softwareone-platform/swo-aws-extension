@@ -1,6 +1,6 @@
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
-from swo_aws_extension.constants import PhasesEnum, TransferTypesEnum
+from swo_aws_extension.constants import PhasesEnum, AccountTypeEnum
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.steps import CreateSubscription
 
@@ -129,7 +129,7 @@ def test_create_subscriptions_from_organization(
         ),
         order_parameters=order_parameters_factory(
             account_id="",
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITH_ORGANIZATION,
         ),
     )
     subscription = subscription_factory(

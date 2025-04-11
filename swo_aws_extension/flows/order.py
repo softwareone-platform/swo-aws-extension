@@ -6,7 +6,7 @@ from mpt_extension_sdk.mpt_http.mpt import get_product_template_or_default, quer
 from pyairtable.orm import Model
 
 from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
-from swo_aws_extension.constants import SupportTypesEnum, TransferTypesEnum
+from swo_aws_extension.constants import SupportTypesEnum, AccountTypeEnum
 from swo_aws_extension.notifications import send_email_notification
 from swo_aws_extension.parameters import (
     get_account_id,
@@ -14,7 +14,7 @@ from swo_aws_extension.parameters import (
     get_mpa_account_id,
     get_support_type,
     get_termination_type_parameter,
-    get_transfer_type,
+    get_account_type,
 )
 
 MPT_ORDER_STATUS_PROCESSING = "Processing"
@@ -45,10 +45,10 @@ class InitialAWSContext(BaseContext):
         return is_partner_led_support_enabled(self.order)
 
     def is_type_transfer_with_organization(self):
-        return get_transfer_type(self.order) == TransferTypesEnum.TRANSFER_WITH_ORGANIZATION
+        return get_account_type(self.order) == AccountTypeEnum.ACCOUNT_WITH_ORGANIZATION
 
     def is_type_transfer_without_organization(self):
-        return get_transfer_type(self.order) == TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION
+        return get_account_type(self.order) == AccountTypeEnum.ACCOUNT_WITHOUT_ORGANIZATION
 
 
 @dataclass

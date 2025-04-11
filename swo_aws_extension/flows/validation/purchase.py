@@ -3,11 +3,15 @@ import logging
 from mpt_extension_sdk.flows.pipeline import Pipeline, Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
-from swo_aws_extension.constants import AccountTypesEnum
+from swo_aws_extension.constants import AccountTypesEnum, AccountTypeEnum
+from swo_aws_extension.flows.error import ERR_TRANSFER_WITHOUT_ORG_MISSING_ACCOUNT_ID, \
+    ERR_INVALID_ACCOUNTS_FORMAT
 from swo_aws_extension.flows.order import (
     PurchaseContext,
     reset_order_error,
 )
+from swo_aws_extension.flows.steps import ValidatePurchaseTransferWithoutOrganizationStep
+from swo_aws_extension.flows.steps.validate import is_list_of_aws_accounts
 from swo_aws_extension.parameters import (
     OrderParametersEnum,
     get_account_email,
@@ -15,6 +19,8 @@ from swo_aws_extension.parameters import (
     get_account_type,
     reset_ordering_parameters_error,
     update_ordering_parameter_constraints,
+    get_account_id,
+    set_ordering_parameter_error, get_transfer_type,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,10 +52,98 @@ class ValidateNewAccount(Step):
         next_step(client, context)
 
 
+class ValidateExistingAccount(Step):
+    def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+        if get_account_type(context.order) == AccountTypesEnum.EXISTING_ACCOUNT:
+            # hide transfer type
+            context.order = update_ordering_parameter_constraints(
+                context.order,
+                OrderParametersEnum.TRANSFER_TYPE,
+                hidden=False,
+                required=True,
+                readonly=False,
+            )
+            next_step(client, context)
+            return
+
+        # Require transfer type
+        context.order = update_ordering_parameter_constraints(
+            context.order,
+            OrderParametersEnum.TRANSFER_TYPE,
+            hidden=True,
+            required=False,
+            readonly=False,
+        )
+        next_step(client, context)
+        return
+
+
+
+class DraftValidationPurchaseTransferWithoutOrganizationStep(Step):
+    def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+        is_existing_account = get_account_type(context.order) == AccountTypesEnum.EXISTING_ACCOUNT
+        is_transfer_type_without_organization = (
+                get_transfer_type(context.order) == AccountTypeEnum.ACCOUNT_WITHOUT_ORGANIZATION
+        )
+        is_account_id_required = is_existing_account and is_transfer_type_without_organization
+
+        if not is_account_id_required:
+            # Hide account id
+            context.order = update_ordering_parameter_constraints(
+                context.order,
+                OrderParametersEnum.ACCOUNT_ID,
+                hidden=True,
+                required=False,
+                readonly=False,
+            )
+            next_step(client, context)
+            return
+
+
+        # Require account id
+        context.order = update_ordering_parameter_constraints(
+            context.order,
+            OrderParametersEnum.ACCOUNT_ID,
+            hidden=False,
+            required=True,
+            readonly=False,
+        )
+
+        print("Account id not hidden and required")
+
+        if not context.get_account_ids():
+            context.order = set_ordering_parameter_error(
+                context.order,
+                OrderParametersEnum.ACCOUNT_ID,
+                ERR_TRANSFER_WITHOUT_ORG_MISSING_ACCOUNT_ID.to_dict(),
+            )
+            next_step(client, context)
+            return
+
+
+        multiline_account_id = get_account_id(context.order)
+        if not is_list_of_aws_accounts(multiline_account_id):
+            context.order = set_ordering_parameter_error(
+                context.order,
+                OrderParametersEnum.ACCOUNT_ID,
+                ERR_INVALID_ACCOUNTS_FORMAT.to_dict(),
+            )
+
+            logger.info(
+                f"{context.order_id} - Querying - Invalid accounts ID format in `orderAccountId`. "
+            )
+            return
+
+
+
+
+        next_step(client, context)
+
+
 def validate_purchase_order(client, context):
     context.order = reset_order_error(context.order)
     context.order = reset_ordering_parameters_error(context.order)
 
-    pipeline = Pipeline(ValidateNewAccount())
+    pipeline = Pipeline(ValidateNewAccount(), ValidateExistingAccount(), DraftValidationPurchaseTransferWithoutOrganizationStep())
     pipeline.run(client, context)
     return not context.validation_succeeded, context.order

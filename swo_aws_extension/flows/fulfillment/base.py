@@ -2,7 +2,7 @@ import logging
 import traceback
 
 from swo_aws_extension.airtable.models import get_available_mpa_from_pool
-from swo_aws_extension.constants import TransferTypesEnum
+from swo_aws_extension.constants import AccountTypeEnum
 from swo_aws_extension.flows.error import strip_trace_id
 from swo_aws_extension.flows.fulfillment.pipelines import (
     change_order,
@@ -88,8 +88,8 @@ def setup_contexts(mpt_client, orders):
         if not get_mpa_account_id(order)
         and get_transfer_type(order)
         not in [
-            TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
-            TransferTypesEnum.SPLIT_BILLING,
+            AccountTypeEnum.ACCOUNT_WITH_ORGANIZATION,
+            AccountTypeEnum.SPLIT_BILLING,
         ]
     }
     pls_mpa_pool_map = {

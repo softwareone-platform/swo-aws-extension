@@ -1,7 +1,7 @@
 from mpt_extension_sdk.flows.context import ORDER_TYPE_CHANGE
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
-from swo_aws_extension.constants import PhasesEnum, TransferTypesEnum
+from swo_aws_extension.constants import PhasesEnum, AccountTypeEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.setup_context import (
     SetupContextPurchaseTransferWithOrganizationStep,
@@ -22,7 +22,7 @@ def test_transfer_with_org_step(
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="111111111111",
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITH_ORGANIZATION,
         ),
     )
 
@@ -47,7 +47,7 @@ def test_transfer_with_org_step_with_mpa(
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="111111111111",
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITH_ORGANIZATION,
         ),
     )
     setup_aws_mock = mocker.patch(
@@ -76,7 +76,7 @@ def test_setup_querying(
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="",
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITH_ORGANIZATION,
         ),
     )
 
@@ -107,7 +107,7 @@ def test_skip_purchase(
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="",
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITHOUT_ORGANIZATION,
         ),
     )
 
@@ -139,7 +139,7 @@ def test_skip_change(
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="",
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
+            transfer_type=AccountTypeEnum.ACCOUNT_WITHOUT_ORGANIZATION,
         ),
     )
 

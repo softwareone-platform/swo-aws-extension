@@ -33,9 +33,9 @@ class SupportTypesEnum(StrEnum):
     PARTNER_LED_SUPPORT = "PartnerLedSupport"
 
 
-class TransferTypesEnum(StrEnum):
-    TRANSFER_WITHOUT_ORGANIZATION = "TransferWithoutOrganization"
-    TRANSFER_WITH_ORGANIZATION = "TransferWithOrganization"
+class AccountTypeEnum(StrEnum):
+    ACCOUNT_WITHOUT_ORGANIZATION = "TransferWithoutOrganization"
+    ACCOUNT_WITH_ORGANIZATION = "TransferWithOrganization"
     SPLIT_BILLING = "SplitBilling"
 
 
