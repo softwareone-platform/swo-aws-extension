@@ -12,6 +12,7 @@ from swo_aws_extension.aws.errors import (
     wrap_boto3_error,
     wrap_http_error,
 )
+from swo_ccp_client.client import CCPClient
 
 logger = logging.getLogger(__name__)
 
@@ -69,10 +70,11 @@ class AWSClient:
 
         :return: str The OpenID Connect access token.
         """
+        ccp_client = CCPClient(self.config)
         url = self.config.ccp_oauth_url
         payload = {
             "client_id": self.config.ccp_client_id,
-            "client_secret": self.config.ccp_client_secret,
+            "client_secret": ccp_client.get_secret_from_key_vault(),
             "grant_type": "client_credentials",
             "scope": self.config.aws_openid_scope,
         }

@@ -35,7 +35,6 @@ EXT_EMAIL_NOTIFICATIONS_ENABLED=1
 EXT_CCP_CLIENT_ID=123456789
 EXT_AWS_OPENID_SCOPE=urn://dev.aws.services.softwareone.com/.default
 EXT_CCP_OAUTH_URL=https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token
-EXT_CCP_CLIENT_SECRET=QWERTYUIOP
 EXT_AWS_REGION=us-east-1
 ```
 
@@ -61,8 +60,15 @@ EXT_EMAIL_NOTIFICATIONS_ENABLED=1
 EXT_CCP_CLIENT_ID=CCP Client ID
 EXT_AWS_OPENID_SCOPE=urn://dev.aws.services.softwareone.com/.default
 EXT_CCP_OAUTH_URL=https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token
-EXT_CCP_CLIENT_SECRET=CCP Client Secret
 EXT_AWS_REGION=us-east-1
+MPT_KEY_VAULT_NAME=MPT-key-vault-name
+EXT_CCP_KEY_VAULT_SECRET_NAME=ccp-key-vault-secret-name
+EXT_CCP_OAUTH_SCOPE=api://scope
+AZURE_CLIENT_ID=client-id-guid
+AZURE_TENANT_ID=tenant-id-guid
+AZURE_CLIENT_CERTIFICATE_PASSWORD=local-client-cert-pw
+AZURE_CLIENT_CERTIFICATE_PATH=xxxxxxx.PFX
+```
 ```
 
 
@@ -92,6 +98,17 @@ $ docker-compose run --service-ports app
 | `SERVICE_NAME`                          | Swo.Extensions.Aws          | Swo.Extensions.Aws                                                                                                                                                                                  | Service name that is visible in the AppInsights logs                                                          |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | -                           | InstrumentationKey=cf280af3-b686-40fd-8183-ec87468c12ba;IngestionEndpoint=https://westeurope-1.in.applicationinsights.azure.com/;LiveEndpoint=https://westeurope.livediagnostics.monitor.azure.com/ | Azure Application Insights connection string                                                                  |
 | `LOGGING_ATTEMPT_GETTER`                | aws.utils.get_attempt_count | aws.utils.get_attempt_count                                                                                                                                                                         | Path to python function that retrieves order processing attempt to put it into the Azure Application Insights |
+
+## Key Vault
+| Environment Variable                   | Default | Example | Description                                                          |
+|----------------------------------------|---------|---------|----------------------------------------------------------------------|
+| `MPT_KEY_VAULT_NAME` | -     | key-vault-name      | Azure Key Vault name |
+| `EXT_CCP_KEY_VAULT_SECRET_NAME` | -     | ccp-key-vault-secret-name      | Azure Key Vault secret name where CCP token is stored |
+| `EXT_CCP_OAUTH_SCOPE` | -     | api://scope      | Scope for CCP token authentication API request for authorization to retrieve token from CCP |
+| `AZURE_CLIENT_ID` | -     | azure-client-id-guid      | Client ID for key vault |
+| `AZURE_TENANT_ID` | -     | azure-tenant-id-guid    | Tenant ID for key vault |
+| `AZURE_CLIENT_CERTIFICATE_PASSWORD` | -     | password      | Password for azure client certificate |
+| `AZURE_CLIENT_CERTIFICATE_PATH` | -     | /folder/abcdef.pfx      | Path and file path to azure client certificate |
 
 ## Other
 | Environment Variable                   | Default | Example | Description                                                          |

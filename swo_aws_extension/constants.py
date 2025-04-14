@@ -62,3 +62,7 @@ NOTIFICATION_SUMMARY = (
 )
 EMPTY_TITLE = "Action Required: AWS empty pool for region {region}"
 NOTIFICATION_TITLE = "Action Required: AWS reduce number or accounts in pool for region {region}"
+ACCESS_TOKEN_NOT_FOUND_IN_RESPONSE = "Access token not found in the response"
+CCP_SECRET_NOT_FOUND_IN_KEY_VAULT = "CCP secret not found in key vault"
+FAILED_TO_GET_SECRET = "Failed to get secret"
+FAILED_TO_SAVE_SECRET_TO_KEY_VAULT = "Failed to save secret to key vault"

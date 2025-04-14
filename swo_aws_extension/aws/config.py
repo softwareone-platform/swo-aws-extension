@@ -7,10 +7,6 @@ class Config:
         return settings.EXTENSION_CONFIG["CCP_CLIENT_ID"]
 
     @property
-    def ccp_client_secret(self) -> str:
-        return self._get_client_secret()
-
-    @property
     def aws_openid_scope(self) -> str:
         return settings.EXTENSION_CONFIG["AWS_OPENID_SCOPE"]
 
@@ -22,13 +18,13 @@ class Config:
     def aws_region(self) -> str:
         return settings.EXTENSION_CONFIG["AWS_REGION"]
 
-    @staticmethod
-    def _get_client_secret():
-        """
-        Get the client secrets from the settings.
-        """
-        # TODO Logic to get the Secrent from Azure key vault will be done in separate PR
-        return settings.EXTENSION_CONFIG["CCP_CLIENT_SECRET"]
+    @property
+    def ccp_scope(self):
+        return settings.EXTENSION_CONFIG["CCP_SCOPE"]
+
+    @property
+    def ccp_key_vault_secret_name(self):
+        return settings.EXTENSION_CONFIG["CCP_KEY_VAULT_SECRET_NAME"]
 
     @property
     def ccp_api_base_url(self) -> str:
