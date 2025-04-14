@@ -14,6 +14,7 @@ def test_assign_transfer_mpa_first_run(
     aws_client_factory,
     fulfillment_parameters_factory,
     order_parameters_factory,
+    agreement_factory,
 ):
     """
     First run moves the (order parameter) master_payer_id
@@ -24,11 +25,10 @@ def test_assign_transfer_mpa_first_run(
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION,
-            mpa_account_id="",
         ),
         order_parameters=order_parameters_factory(
             account_id="",
-            master_payer_id="111111111111",
+            master_payer_id="123456789012",
             transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
         ),
     )
@@ -39,16 +39,20 @@ def test_assign_transfer_mpa_first_run(
     aws_mock.describe_organization.return_value = {
         "Organization": {
             "MasterAccountArn": "",
-            "MasterAccountId": "111111111111",
+            "MasterAccountId": "123456789012",
         }
     }
+    mocker.patch(
+        "swo_aws_extension.flows.steps.assign_mpa.update_agreement",
+        return_value=agreement_factory(vendor_id="123456789012"),
+    )
 
     assert get_phase(context.order) == PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION
     assert context.mpa_account == ""
     step = AssignTransferMPAStep(config, "role_name")
     next_step_mock = mocker.Mock()
     step(mpt_client_mock, context, next_step_mock)
-    assert context.mpa_account == "111111111111"
+    assert context.mpa_account == "123456789012"
     next_step_mock.assert_called_once()
     mpt_client_mock.put.assert_called()
     assert get_phase(context.order) == PhasesEnum.CREATE_SUBSCRIPTIONS
@@ -61,17 +65,18 @@ def test_assign_transfer_initialize_aws(
     order_factory,
     fulfillment_parameters_factory,
     order_parameters_factory,
+    agreement_factory,
 ):
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, aws_mock = aws_client_factory(config, "test_account_id", "test_role_name")
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION,
-            mpa_account_id="111111111111",
         ),
+        agreement=agreement_factory(vendor_id="123456789012"),
         order_parameters=order_parameters_factory(
             account_id="",
-            master_payer_id="111111111111",
+            master_payer_id="123456789012",
             transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
         ),
     )
@@ -99,17 +104,18 @@ def test_assign_transfer_failed_aws_access(
     order_factory,
     fulfillment_parameters_factory,
     order_parameters_factory,
+    agreement_factory,
 ):
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, aws_mock = aws_client_factory(config, "test_account_id", "test_role_name")
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION,
-            mpa_account_id="111111111111",
         ),
+        agreement=agreement_factory(vendor_id="123456789012"),
         order_parameters=order_parameters_factory(
             account_id="",
-            master_payer_id="111111111111",
+            master_payer_id="123456789012",
             transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
         ),
     )
@@ -129,10 +135,10 @@ def test_assign_transfer_failed_aws_access(
     assert get_phase(context.order) == PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION
     next_step_mock.assert_not_called()
     expected_error_title = (
-        "Transfer with Organization MPA: 111111111111 " "failed to retrieve credentials."
+        "Transfer with Organization MPA: 123456789012 failed to retrieve credentials."
     )
     expected_message = (
-        "The transfer with organization Master Payer Account 111111111111 is failing "
+        "The transfer with organization Master Payer Account 123456789012 is failing "
         "with error: ('301', 'Failed to assume role')"
     )
     mock_send_error.assert_called_once_with(expected_error_title, expected_message)
@@ -145,6 +151,7 @@ def test_skip_by_phase(
     order_factory,
     fulfillment_parameters_factory,
     order_parameters_factory,
+    agreement_factory,
 ):
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
@@ -154,11 +161,11 @@ def test_skip_by_phase(
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.CREATE_SUBSCRIPTIONS,
-            mpa_account_id="111111111111",
         ),
+        agreement=agreement_factory(vendor_id="123456789012"),
         order_parameters=order_parameters_factory(
             account_id="",
-            master_payer_id="111111111111",
+            master_payer_id="123456789012",
             transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
         ),
     )
@@ -176,6 +183,7 @@ def test_skip_not_transfer(
     order_factory,
     fulfillment_parameters_factory,
     order_parameters_factory,
+    agreement_factory,
 ):
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
@@ -184,12 +192,12 @@ def test_skip_not_transfer(
     )
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION,
-            mpa_account_id="111111111111",
+            phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION
         ),
+        agreement=agreement_factory(vendor_id="123456789012"),
         order_parameters=order_parameters_factory(
             account_id="",
-            master_payer_id="111111111111",
+            master_payer_id="123456789012",
             transfer_type="",
         ),
     )

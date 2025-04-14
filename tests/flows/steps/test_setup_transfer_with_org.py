@@ -17,7 +17,6 @@ def test_transfer_with_org_step(
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase="",
-            mpa_account_id="",
         ),
         order_parameters=order_parameters_factory(
             account_id="",
@@ -35,18 +34,23 @@ def test_transfer_with_org_step(
 
 
 def test_transfer_with_org_step_with_mpa(
-    mocker, config, order_factory, fulfillment_parameters_factory, order_parameters_factory
+    mocker,
+    config,
+    order_factory,
+    fulfillment_parameters_factory,
+    order_parameters_factory,
+    agreement_factory,
 ):
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase="",
-            mpa_account_id="111111111111",
         ),
+        agreement=agreement_factory(vendor_id="123456789012"),
         order_parameters=order_parameters_factory(
             account_id="",
-            master_payer_id="111111111111",
+            master_payer_id="123456789012",
             transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
         ),
     )
@@ -71,7 +75,6 @@ def test_setup_querying(
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION,
-            mpa_account_id="",
         ),
         order_parameters=order_parameters_factory(
             account_id="",
@@ -102,7 +105,6 @@ def test_skip_purchase(
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION,
-            mpa_account_id="",
         ),
         order_parameters=order_parameters_factory(
             account_id="",
@@ -134,7 +136,6 @@ def test_skip_change(
         order_type=ORDER_TYPE_CHANGE,
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION,
-            mpa_account_id="",
         ),
         order_parameters=order_parameters_factory(
             account_id="",

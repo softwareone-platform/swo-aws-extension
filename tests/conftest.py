@@ -132,7 +132,6 @@ def order_parameters_factory(constraints):
 @pytest.fixture()
 def fulfillment_parameters_factory():
     def _fulfillment_parameters(
-        mpa_account_id="123456789012",
         phase="",
         account_request_id="",
         crm_ticket_id="",
@@ -140,13 +139,6 @@ def fulfillment_parameters_factory():
         ccp_engagement_id="",
     ):
         return [
-            {
-                "id": "PAR-1234-5677",
-                "name": "MPA account ID",
-                "externalId": FulfillmentParametersEnum.MPA_ACCOUNT_ID,
-                "type": "SingleLineText",
-                "value": mpa_account_id,
-            },
             {
                 "id": "PAR-1234-5678",
                 "name": "Phase",
@@ -309,6 +301,7 @@ def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_fa
         fulfillment_parameters=None,
         ordering_parameters=None,
         lines=None,
+        vendor_id="",
     ):
         if not subscriptions:
             subscriptions = [
@@ -384,6 +377,7 @@ def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_fa
                 "ordering": ordering_parameters or order_parameters_factory(),
                 "fulfillment": fulfillment_parameters or fulfillment_parameters_factory(),
             },
+            "externalIds": {"vendor": vendor_id},
         }
 
     return _agreement
@@ -504,7 +498,7 @@ def agreement(buyer, licensee, listing, seller):
 
 @pytest.fixture()
 def order_factory(
-    agreement,
+    agreement_factory,
     order_parameters_factory,
     fulfillment_parameters_factory,
     lines_factory,
@@ -526,6 +520,7 @@ def order_factory(
         status=status,
         template=None,
         deployment_id=deployment_id,
+        agreement=None,
     ):
         order_parameters = (
             order_parameters_factory() if order_parameters is None else order_parameters
@@ -538,7 +533,7 @@ def order_factory(
 
         lines = lines_factory(deployment_id=deployment_id) if lines is None else lines
         subscriptions = [] if subscriptions is None else subscriptions
-
+        agreement = agreement_factory() if agreement is None else agreement
         order = {
             "id": order_id,
             "error": None,
@@ -1133,6 +1128,7 @@ def order_close_account(
     order_parameters_factory,
     fulfillment_parameters_factory,
     subscriptions_factory,
+    agreement_factory,
 ):
     order = order_factory(
         order_type=ORDER_TYPE_TERMINATION,
@@ -1146,6 +1142,7 @@ def order_close_account(
             vendor_id="1234-5678",
             status="Terminating",
         ),
+        agreement=agreement_factory(vendor_id="123456789012"),
     )
     return order
 

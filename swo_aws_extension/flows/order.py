@@ -12,7 +12,6 @@ from swo_aws_extension.parameters import (
     get_account_id,
     get_ccp_engagement_id,
     get_master_payer_id,
-    get_mpa_account_id,
     get_support_type,
     get_termination_type_parameter,
     get_transfer_type,
@@ -37,7 +36,7 @@ class InitialAWSContext(BaseContext):
     @property
     def mpa_account(self):
         try:
-            return get_mpa_account_id(self.order)
+            return self.order.get("agreement", {}).get("externalIds", {}).get("vendor", "")
         except (AttributeError, KeyError, TypeError):
             return None
 
