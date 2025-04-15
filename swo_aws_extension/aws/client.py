@@ -12,6 +12,7 @@ from swo_aws_extension.aws.errors import (
     wrap_boto3_error,
     wrap_http_error,
 )
+from swo_aws_extension.utils import find_first
 from swo_ccp_client.client import CCPClient
 
 logger = logging.getLogger(__name__)
@@ -394,3 +395,21 @@ class AWSClient:
         """
         org_client = self._get_organization_client()
         return org_client.cancel_handshake(HandshakeId=handshake_id)
+
+    def enable_scp(self):
+        """
+        Enable SCP for the organization.
+        """
+        org_client = self._get_organization_client()
+
+        root = org_client.list_roots()["Roots"][0]
+
+        policy = find_first(
+            lambda p: p.get("Type") == "SERVICE_CONTROL_POLICY", root.get("PolicyTypes", []), None
+        )
+        if policy and policy.get("Status", "") == "ENABLED":
+            logger.info(f"Policy Already Enabled for root {root["Id"]}. Skipping.")
+            return
+
+        org_client.enable_policy_type(RootId=root["Id"], PolicyType="SERVICE_CONTROL_POLICY")
+        logger.info("SCP has been enabled")

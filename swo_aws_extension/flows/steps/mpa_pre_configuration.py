@@ -23,6 +23,7 @@ class MPAPreConfiguration(Step):
 
         context.aws_client.create_organization()
         context.aws_client.activate_organizations_access()
+        context.aws_client.enable_scp()
 
         account_type = get_account_type(context.order)
 

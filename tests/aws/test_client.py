@@ -114,3 +114,26 @@ def test_aws_client_close_account_raise_exception(config, aws_client_factory):
     )
     with pytest.raises(AWSError):
         aws_client.close_account("account-id")
+
+
+def test_enable_scp(config, aws_client_factory, roots_factory):
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.list_roots.return_value = roots_factory()
+    mock_client.enable_policy_type.return_value = roots_factory()
+
+    aws_client.enable_scp()
+    mock_client.list_roots.assert_called_once_with()
+    mock_client.enable_policy_type.assert_called_once_with(
+        RootId="root_id", PolicyType="SERVICE_CONTROL_POLICY"
+    )
+
+
+def test_enable_scp_already_enabled(config, aws_client_factory, roots_factory):
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.list_roots.return_value = roots_factory(
+        policy_types=[{"Type": "SERVICE_CONTROL_POLICY", "Status": "ENABLED"}]
+    )
+
+    aws_client.enable_scp()
+    mock_client.list_roots.assert_called_once_with()
+    mock_client.enable_policy_type.assert_not_called()
