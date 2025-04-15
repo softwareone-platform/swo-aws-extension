@@ -119,7 +119,7 @@ def order_parameters_factory(constraints):
             },
             {
                 "id": "PAR-1234-5681",
-                "name": "Transfer Type",
+                "name": "Master Payer ID",
                 "externalId": OrderParametersEnum.MASTER_PAYER_ID,
                 "type": "Choice",
                 "value": master_payer_id,

@@ -22,7 +22,7 @@ def test_setup_context_get_mpa_credentials(
     config,
     requests_mocker,
     agreement_factory,
-    mock_mpt_key_vault_name
+    mock_mpt_key_vault_name,
 ):
     monkeypatch.setenv("MPT_KEY_VAULT_NAME", mock_mpt_key_vault_name)
     mocker.patch(
