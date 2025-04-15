@@ -362,11 +362,20 @@ class AWSClient:
 
         """
         org_client = self._get_organization_client()
-        response = org_client.invite_account_to_organization(
-            Target={"Id": account_id, "Type": "ACCOUNT"},
-            Notes=notes,
-        )
-        return response.get("Handshake", None)
+        try:
+            response = org_client.invite_account_to_organization(
+                Target={"Id": account_id, "Type": "ACCOUNT"},
+                Notes=notes,
+            )
+            return response.get("Handshake", None)
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "DuplicateHandshakeException":
+                logger.error(
+                    f"Failed to invite account {account_id} to the organization: "
+                    f"{e.response['Error']['Message']}"
+                )
+            else:
+                raise
 
     def list_handshakes_for_organization(self):
         """

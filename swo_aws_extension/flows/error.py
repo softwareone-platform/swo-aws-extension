@@ -63,6 +63,6 @@ ERR_TRANSFER_TOO_MANY_ACCOUNTS = ValidationError(
 
 ERR_AWAITING_INVITATION_RESPONSE = ValidationError(
     "AWS010",
-    "Awaiting invitation response. For the following accounts: {accounts}. Please accept"
-    " the invitation in the AWS console.",
+    "Awaiting invitation response. For the following accounts: \n\n{accounts}. \n\nPlease accept"
+    " the invitation in the AWS console or remove the account from the list.",
 )

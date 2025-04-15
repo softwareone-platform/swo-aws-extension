@@ -60,9 +60,44 @@ NOTIFICATION_SUMMARY = (
     "Thank you for your attention. <br><br>Best Regards,"
     "<br>Marketplace Platform Team<br>"
 )
+
+
+class StateMessageError(StrEnum):
+    REQUESTED = "Review the invitation for account {account}."
+    OPEN = "Review the invitation for account {account}."
+    CANCELED = (
+        "The invitation for the account {account} has been canceled. "
+        "Please remove it from the list."
+    )
+    DECLINED = (
+        "The invitation for account {account} has been declined by the receiver. "
+        "Please remove it from the list or contact support."
+    )
+    EXPIRED = (
+        "The invitation for the account {account} has expired. "
+        "Please remove it from the list or contact support."
+    )
+
+
+TRANSFER_ACCOUNT_INVITATION_NOTE = "Softwareone invite for order {context.order_id}."
+
+TRANSFER_ACCOUNT_INVITATION_FOR_GENERIC_STATE = ("Log in the AWS Console and review invitations "
+                                                 "for the account {account}. "
+                                                 "The current invitation"
+                                                 " is in state: {state}")
+
 EMPTY_TITLE = "Action Required: AWS empty pool for region {region}"
 NOTIFICATION_TITLE = "Action Required: AWS reduce number or accounts in pool for region {region}"
 ACCESS_TOKEN_NOT_FOUND_IN_RESPONSE = "Access token not found in the response"
 CCP_SECRET_NOT_FOUND_IN_KEY_VAULT = "CCP secret not found in key vault"
 FAILED_TO_GET_SECRET = "Failed to get secret"
 FAILED_TO_SAVE_SECRET_TO_KEY_VAULT = "Failed to save secret to key vault"
+
+
+class AwsHandshakeStateEnum(StrEnum):
+    REQUESTED = "REQUESTED"
+    OPEN = "OPEN"
+    CANCELED = "CANCELED"
+    ACCEPTED = "ACCEPTED"
+    DECLINED = "DECLINED"
+    EXPIRED = "EXPIRED"

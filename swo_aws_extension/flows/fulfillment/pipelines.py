@@ -11,7 +11,6 @@ from swo_aws_extension.flows.steps import (
     CompleteOrder,
     CompletePurchaseOrder,
     CreateLinkedAccount,
-    CreateOrganizationSubscriptions,
     CreateSubscription,
     CreateTerminationServiceRequestStep,
     CreateTransferRequestTicketWithOrganizationStep,
@@ -55,7 +54,6 @@ purchase_transfer_without_organization = Pipeline(
     SendInvitationLinksStep(),
     AwaitInvitationLinksStep(),
     CompletePurchaseOrder("purchase_order"),
-    CreateOrganizationSubscriptions(),
 )
 
 change_order = Pipeline(

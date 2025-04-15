@@ -12,6 +12,7 @@ from swo_aws_extension.parameters import (
     get_account_id,
     get_ccp_engagement_id,
     get_master_payer_id,
+    get_phase,
     get_support_type,
     get_termination_type_parameter,
     get_transfer_type,
@@ -50,6 +51,13 @@ class InitialAWSContext(BaseContext):
     def is_type_transfer_without_organization(self):
         return get_transfer_type(self.order) == TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION
 
+    @property
+    def order_status(self):
+        """
+        Return the order state
+        """
+        return self.order.get("status")
+
 
 @dataclass
 class PurchaseContext(InitialAWSContext):
@@ -77,6 +85,10 @@ class PurchaseContext(InitialAWSContext):
     @property
     def ccp_engagement_id(self):
         return get_ccp_engagement_id(self.order)
+
+    @property
+    def phase(self):
+        return get_phase(self.order)
 
     def __str__(self):
         return f"PurchaseContext: {self.order_id} {self.order_type} - MPA: {self.mpa_account}"
