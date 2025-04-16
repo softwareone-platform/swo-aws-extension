@@ -16,10 +16,12 @@ from swo_aws_extension.flows.steps import (
     CreateTransferRequestTicketWithOrganizationStep,
     MPAPreConfiguration,
     SendInvitationLinksStep,
+    SetupAgreementIdInAccountTagsStep,
     SetupContext,
     SetupContextPurchaseTransferWithOrganizationStep,
     SetupContextPurchaseTransferWithoutOrganizationStep,
     SetupPurchaseContext,
+    SynchronizeAgreementSubscriptionsStep,
     ValidatePurchaseTransferWithoutOrganizationStep,
 )
 from swo_aws_extension.flows.steps.ccp_onboard import CCPOnboard
@@ -42,8 +44,11 @@ purchase_transfer_with_organization = Pipeline(
     CreateTransferRequestTicketWithOrganizationStep(),
     AwaitTransferRequestTicketWithOrganizationStep(),
     AssignTransferMPAStep(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    SetupAgreementIdInAccountTagsStep(),
     CreateSubscription(),
+    CCPOnboard(config),
     CompletePurchaseOrder("purchase_order"),
+    SynchronizeAgreementSubscriptionsStep(),
 )
 
 purchase_transfer_without_organization = Pipeline(
@@ -53,7 +58,11 @@ purchase_transfer_without_organization = Pipeline(
     MPAPreConfiguration(),
     SendInvitationLinksStep(),
     AwaitInvitationLinksStep(),
+    SetupAgreementIdInAccountTagsStep(),
+    CreateSubscription(),
+    CCPOnboard(config),
     CompletePurchaseOrder("purchase_order"),
+    SynchronizeAgreementSubscriptionsStep(),
 )
 
 change_order = Pipeline(

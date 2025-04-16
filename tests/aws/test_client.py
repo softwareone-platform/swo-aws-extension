@@ -137,3 +137,38 @@ def test_enable_scp_already_enabled(config, aws_client_factory, roots_factory):
     aws_client.enable_scp()
     mock_client.list_roots.assert_called_once_with()
     mock_client.enable_policy_type.assert_not_called()
+
+
+def test_get_tags_for_resource(config, aws_client_factory, roots_factory):
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.list_tags_for_resource.side_effect = [
+        {
+            "Tags": [
+                {"Key": "agreement_id", "Value": "test_value_1"},
+            ],
+            "NextToken": "token",
+        },
+        {
+            "Tags": [
+                {"Key": "agreement_id", "Value": "test_value_2"},
+            ],
+        },
+    ]
+
+    aws_client.get_tags_for_resource("test_account_id")
+    assert mock_client.list_tags_for_resource.call_args_list[0].kwargs == {
+        "ResourceId": "test_account_id"
+    }
+    assert mock_client.list_tags_for_resource.call_args_list[1].kwargs == {
+        "NextToken": "token",
+        "ResourceId": "test_account_id",
+    }
+
+
+def test_add_tags_for_resource(config, aws_client_factory, roots_factory):
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    tags = [
+        {"key": "agreement_id", "value": "test_value"},
+    ]
+    aws_client.add_tags_for_resource("test_account_id", tags)
+    mock_client.tag_resource.assert_called_once_with(ResourceId="test_account_id", Tags=tags)

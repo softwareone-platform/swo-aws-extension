@@ -15,12 +15,6 @@ class Command(BaseCommand):
     def info(self, message):
         self.stdout.write(message, ending="\n")
 
-    def warning(self, message):
-        self.stdout.write(self.style.WARNING(message), ending="\n")
-
-    def error(self, message):
-        self.stderr.write(self.style.ERROR(message), ending="\n")
-
     def handle(self, *args, **options):
         self.info("Start processing Check Pool Accounts Notifications...")
         check_pool_accounts_notifications(config)

@@ -1,6 +1,8 @@
 from enum import StrEnum
 
 SWO_EXTENSION_MANAGEMENT_ROLE = "swo/mpt/SWOExtensionManagementRole"
+AWS_ITEM_SKU = "AWS_RESERVE_INSTANCE"
+ACCOUNT_TAG_ID = "agreement_id"
 
 
 class AccountTypesEnum(StrEnum):
@@ -81,10 +83,12 @@ class StateMessageError(StrEnum):
 
 TRANSFER_ACCOUNT_INVITATION_NOTE = "Softwareone invite for order {context.order_id}."
 
-TRANSFER_ACCOUNT_INVITATION_FOR_GENERIC_STATE = ("Log in the AWS Console and review invitations "
-                                                 "for the account {account}. "
-                                                 "The current invitation"
-                                                 " is in state: {state}")
+TRANSFER_ACCOUNT_INVITATION_FOR_GENERIC_STATE = (
+    "Log in the AWS Console and review invitations "
+    "for the account {account}. "
+    "The current invitation"
+    " is in state: {state}"
+)
 
 EMPTY_TITLE = "Action Required: AWS empty pool for region {region}"
 NOTIFICATION_TITLE = "Action Required: AWS reduce number or accounts in pool for region {region}"
