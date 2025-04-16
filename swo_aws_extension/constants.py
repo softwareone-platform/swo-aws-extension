@@ -1,6 +1,8 @@
 from enum import StrEnum
 
 SWO_EXTENSION_MANAGEMENT_ROLE = "swo/mpt/SWOExtensionManagementRole"
+AWS_ITEM_SKU = "AWS_RESERVE_INSTANCE"
+TAG_AGREEMENT_ID = "agreement_id"
 
 
 class AccountTypesEnum(StrEnum):
@@ -103,3 +105,12 @@ class AwsHandshakeStateEnum(StrEnum):
     ACCEPTED = "ACCEPTED"
     DECLINED = "DECLINED"
     EXPIRED = "EXPIRED"
+
+
+class SubscriptionStatusEnum(StrEnum):
+    ACTIVE = "Active"
+    CONFIGURING = "Configuring"
+    EXPIRED = "Expired"
+    TERMINATED = "Terminated"
+    UPDATING = "Updating"
+    TERMINATING = "Terminating"
