@@ -1,7 +1,7 @@
 import copy
 import json
 import signal
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import jwt
 import pytest
@@ -533,7 +533,13 @@ def order_factory(
 
         lines = lines_factory(deployment_id=deployment_id) if lines is None else lines
         subscriptions = [] if subscriptions is None else subscriptions
-        agreement = agreement_factory() if agreement is None else agreement
+        agreement = (
+            agreement_factory(
+                fulfillment_parameters=fulfillment_parameters,
+            )
+            if agreement is None
+            else agreement
+        )
         order = {
             "id": order_id,
             "error": None,
@@ -1551,3 +1557,24 @@ def roots_factory():
         }
 
     return _roots
+
+
+@pytest.fixture()
+def handshake_data_factory():
+    def _factory(account_id, state):
+        return {
+            "Id": f"h-{account_id}",
+            "Arn": f"arn:aws:organizations::123456789012:handshake/h-{account_id}",
+            "Parties": [{"Id": account_id, "Type": "ACCOUNT"}],
+            "State": state,
+            "RequestedTimestamp": datetime.now(),
+            "ExpirationTimestamp": datetime.now() + timedelta(days=15),
+            "Action": "INVITE",
+            "Resources": [
+                {"Type": "MASTER_EMAIL", "Value": "diego@example.com"},
+                {"Type": "MASTER_NAME", "Value": "Org Management account"},
+                {"Type": "ORGANIZATION_FEATURE_SET", "Value": "FULL"},
+            ],
+        }
+
+    return _factory

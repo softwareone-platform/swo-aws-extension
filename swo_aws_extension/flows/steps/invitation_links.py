@@ -4,9 +4,19 @@ from mpt_extension_sdk.flows.pipeline import NextStep, Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
-from swo_aws_extension.constants import PhasesEnum
+from swo_aws_extension.constants import (
+    TRANSFER_ACCOUNT_INVITATION_FOR_GENERIC_STATE,
+    TRANSFER_ACCOUNT_INVITATION_NOTE,
+    AwsHandshakeStateEnum,
+    PhasesEnum,
+    StateMessageError,
+)
 from swo_aws_extension.flows.error import ERR_AWAITING_INVITATION_RESPONSE
-from swo_aws_extension.flows.order import PurchaseContext, switch_order_to_query
+from swo_aws_extension.flows.order import (
+    MPT_ORDER_STATUS_QUERYING,
+    PurchaseContext,
+    switch_order_to_query,
+)
 from swo_aws_extension.parameters import (
     OrderParametersEnum,
     get_phase,
@@ -71,9 +81,13 @@ class SendInvitationLinksStep(Step):
         send an invitation to join the aws organization
         """
         phase = get_phase(context.order)
-        if phase != PhasesEnum.TRANSFER_ACCOUNT:
+        expected_phases = [
+            PhasesEnum.TRANSFER_ACCOUNT,
+            PhasesEnum.CHECK_INVITATION_LINK,
+        ]
+        if phase not in expected_phases:
             logger.info(
-                f"{context.order_id} - Skip - Order is not in TRANSFER_ACCOUNT phase. "
+                f"{context.order_id} - Skip - Order is not in {", ".join(expected_phases)} phase. "
                 f"Current phase is {phase}"
             )
             next_step(client, context)
@@ -81,63 +95,80 @@ class SendInvitationLinksStep(Step):
         assert context.aws_client is not None, "AWS client is not set in context"
 
         handshakes = context.aws_client.list_handshakes_for_organization()
-        account_state = map_handshakes_account_state(handshakes)
+        account_states = map_handshakes_account_state(handshakes)
         account_handshake_id = map_handshakes_account_handshake_id(handshakes)
 
-        notes = f"Softwareone invite for order {context.order_id}"
+
         errors = []
 
         self.cancel_invitations_for_removed_accounts(
-            context, account_handshake_id, account_state, errors
+            context, account_handshake_id, account_states, errors
         )
 
         if errors:
             logger.info(f"{context.order_id} - Stop - Failed to cancel invitations.")
             return
-
-        self.send_invitations_for_accounts(context, account_state, errors, notes)
+        note=TRANSFER_ACCOUNT_INVITATION_NOTE.format(context=context)
+        self.send_invitations_for_accounts(context, account_states, errors, note)
 
         if errors:
             logger.info(
                 f"{context.order_id} - Stop - Failed to send organization invitation links."
             )
             return
-
+        context.order = set_phase(context.order, PhasesEnum.CHECK_INVITATION_LINK)
+        context.order = update_order(
+            client, context.order_id, parameters=context.order["parameters"]
+        )
+        logger.info(f"{context.order_id} - Phase - Updated to {PhasesEnum.CHECK_INVITATION_LINK}")
         logger.info(f"{context.order_id} - Next - Invitation links sent to all accounts.")
         next_step(client, context)
 
-    def send_invitations_for_accounts(self, context, account_state, errors, notes):
+    def send_invitations_for_accounts(self, context, account_states, errors, notes):
+        not_send_invite_states = [
+            AwsHandshakeStateEnum.OPEN,
+            AwsHandshakeStateEnum.REQUESTED,
+            AwsHandshakeStateEnum.DECLINED,
+            AwsHandshakeStateEnum.CANCELED,
+            AwsHandshakeStateEnum.ACCEPTED,
+        ]
+
         for account_id in context.get_account_ids():
-            if account_id in account_state.keys():
+            account_state = account_states.get(account_id)
+            if account_state in not_send_invite_states:
                 logger.info(
-                    f"{context.order_id} - Skip - Invitation link already sent to account "
-                    f"{account_id}"
+                    f"{context.order_id} - Skip - Invitation link already sent to account. "
+                    f"Invitation state='{account_state}' for account_id={account_id}"
                 )
                 continue
             try:
                 context.aws_client.invite_account_to_organization(account_id, notes=notes)
                 logger.info(
-                    f"{context.order_id} - Action - Invitation link sent to account {account_id}"
+                    f"{context.order_id} - Action - Invitation link sent to account {account_id} "
+                    f"state '{account_state}'"
                 )
             except Exception as e:
                 errors.append(e)
                 logger.exception(
-                    f"{context.order_id} - Action Failed - Invitation for `{account_id}` failed. "
+                    f"{context.order_id} - Action Failed - Invitation for `{account_id}` failed."
+                    f"  state '{account_state}'"
                     f"Reason: {str(e)}"
                 )
 
     def cancel_invitations_for_removed_accounts(
         self, context, account_handshake_id, account_state, errors
     ):
-        cancellable_states = ["OPEN", "REQUESTED"]
+        cancellable_states = [AwsHandshakeStateEnum.REQUESTED, AwsHandshakeStateEnum.OPEN]
         for account_id, state in account_state.items():
             if account_id in context.get_account_ids():
                 continue
             logger.info(
-                f"{context.order_id} - Account {account_id} not in accounts but in handshakes "
-                f"with state `{state}`"
+                f"{context.order_id} - Account {account_id} not in transfer accounts "
+                f"but found while listing handshakes with state `{state}`"
             )
             if state not in cancellable_states:
+                if state == AwsHandshakeStateEnum.CANCELED:
+                    continue
                 logger.info(
                     f"{context.order_id} - Action cancelled - "
                     f"Unable to cancel handshake for {account_id}. Reason: "
@@ -161,6 +192,34 @@ class SendInvitationLinksStep(Step):
 
 
 class AwaitInvitationLinksStep(Step):
+    def accounts_state_message_building(self, account_state):
+        """
+        Build a message with the accounts and their states.
+        :param pending_accounts_by_state: Dictionary with account IDs and their states.
+        :return: String with the accounts and their states.
+        """
+
+
+
+        message_map = {
+            AwsHandshakeStateEnum.REQUESTED: StateMessageError.REQUESTED,
+            AwsHandshakeStateEnum.OPEN: StateMessageError.OPEN,
+            AwsHandshakeStateEnum.CANCELED: StateMessageError.CANCELED,
+            AwsHandshakeStateEnum.DECLINED: StateMessageError.DECLINED,
+            AwsHandshakeStateEnum.EXPIRED: StateMessageError.EXPIRED,
+        }
+        message = []
+        for account, state in account_state.items():
+            if state in message_map:
+                message.append(message_map[state].format(account=account, state=state.capitalize()))
+            else:
+                message.append(
+                    TRANSFER_ACCOUNT_INVITATION_FOR_GENERIC_STATE.format(
+                        account=account, state=state
+                    ))
+                logger.warning(f"Unexpected state {state} for account {account}.")
+        return "; ".join(message)
+
     def __call__(
         self,
         client: MPTClient,
@@ -174,29 +233,37 @@ class AwaitInvitationLinksStep(Step):
         :param context: The purchase context.
         :param next_step: The next step in the pipeline.
         """
-        if get_phase(context.order) != PhasesEnum.TRANSFER_ACCOUNT:
-            logger.info(f"{context.order_id} - Skip - Invitation links already completed.")
+        if get_phase(context.order) != PhasesEnum.CHECK_INVITATION_LINK:
+            logger.info(
+                f"{context.order_id} - Skip - Reason: Expecting phase in"
+                f" {PhasesEnum.CHECK_INVITATION_LINK}, current "
+                f"phase={get_phase(context.order)}"
+            )
             next_step(client, context)
             return
-        terminal_states = {"ACCEPTED"}
+        terminal_states = {AwsHandshakeStateEnum.ACCEPTED}
         handshakes = context.aws_client.list_handshakes_for_organization()
         account_state = map_handshakes_account_state(handshakes)
 
-        pending_accounts = [
-            account_id
-            for account_id in context.get_account_ids()
-            if account_state.get(account_id) not in terminal_states
-        ]
+        pending_account_state = {
+            account: state
+            for account, state in account_state.items()
+            if account in context.get_account_ids() and state not in terminal_states
+            if state not in terminal_states
+        }
 
-        if pending_accounts:
+        if pending_account_state:
             # If all accounts has not accepted the invitation, we set the order to query
-            str_accounts = {", ".join(pending_accounts)}
+            str_accounts = self.accounts_state_message_building(pending_account_state)
             context.order = set_ordering_parameter_error(
                 context.order,
                 OrderParametersEnum.ACCOUNT_ID,
                 ERR_AWAITING_INVITATION_RESPONSE.to_dict(accounts=str_accounts),
             )
-            switch_order_to_query(client, context.order)
+            if context.order_status != MPT_ORDER_STATUS_QUERYING:
+                switch_order_to_query(client, context.order)
+            else:
+                update_order(client, context.order_id, parameters=context.order["parameters"])
             logger.info(
                 f"{context.order_id} - Querying - Awaiting account invitations to be accepted: "
                 f"{str_accounts}"
@@ -204,6 +271,7 @@ class AwaitInvitationLinksStep(Step):
             return
 
         context.order = set_phase(context.order, PhasesEnum.CREATE_SUBSCRIPTIONS)
+
         context.order = update_order(
             client, context.order_id, parameters=context.order["parameters"]
         )

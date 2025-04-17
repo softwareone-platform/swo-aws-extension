@@ -7,7 +7,12 @@ from mpt_extension_sdk.mpt_http.mpt import update_order
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.error import ERR_TRANSFER_WITH_ORG_MISSING_MPA_ID
-from swo_aws_extension.flows.order import InitialAWSContext, PurchaseContext, switch_order_to_query
+from swo_aws_extension.flows.order import (
+    MPT_ORDER_STATUS_QUERYING,
+    InitialAWSContext,
+    PurchaseContext,
+    switch_order_to_query,
+)
 from swo_aws_extension.parameters import (
     OrderParametersEnum,
     get_account_request_id,
@@ -95,7 +100,10 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
                 OrderParametersEnum.MASTER_PAYER_ID,
                 ERR_TRANSFER_WITH_ORG_MISSING_MPA_ID.to_dict(),
             )
-            context.order = switch_order_to_query(client, context.order)
+            if context.order_status != MPT_ORDER_STATUS_QUERYING:
+                context.order = switch_order_to_query(client, context.order)
+            else:
+                context.order = update_order(client, context.order_id, parameters=context.order)
             logger.info(
                 f"{context.order_id} - Querying - Order Master payer id is not set in "
                 f"Purchase transfer with organization"

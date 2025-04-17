@@ -3,13 +3,18 @@ import re
 
 from mpt_extension_sdk.flows.pipeline import Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
+from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.flows.error import (
     ERR_INVALID_ACCOUNTS_FORMAT,
     ERR_TRANSFER_TOO_MANY_ACCOUNTS,
     ERR_TRANSFER_WITHOUT_ORG_MISSING_ACCOUNT_ID,
 )
-from swo_aws_extension.flows.order import PurchaseContext, switch_order_to_query
+from swo_aws_extension.flows.order import (
+    MPT_ORDER_STATUS_QUERYING,
+    PurchaseContext,
+    switch_order_to_query,
+)
 from swo_aws_extension.parameters import (
     MAX_ACCOUNT_TRANSFER,
     OrderParametersEnum,
@@ -53,7 +58,7 @@ class ValidatePurchaseTransferWithoutOrganizationStep(Step):
                 OrderParametersEnum.ACCOUNT_ID,
                 ERR_TRANSFER_WITHOUT_ORG_MISSING_ACCOUNT_ID.to_dict(),
             )
-            switch_order_to_query(client, context.order)
+            self.order_to_querying(client, context)
             logger.info(
                 f"{context.order_id} - Querying - Transfer without organization has "
                 f"ordering parameter `orderAccountId` empty. "
@@ -67,7 +72,7 @@ class ValidatePurchaseTransferWithoutOrganizationStep(Step):
                 OrderParametersEnum.ACCOUNT_ID,
                 ERR_INVALID_ACCOUNTS_FORMAT.to_dict(),
             )
-            switch_order_to_query(client, context.order)
+            self.order_to_querying(client, context)
             logger.info(
                 f"{context.order_id} - Querying - Invalid accounts ID format in `orderAccountId`. "
             )
@@ -80,7 +85,7 @@ class ValidatePurchaseTransferWithoutOrganizationStep(Step):
                 OrderParametersEnum.ACCOUNT_ID,
                 ERR_TRANSFER_TOO_MANY_ACCOUNTS.to_dict(),
             )
-            switch_order_to_query(client, context.order)
+            self.order_to_querying(client, context)
             logger.info(
                 f"{context.order_id} - Querying - Transfer without organization has "
                 f"too many accounts"
@@ -91,3 +96,14 @@ class ValidatePurchaseTransferWithoutOrganizationStep(Step):
             f"{context.order_id} - Next - Transfer without organization validation completed."
         )
         next_step(client, context)
+
+    def order_to_querying(self, client, context):
+        if context.order_status != MPT_ORDER_STATUS_QUERYING:
+            switch_order_to_query(client, context.order)
+        else:
+            update_order(
+                client,
+                context.order["id"],
+                parameters=context.order["parameters"],
+                template=context.order["template"],
+            )
