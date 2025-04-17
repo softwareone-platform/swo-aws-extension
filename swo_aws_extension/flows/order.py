@@ -90,6 +90,16 @@ class PurchaseContext(InitialAWSContext):
     def phase(self):
         return get_phase(self.order)
 
+    @property
+    def agreement_id(self):
+        """
+        Return the agreement id of the order
+        """
+        try:
+            return self.order.get("agreement", {}).get("id")
+        except (AttributeError, KeyError, TypeError):
+            return None
+
     def __str__(self):
         return f"PurchaseContext: {self.order_id} {self.order_type} - MPA: {self.mpa_account}"
 

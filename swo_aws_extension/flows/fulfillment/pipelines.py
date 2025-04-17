@@ -23,6 +23,9 @@ from swo_aws_extension.flows.steps import (
     ValidatePurchaseTransferWithoutOrganizationStep,
 )
 from swo_aws_extension.flows.steps.ccp_onboard import CCPOnboard
+from swo_aws_extension.flows.steps.register_transfered_mpa_airtable import (
+    RegisterTransferredMPAToAirtableStep,
+)
 
 config = Config()
 
@@ -42,6 +45,7 @@ purchase_transfer_with_organization = Pipeline(
     CreateTransferRequestTicketWithOrganizationStep(),
     AwaitTransferRequestTicketWithOrganizationStep(),
     AssignTransferMPAStep(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    RegisterTransferredMPAToAirtableStep(),
     CreateSubscription(),
     CompletePurchaseOrder("purchase_order"),
 )

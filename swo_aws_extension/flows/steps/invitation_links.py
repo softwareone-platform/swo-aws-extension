@@ -98,7 +98,6 @@ class SendInvitationLinksStep(Step):
         account_states = map_handshakes_account_state(handshakes)
         account_handshake_id = map_handshakes_account_handshake_id(handshakes)
 
-
         errors = []
 
         self.cancel_invitations_for_removed_accounts(
@@ -108,7 +107,7 @@ class SendInvitationLinksStep(Step):
         if errors:
             logger.info(f"{context.order_id} - Stop - Failed to cancel invitations.")
             return
-        note=TRANSFER_ACCOUNT_INVITATION_NOTE.format(context=context)
+        note = TRANSFER_ACCOUNT_INVITATION_NOTE.format(context=context)
         self.send_invitations_for_accounts(context, account_states, errors, note)
 
         if errors:
@@ -199,8 +198,6 @@ class AwaitInvitationLinksStep(Step):
         :return: String with the accounts and their states.
         """
 
-
-
         message_map = {
             AwsHandshakeStateEnum.REQUESTED: StateMessageError.REQUESTED,
             AwsHandshakeStateEnum.OPEN: StateMessageError.OPEN,
@@ -216,7 +213,8 @@ class AwaitInvitationLinksStep(Step):
                 message.append(
                     TRANSFER_ACCOUNT_INVITATION_FOR_GENERIC_STATE.format(
                         account=account, state=state
-                    ))
+                    )
+                )
                 logger.warning(f"Unexpected state {state} for account {account}.")
         return "; ".join(message)
 

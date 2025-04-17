@@ -12,6 +12,7 @@ class MPAStatusEnum(StrEnum):
     READY = "Ready"
     ASSIGNED = "Assigned"
     ERROR = "Error"
+    TRANSFERRED = "Transferred"
 
 
 class NotificationTypeEnum(StrEnum):

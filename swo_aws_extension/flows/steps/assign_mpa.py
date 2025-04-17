@@ -20,6 +20,19 @@ from swo_aws_extension.parameters import get_phase, set_phase
 logger = logging.getLogger(__name__)
 
 
+def coppy_context_data_to_mpa_pool_model(context, airtable_mpa, status=None):
+    if status is None:
+        status = MPAStatusEnum.ASSIGNED
+    scu = context.order.get("buyer", {}).get("externalId", {}).get("erpCustomer", "")
+    airtable_mpa.status = status
+    airtable_mpa.agreement_id = context.agreement_id
+    airtable_mpa.scu = scu
+    airtable_mpa.buyer_id = context.order.get("buyer", {}).get("id", {})
+    airtable_mpa.client_id = context.order.get("client", {}).get("id")
+    airtable_mpa.error_description = ""
+    return airtable_mpa
+
+
 def setup_agreement_external_id(client, context, account_id):
     context.order["agreement"] = update_agreement(
         client,
@@ -98,16 +111,11 @@ class AssignMPA(Step):
             f"- Action - MPA credentials for {context.airtable_mpa.account_id} "
             f"retrieved successfully"
         )
+        airtable_mpa = context.airtable_mpa
+        airtable_mpa = coppy_context_data_to_mpa_pool_model(context, airtable_mpa)
+        airtable_mpa.save()
 
-        context.airtable_mpa.status = MPAStatusEnum.ASSIGNED
-        context.airtable_mpa.agreement_id = context.order.get("agreement", {}).get("id")
-        scu = context.order.get("buyer", {}).get("externalId", {}).get("erpCustomer", "")
-        context.airtable_mpa.scu = scu
-        context.airtable_mpa.buyer_id = context.order.get("buyer", {}).get("id", {})
-        context.airtable_mpa.client_id = context.order.get("client", {}).get("id")
-        context.airtable_mpa.error_description = ""
-        context.airtable_mpa.save()
-
+        context.airtable_mpa = airtable_mpa
         setup_agreement_external_id(client, context, context.airtable_mpa.account_id)
 
         context.order = set_phase(context.order, PhasesEnum.PRECONFIGURATION_MPA)
