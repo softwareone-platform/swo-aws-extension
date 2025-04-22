@@ -30,7 +30,8 @@ class RegisterTransferredMPAToAirtableStep(Step):
         if context.airtable_mpa or self.exists_in_airtable(context.mpa_account):
             logger.info(
                 f"{context.order_id} - Skip - "
-                f"MPA {context.mpa_account} already registered in Airtable")
+                f"MPA {context.mpa_account} already registered in Airtable"
+            )
             next_step(client, context)
             return
         assert context.aws_client is not None, "Missing AWS client"

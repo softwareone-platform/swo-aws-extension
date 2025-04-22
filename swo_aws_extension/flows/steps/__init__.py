@@ -21,6 +21,7 @@ from swo_aws_extension.flows.steps.service_crm_steps import (
     CreateServiceRequestStep,
     CreateTerminationServiceRequestStep,
     CreateTransferRequestTicketWithOrganizationStep,
+    CreateUpdateKeeperTicketStep,
 )
 from swo_aws_extension.flows.steps.setup_agreement_id_in_account_tags import (
     SetupAgreementIdInAccountTagsStep,
@@ -45,7 +46,9 @@ __all__ = [
     "CreateTransferRequestTicketWithOrganizationStep",
     "CreateSubscription",
     "SynchronizeAgreementSubscriptionsStep",
+    "CreateUpdateKeeperTicketStep",
     "MPAPreConfiguration",
+    "SetupAgreementIdInAccountTagsStep",
     "SetupContext",
     "SetupPurchaseContext",
     "SetupContextPurchaseTransferWithOrganizationStep",
@@ -56,5 +59,4 @@ __all__ = [
     "ValidatePurchaseTransferWithoutOrganizationStep",
     "SendInvitationLinksStep",
     "AwaitInvitationLinksStep",
-    "SetupAgreementIdInAccountTagsStep",
 ]

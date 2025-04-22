@@ -14,6 +14,7 @@ from swo_aws_extension.flows.steps import (
     CreateSubscription,
     CreateTerminationServiceRequestStep,
     CreateTransferRequestTicketWithOrganizationStep,
+    CreateUpdateKeeperTicketStep,
     MPAPreConfiguration,
     SendInvitationLinksStep,
     SetupAgreementIdInAccountTagsStep,
@@ -39,6 +40,7 @@ purchase = Pipeline(
     CreateLinkedAccount(),
     CreateSubscription(),
     CCPOnboard(config),
+    CreateUpdateKeeperTicketStep(),
     CompletePurchaseOrder("purchase_order"),
 )
 
@@ -65,6 +67,7 @@ purchase_transfer_without_organization = Pipeline(
     SetupAgreementIdInAccountTagsStep(),
     CreateSubscription(),
     CCPOnboard(config),
+    CreateUpdateKeeperTicketStep(),
     CompletePurchaseOrder("purchase_order"),
     SynchronizeAgreementSubscriptionsStep(),
 )
