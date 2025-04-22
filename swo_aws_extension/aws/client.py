@@ -110,8 +110,15 @@ class AWSClient:
         Get the organization client.
         :return: The organization client.
         """
+        return self._get_client("organizations")
+
+    def _get_client(self, service_name):
+        """
+        Get the organization client.
+        :return: The organization client.
+        """
         return boto3.client(
-            "organizations",
+            service_name,
             aws_access_key_id=self.credentials["AccessKeyId"],
             aws_secret_access_key=self.credentials["SecretAccessKey"],
             aws_session_token=self.credentials["SessionToken"],
@@ -422,3 +429,11 @@ class AWSClient:
 
         org_client.enable_policy_type(RootId=root["Id"], PolicyType="SERVICE_CONTROL_POLICY")
         logger.info("SCP has been enabled")
+
+    def account_aliases(self):
+        iam_client = self._get_client("iam")
+        response = iam_client.list_account_aliases()
+        return response.get("AccountAliases", [])
+
+    def account_name(self) -> str:
+        return self.account_aliases()[0] if self.account_aliases() else ""
