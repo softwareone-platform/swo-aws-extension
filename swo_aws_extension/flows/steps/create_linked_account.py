@@ -94,6 +94,8 @@ class CreateLinkedAccount(Step):
             return
 
         logger.info(f"Creating linked account with: email={account_email}, name={account_name}")
-        linked_account = context.aws_client.create_linked_account(account_email, account_name)
+        linked_account = context.aws_client.create_linked_account(
+            account_email, account_name, context.order.get("agreement", {}).get("id")
+        )
         context.order = set_account_request_id(context.order, linked_account.account_request_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])

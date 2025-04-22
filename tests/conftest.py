@@ -1058,14 +1058,17 @@ def create_account_status(account_creation_status_factory):
 @pytest.fixture()
 def subscription_factory(lines_factory):
     def _subscription(
-        name="Subscription for account_id",
+        name="Subscription for account_name (account_id)",
         account_email=ACCOUNT_EMAIL,
         account_name="account_name",
         vendor_id="account_id",
+        status="Active",
     ):
         return {
             "id": "SUB-1000-2000-3000",
+            "status": status,
             "name": name,
+            "autoRenew": True,
             "parameters": {
                 "fulfillment": [
                     {"externalId": "accountEmail", "value": account_email},
@@ -1578,3 +1581,20 @@ def handshake_data_factory():
         }
 
     return _factory
+
+
+@pytest.fixture()
+def aws_accounts_factory():
+    def _account(account_id="123456789012", status="ACTIVE"):
+        return {
+            "Accounts": [
+                {
+                    "Id": account_id,
+                    "Name": "Test Account",
+                    "Email": "test@example.com",
+                    "Status": status,
+                }
+            ]
+        }
+
+    return _account

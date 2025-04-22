@@ -2,7 +2,7 @@ import copy
 import functools
 from enum import StrEnum
 
-from swo_aws_extension.utils import find_first
+from mpt_extension_sdk.mpt_http.utils import find_first
 
 PARAM_PHASE_ORDERING = "ordering"
 PARAM_PHASE_FULFILLMENT = "fulfillment"
@@ -374,26 +374,6 @@ def get_master_payer_id(source):
         OrderParametersEnum.MASTER_PAYER_ID,
     )
     return param.get("value", None)
-
-
-def set_master_payer_id(order, master_payer_id):
-    """
-    Set the master payer ID on the ordering parameters.
-
-    Args:
-        order (dict): The order that contains the parameter.
-        master_payer_id (str): The master payer ID provided by client.
-
-    Returns:
-        dict: The order updated.
-    """
-    updated_order = copy.deepcopy(order)
-    param = get_ordering_parameter(
-        updated_order,
-        OrderParametersEnum.MASTER_PAYER_ID,
-    )
-    param["value"] = master_payer_id
-    return updated_order
 
 
 def get_link_account_service_ticket_id(source):

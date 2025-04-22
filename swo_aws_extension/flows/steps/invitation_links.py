@@ -269,7 +269,6 @@ class AwaitInvitationLinksStep(Step):
             return
 
         context.order = set_phase(context.order, PhasesEnum.CREATE_SUBSCRIPTIONS)
-
         context.order = update_order(
             client, context.order_id, parameters=context.order["parameters"]
         )

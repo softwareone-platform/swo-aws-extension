@@ -5,6 +5,7 @@ from typing import Optional
 import boto3
 import botocore.exceptions
 import requests
+from mpt_extension_sdk.mpt_http.utils import find_first
 
 from swo_aws_extension.aws.errors import (
     AWSError,
@@ -12,7 +13,7 @@ from swo_aws_extension.aws.errors import (
     wrap_boto3_error,
     wrap_http_error,
 )
-from swo_aws_extension.utils import find_first
+from swo_aws_extension.constants import TAG_AGREEMENT_ID
 from swo_ccp_client.client import CCPClient
 
 logger = logging.getLogger(__name__)
@@ -193,12 +194,15 @@ class AWSClient:
         logger.info("Organizations access activated")
 
     @wrap_boto3_error
-    def create_linked_account(self, email, account_name, role_name="OrganizationAccountAccessRole"):
+    def create_linked_account(
+        self, email, account_name, agreement_id, role_name="OrganizationAccountAccessRole"
+    ):
         """
         Create a linked account.
 
         :param email: The email of the account.
         :param account_name: The name of the account.
+        :param agreement_id: The ID of the agreement.
         :param role_name: The role name. By defaults: OrganizationAccountAccessRole
         :return: AccountCreationStatus The status of the linked account creation.
         """
@@ -208,6 +212,7 @@ class AWSClient:
             AccountName=account_name,
             RoleName=role_name,
             IamUserAccessToBilling="DENY",
+            Tags=[{"Key": TAG_AGREEMENT_ID, "Value": agreement_id}],
         )
         account_creation_status = AccountCreationStatus.from_boto3_response(response)
         logger.info(f"Linked account created: {account_creation_status}")
@@ -412,6 +417,7 @@ class AWSClient:
         org_client = self._get_organization_client()
         return org_client.cancel_handshake(HandshakeId=handshake_id)
 
+    @wrap_boto3_error
     def enable_scp(self):
         """
         Enable SCP for the organization.
@@ -429,6 +435,35 @@ class AWSClient:
 
         org_client.enable_policy_type(RootId=root["Id"], PolicyType="SERVICE_CONTROL_POLICY")
         logger.info("SCP has been enabled")
+
+    @wrap_boto3_error
+    def get_tags_for_resource(self, resource_id):
+        """
+        Get the tags for a resource.
+
+        :param resource_id: The ID of the resource.
+        :return: list(dict) The tags for the resource.
+        """
+        org_client = self._get_organization_client()
+        response = org_client.list_tags_for_resource(ResourceId=resource_id)
+        tags = response.get("Tags", [])
+        while response.get("NextToken"):
+            response = org_client.list_tags_for_resource(
+                ResourceId=resource_id, NextToken=response["NextToken"]
+            )
+            tags.extend(response.get("Tags", []))
+        return tags
+
+    @wrap_boto3_error
+    def add_tags_for_resource(self, resource_id, tags):
+        """
+        Add tags for a resource.
+
+        :param resource_id: The ID of the resource.
+        :param tags: The tags to add.
+        """
+        org_client = self._get_organization_client()
+        org_client.tag_resource(ResourceId=resource_id, Tags=tags)
 
     def account_aliases(self):
         iam_client = self._get_client("iam")
