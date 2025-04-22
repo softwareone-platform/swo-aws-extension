@@ -231,6 +231,71 @@ class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
         )
 
 
+class CreateUpdateKeeperTicketStep(CreateServiceRequestStep):
+    def always_create_ticket(self, context: InitialAWSContext) -> bool:
+        """
+        :param context:
+        :return:
+        """
+        return True
+
+    def build_service_request(self, context: PurchaseContext) -> ServiceRequest:
+        if not context.airtable_mpa:
+            raise RuntimeError(
+                "Unable to create a service request ticket for an order missing airtable_mpa"
+            )
+
+        summary_template = textwrap.dedent("""
+        Request to update the Keeper Shared Credentials folder name with the assigned Buyer SCU
+
+        MPA: {context.airtable_mpa.account_id}
+        Account Name: {context.airtable_mpa.account_name}
+        Account Email: {context.airtable_mpa.account_email}
+        PLS Enabled: {context.airtable_mpa.pls_enabled}
+
+        SCU: {context.airtable_mpa.scu}
+        Buyer Id: {context.airtable_mpa.buyer_id}
+
+        Additional data:
+        Order Id: {context.order_id}
+        """)
+        summary = summary_template.format(
+            context=context,
+        )
+
+        title = (
+            f"Keeper update request for account_id={context.mpa_account} "
+            f"and SCU={context.airtable_mpa.scu}"
+        )
+
+        return ServiceRequest(
+            external_user_email=get_notifications_recipient(context.order),
+            external_username=get_notifications_recipient(context.order),
+            requester="Supplier.Portal",
+            sub_service="Service Activation",
+            global_academic_ext_user_id="globalacademicExtUserId",
+            additional_info="additionalInfo",
+            title=title,
+            summary=summary,
+            service_type="MarketPlaceServiceActivation",
+        )
+
+    def save_ticket(self, client, context, crm_ticket_id):
+        if not crm_ticket_id:
+            raise ValueError("Ticket id is required.")
+        logger.info(
+            f"{context.order_id} - Action - Ticket created for keeper shared credentials "
+            f"with id={crm_ticket_id}"
+        )
+
+    def __init__(self):
+        super().__init__(
+            service_request_factory=self.build_service_request,
+            ticket_id_saver=self.save_ticket,
+            criteria=self.always_create_ticket,
+        )
+
+
 class AwaitTransferRequestTicketWithOrganizationStep(AwaitCRMTicketStatusStep):
     def get_crm_ticket(self, context: InitialAWSContext):
         return get_link_account_service_ticket_id(context.order)

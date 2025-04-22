@@ -11,7 +11,7 @@ from swo_aws_extension.flows.steps.register_transfered_mpa_airtable import (
 def organization_details_response_data():
     organization_details = {
         "MasterAccountArn": "arn:aws:organizations::111111111111:"
-                            "account/o-exampleorgid/111111111111",
+        "account/o-exampleorgid/111111111111",
         "MasterAccountEmail": "bill@example.com",
         "MasterAccountId": "111111111111",
         "Id": "o-exampleorgid",
@@ -44,7 +44,7 @@ def test_success(
         )
     )
     mpa_pool_model_mock.save = mocker.MagicMock()
-    mpa_pool_model_mock.first=mocker.MagicMock(return_value=None)
+    mpa_pool_model_mock.first = mocker.MagicMock(return_value=None)
     mocker.patch(
         "swo_aws_extension.flows.steps.register_transfered_mpa_airtable.get_master_payer_account_pool_model",
         return_value=mpa_pool_model_mock,
@@ -88,7 +88,7 @@ def test_skip(
         )
     )
     mpa_pool_model_mock.save = mocker.MagicMock()
-    mpa_pool_model_mock.first=mocker.MagicMock(return_value=None)
+    mpa_pool_model_mock.first = mocker.MagicMock(return_value=None)
     mocker.patch(
         "swo_aws_extension.flows.steps.register_transfered_mpa_airtable.get_master_payer_account_pool_model",
         return_value=mpa_pool_model_mock,
@@ -122,7 +122,7 @@ def test_fail(
         )
     )
     mpa_pool_model_mock.save = mocker.MagicMock()
-    mpa_pool_model_mock.first=mocker.MagicMock(return_value=None)
+    mpa_pool_model_mock.first = mocker.MagicMock(return_value=None)
     mocker.patch(
         "swo_aws_extension.flows.steps.register_transfered_mpa_airtable.get_master_payer_account_pool_model",
         return_value=mpa_pool_model_mock,

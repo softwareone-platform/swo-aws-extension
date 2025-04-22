@@ -4,10 +4,11 @@ import pytest
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.constants import CRM_TICKET_RESOLVED_STATE
-from swo_aws_extension.flows.order import TerminateContext
+from swo_aws_extension.flows.order import PurchaseContext, TerminateContext
 from swo_aws_extension.flows.steps.service_crm_steps import (
     AwaitCRMTicketStatusStep,
     CreateServiceRequestStep,
+    CreateUpdateKeeperTicketStep,
 )
 from swo_crm_service_client.client import CRMServiceClient, ServiceRequest
 
@@ -245,3 +246,46 @@ def test_await_crm_ticket_status_ticket_in_target_status(
     get_ticket_id.assert_called_once_with(context)
     crm_service_client.get_service_requests.assert_called_once_with(context.order_id, "CS001")
     next_step.assert_called_once_with(client, context)
+
+
+def test_create_keeper_ticket(mocker, crm_client, order, next_step, service_request, mpa_pool):
+    mocker.patch(
+        "swo_aws_extension.flows.steps.service_crm_steps.get_service_client",
+        return_value=crm_client,
+    )
+    crm_client.create_service_request.return_value = {"id": "12345"}
+    client = Mock(spec=MPTClient)
+    context = PurchaseContext(order=order, airtable_mpa=mpa_pool)
+
+    step = CreateUpdateKeeperTicketStep()
+    step(client, context, next_step)
+
+    crm_client.create_service_request.assert_called_once()
+    next_step.assert_called_once_with(client, context)
+
+
+def test_create_keeper_ticket_fail_if_not_mpa_pool(
+    mocker, crm_client, order, next_step, service_request, mpa_pool
+):
+    crm_client.create_service_request.return_value = {"id": "12345"}
+    client = Mock(spec=MPTClient)
+    context = PurchaseContext(order=order, airtable_mpa=None)
+    step = CreateUpdateKeeperTicketStep()
+    with pytest.raises(RuntimeError):
+        step(client, context, next_step)
+
+
+def test_create_keeper_ticket_fail_it_no_ticket_id(
+    mocker, crm_client, order, next_step, service_request, mpa_pool
+):
+    mocker.patch(
+        "swo_aws_extension.flows.steps.service_crm_steps.get_service_client",
+        return_value=crm_client,
+    )
+    crm_client.create_service_request.return_value = {"id": None}
+    client = Mock(spec=MPTClient)
+    context = PurchaseContext(order=order, airtable_mpa=mpa_pool)
+
+    step = CreateUpdateKeeperTicketStep()
+    with pytest.raises(ValueError):
+        step(client, context, next_step)
