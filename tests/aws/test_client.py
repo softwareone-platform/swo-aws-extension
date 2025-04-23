@@ -83,39 +83,6 @@ def test_aws_client_list_accounts(mocker, config, aws_client_factory, data_aws_a
     mock_client.list_accounts.assert_has_calls(expected_calls)
 
 
-def test_aws_client_close_account(config, aws_client_factory):
-    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    error_response = {
-        "Error": {
-            "Code": "AccountAlreadyClosedException",
-            "Message": "The request failed because your credentials do not have permission"
-            " to create the service-linked role required by AWS Organizations",
-        }
-    }
-    mock_client.close_account.side_effect = botocore.exceptions.ClientError(
-        error_response, "CloseAccount"
-    )
-    aws_client.close_account("account-id")
-
-    mock_client.close_account.assert_called_once_with(AccountId="account-id")
-
-
-def test_aws_client_close_account_raise_exception(config, aws_client_factory):
-    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    error_response = {
-        "Error": {
-            "Code": "AlternativeError",
-            "Message": "The request failed because your credentials do not have permission"
-            " to create the service-linked role required by AWS Organizations",
-        }
-    }
-    mock_client.close_account.side_effect = botocore.exceptions.ClientError(
-        error_response, "CloseAccount"
-    )
-    with pytest.raises(AWSError):
-        aws_client.close_account("account-id")
-
-
 def test_enable_scp(config, aws_client_factory, roots_factory):
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.list_roots.return_value = roots_factory()

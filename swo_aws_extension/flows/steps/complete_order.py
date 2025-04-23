@@ -35,7 +35,7 @@ class CompleteOrder(Step):
         )
         context.order["agreement"] = agreement
         send_email_notification(client, context.order)
-        logger.info(f"{context.order_id}: order has been completed successfully")
+        logger.info(f"{context.order_id} - Completed - order has been completed successfully")
 
 
 class CompletePurchaseOrder(CompleteOrder):
@@ -45,7 +45,7 @@ class CompletePurchaseOrder(CompleteOrder):
     def __call__(self, client, context, next_step):
         if get_phase(context.order) != PhasesEnum.COMPLETED:
             logger.info(
-                f"Current phase is '{get_phase(context.order)}', "
+                f"{context.order_id} - Skip - Current phase is '{get_phase(context.order)}', "
                 f"skipping as it is not '{PhasesEnum.COMPLETED}'"
             )
             next_step(client, context)

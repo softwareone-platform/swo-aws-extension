@@ -1,4 +1,5 @@
 import pytest
+from mpt_extension_sdk.flows.context import ORDER_TYPE_CHANGE, ORDER_TYPE_TERMINATION
 
 from swo_aws_extension.aws.errors import AWSHttpError
 from swo_aws_extension.flows.error import strip_trace_id
@@ -26,3 +27,17 @@ def test_validate_purchase_order_exception(mocker, mpt_error_factory, order_fact
     assert process == "validation"
     assert order_id == order["id"]
     assert strip_trace_id(str(error)) in tb
+
+
+def test_validation_change_order(mocker, mpt_client, order_factory):
+    order = order_factory(order_type=ORDER_TYPE_CHANGE)
+    context = InitialAWSContext(order=order)
+    result = validate_order(mpt_client, context)
+    assert result == order
+
+
+def test_validation_termination_order(mocker, mpt_client, order_factory):
+    order = order_factory(order_type=ORDER_TYPE_TERMINATION)
+    context = InitialAWSContext(order=order)
+    result = validate_order(mpt_client, context)
+    assert result == order
