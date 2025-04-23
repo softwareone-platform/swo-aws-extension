@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from requests import Request
 from requests.models import Response
 
 from swo_aws_extension.constants import (
@@ -7,6 +8,7 @@ from swo_aws_extension.constants import (
     FAILED_TO_GET_SECRET,
     FAILED_TO_SAVE_SECRET_TO_KEY_VAULT,
 )
+from swo_ccp_client.client import CCPClient
 
 
 def test_get_ccp_access_token(ccp_client, config, mock_key_vault_secret_value):
@@ -170,3 +172,52 @@ def test_save_secret_to_key_vault_not_saved(
     )
     mocked_send_error.assert_called_once()
     assert FAILED_TO_SAVE_SECRET_TO_KEY_VAULT in caplog.text
+
+
+def test_prepare_request(mocker):
+    request = mocker.Mock(spec=Request)
+    request.url = "/test_url"
+
+    config = mocker.Mock()
+    config.ccp_api_base_url = "https://localhost"
+
+    parent_prepare_request = mocker.patch(
+        "swo_ccp_client.client.Session.prepare_request", return_value="https://localhost"
+    )
+    join_url = mocker.patch(
+        "swo_ccp_client.client.CCPClient._join_url", return_value="https://localhost"
+    )
+    mocker.patch("swo_ccp_client.client.CCPClient.get_ccp_access_token", return_value="auth-token")
+    client = CCPClient(config)
+    client.prepare_request(request)
+    parent_prepare_request.assert_called_once()
+    join_url.assert_called_once()
+
+
+def test_join_url(mocker):
+    mocker.patch("swo_ccp_client.client.CCPClient.get_ccp_access_token", return_value="auth-token")
+
+    config = mocker.Mock()
+    config.ccp_api_base_url = "https://localhost"
+    client = CCPClient(config)
+    assert client._join_url("/resource/12") == client._join_url("https://localhost/resource/12")
+    assert client._join_url("resource/12") == client._join_url("https://localhost/resource/12")
+
+    config = mocker.Mock()
+    config.ccp_api_base_url = "https://localhost/"
+    client = CCPClient(config)
+    assert client._join_url("/resource/12") == client._join_url("https://localhost/resource/12")
+    assert client._join_url("resource/12") == client._join_url("https://localhost/resource/12")
+
+
+def test_request(mocker):
+    mocker.patch("swo_ccp_client.client.CCPClient.get_ccp_access_token", return_value="auth-token")
+    config = mocker.Mock()
+    config.ccp_api_base_url = "https://localhost"
+    client = CCPClient(config)
+
+    response = mocker.Mock(spec=Response)
+    request_mock = mocker.patch("swo_ccp_client.client.Session.request", return_value=response)
+    mocker.patch("swo_ccp_client.client.CCPClient.get_ccp_access_token", return_value="auth-token")
+    client.get_onboard_status("123")
+    request_mock.assert_called_once()

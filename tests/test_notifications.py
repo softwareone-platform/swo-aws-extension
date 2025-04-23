@@ -3,12 +3,14 @@ import logging
 import pymsteams
 import pytest
 
+from swo_aws_extension.flows.order import MPT_ORDER_STATUS_QUERYING
 from swo_aws_extension.notifications import (
     Button,
     FactsSection,
     dateformat,
     notify_unhandled_exception_in_teams,
     send_email,
+    send_email_notification,
     send_error,
     send_exception,
     send_notification,
@@ -232,3 +234,38 @@ def test_notify_unhandled_exception_in_teams(mocker):
         "of the order **ORD-0000**:\n\n"
         "```exception-traceback```",
     )
+
+
+def test_send_email_notification(
+    mocker, mpt_client, order_factory, order_parameters_factory, settings, buyer
+):
+    settings.EXTENSION_CONFIG = {"EMAIL_NOTIFICATIONS_ENABLED": True}
+    mock_send_email = mocker.patch("swo_aws_extension.notifications.send_email")
+    mock_get_rendered_template = mocker.patch(
+        "swo_aws_extension.notifications.get_rendered_template", return_value="rendered-template"
+    )
+    order = order_factory(
+        order_parameters=order_parameters_factory(contact={"email": "spam@example.com"}),
+        buyer=buyer,
+        status=MPT_ORDER_STATUS_QUERYING,
+    )
+    send_email_notification(mpt_client, order)
+    mock_send_email.assert_called_once()
+    mock_get_rendered_template.assert_called_once()
+
+
+def test_send_email_notification_no_email(
+    mocker, mpt_client, order_factory, order_parameters_factory, settings, buyer
+):
+    settings.EXTENSION_CONFIG = {"EMAIL_NOTIFICATIONS_ENABLED": True}
+    mock_send_email = mocker.patch("swo_aws_extension.notifications.send_email")
+    mock_get_rendered_template = mocker.patch(
+        "swo_aws_extension.notifications.get_rendered_template", return_value="rendered-template"
+    )
+    order = order_factory(
+        buyer={},
+        status=MPT_ORDER_STATUS_QUERYING,
+    )
+    send_email_notification(mpt_client, order)
+    mock_send_email.assert_not_called()
+    mock_get_rendered_template.assert_not_called()

@@ -24,7 +24,7 @@ def validate_order(mpt_client, context):
     """
     try:
         has_errors = False
-
+        order = context.order
         if context.is_purchase_order():
             purchase_context = PurchaseContext.from_context(context)
             has_errors, order = validate_purchase_order(mpt_client, purchase_context)

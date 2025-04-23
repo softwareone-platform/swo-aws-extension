@@ -148,9 +148,9 @@ def send_email(recipient, subject, template_name, context):
 
 
 def get_notifications_recipient(order):
-    return (
-        get_ordering_parameter(order, OrderParametersEnum.PARAM_CONTACT).get("value", {}) or {}
-    ).get("email") or (order["buyer"].get("contact", {}) or {}).get("email")
+    return (get_ordering_parameter(order, OrderParametersEnum.CONTACT).get("value", {}) or {}).get(
+        "email"
+    ) or (order["buyer"].get("contact", {}) or {}).get("email")
 
 
 def md2html(template):

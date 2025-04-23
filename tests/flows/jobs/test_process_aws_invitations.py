@@ -14,6 +14,7 @@ from swo_aws_extension.constants import (
 from swo_aws_extension.flows.jobs.process_aws_invitations import (
     AWSInvitationsProcessor,
     CheckInvitationLinksStep,
+    SetupOrderProcessingStep,
 )
 from swo_aws_extension.flows.order import MPT_ORDER_STATUS_QUERYING, PurchaseContext
 
@@ -264,3 +265,14 @@ def test_get_quering_orders_exceptions(mocker, aws_invitation_processor, order_f
     ]
     orders = aws_invitation_processor.get_querying_orders()
     assert len(orders) == 0
+
+
+def test_setup_order_processing_step_process_order(mocker, order, mpt_client):
+    next_step = mocker.MagicMock()
+    step = SetupOrderProcessingStep()
+    context = PurchaseContext(order)
+
+    mpt_client.post = mocker.MagicMock(
+        return_value=mocker.MagicMock(spec=Response, status_code=200)
+    )
+    step(mpt_client, context, next_step)

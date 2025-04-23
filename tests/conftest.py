@@ -62,6 +62,7 @@ def order_parameters_factory(constraints):
         support_type=SupportTypesEnum.PARTNER_LED_SUPPORT,
         transfer_type=None,
         master_payer_id=None,
+        contact=None,
     ):
         return [
             {
@@ -123,6 +124,13 @@ def order_parameters_factory(constraints):
                 "externalId": OrderParametersEnum.MASTER_PAYER_ID,
                 "type": "Choice",
                 "value": master_payer_id,
+            },
+            {
+                "id": "PAR-1234-5681",
+                "name": "Master Payer ID",
+                "externalId": OrderParametersEnum.CONTACT,
+                "type": "Contact",
+                "value": contact,
             },
         ]
 
@@ -497,11 +505,24 @@ def agreement(buyer, licensee, listing, seller):
 
 
 @pytest.fixture()
+def buyer_factory():
+    def _factory(id=None, name=None, email=None):
+        return {
+            "id": id or "BUY-1111-1111",
+            "name": name or "A buyer",
+            "email": email or "buyer@example.com",
+        }
+
+    return _factory
+
+
+@pytest.fixture()
 def order_factory(
     agreement_factory,
     order_parameters_factory,
     fulfillment_parameters_factory,
     lines_factory,
+    buyer_factory,
     status="Processing",
     deployment_id="",
 ):
@@ -521,6 +542,7 @@ def order_factory(
         template=None,
         deployment_id=deployment_id,
         agreement=None,
+        buyer=None,
     ):
         order_parameters = (
             order_parameters_factory() if order_parameters is None else order_parameters
@@ -560,7 +582,7 @@ def order_factory(
             },
             "product": {"id": "PRD-1111-1111", "name": "AWS"},
             "seller": {"id": "SEL-1111-1111"},
-            "buyer": {"id": "BUY-1111-1111"},
+            "buyer": buyer or buyer_factory(),
             "audit": {
                 "created": {
                     "at": CREATED_AT,
