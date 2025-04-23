@@ -35,7 +35,7 @@ def fulfill_order(client, context):
     Returns:
         None
     """
-    logger.info(f"Start processing {context.order_type} order {context.order_id}")
+    logger.info(f"{context.order_id} - Start processing {context.order_type}")
     try:
         if context.is_purchase_order():
             context = PurchaseContext.from_context(context)  # type: PurchaseContext
@@ -43,27 +43,27 @@ def fulfill_order(client, context):
             if context.is_type_transfer_with_organization():
                 logger.info(
                     f"{context.order_id} - Pipeline - Starting: "
-                    f"purchase_transfer_with_organization"
+                    f"purchase transfer with organization"
                 )
                 purchase_transfer_with_organization.run(client, context)
                 return
             elif context.is_type_transfer_without_organization():
                 logger.info(
                     f"{context.order_id} - Pipeline - Starting: "
-                    f"purchase_transfer_without_organization"
+                    f"purchase transfer without organization"
                 )
                 purchase_transfer_without_organization.run(client, context)
             else:
                 logger.info(f"{context.order_id} - Pipeline - Starting: purchase")
                 purchase.run(client, context)
         elif context.is_change_order():
-            logger.info("Processing change order")
+            logger.info(f"{context.order_id} - Pipeline - Starting: change order")
             change_order.run(client, context)
         elif context.is_termination_order():  # pragma: no branch
             context = TerminateContext.from_context(context)
             terminate.run(client, context)
         else:
-            logger.warning(f"Unsupported order type: {context.order_type}")
+            raise RuntimeError(f"{context.order_id} - Unsupported order type: {context.order_type}")
     except Exception:
         notify_unhandled_exception_in_teams(
             "fulfillment",

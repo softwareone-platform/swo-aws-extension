@@ -15,7 +15,7 @@ class MPAPreConfiguration(Step):
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         if get_phase(context.order) != PhasesEnum.PRECONFIGURATION_MPA:
             logger.info(
-                f"Current phase is '{get_phase(context.order)}', "
+                f"{context.order_id} - Skip - Current phase is '{get_phase(context.order)}', "
                 f"skipping as it is not '{PhasesEnum.PRECONFIGURATION_MPA}'"
             )
             next_step(client, context)
@@ -35,7 +35,8 @@ class MPAPreConfiguration(Step):
         context.order = set_phase(context.order, next_phase)
         update_order(client, context.order_id, parameters=context.order["parameters"])
         logger.info(
-            f"'{PhasesEnum.PRECONFIGURATION_MPA}' completed successfully. "
+            f"{context.order_id} - Action - '{PhasesEnum.PRECONFIGURATION_MPA}' completed "
+            f"successfully. "
             f"Proceeding to next phase '{next_phase}'"
         )
         next_step(client, context)

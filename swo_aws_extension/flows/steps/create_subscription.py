@@ -28,7 +28,7 @@ class CreateSubscription(Step):
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         if get_phase(context.order) != PhasesEnum.CREATE_SUBSCRIPTIONS:
             logger.info(
-                f"Current phase is '{get_phase(context.order)}', "
+                f"{context.order_id} - Skip - Current phase is '{get_phase(context.order)}', "
                 f"skipping as it is not '{PhasesEnum.CREATE_SUBSCRIPTIONS}'"
             )
             next_step(client, context)
@@ -44,7 +44,10 @@ class CreateSubscription(Step):
                 accounts,
             )
             if not account:
-                logger.exception(f"{context.order_id} Unable to find an active account: {accounts}")
+                logger.exception(
+                    f"{context.order_id} - Exception - "
+                    f"Unable to find an active account: {accounts}"
+                )
                 return
             account_id = account["Id"]
             account_email = account["Email"]
@@ -56,7 +59,9 @@ class CreateSubscription(Step):
             account_name = get_account_name(context.order)
 
         if not self.subscription_exist_for_account_id(client, context.order_id, account_id):
-            logger.info(f"Creating subscription for account {account_id}")
+            logger.info(
+                f"{context.order_id} - Intent - " f"Creating subscription for account {account_id}"
+            )
 
             self.add_subscription(
                 client,
@@ -70,7 +75,8 @@ class CreateSubscription(Step):
         update_order(client, context.order_id, parameters=context.order["parameters"])
 
         logger.info(
-            f"'{PhasesEnum.CREATE_SUBSCRIPTIONS}' completed successfully. "
+            f"'{context.order_id} - Action - {PhasesEnum.CREATE_SUBSCRIPTIONS}' "
+            f"completed successfully. "
             f"Proceeding to next phase '{PhasesEnum.CCP_ONBOARD}'"
         )
         next_step(client, context)
@@ -114,7 +120,10 @@ class CreateSubscription(Step):
             ],
         }
         subscription = create_subscription(client, context.order_id, subscription)
-        logger.info(f"{context}: subscription for {account_id} " f'({subscription["id"]}) created')
+        logger.info(
+            f"{context.order_id} - Action -  subscription for {account_id} "
+            f"({subscription["id"]}) created"
+        )
 
 
 class SynchronizeAgreementSubscriptionsStep(CreateSubscription):
