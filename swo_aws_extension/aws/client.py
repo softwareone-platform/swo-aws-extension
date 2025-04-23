@@ -9,7 +9,6 @@ from mpt_extension_sdk.mpt_http.utils import find_first
 
 from swo_aws_extension.aws.errors import (
     AWSError,
-    transform_terminating_aws_exception,
     wrap_boto3_error,
     wrap_http_error,
 )
@@ -257,48 +256,6 @@ class AWSClient:
             response = org_client.list_accounts(NextToken=response["NextToken"])
             accounts.extend(response.get("Accounts", []))
         return accounts
-
-    @wrap_boto3_error
-    def close_account(self, account_id):
-        """
-        Close the account.
-
-        :return: None
-        """
-        try:
-            org_client = self._get_organization_client()
-            return org_client.close_account(AccountId=account_id)
-        except botocore.exceptions.ClientError as e:
-            if e.response["Error"]["Code"] == "AccountAlreadyClosedException":
-                logger.info(f"Account {account_id} already closed")
-                return None
-            elif e.response["Error"]["Code"] == "ConstraintViolationException":
-                extension_exception = transform_terminating_aws_exception(e, account_id=account_id)
-                raise extension_exception from e
-            else:
-                raise
-
-    @wrap_boto3_error
-    def remove_account_from_organization(self, account_id):
-        """
-        Remove the account from the organization.
-
-        :return: None
-
-        raises: AWSTerminatingAccountError |
-            AWSTerminationCoolOffPeriodError |
-            AWSRequerimentsNotMeetError |
-            botocore.exceptions.ClientError
-        """
-        org_client = self._get_organization_client()
-        try:
-            return org_client.remove_account_from_organization(AccountId=account_id)
-        except botocore.exceptions.ClientError as e:
-            if e.response["Error"]["Code"] == "ConstraintViolationException":
-                extension_exception = transform_terminating_aws_exception(e, account_id=account_id)
-                raise extension_exception from e
-            else:
-                raise
 
     @wrap_boto3_error
     def describe_organization(self):

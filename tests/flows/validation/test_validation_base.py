@@ -30,17 +30,14 @@ def test_validate_purchase_order_exception(mocker, mpt_error_factory, order_fact
 
 
 def test_validation_change_order(mocker, mpt_client, order_factory):
-    order = order_factory(
-        order_type=ORDER_TYPE_CHANGE
-    )
+    order = order_factory(order_type=ORDER_TYPE_CHANGE)
     context = InitialAWSContext(order=order)
     result = validate_order(mpt_client, context)
     assert result == order
 
+
 def test_validation_termination_order(mocker, mpt_client, order_factory):
-    order = order_factory(
-        order_type=ORDER_TYPE_TERMINATION
-    )
+    order = order_factory(order_type=ORDER_TYPE_TERMINATION)
     context = InitialAWSContext(order=order)
     result = validate_order(mpt_client, context)
     assert result == order
