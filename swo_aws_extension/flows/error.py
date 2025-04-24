@@ -66,3 +66,31 @@ ERR_AWAITING_INVITATION_RESPONSE = ValidationError(
     "Awaiting invitation response. For the following accounts: \n\n{accounts}. \n\nPlease accept"
     " the invitation in the AWS console or remove the account from the list.",
 )
+
+ERR_SPLIT_BILLING_MISSING_MPA_ID = ValidationError(
+    "AWS011",
+    "Account ID is missing. Kindly provide the Account ID used in the previous agreement so it "
+    "can be reused for this new order.",
+)
+
+ERR_SPLIT_BILLING_INVALID_MPA_ID = ValidationError(
+    "AWS012",
+    "Account ID provided is invalid. Kindly provide a valid Account ID used in the previous "
+    "agreement so it can be reused for this new order.",
+)
+
+ERR_SPLIT_BILLING_INVALID_CLIENT_ID_MPA_ID = ValidationError(
+    "AWS013",
+    "Account ID provided is already assigned to a different Client. Kindly provide a valid "
+    "Account ID used in the previous agreement so it can be reused for this new order.",
+)
+
+ERR_SPLIT_BILLING_INVALID_STATUS_MPA_ID = ValidationError(
+    "AWS014",
+    "Account ID provided is not assigned to any agreement. Kindly provide a valid "
+    "Account ID used in the previous agreement so it can be reused for this new order.",
+)
+ERR_TRANSFER_TYPE = ValidationError(
+    "AWS015",
+    "Please select the transfer type.",
+)

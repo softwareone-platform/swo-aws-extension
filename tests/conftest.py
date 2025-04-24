@@ -108,7 +108,7 @@ def order_parameters_factory(constraints):
                 "id": "PAR-1234-5679",
                 "name": "Support Type",
                 "externalId": OrderParametersEnum.SUPPORT_TYPE,
-                "type": "Chice",
+                "type": "Choice",
                 "value": support_type,
             },
             {
@@ -122,7 +122,7 @@ def order_parameters_factory(constraints):
                 "id": "PAR-1234-5681",
                 "name": "Master Payer ID",
                 "externalId": OrderParametersEnum.MASTER_PAYER_ID,
-                "type": "Choice",
+                "type": "SingleLineText",
                 "value": master_payer_id,
             },
             {
@@ -583,6 +583,7 @@ def order_factory(
             "product": {"id": "PRD-1111-1111", "name": "AWS"},
             "seller": {"id": "SEL-1111-1111"},
             "buyer": buyer or buyer_factory(),
+            "client": {"id": "CLI-1111-1111"},
             "audit": {
                 "created": {
                     "at": CREATED_AT,
@@ -1327,7 +1328,7 @@ def mpa_pool(mocker):
     mpa_pool.pls_enabled = True
     mpa_pool.status = "Ready"
     mpa_pool.agreement_id = ""
-    mpa_pool.client_id = ""
+    mpa_pool.client_id = "client_id"
     mpa_pool.scu = "XX-SCU-200500"
     mpa_pool.buyer_id = ""
 

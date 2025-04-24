@@ -10,12 +10,14 @@ from swo_aws_extension.airtable.models import (
 )
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
-from swo_aws_extension.constants import PhasesEnum
+from swo_aws_extension.constants import PhasesEnum, TransferTypesEnum
 from swo_aws_extension.flows.order import (
     PurchaseContext,
+    switch_order_to_query,
 )
+from swo_aws_extension.flows.validation.purchase import is_split_billing_mpa_id_valid
 from swo_aws_extension.notifications import Button, send_error
-from swo_aws_extension.parameters import get_phase, set_phase
+from swo_aws_extension.parameters import get_phase, get_transfer_type, set_phase
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +55,7 @@ class AssignMPA(Step):
         phase = get_phase(context.order)
         if phase and phase != PhasesEnum.ASSIGN_MPA:
             logger.info(
-                f"- Next - Current phase is '{phase}', "
+                f"{context.order_id} - Next - Current phase is '{phase}', "
                 f"skipping as it is not '{PhasesEnum.ASSIGN_MPA}'"
             )
             next_step(client, context)
@@ -65,15 +67,33 @@ class AssignMPA(Step):
                 client, context.order_id, parameters=context.order["parameters"]
             )
             logger.info(
-                f"- Next - MPA account {context.mpa_account} "
+                f"{context.order_id} - Next - MPA account {context.mpa_account} "
                 f"already assigned to order {context.order_id}. Continue"
             )
             next_step(client, context)
             return
+        if get_transfer_type(context.order) == TransferTypesEnum.SPLIT_BILLING:
+            if not is_split_billing_mpa_id_valid(context):
+                switch_order_to_query(client, context.order)
+                logger.error(
+                    f"{context.order_id} - Querying - MPA Invalid. Order switched to query"
+                )
+                return
+            setup_agreement_external_id(client, context, context.order_master_payer_id)
+            context.order = set_phase(context.order, PhasesEnum.PRECONFIGURATION_MPA)
+            context.order = update_order(
+                client, context.order_id, parameters=context.order["parameters"]
+            )
+
+            logger.info(
+                f"{context.order_id} - Next - Split Billing Master Payer Account "
+                f"{context.mpa_account} assigned."
+            )
+            next_step(client, context)
 
         if not context.airtable_mpa:
             logger.error(
-                "No MPA available in the pool with PLS "
+                f"{context.order_id} - Error - No MPA available in the pool with PLS "
                 + ("enabled" if context.pls_enabled else "disabled")
             )
             return
@@ -88,7 +108,7 @@ class AssignMPA(Step):
             context.aws_client.get_caller_identity()
         except AWSError as e:
             logger.error(
-                f"- Error- Failed to retrieve MPA credentials for "
+                f"{context.order_id} - Error - Failed to retrieve MPA credentials for "
                 f"{context.airtable_mpa.account_id}: {e}"
             )
             are_credentials_valid = False
@@ -108,7 +128,7 @@ class AssignMPA(Step):
             )
             return
         logger.info(
-            f"- Action - MPA credentials for {context.airtable_mpa.account_id} "
+            f"{context.order_id} - Action - MPA credentials for {context.airtable_mpa.account_id} "
             f"retrieved successfully"
         )
         airtable_mpa = context.airtable_mpa
@@ -123,7 +143,9 @@ class AssignMPA(Step):
             client, context.order_id, parameters=context.order["parameters"]
         )
 
-        logger.info(f"- Next - Master Payer Account {context.mpa_account} assigned.")
+        logger.info(
+            f"{context.order_id} - Next - Master Payer Account {context.mpa_account} assigned."
+        )
         next_step(client, context)
 
 
@@ -185,7 +207,8 @@ class AssignTransferMPAStep(Step):
             next_step(client, context)
         except AWSError as e:
             logger.exception(
-                f"- Error- Failed to retrieve MPA credentials for {context.mpa_account}: {e}"
+                f"{context.order_id} - Error- Failed to retrieve MPA credentials for "
+                f"{context.mpa_account}: {e}"
             )
             credentials_error = str(e)
             title = (

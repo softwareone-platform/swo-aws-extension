@@ -338,6 +338,26 @@ def get_support_type(source):
     return param.get("value", None)
 
 
+def set_support_type(order, support_type):
+    """
+    Set the support type on the ordering parameters.
+
+    Args:
+        order (dict): The order that contains the parameter.
+        support_type (str): The support type of the order.
+
+    Returns:
+        dict: The order updated.
+    """
+    updated_order = copy.deepcopy(order)
+    param = get_ordering_parameter(
+        updated_order,
+        OrderParametersEnum.SUPPORT_TYPE,
+    )
+    param["value"] = support_type
+    return updated_order
+
+
 def get_transfer_type(source):
     """
     Get the transfer type from the corresponding ordering parameter or an empty
@@ -468,3 +488,47 @@ def get_account_id(source):
         OrderParametersEnum.ACCOUNT_ID,
     )
     return param.get("value", None)
+
+
+def set_parameter_value(order, parameter_id, value):
+    """
+    Set the value of a parameter in the order.
+    Args:
+        order (dict): The order that contains the parameter.
+        parameter_id (str): The external identifier of the parameter.
+        value (any): The value to set for the parameter.
+    Returns:
+        dict: The order updated.
+    """
+    updated_order = copy.deepcopy(order)
+    param = get_ordering_parameter(
+        updated_order,
+        parameter_id,
+    )
+    param["value"] = value
+    return updated_order
+
+
+def reset_ordering_parameters(order, list_parameters):
+    """
+    Reset the ordering parameters to empty string and update their constraints
+    to be hidden, not required, and not readonly.
+    Args:
+        order: The order object to update.
+        list_parameters: List of parameter IDs to reset.
+
+    Returns:
+        The updated order object.
+    """
+    updated_order = copy.deepcopy(order)
+    for parameter_id in list_parameters:
+        updated_order = set_parameter_value(updated_order, parameter_id, None)
+        updated_order = update_ordering_parameter_constraints(
+            updated_order,
+            parameter_id,
+            hidden=True,
+            required=False,
+            readonly=False,
+        )
+
+    return updated_order
