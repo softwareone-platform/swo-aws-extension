@@ -29,6 +29,7 @@ from swo_aws_extension.flows.steps.ccp_onboard import CCPOnboard
 from swo_aws_extension.flows.steps.register_transfered_mpa_airtable import (
     RegisterTransferredMPAToAirtableStep,
 )
+from swo_aws_extension.flows.steps.service_crm_steps import CreateOnboardTicketStep
 
 config = Config()
 
@@ -41,6 +42,7 @@ purchase = Pipeline(
     CreateSubscription(),
     CCPOnboard(config),
     CreateUpdateKeeperTicketStep(),
+    CreateOnboardTicketStep(),
     CompletePurchaseOrder("purchase_order"),
 )
 
@@ -49,10 +51,12 @@ purchase_transfer_with_organization = Pipeline(
     CreateTransferRequestTicketWithOrganizationStep(),
     AwaitTransferRequestTicketWithOrganizationStep(),
     AssignTransferMPAStep(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    MPAPreConfiguration(),
     RegisterTransferredMPAToAirtableStep(),
     SetupAgreementIdInAccountTagsStep(),
     CreateSubscription(),
     CCPOnboard(config),
+    CreateOnboardTicketStep(),
     CompletePurchaseOrder("purchase_order"),
     SynchronizeAgreementSubscriptionsStep(),
 )
@@ -68,6 +72,7 @@ purchase_transfer_without_organization = Pipeline(
     CreateSubscription(),
     CCPOnboard(config),
     CreateUpdateKeeperTicketStep(),
+    CreateOnboardTicketStep(),
     CompletePurchaseOrder("purchase_order"),
     SynchronizeAgreementSubscriptionsStep(),
 )

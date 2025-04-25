@@ -4,10 +4,13 @@ from swo_aws_extension.airtable.models import (
     NotificationTypeEnum,
 )
 from swo_aws_extension.constants import (
-    EMPTY_SUMMARY,
-    EMPTY_TITLE,
-    NOTIFICATION_SUMMARY,
-    NOTIFICATION_TITLE,
+    CRM_EMPTY_ADDITIONAL_INFO,
+    CRM_EMPTY_SUMMARY,
+    CRM_EMPTY_TITLE,
+    CRM_NOTIFICATION_ADDITIONAL_INFO,
+    CRM_NOTIFICATION_SUMMARY,
+    CRM_NOTIFICATION_TITLE,
+    SupportTypesEnum,
 )
 from swo_aws_extension.flows.jobs.pool_notifications import check_pool_accounts_notifications
 from swo_crm_service_client import ServiceRequest
@@ -177,15 +180,14 @@ def test_check_pool_accounts_notifications_create_empty_notification(
 
     assert service_client.create_service_request.call_count == 1
     service_request = ServiceRequest(
-        external_user_email="test@example.com",
-        external_username="test@example.com",
-        requester="Supplier.Portal",
-        sub_service="Service Activation",
-        global_academic_ext_user_id="globalacademicExtUserId",
-        additional_info="AWS Master Payer account",
-        summary=EMPTY_SUMMARY,
-        title=EMPTY_TITLE,
-        service_type="MarketPlaceServiceActivation",
+        additional_info=CRM_EMPTY_ADDITIONAL_INFO,
+        summary=CRM_EMPTY_SUMMARY.format(
+            type_of_support=SupportTypesEnum.PARTNER_LED_SUPPORT
+            if pool_notification.pls_enabled
+            else SupportTypesEnum.RESOLD_SUPPORT,
+            seller_country=pool_notification.country,
+        ),
+        title=CRM_EMPTY_TITLE.format(region=pool_notification.country),
     )
     assert service_client.create_service_request.mock_calls[0].args == (None, service_request)
 
@@ -238,15 +240,14 @@ def test_check_pool_accounts_notifications_create_warning_notification(
     assert mocked_pool_notification_model.all.mock_calls[1].kwargs == {"formula": "{Status}='New'"}
 
     service_request = ServiceRequest(
-        external_user_email="test@example.com",
-        external_username="test@example.com",
-        requester="Supplier.Portal",
-        sub_service="Service Activation",
-        global_academic_ext_user_id="globalacademicExtUserId",
-        additional_info="AWS Master Payer account",
-        summary=NOTIFICATION_SUMMARY,
-        title=NOTIFICATION_TITLE,
-        service_type="MarketPlaceServiceActivation",
+        additional_info=CRM_NOTIFICATION_ADDITIONAL_INFO,
+        summary=CRM_NOTIFICATION_SUMMARY.format(
+            type_of_support=SupportTypesEnum.PARTNER_LED_SUPPORT
+            if pool_notification.pls_enabled
+            else SupportTypesEnum.RESOLD_SUPPORT,
+            seller_country=pool_notification.country,
+        ),
+        title=CRM_NOTIFICATION_TITLE.format(region=pool_notification.country),
     )
     assert service_client.create_service_request.mock_calls[0].args == (None, service_request)
 

@@ -1,21 +1,42 @@
 import logging
-import textwrap
 from typing import Callable
 
 from mpt_extension_sdk.flows.pipeline import NextStep, Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
-from swo_aws_extension.constants import CRM_TICKET_RESOLVED_STATE
+from swo_aws_extension.constants import (
+    CRM_KEEPER_ADDITIONAL_INFO,
+    CRM_KEEPER_SUMMARY,
+    CRM_KEEPER_TITLE,
+    CRM_NEW_ACCOUNT_ADDITIONAL_INFO,
+    CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_ADDITIONAL_INFO,
+    CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_SUMMARY,
+    CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_TITLE,
+    CRM_NEW_ACCOUNT_SUMMARY,
+    CRM_NEW_ACCOUNT_TITLE,
+    CRM_TERMINATION_ADDITIONAL_INFO,
+    CRM_TERMINATION_SUMMARY,
+    CRM_TERMINATION_TITLE,
+    CRM_TICKET_RESOLVED_STATE,
+    CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL_INFO,
+    CRM_TRANSFER_WITH_ORGANIZATION_SUMMARY,
+    CRM_TRANSFER_WITH_ORGANIZATION_TITLE,
+)
 from swo_aws_extension.crm_service_client.config import get_service_client
 from swo_aws_extension.flows.order import InitialAWSContext, PurchaseContext
 from swo_aws_extension.notifications import get_notifications_recipient
 from swo_aws_extension.parameters import (
-    get_crm_ticket_id,
-    get_link_account_service_ticket_id,
+    get_crm_ccp_ticket_id,
+    get_crm_keeper_ticket_id,
+    get_crm_onboard_ticket_id,
+    get_crm_termination_ticket_id,
+    get_crm_transfer_organization_ticket_id,
     get_master_payer_id,
-    set_crm_ticket_id,
-    set_link_account_service_ticket_id,
+    set_crm_keeper_ticket_id,
+    set_crm_onboard_ticket_id,
+    set_crm_termination_ticket_id,
+    set_crm_transfer_organization_ticket_id,
 )
 from swo_crm_service_client import ServiceRequest
 
@@ -106,53 +127,41 @@ class CreateServiceRequestStep(Step):
 
 
 class CreateTerminationServiceRequestStep(CreateServiceRequestStep):
-    def should_create_ticket_criteria(self, context: InitialAWSContext) -> bool:
+    @staticmethod
+    def should_create_ticket_criteria(context: InitialAWSContext) -> bool:
         """
         :param context:
         :return:
         """
-        return not get_crm_ticket_id(context.order)
+        return not get_crm_termination_ticket_id(context.order)
 
-    def build_service_request(self, context) -> ServiceRequest:
+    @staticmethod
+    def build_service_request(context) -> ServiceRequest:
         if not context.mpa_account:
             raise RuntimeError(
                 "Unable to create a service request ticket for an order missing an "
                 "MPA account in the fulfillment parameters"
             )
 
-        summary_template = textwrap.dedent("""
-        Request of termination of AWS accounts.
-
-        MPA: {mpa_account}
-        Termination type: {termination_type}
-
-        AWS Account to terminate: {accounts}
-        """)
         accounts = ", ".join(context.terminating_subscriptions_aws_account_ids)
-        summary = summary_template.format(
+        summary = CRM_TERMINATION_SUMMARY.format(
             accounts=accounts,
             termination_type=context.termination_type,
             mpa_account=context.mpa_account,
+            order_id=context.order_id,
         )
-
-        title = f"Termination of account(s) linked to MPA {context.mpa_account}"
 
         return ServiceRequest(
-            external_user_email=get_notifications_recipient(context.order),
-            external_username=get_notifications_recipient(context.order),
-            requester="Supplier.Portal",
-            sub_service="Service Activation",
-            global_academic_ext_user_id="globalacademicExtUserId",
-            additional_info="additionalInfo",
-            title=title,
+            additional_info=CRM_TERMINATION_ADDITIONAL_INFO,
+            title=CRM_TERMINATION_TITLE.format(mpa_account=context.mpa_account),
             summary=summary,
-            service_type="MarketPlaceServiceActivation",
         )
 
-    def save_ticket(self, client, context, crm_ticket_id):
+    @staticmethod
+    def save_ticket(client, context, crm_ticket_id):
         if not crm_ticket_id:
             raise ValueError("Updating crm service ticket id - Ticket id is required.")
-        context.order = set_crm_ticket_id(context.order, crm_ticket_id)
+        context.order = set_crm_termination_ticket_id(context.order, crm_ticket_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])
 
     def __init__(self):
@@ -164,8 +173,9 @@ class CreateTerminationServiceRequestStep(CreateServiceRequestStep):
 
 
 class AwaitTerminationServiceRequestStep(AwaitCRMTicketStatusStep):
-    def get_crm_ticket(self, context: InitialAWSContext):
-        return get_crm_ticket_id(context.order)
+    @staticmethod
+    def get_crm_ticket(context: InitialAWSContext):
+        return get_crm_termination_ticket_id(context.order)
 
     def __init__(self):
         super().__init__(
@@ -176,7 +186,8 @@ class AwaitTerminationServiceRequestStep(AwaitCRMTicketStatusStep):
 
 
 class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
-    def build_service_request(self, context: PurchaseContext):
+    @staticmethod
+    def build_service_request(context: PurchaseContext):
         email_address = get_notifications_recipient(context.order)
         master_payer_id = get_master_payer_id(context.order)
         if not master_payer_id:
@@ -184,43 +195,33 @@ class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
                 f"Unable to create a transfer service request ticket for order={context.order_id}. "
                 f"Reason: Missing master payer id."
             )
-        summary_template = textwrap.dedent("""
-                Transfer request for AWS MPA Account with organization.
-
-                MPA: {master_payer_id}
-                Contact: {email_address}
-                """)
-        summary = summary_template.format(
-            master_payer_id=master_payer_id,
-            email_address=email_address,
-        )
-
-        title = f"MPA AWS Transfer {master_payer_id} {email_address}"
 
         return ServiceRequest(
-            external_user_email=get_notifications_recipient(context.order),
-            external_username=get_notifications_recipient(context.order),
-            requester="Supplier.Portal",
-            sub_service="Service Activation",
-            global_academic_ext_user_id="globalacademicExtUserId",
-            additional_info="additionalInfo",
-            title=title,
-            summary=summary,
-            service_type="MarketPlaceServiceActivation",
+            additional_info=CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL_INFO,
+            title=CRM_TRANSFER_WITH_ORGANIZATION_TITLE.format(
+                master_payer_id=master_payer_id, email_address=email_address
+            ),
+            summary=CRM_TRANSFER_WITH_ORGANIZATION_SUMMARY.format(
+                master_payer_id=master_payer_id,
+                email_address=email_address,
+                order_id=context.order_id,
+            ),
         )
 
-    def save_ticket(self, client, context, crm_ticket_id):
+    @staticmethod
+    def save_ticket(client, context, crm_ticket_id):
         if not crm_ticket_id:
             raise ValueError("Updating crm service ticket id - Ticket id is required.")
-        context.order = set_link_account_service_ticket_id(context.order, crm_ticket_id)
+        context.order = set_crm_transfer_organization_ticket_id(context.order, crm_ticket_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])
 
-    def should_create_ticket_criteria(self, context):
+    @staticmethod
+    def should_create_ticket_criteria(context):
         """
         :param context:
         :return:
         """
-        has_ticket = bool(get_link_account_service_ticket_id(context.order))
+        has_ticket = bool(get_crm_transfer_organization_ticket_id(context.order))
         return not has_ticket and context.is_type_transfer_with_organization()
 
     def __init__(self):
@@ -232,73 +233,120 @@ class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
 
 
 class CreateUpdateKeeperTicketStep(CreateServiceRequestStep):
-    def always_create_ticket(self, context: InitialAWSContext) -> bool:
+    @staticmethod
+    def should_create_ticket_criteria(context: InitialAWSContext) -> bool:
         """
         :param context:
         :return:
         """
-        return True
+        return not get_crm_keeper_ticket_id(context.order)
 
-    def build_service_request(self, context: PurchaseContext) -> ServiceRequest:
+    @staticmethod
+    def build_service_request(context: PurchaseContext) -> ServiceRequest:
         if not context.airtable_mpa:
             raise RuntimeError(
                 "Unable to create a service request ticket for an order missing airtable_mpa"
             )
 
-        summary_template = textwrap.dedent("""
-        Request to update the Keeper Shared Credentials folder name with the assigned Buyer SCU
-
-        MPA: {context.airtable_mpa.account_id}
-        Account Name: {context.airtable_mpa.account_name}
-        Account Email: {context.airtable_mpa.account_email}
-        PLS Enabled: {context.airtable_mpa.pls_enabled}
-
-        SCU: {context.airtable_mpa.scu}
-        Buyer Id: {context.airtable_mpa.buyer_id}
-
-        Additional data:
-        Order Id: {context.order_id}
-        """)
-        summary = summary_template.format(
-            context=context,
-        )
-
-        title = (
-            f"Keeper update request for account_id={context.mpa_account} "
-            f"and SCU={context.airtable_mpa.scu}"
-        )
-
         return ServiceRequest(
-            external_user_email=get_notifications_recipient(context.order),
-            external_username=get_notifications_recipient(context.order),
-            requester="Supplier.Portal",
-            sub_service="Service Activation",
-            global_academic_ext_user_id="globalacademicExtUserId",
-            additional_info="additionalInfo",
-            title=title,
-            summary=summary,
-            service_type="MarketPlaceServiceActivation",
+            additional_info=CRM_KEEPER_ADDITIONAL_INFO,
+            title=CRM_KEEPER_TITLE.format(
+                mpa_account=context.mpa_account, scu=context.airtable_mpa.scu
+            ),
+            summary=CRM_KEEPER_SUMMARY.format(
+                account_id=context.mpa_account,
+                account_name=context.airtable_mpa.account_name,
+                account_email=context.airtable_mpa.account_email,
+                pls_enabled=context.airtable_mpa.pls_enabled,
+                scu=context.airtable_mpa.scu,
+                buyer_id=context.airtable_mpa.buyer_id,
+                order_id=context.order_id,
+            ),
         )
 
-    def save_ticket(self, client, context, crm_ticket_id):
+    @staticmethod
+    def save_ticket(client, context, crm_ticket_id):
         if not crm_ticket_id:
             raise ValueError("Ticket id is required.")
         logger.info(
             f"{context.order_id} - Action - Ticket created for keeper shared credentials "
             f"with id={crm_ticket_id}"
         )
+        context.order = set_crm_keeper_ticket_id(context.order, crm_ticket_id)
+        update_order(client, context.order_id, parameters=context.order["parameters"])
 
     def __init__(self):
         super().__init__(
             service_request_factory=self.build_service_request,
             ticket_id_saver=self.save_ticket,
-            criteria=self.always_create_ticket,
+            criteria=self.should_create_ticket_criteria,
+        )
+
+
+class CreateOnboardTicketStep(CreateServiceRequestStep):
+    @staticmethod
+    def should_create_ticket_criteria(context: InitialAWSContext) -> bool:
+        """
+        :param context:
+        :return:
+        """
+        return not get_crm_onboard_ticket_id(context.order)
+
+    @staticmethod
+    def build_service_request(context: PurchaseContext) -> ServiceRequest:
+        if not context.airtable_mpa:
+            raise RuntimeError(
+                "Unable to create a service request ticket for an order missing airtable_mpa"
+            )
+        ccp_ticket_id = get_crm_ccp_ticket_id(context.order)
+        if ccp_ticket_id:
+            title = CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_TITLE
+            additional_info = CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_ADDITIONAL_INFO
+            summary = CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_SUMMARY.format(
+                customer_name=context.airtable_mpa.account_name,
+                buyer_external_id=context.airtable_mpa.buyer_id,
+                order_id=context.order_id,
+                master_payer_id=context.mpa_account,
+                automation_ticket_id=ccp_ticket_id,
+            )
+        else:
+            title = CRM_NEW_ACCOUNT_TITLE
+            additional_info = CRM_NEW_ACCOUNT_ADDITIONAL_INFO
+            summary = CRM_NEW_ACCOUNT_SUMMARY.format(
+                customer_name=context.airtable_mpa.account_name,
+                buyer_external_id=context.airtable_mpa.buyer_id,
+                order_id=context.order_id,
+                master_payer_id=context.mpa_account,
+            )
+        return ServiceRequest(
+            additional_info=additional_info,
+            title=title,
+            summary=summary,
+        )
+
+    @staticmethod
+    def save_ticket(client, context, crm_ticket_id):
+        if not crm_ticket_id:
+            raise ValueError("Ticket id is required.")
+        logger.info(
+            f"{context.order_id} - Action - Ticket created for onboard account "
+            f"with id={crm_ticket_id}"
+        )
+        context.order = set_crm_onboard_ticket_id(context.order, crm_ticket_id)
+        update_order(client, context.order_id, parameters=context.order["parameters"])
+
+    def __init__(self):
+        super().__init__(
+            service_request_factory=self.build_service_request,
+            ticket_id_saver=self.save_ticket,
+            criteria=self.should_create_ticket_criteria,
         )
 
 
 class AwaitTransferRequestTicketWithOrganizationStep(AwaitCRMTicketStatusStep):
-    def get_crm_ticket(self, context: InitialAWSContext):
-        return get_link_account_service_ticket_id(context.order)
+    @staticmethod
+    def get_crm_ticket(context: InitialAWSContext):
+        return get_crm_transfer_organization_ticket_id(context.order)
 
     def __init__(self):
         super().__init__(

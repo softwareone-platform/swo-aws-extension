@@ -12,11 +12,14 @@ from swo_aws_extension.airtable.models import (
     get_open_notifications,
 )
 from swo_aws_extension.constants import (
+    CRM_EMPTY_ADDITIONAL_INFO,
+    CRM_EMPTY_SUMMARY,
+    CRM_EMPTY_TITLE,
+    CRM_NOTIFICATION_ADDITIONAL_INFO,
+    CRM_NOTIFICATION_SUMMARY,
+    CRM_NOTIFICATION_TITLE,
     CRM_TICKET_RESOLVED_STATE,
-    EMPTY_SUMMARY,
-    EMPTY_TITLE,
-    NOTIFICATION_SUMMARY,
-    NOTIFICATION_TITLE,
+    SupportTypesEnum,
 )
 from swo_aws_extension.crm_service_client import get_service_client
 from swo_crm_service_client import ServiceRequest
@@ -51,7 +54,7 @@ def process_pending_notification(crm_client, pending_notification):
         )
 
 
-def create_ticket(crm_client, notification, summary, title):
+def create_ticket(crm_client, notification, summary, title, additional_info):
     """
     Create a new notification.
 
@@ -60,23 +63,14 @@ def create_ticket(crm_client, notification, summary, title):
         notification: Notification data.
         summary: The summary of the notification.
         title: The title of the notification.
+        additional_info: Additional information for the notification.
     """
     logger.info(
         f"New service request ticket will be created for country {notification.country} "
         f"with PLS enabled: {notification.pls_enabled} "
         f"and type: {notification.notification_type}."
     )
-    service_request = ServiceRequest(
-        external_user_email="test@example.com",
-        external_username="test@example.com",
-        requester="Supplier.Portal",
-        sub_service="Service Activation",
-        global_academic_ext_user_id="globalacademicExtUserId",
-        additional_info="AWS Master Payer account",
-        summary=summary,
-        title=title,
-        service_type="MarketPlaceServiceActivation",
-    )
+    service_request = ServiceRequest(additional_info=additional_info, summary=summary, title=title)
     ticket = crm_client.create_service_request(None, service_request)
     logger.info(f"Service request ticket created with id: {ticket.get('id', '')}")
     return ticket
@@ -196,18 +190,32 @@ def check_pool_accounts_notifications(config) -> None:
     new_notifications = get_notifications_by_status(NotificationStatusEnum.NEW)
     for notification in new_notifications:
         if notification.notification_type == NotificationTypeEnum.EMPTY:
+            summary = CRM_EMPTY_SUMMARY.format(
+                type_of_support=SupportTypesEnum.PARTNER_LED_SUPPORT
+                if notification.pls_enabled
+                else SupportTypesEnum.RESOLD_SUPPORT,
+                seller_country=notification.country,
+            )
             ticket = create_ticket(
                 crm_client,
                 notification,
-                EMPTY_SUMMARY,
-                EMPTY_TITLE,
+                summary,
+                CRM_EMPTY_TITLE.format(region=notification.country),
+                CRM_EMPTY_ADDITIONAL_INFO,
             )
         else:
+            summary = CRM_NOTIFICATION_SUMMARY.format(
+                type_of_support=SupportTypesEnum.PARTNER_LED_SUPPORT
+                if notification.pls_enabled
+                else SupportTypesEnum.RESOLD_SUPPORT,
+                seller_country=notification.country,
+            )
             ticket = create_ticket(
                 crm_client,
                 notification,
-                NOTIFICATION_SUMMARY,
-                NOTIFICATION_TITLE,
+                summary,
+                CRM_NOTIFICATION_TITLE.format(region=notification.country),
+                CRM_NOTIFICATION_ADDITIONAL_INFO,
             )
 
         notification.status = NotificationStatusEnum.PENDING

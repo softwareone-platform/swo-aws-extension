@@ -7,7 +7,9 @@ from swo_aws_extension.flows.steps.service_crm_steps import (
     AwaitTransferRequestTicketWithOrganizationStep,
     CreateTransferRequestTicketWithOrganizationStep,
 )
-from swo_aws_extension.parameters import get_link_account_service_ticket_id
+from swo_aws_extension.parameters import (
+    get_crm_transfer_organization_ticket_id,
+)
 
 
 @pytest.fixture()
@@ -22,7 +24,7 @@ def order_transfer_with_organization(
             master_payer_id="123456789",
         ),
         fulfillment_parameters=fulfillment_parameters_factory(
-            existing_account_crm_ticket="",
+            crm_onboard_ticket_id="",
         ),
     )
 
@@ -39,7 +41,7 @@ def order_transfer_with_organization_without_master_payer_id(
             master_payer_id="",
         ),
         fulfillment_parameters=fulfillment_parameters_factory(
-            existing_account_crm_ticket="",
+            crm_transfer_organization_ticket_id="",
         ),
     )
 
@@ -55,7 +57,7 @@ def order_transfer_with_organization_and_ticket(
             transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
         ),
         fulfillment_parameters=fulfillment_parameters_factory(
-            existing_account_crm_ticket="CS0004728",
+            crm_transfer_organization_ticket_id="CS0004728",
         ),
     )
 
@@ -79,7 +81,7 @@ def test_create_transfer_request_ticket_with_organization_step_creates_ticket(
 
     service_client.create_service_request.assert_called_once()
     update_order_mock.assert_called_once()
-    assert get_link_account_service_ticket_id(context.order) == "CS0004721"
+    assert get_crm_transfer_organization_ticket_id(context.order) == "CS0004721"
     next_step_mock.assert_called_once()
 
 
@@ -119,7 +121,7 @@ def test_create_transfer_request_ticket_with_organization_step_ticket_exist(
     context = PurchaseContext(order=order_transfer_with_organization_and_ticket)
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
-    assert get_link_account_service_ticket_id(context.order) == "CS0004728"
+    assert get_crm_transfer_organization_ticket_id(context.order) == "CS0004728"
     update_order_mock = mocker.patch("swo_aws_extension.flows.steps.service_crm_steps.update_order")
 
     step = CreateTransferRequestTicketWithOrganizationStep()

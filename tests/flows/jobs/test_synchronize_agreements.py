@@ -518,14 +518,7 @@ def test__synchronize_new_accounts_dates_test(
                     "value": "",
                 },
                 {
-                    "externalId": FulfillmentParametersEnum.CRM_TICKET_ID,
-                    "id": "PAR-1234-5678",
-                    "name": "CRM Ticket ID",
-                    "type": "SingleLineText",
-                    "value": "",
-                },
-                {
-                    "externalId": FulfillmentParametersEnum.EXISTING_ACCOUNT_CRM_TICKET,
+                    "externalId": FulfillmentParametersEnum.CRM_ONBOARD_TICKET_ID,
                     "id": "PAR-1234-5677",
                     "name": "Service Now Ticket for Link Account",
                     "type": "SingleLineText",

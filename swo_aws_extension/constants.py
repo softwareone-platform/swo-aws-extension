@@ -22,6 +22,11 @@ AWS_ITEMS_SKUS = [
     AWS_SAVING_PLANS_RECURRING_FEE_SKU,
 ]
 TAG_AGREEMENT_ID = "agreement_id"
+CRM_EXTERNAL_EMAIL = "no-reply@platform.softwareone.com"
+CRM_SERVICE_TYPE = "MarketPlaceServiceActivation"
+CRM_GLOBAL_EXT_USER_ID = "globalacademicExtUserId"
+CRM_REQUESTER = "Supplier.Portal"
+CRM_SUB_SERVICE = "Service Activation"
 
 
 class AccountTypesEnum(StrEnum):
@@ -66,20 +71,93 @@ class CCPOnboardStatusEnum(StrEnum):
     FAILED = "Failed"
 
 
-EMPTY_SUMMARY = (
-    "Dear MCoE Team,<br><br>A notification has been generated on the Marketplace "
-    "Platform regarding lack of accounts available for {order.awsRegion} .<br>"
-    "We need your help to create accounts following the process in this region to "
-    "continue with the customer Onboarding.<br><br>Thank you for your attention. <br>"
+CRM_EMPTY_TITLE = "Action Required: AWS empty pool for region {region}"
+CRM_EMPTY_SUMMARY = (
+    "Dear MCoE Team,<br><br>A notification has been generated on the Marketplace"
+    " Platform regarding lack of accounts available (configured for "
+    "{type_of_support}) in {seller_country}.<br>We need your help to create "
+    "accounts following the process to be able to continue with the customer"
+    " onboarding.<br><br>Thank you for your attention. <br><br>Best Regards,"
+    "<br>Marketplace Platform Team<br>"
+)
+CRM_EMPTY_ADDITIONAL_INFO = "Empty AWS account pool"
+CRM_NOTIFICATION_TITLE = (
+    "Action Required: AWS reduce number or accounts in pool for region {region}"
+)
+CRM_NOTIFICATION_SUMMARY = (
+    "Dear MCoE Team,<br><br>A notification has been generated on the Marketplace Platform "
+    "regarding running low on the amount of accounts available (configured for {type_of_support})"
+    " in {seller_country}.<br>We need your help to create accounts following the process in this"
+    " region to continue with the customer onboarding.<br><br>Thank you for your attention. "
+    "<br><br>Best Regards,<br>Marketplace Platform Team<br>"
+)
+CRM_NOTIFICATION_ADDITIONAL_INFO = "Low AWS account pool"
+
+CRM_TERMINATION_TITLE = "Termination of account(s) linked to MPA {mpa_account}"
+CRM_TERMINATION_ADDITIONAL_INFO = "AWS Terminate account"
+CRM_TERMINATION_SUMMARY = (
+    "Dear MCoE Team,<br><br>A notification has been generated on the Marketplace"
+    " Platform for termination of an AWS account.<br><br>MPA: {mpa_account}<br>"
+    "Termination type: {termination_type}<br>Order Id: {order_id}<br><br>AWS Account to terminate:"
+    " {accounts}. Thank you for your attention. <br><br>Best Regards,"
+    "<br>Marketplace Platform Team<br>"
+)
+
+CRM_KEEPER_TITLE = (
+    "Action Required: Keeper update request for account_id={mpa_account} and SCU={scu}"
+)
+CRM_KEEPER_ADDITIONAL_INFO = "Update Keeper folder name"
+CRM_KEEPER_SUMMARY = (
+    "Dear MCoE Team,<br><br>A notification has been generated on the Marketplace Platform "
+    "regarding updating the Keeper Shared Credentials folder name with the assigned Buyer "
+    "SCU<br><br>MPA: {account_id}<br>Account Name: {account_name}<br>Account Email: "
+    "{account_email}<br>PLS Enabled: {pls_enabled}<br><br>SCU: {scu}<br>Buyer Id: {buyer_id}"
+    "<br><br>Additional data:<br>Order Id: {order_id}<br><br>Thank you for your attention. <br>"
     "<br>Best Regards,<br>Marketplace Platform Team<br>"
 )
-NOTIFICATION_SUMMARY = (
-    "Dear MCoE Team,<br><br>A notification has been generated on the Marketplace "
-    "Platform regarding running low on the amount of accounts available for "
-    "{order.awsRegion}  .<br>We need your help to create accounts following the "
-    "process in this region to continue with the customer Onboarding.<br><br>"
-    "Thank you for your attention. <br><br>Best Regards,"
+
+CRM_TRANSFER_WITH_ORGANIZATION_TITLE = (
+    "Action Required: New AWS Onboarding in Marketplace - Transfer with Organization MPA AWS"
+    " Transfer {master_payer_id} {email_address}"
+)
+CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL_INFO = "AWS Transfer account with organization"
+CRM_TRANSFER_WITH_ORGANIZATION_SUMMARY = (
+    "Dear MCoE Team,<br><br>A notification has been generated on the Marketplace Platform"
+    " regarding Transfer request for AWS MPA Account with organization.<br>Details of transfer:"
+    " <br>MPA: {master_payer_id}<br>Contact: {email_address}<br>Order Id: {order_id}<br>"
+    "<br>Thank you for your attention."
+    " <br><br>Best Regards,<br>Marketplace Platform Team<br>"
+)
+
+CRM_NEW_ACCOUNT_TITLE = "New AWS Onboarding in Marketplace"
+CRM_NEW_ACCOUNT_ADDITIONAL_INFO = "AWS New AWS linked account created"
+CRM_NEW_ACCOUNT_SUMMARY = (
+    "Dear MCoE Team,<br><br>Good News!! <br>New customer for AWS is being onboarded in Marketplace"
+    "<br>Here are some details: <br> Customer: {customer_name}<br> SCU: {buyer_external_id}<br> "
+    "Order: {order_id}<br> MasterPayerId: {master_payer_id}<br><br>Thank you for your attention. "
+    "<br><br>Best Regards,<br>Marketplace Platform Team<br>"
+)
+
+CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_TITLE = "New AWS Onboarding in Marketplace requires attention"
+CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_ADDITIONAL_INFO = (
+    "AWS New AWS linked account created but onboarding requires attention"
+)
+CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_SUMMARY = (
+    "Dear MCoE Team,<br><br>Good News!! <br>New customer for AWS is being onboarded in Marketplace"
+    "<br>Here are some details: <br> Customer: {customer_name}<br> SCU: {buyer_external_id}<br> "
+    "Order: {order_id}<br> MasterPayerId: {master_payer_id}. We required your attention "
+    "because services onboarding is not been fully finished - ticket reference "
+    "{automation_ticket_id}.<br><br>Thank you for your attention. <br><br>Best Regards,"
     "<br>Marketplace Platform Team<br>"
+)
+CRM_CCP_TICKET_TITLE = "CCP Onboard failed {ccp_engagement_id}"
+CRM_CCP_TICKET_ADDITIONAL_INFO = "CCP Onboard failed"
+CRM_CCP_TICKET_SUMMARY = (
+    "Dear CCP team, please check the status of onboard customer {ccp_engagement_id} within CCP "
+    "and CDE as a call error took place that prevented the marketplace automation "
+    "to run all scripts. <br>Here are some details:<br><br>"
+    "<br>Order Id: {order_id}<br><br>Response: {onboard_status}<br><br>"
+    "<br><br>Thanks!"
 )
 
 
@@ -109,8 +187,7 @@ TRANSFER_ACCOUNT_INVITATION_FOR_GENERIC_STATE = (
     " is in state: {state}"
 )
 
-EMPTY_TITLE = "Action Required: AWS empty pool for region {region}"
-NOTIFICATION_TITLE = "Action Required: AWS reduce number or accounts in pool for region {region}"
+
 ACCESS_TOKEN_NOT_FOUND_IN_RESPONSE = "Access token not found in the response"
 CCP_SECRET_NOT_FOUND_IN_KEY_VAULT = "CCP secret not found in key vault"
 FAILED_TO_GET_SECRET = "Failed to get secret"

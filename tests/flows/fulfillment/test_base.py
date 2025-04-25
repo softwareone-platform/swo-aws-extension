@@ -7,6 +7,9 @@ from mpt_extension_sdk.flows.context import (
 
 from swo_aws_extension.aws.errors import AWSHttpError
 from swo_aws_extension.constants import (
+    CRM_TERMINATION_ADDITIONAL_INFO,
+    CRM_TERMINATION_SUMMARY,
+    CRM_TERMINATION_TITLE,
     CRM_TICKET_RESOLVED_STATE,
     AccountTypesEnum,
     TransferTypesEnum,
@@ -15,7 +18,7 @@ from swo_aws_extension.flows.error import strip_trace_id
 from swo_aws_extension.flows.fulfillment import fulfill_order
 from swo_aws_extension.flows.fulfillment.base import setup_contexts
 from swo_aws_extension.flows.order import InitialAWSContext, TerminateContext
-from swo_aws_extension.parameters import set_crm_ticket_id
+from swo_aws_extension.parameters import set_crm_termination_ticket_id
 from swo_crm_service_client import ServiceRequest
 
 
@@ -159,30 +162,24 @@ def test_fulfill_terminate_account_flow(
     # Creates tickets and awaits completion
     fulfill_order(mpt_client, context)
 
-    updated_order = set_crm_ticket_id(context.order, "1234-5678")
+    updated_order = set_crm_termination_ticket_id(context.order, "1234-5678")
     context.order = updated_order
 
     # Ticket exist but it is in progress
     fulfill_order(mpt_client, context)
-
+    accounts = ", ".join(context.terminating_subscriptions_aws_account_ids)
+    summary = CRM_TERMINATION_SUMMARY.format(
+        accounts=accounts,
+        termination_type=context.termination_type,
+        mpa_account=context.mpa_account,
+        order_id=context.order_id,
+    )
     expected_created_service_call = (
         "ORD-0792-5000-2253-4210",
         ServiceRequest(
-            external_user_email=None,
-            external_username=None,
-            requester="Supplier.Portal",
-            sub_service="Service Activation",
-            global_academic_ext_user_id="globalacademicExtUserId",
-            additional_info="additionalInfo",
-            summary="\n"
-            "Request of termination of AWS accounts.\n"
-            "\n"
-            "MPA: 123456789012\n"
-            "Termination type: CloseAccount\n"
-            "\n"
-            "AWS Account to terminate: 1234-5678\n",
-            title="Termination of account(s) linked to MPA 123456789012",
-            service_type="MarketPlaceServiceActivation",
+            additional_info=CRM_TERMINATION_ADDITIONAL_INFO,
+            title=CRM_TERMINATION_TITLE.format(mpa_account=context.mpa_account),
+            summary=summary,
         ),
     )
     service_client.create_service_request.assert_called_once_with(*expected_created_service_call)

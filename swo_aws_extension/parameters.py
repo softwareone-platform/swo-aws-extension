@@ -27,8 +27,11 @@ class FulfillmentParametersEnum(StrEnum):
     ACCOUNT_REQUEST_ID = "accountRequestId"
     ACCOUNT_EMAIL = "accountEmail"
     ACCOUNT_NAME = "accountName"
-    CRM_TICKET_ID = "crmTicketId"
-    EXISTING_ACCOUNT_CRM_TICKET = "existingAccountCRMTicket"
+    CRM_ONBOARD_TICKET_ID = "crmOnboardTicketId"
+    CRM_KEEPER_TICKET_ID = "crmKeeperTicketId"
+    CRM_TERMINATION_TICKET_ID = "crmTerminationTicketId"
+    CRM_CCP_TICKET_ID = "crmCCPTicketId"
+    CRM_TRANSFER_ORGANIZATION_TICKET_ID = "crmTransferOrganizationTicketId"
     CCP_ENGAGEMENT_ID = "ccpEngagementId"
     MPA_EMAIL = "mpaEmail"
 
@@ -264,44 +267,6 @@ def get_account_type(source):
     return param.get("value", None)
 
 
-def get_crm_ticket_id(order):
-    """
-    Get the CRM ticket ID from the corresponding fulfillment
-    parameter or None if it is not set.
-
-    Args:
-        order (dict): The order that contains the parameter.
-
-    Returns:
-        str: The CRM ticket ID provided by client or None if it isn't set.
-    """
-    param = get_fulfillment_parameter(
-        order,
-        FulfillmentParametersEnum.CRM_TICKET_ID,
-    )
-    return param.get("value", None)
-
-
-def set_crm_ticket_id(order, crm_ticket_id):
-    """
-    Set the CRM ticket ID on the fulfillment parameters.
-
-    Args:
-        order (dict): The order that contains the parameter.
-        crm_ticket_id (str): The CRM ticket ID.
-
-    Returns:
-        dict: The order updated.
-    """
-    updated_order = copy.deepcopy(order)
-    param = get_fulfillment_parameter(
-        updated_order,
-        FulfillmentParametersEnum.CRM_TICKET_ID,
-    )
-    param["value"] = crm_ticket_id
-    return updated_order
-
-
 def get_termination_type_parameter(order):
     """
     Get the termination flow from the corresponding fulfillment
@@ -397,7 +362,121 @@ def get_master_payer_id(source):
     return param.get("value", None)
 
 
-def get_link_account_service_ticket_id(source):
+def get_crm_keeper_ticket_id(order):
+    """
+    Get the CRM ticket ID from the corresponding fulfillment
+    parameter or None if it is not set.
+
+    Args:
+        order (dict): The order that contains the parameter.
+
+    Returns:
+        str: The CRM ticket ID provided by client or None if it isn't set.
+    """
+    param = get_fulfillment_parameter(
+        order,
+        FulfillmentParametersEnum.CRM_KEEPER_TICKET_ID,
+    )
+    return param.get("value", None)
+
+
+def set_crm_keeper_ticket_id(order, crm_ticket_id):
+    """
+    Set the CRM ticket ID on the fulfillment parameters.
+
+    Args:
+        order (dict): The order that contains the parameter.
+        crm_ticket_id (str): The CRM ticket ID.
+
+    Returns:
+        dict: The order updated.
+    """
+    updated_order = copy.deepcopy(order)
+    param = get_fulfillment_parameter(
+        updated_order,
+        FulfillmentParametersEnum.CRM_KEEPER_TICKET_ID,
+    )
+    param["value"] = crm_ticket_id
+    return updated_order
+
+
+def get_crm_termination_ticket_id(order):
+    """
+    Get the CRM ticket ID from the corresponding fulfillment
+    parameter or None if it is not set.
+
+    Args:
+        order (dict): The order that contains the parameter.
+
+    Returns:
+        str: The CRM ticket ID provided by client or None if it isn't set.
+    """
+    param = get_fulfillment_parameter(
+        order,
+        FulfillmentParametersEnum.CRM_TERMINATION_TICKET_ID,
+    )
+    return param.get("value", None)
+
+
+def set_crm_termination_ticket_id(order, crm_ticket_id):
+    """
+    Set the CRM ticket ID on the fulfillment parameters.
+
+    Args:
+        order (dict): The order that contains the parameter.
+        crm_ticket_id (str): The CRM ticket ID.
+
+    Returns:
+        dict: The order updated.
+    """
+    updated_order = copy.deepcopy(order)
+    param = get_fulfillment_parameter(
+        updated_order,
+        FulfillmentParametersEnum.CRM_TERMINATION_TICKET_ID,
+    )
+    param["value"] = crm_ticket_id
+    return updated_order
+
+
+def get_crm_ccp_ticket_id(order):
+    """
+    Get the CRM ticket ID from the corresponding fulfillment
+    parameter or None if it is not set.
+
+    Args:
+        order (dict): The order that contains the parameter.
+
+    Returns:
+        str: The CRM ticket ID provided by client or None if it isn't set.
+    """
+    param = get_fulfillment_parameter(
+        order,
+        FulfillmentParametersEnum.CRM_CCP_TICKET_ID,
+    )
+    return param.get("value", None)
+
+
+def set_crm_ccp_ticket_id(order, crm_ticket_id):
+    """
+    Set the CRM ticket ID on the fulfillment parameters.
+
+    Args:
+        order (dict): The order that contains the parameter.
+        crm_ticket_id (str): The CRM ticket ID.
+
+    Returns:
+        dict: The order updated.
+    """
+    updated_order = copy.deepcopy(order)
+    param = get_fulfillment_parameter(
+        updated_order,
+        FulfillmentParametersEnum.CRM_CCP_TICKET_ID,
+    )
+    param["value"] = crm_ticket_id
+    return updated_order
+
+
+def get_crm_onboard_ticket_id(source):
     """
     Get the link account service ticket ID from the corresponding fulfillment
     parameter or None if it is not set.
@@ -411,14 +490,14 @@ def get_link_account_service_ticket_id(source):
     """
     param = get_fulfillment_parameter(
         source,
-        FulfillmentParametersEnum.EXISTING_ACCOUNT_CRM_TICKET,
+        FulfillmentParametersEnum.CRM_ONBOARD_TICKET_ID,
     )
     return param.get("value", None)
 
 
-def set_link_account_service_ticket_id(order, crm_ticket_id):
+def set_crm_onboard_ticket_id(order, crm_ticket_id):
     """
-    Set the link account service ticket ID from the corresponding fulfillment
+    Set the Onboard service ticket ID from the corresponding fulfillment
     parameter or None if it is not set.
 
     Args:
@@ -432,7 +511,7 @@ def set_link_account_service_ticket_id(order, crm_ticket_id):
     updated_order = copy.deepcopy(order)
     param = get_fulfillment_parameter(
         updated_order,
-        FulfillmentParametersEnum.EXISTING_ACCOUNT_CRM_TICKET,
+        FulfillmentParametersEnum.CRM_ONBOARD_TICKET_ID,
     )
     param["value"] = crm_ticket_id
     return updated_order
@@ -609,4 +688,42 @@ def set_mpa_email(order, mpa_email):
         FulfillmentParametersEnum.MPA_EMAIL,
     )
     param["value"] = mpa_email
+    return updated_order
+
+
+def get_crm_transfer_organization_ticket_id(order):
+    """
+    Get the CRM ticket ID from the corresponding fulfillment
+    parameter or None if it is not set.
+
+    Args:
+        order (dict): The order that contains the parameter.
+
+    Returns:
+        str: The CRM ticket ID provided by client or None if it isn't set.
+    """
+    param = get_fulfillment_parameter(
+        order,
+        FulfillmentParametersEnum.CRM_TRANSFER_ORGANIZATION_TICKET_ID,
+    )
+    return param.get("value", None)
+
+
+def set_crm_transfer_organization_ticket_id(order, crm_ticket_id):
+    """
+    Set the CRM ticket ID on the fulfillment parameters.
+
+    Args:
+        order (dict): The order that contains the parameter.
+        crm_ticket_id (str): The CRM ticket ID.
+
+    Returns:
+        dict: The order updated.
+    """
+    updated_order = copy.deepcopy(order)
+    param = get_fulfillment_parameter(
+        updated_order,
+        FulfillmentParametersEnum.CRM_TRANSFER_ORGANIZATION_TICKET_ID,
+    )
+    param["value"] = crm_ticket_id
     return updated_order
