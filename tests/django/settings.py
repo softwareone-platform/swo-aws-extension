@@ -188,10 +188,6 @@ EXTENSION_CONFIG = {
     "MINIMUM_MPA_THRESHOLD": 3,
     "CCP_SCOPE": "ccp-scope",
     "MPT_KEY_VAULT_NAME": "mpt-key-vault",
-    "CCP_KEY_VAULT_SECRET_NAME": "ccp-openid-token-secret-name",
-    "AZURE_CLIENT_ID": "azure_client_id",
-    "AZURE_TENANT_ID": "azure_tenant_id",
-    "AZURE_CLIENT_CERTIFICATE_PASSWORD": "azure_client_certificate_password",
-    "AZURE_CLIENT_CERTIFICATE_PATH": "azure_client_certificate_path",
+    "CCP_KEY_VAULT_SECRET_NAME": "ccp-openid-token-secret-name"
 }
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"
