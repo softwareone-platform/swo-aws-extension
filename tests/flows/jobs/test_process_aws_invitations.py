@@ -139,6 +139,7 @@ def test_process_one_order_with_invitations_accepted(
     fulfillment_parameters_factory,
     agreement_factory,
     handshake_data_factory,
+    mpa_pool,
 ):
     order_parameters = order_parameters_factory(
         account_type=AccountTypesEnum.EXISTING_ACCOUNT,
@@ -170,6 +171,10 @@ def test_process_one_order_with_invitations_accepted(
     mocker.patch(
         "swo_aws_extension.flows.steps.setup_context.SetupContext.setup_aws",
         side_effect=setup_aws,
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.get_mpa_account",
+        return_value=mpa_pool,
     )
     process_order = mocker.patch(
         "swo_aws_extension.flows.jobs.process_aws_invitations.SetupOrderProcessingStep.process_order",

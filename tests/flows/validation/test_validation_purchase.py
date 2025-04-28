@@ -1,6 +1,5 @@
 from swo_aws_extension.airtable.models import MPAStatusEnum
 from swo_aws_extension.constants import (
-    AWS_ITEM_SKU,
     AccountTypesEnum,
     SupportTypesEnum,
     TransferTypesEnum,
@@ -16,7 +15,9 @@ from swo_aws_extension.flows.validation.purchase import validate_purchase_order
 from swo_aws_extension.parameters import OrderParametersEnum
 
 
-def test_validate_new_account_empty_values(mocker, order_factory, order_parameters_factory):
+def test_validate_new_account_empty_values(
+    mocker, order_factory, order_parameters_factory, product_items
+):
     order = order_factory(
         order_parameters=order_parameters_factory(
             account_name="", account_email="", account_type=AccountTypesEnum.NEW_ACCOUNT
@@ -24,7 +25,7 @@ def test_validate_new_account_empty_values(mocker, order_factory, order_paramete
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
-        return_value=[{"id": "ITEM-123-456", "sku": AWS_ITEM_SKU}],
+        return_value=product_items,
     )
     client = mocker.MagicMock()
     context = PurchaseContext(order=order)
@@ -43,7 +44,9 @@ def test_validate_new_account_empty_values(mocker, order_factory, order_paramete
     assert not has_errors
 
 
-def test_validate_new_account_with_values(mocker, order_factory, order_parameters_factory):
+def test_validate_new_account_with_values(
+    mocker, order_factory, order_parameters_factory, product_items
+):
     order = order_factory(
         order_parameters=order_parameters_factory(
             account_name="account_name",
@@ -53,7 +56,7 @@ def test_validate_new_account_with_values(mocker, order_factory, order_parameter
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
-        return_value=[{"id": "ITEM-123-456", "sku": AWS_ITEM_SKU}],
+        return_value=product_items,
     )
     client = mocker.MagicMock()
     context = PurchaseContext(order=order)
@@ -73,7 +76,7 @@ def test_validate_new_account_with_values(mocker, order_factory, order_parameter
 
 
 def test_validate_selected_existing_account_empty_values(
-    mocker, order_factory, order_parameters_factory
+    mocker, order_factory, order_parameters_factory, product_items
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -84,7 +87,7 @@ def test_validate_selected_existing_account_empty_values(
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
-        return_value=[{"id": "ITEM-123-456", "sku": AWS_ITEM_SKU}],
+        return_value=product_items,
     )
 
     client = mocker.MagicMock()
@@ -119,7 +122,7 @@ def test_validate_selected_existing_account_empty_values(
 
 
 def test_validate_selected_transfer_with_org_empty_values(
-    mocker, order_factory, order_parameters_factory
+    mocker, order_factory, order_parameters_factory, product_items
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -131,7 +134,7 @@ def test_validate_selected_transfer_with_org_empty_values(
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
-        return_value=[{"id": "ITEM-123-456", "sku": AWS_ITEM_SKU}],
+        return_value=product_items,
     )
 
     client = mocker.MagicMock()
@@ -174,7 +177,7 @@ def test_validate_selected_transfer_with_org_empty_values(
 
 
 def test_validate_selected_transfer_with_org_with_values(
-    mocker, order_factory, order_parameters_factory
+    mocker, order_factory, order_parameters_factory, product_items
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -186,7 +189,7 @@ def test_validate_selected_transfer_with_org_with_values(
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
-        return_value=[{"id": "ITEM-123-456", "sku": AWS_ITEM_SKU}],
+        return_value=product_items,
     )
     client = mocker.MagicMock()
     context = PurchaseContext(order=order)
@@ -227,7 +230,7 @@ def test_validate_selected_transfer_with_org_with_values(
 
 
 def test_validate_selected_transfer_without_org_empty_values(
-    mocker, order_factory, order_parameters_factory
+    mocker, order_factory, order_parameters_factory, product_items
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -239,7 +242,7 @@ def test_validate_selected_transfer_without_org_empty_values(
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
-        return_value=[{"id": "ITEM-123-456", "sku": AWS_ITEM_SKU}],
+        return_value=product_items,
     )
     client = mocker.MagicMock()
     context = PurchaseContext(order=order)
@@ -281,7 +284,7 @@ def test_validate_selected_transfer_without_org_empty_values(
 
 
 def test_validate_selected_transfer_without_org_with_values(
-    mocker, order_factory, order_parameters_factory
+    mocker, order_factory, order_parameters_factory, product_items
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -293,7 +296,7 @@ def test_validate_selected_transfer_without_org_with_values(
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
-        return_value=[{"id": "ITEM-123-456", "sku": AWS_ITEM_SKU}],
+        return_value=product_items,
     )
 
     client = mocker.MagicMock()
@@ -336,7 +339,7 @@ def test_validate_selected_transfer_without_org_with_values(
 
 
 def test_validate_selected_transfer_without_org_with_invalid_values(
-    mocker, order_factory, order_parameters_factory
+    mocker, order_factory, order_parameters_factory, product_items
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -348,7 +351,7 @@ def test_validate_selected_transfer_without_org_with_invalid_values(
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
-        return_value=[{"id": "ITEM-123-456", "sku": AWS_ITEM_SKU}],
+        return_value=product_items,
     )
 
     client = mocker.MagicMock()
@@ -395,7 +398,7 @@ def test_validate_selected_transfer_without_org_with_invalid_values(
 
 
 def test_validate_selected_split_billing_empty_mpa_id(
-    mocker, order_factory, order_parameters_factory
+    mocker, order_factory, order_parameters_factory, product_items
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -406,7 +409,7 @@ def test_validate_selected_split_billing_empty_mpa_id(
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
-        return_value=[{"id": "ITEM-123-456", "sku": AWS_ITEM_SKU}],
+        return_value=product_items,
     )
 
     client = mocker.MagicMock()
@@ -426,7 +429,7 @@ def test_validate_selected_split_billing_empty_mpa_id(
 
 
 def test_validate_selected_split_billing_mpa_not_found_in_airtable(
-    mocker, order_factory, order_parameters_factory
+    mocker, order_factory, order_parameters_factory, product_items
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -437,7 +440,7 @@ def test_validate_selected_split_billing_mpa_not_found_in_airtable(
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
-        return_value=[{"id": "ITEM-123-456", "sku": AWS_ITEM_SKU}],
+        return_value=product_items,
     )
 
     mocker.patch(
@@ -462,7 +465,7 @@ def test_validate_selected_split_billing_mpa_not_found_in_airtable(
 
 
 def test_validate_selected_split_billing_invalid_client(
-    mocker, order_factory, order_parameters_factory, mpa_pool
+    mocker, order_factory, order_parameters_factory, mpa_pool, product_items
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -473,7 +476,7 @@ def test_validate_selected_split_billing_invalid_client(
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
-        return_value=[{"id": "ITEM-123-456", "sku": AWS_ITEM_SKU}],
+        return_value=product_items,
     )
 
     mocker.patch(
@@ -498,7 +501,7 @@ def test_validate_selected_split_billing_invalid_client(
 
 
 def test_validate_selected_split_billing_invalid_status(
-    mocker, order_factory, order_parameters_factory, mpa_pool
+    mocker, order_factory, order_parameters_factory, mpa_pool, product_items
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -509,7 +512,7 @@ def test_validate_selected_split_billing_invalid_status(
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
-        return_value=[{"id": "ITEM-123-456", "sku": AWS_ITEM_SKU}],
+        return_value=product_items,
     )
     mpa_pool.client_id = "CLI-1111-1111"
     mocker.patch(
@@ -534,7 +537,7 @@ def test_validate_selected_split_billing_invalid_status(
 
 
 def test_validate_selected_split_billing_pls_enabled(
-    mocker, order_factory, order_parameters_factory, mpa_pool
+    mocker, order_factory, order_parameters_factory, mpa_pool, product_items
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -546,7 +549,7 @@ def test_validate_selected_split_billing_pls_enabled(
 
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
-        return_value=[{"id": "ITEM-123-456", "sku": AWS_ITEM_SKU}],
+        return_value=product_items,
     )
     mpa_pool.client_id = "CLI-1111-1111"
     mpa_pool.status = MPAStatusEnum.ASSIGNED

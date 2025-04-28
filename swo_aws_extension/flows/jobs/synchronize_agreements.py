@@ -2,15 +2,15 @@ import logging
 
 from mpt_extension_sdk.mpt_http.mpt import (
     create_agreement_subscription,
-    get_agreements_by_ids,
-    get_all_agreements,
+    get_agreements_by_query,
     get_product_items_by_skus,
+    update_agreement_subscription,
 )
 from mpt_extension_sdk.mpt_http.utils import find_first
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import (
-    AWS_ITEM_SKU,
+    AWS_ITEMS_SKUS,
     SWO_EXTENSION_MANAGEMENT_ROLE,
     TAG_AGREEMENT_ID,
     SubscriptionStatusEnum,
@@ -21,7 +21,7 @@ from swo_aws_extension.parameters import FulfillmentParametersEnum
 logger = logging.getLogger(__name__)
 
 
-def synchronize_agreements(mpt_client, config, agreement_ids, dry_run):
+def synchronize_agreements(mpt_client, config, agreement_ids, dry_run, product_ids):
     """
     Synchronize all agreements.
 
@@ -30,19 +30,39 @@ def synchronize_agreements(mpt_client, config, agreement_ids, dry_run):
         config: The configuration object.
         agreement_ids: List of specific agreement IDs to synchronize.
         dry_run: Whether to perform a dry run.
+        product_ids: List of product IDs to filter agreements.
     """
     if agreement_ids:
-        agreements = get_agreements_by_ids(mpt_client, agreement_ids)
-    else:
-        agreements = get_all_agreements(mpt_client)
-    for agreement in agreements:
-        mpa_account = agreement.get("externalIds", {}).get("vendor", "")
-        if not mpa_account:
-            logger.error(f"{agreement.get('id')} - Skipping - MPA not found")
-            return
-        aws_client = AWSClient(config, mpa_account, SWO_EXTENSION_MANAGEMENT_ROLE)
+        rql_query = (
+            f"and(in(id,({','.join(agreement_ids)})),eq(status,Active)),"
+            f"in(product.id,({','.join(product_ids)})))"
+            "&select=lines,parameters,subscriptions,subscriptions.lines,product,listing"
+        )
 
-        sync_agreement_subscriptions(mpt_client, aws_client, agreement, dry_run)
+    else:
+        rql_query = (
+            f"and(eq(status,Active),"
+            f"in(product.id,({','.join(product_ids)})))"
+            f"&select=lines,parameters,subscriptions,subscriptions.lines,product,listing"
+        )
+
+    agreements = get_agreements_by_query(mpt_client, rql_query)
+    for agreement in agreements:
+        try:
+            mpa_account = agreement.get("externalIds", {}).get("vendor", "")
+            if not mpa_account:
+                logger.error(f"{agreement.get('id')} - Skipping - MPA not found")
+                continue
+
+            aws_client = AWSClient(config, mpa_account, SWO_EXTENSION_MANAGEMENT_ROLE)
+            sync_agreement_subscriptions(mpt_client, aws_client, agreement, dry_run)
+        except Exception as e:
+            logger.error(f"{agreement.get('id')} - Failed to synchronize agreement: {e}")
+            send_error(
+                "Synchronize AWS agreement subscriptions",
+                f"Failed to synchronize agreement {agreement.get('id')}: {e}",
+            )
+            continue
 
 
 def _get_active_accounts_by_agreement_id(aws_client, agreement_id):
@@ -90,6 +110,45 @@ def _get_active_accounts_by_agreement_id(aws_client, agreement_id):
     return agreement_accounts
 
 
+def check_existing_subscription_items(mpt_client, items, subscription, agreement_id):
+    purchased_skus = [
+        line["item"]["externalIds"]["vendor"] for line in subscription.get("lines", [])
+    ]
+    skus_to_add = [sku for sku in AWS_ITEMS_SKUS if sku not in purchased_skus]
+    skus_to_delete = [sku for sku in purchased_skus if sku not in AWS_ITEMS_SKUS]
+    if skus_to_add:
+        for sku_to_add in skus_to_add:
+            subscription["lines"].append(
+                {
+                    "item": find_first(
+                        lambda item, sku=sku_to_add: item["externalIds"]["vendor"] == sku,
+                        items,
+                    ),
+                    "quantity": 1,
+                }
+            )
+        subscription = update_agreement_subscription(
+            mpt_client, subscription.get("id"), lines=subscription.get("lines")
+        )
+        logger.info(
+            f"{agreement_id} - Action - Added items {skus_to_add} to subscription"
+            f" {subscription.get('id')}"
+        )
+
+    if skus_to_delete:
+        lines = []
+        for line in subscription.get("lines", []):
+            if line["item"]["externalIds"]["vendor"] not in skus_to_delete:
+                lines.append(line)
+        subscription = update_agreement_subscription(
+            mpt_client, subscription.get("id"), lines=lines
+        )
+        logger.info(
+            f"{agreement_id} - Action - Removed items {skus_to_delete} from subscription "
+            f"{subscription.get('id')}"
+        )
+
+
 def _synchronize_new_accounts(mpt_client, agreement, agreement_accounts, dry_run):
     """
     Synchronize new AWS linked accounts for a specific agreement.
@@ -105,23 +164,28 @@ def _synchronize_new_accounts(mpt_client, agreement, agreement_accounts, dry_run
         account_email = account["Email"]
         account_name = account["Name"]
         try:
-            existing_subscriptions = find_first(
+            existing_subscription = find_first(
                 lambda sub, acc_id=account_id: sub.get("externalIds", {}).get("vendor") == acc_id
                 and sub.get("status") == "Active",
                 agreement["subscriptions"],
             )
-            if existing_subscriptions:
+            items = get_product_items_by_skus(
+                mpt_client, agreement.get("product").get("id"), AWS_ITEMS_SKUS
+            )
+            if existing_subscription:
+                check_existing_subscription_items(
+                    mpt_client, items, existing_subscription, agreement.get("id")
+                )
                 logger.info(
-                    f"{agreement.get("id")} - Skipping - Create subscription for "
-                    f"account={account_id} email={account_email} as it already exist"
+                    f"{agreement.get('id')} - Next - Subscription for {account_id} "
+                    f"({existing_subscription['id']}) synchronized"
                 )
                 continue
-            items = get_product_items_by_skus(
-                mpt_client, agreement.get("product").get("id"), [AWS_ITEM_SKU]
-            )
+
             if not items:
                 logger.error(
-                    f"{agreement.get("id")} - Failed to get product items with sku {AWS_ITEM_SKU}"
+                    f"{agreement.get("id")} - Failed to get product items with "
+                    f"skus {AWS_ITEMS_SKUS}"
                 )
                 continue
 
@@ -147,7 +211,7 @@ def _synchronize_new_accounts(mpt_client, agreement, agreement_accounts, dry_run
                 "commitmentDate": "2025-05-08T03:00:00.000Z",
                 "autoRenew": True,
                 "agreement": {"id": agreement["id"]},
-                "lines": [{"item": items[0], "quantity": 1}],
+                "lines": [{"item": item, "quantity": 1} for item in items],
             }
 
             if dry_run:

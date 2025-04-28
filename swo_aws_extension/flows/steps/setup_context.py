@@ -4,6 +4,7 @@ from mpt_extension_sdk.flows.pipeline import Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
+from swo_aws_extension.airtable.models import get_mpa_account
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.error import ERR_TRANSFER_WITH_ORG_MISSING_MPA_ID
@@ -65,6 +66,7 @@ class SetupPurchaseContext(SetupContext):
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
         if context.mpa_account:
             self.setup_aws(context)
+            context.airtable_mpa = get_mpa_account(context.mpa_account)
         self.setup_account_request_id(context)
         logger.info(f"{context.order_id} - Next - SetupPurchaseContext completed successfully")
         next_step(client, context)
@@ -118,6 +120,7 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
 
         if context.mpa_account:
             self.setup_aws(context)
+            context.airtable_mpa = get_mpa_account(context.mpa_account)
 
         logger.info(
             f"{context.order_id} - Continue - Setup purchase transfer with organization completed "
@@ -139,5 +142,6 @@ class SetupContextPurchaseTransferWithoutOrganizationStep(SetupContext):
             )
         if context.mpa_account:
             self.setup_aws(context)
+            context.airtable_mpa = get_mpa_account(context.mpa_account)
         logger.info(f"{context.order_id} - Next - SetupPurchaseContext completed successfully")
         next_step(client, context)

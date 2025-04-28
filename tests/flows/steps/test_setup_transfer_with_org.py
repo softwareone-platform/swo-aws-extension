@@ -40,6 +40,7 @@ def test_transfer_with_org_step_with_mpa(
     fulfillment_parameters_factory,
     order_parameters_factory,
     agreement_factory,
+    mpa_pool,
 ):
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
@@ -53,6 +54,10 @@ def test_transfer_with_org_step_with_mpa(
             master_payer_id="123456789012",
             transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
         ),
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.get_mpa_account",
+        return_value=mpa_pool,
     )
     setup_aws_mock = mocker.patch(
         "swo_aws_extension.flows.steps.setup_context."

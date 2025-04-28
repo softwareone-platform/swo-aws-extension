@@ -88,7 +88,7 @@ def test_setup_context_without_account_id_raise_exception(
 
 
 def test_setup_purchase_context_get_mpa_credentials(
-    mocker, order_factory, config, requests_mocker, agreement_factory
+    mocker, order_factory, config, requests_mocker, agreement_factory, mpa_pool
 ):
     role_name = "test_role"
     order = order_factory(agreement=agreement_factory(vendor_id="123456789012"))
@@ -116,6 +116,10 @@ def test_setup_purchase_context_get_mpa_credentials(
     context = PurchaseContext(order=order)
 
     mocker.patch("swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient))
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.get_mpa_account",
+        return_value=mpa_pool,
+    )
 
     setup_context = SetupPurchaseContext(config, role_name)
     setup_context(mpt_client_mock, context, next_step_mock)
@@ -169,7 +173,7 @@ def test_setup_context_get_account_creation_status(
 
 
 def test_transfer_without_organization(
-    mocker, config, order_factory, fulfillment_parameters_factory, agreement_factory
+    mocker, config, order_factory, fulfillment_parameters_factory, agreement_factory, mpa_pool
 ):
     """
     Tests:
@@ -190,7 +194,10 @@ def test_transfer_without_organization(
         "swo_aws_extension.flows.steps.setup_context.update_order",
         side_effect=dummy_update_order,
     )
-
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.get_mpa_account",
+        return_value=mpa_pool,
+    )
     setup_aws_mock = mocker.patch(
         "swo_aws_extension.flows.steps.setup_context.SetupContextPurchaseTransferWithoutOrganizationStep.setup_aws"
     )
