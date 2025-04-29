@@ -9,7 +9,7 @@ class Config:
         Get the contents of a file.
         """
         if not os.path.exists(file_path):
-            return None
+            raise FileNotFoundError(file_path)
         with open(file_path, encoding="utf-8") as file:
             return file.read()
 
@@ -21,12 +21,6 @@ class Config:
 
     def __init__(self):
         self.setup_azure_env()
-
-    def azure_client_password_path(self) -> str:
-        """
-        Get the path to the Azure client certificate password.
-        """
-        return settings.EXTENSION_CONFIG["AZURE_CLIENT_PASSWORD_PATH"]
 
     @property
     def ccp_client_id(self) -> str:
