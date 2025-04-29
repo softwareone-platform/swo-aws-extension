@@ -15,7 +15,7 @@ def test_onboard_ccp_customer(
     aws_client_factory,
     fulfillment_parameters_factory,
     ccp_client,
-    mpa_pool,
+    mpa_pool_factory,
     mock_onboard_customer_response,
     onboard_customer_factory,
     agreement_factory,
@@ -46,7 +46,7 @@ def test_onboard_ccp_customer(
         return_value=mocked_master_payer_account_pool_model,
     )
 
-    mocked_master_payer_account_pool_model.first.return_value = mpa_pool
+    mocked_master_payer_account_pool_model.first.return_value = mpa_pool_factory()
 
     ccp_onboard = CCPOnboard(config)
     ccp_onboard(mpt_client_mock, context, next_step_mock)

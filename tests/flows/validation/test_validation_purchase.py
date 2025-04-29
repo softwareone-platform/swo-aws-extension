@@ -465,7 +465,7 @@ def test_validate_selected_split_billing_mpa_not_found_in_airtable(
 
 
 def test_validate_selected_split_billing_invalid_client(
-    mocker, order_factory, order_parameters_factory, mpa_pool, product_items
+    mocker, order_factory, order_parameters_factory, mpa_pool_factory, product_items
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -481,7 +481,7 @@ def test_validate_selected_split_billing_invalid_client(
 
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_mpa_account",
-        return_value=mpa_pool,
+        return_value=mpa_pool_factory(),
     )
 
     client = mocker.MagicMock()
@@ -501,7 +501,7 @@ def test_validate_selected_split_billing_invalid_client(
 
 
 def test_validate_selected_split_billing_invalid_status(
-    mocker, order_factory, order_parameters_factory, mpa_pool, product_items
+    mocker, order_factory, order_parameters_factory, mpa_pool_factory, product_items
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -514,10 +514,9 @@ def test_validate_selected_split_billing_invalid_status(
         "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
         return_value=product_items,
     )
-    mpa_pool.client_id = "CLI-1111-1111"
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_mpa_account",
-        return_value=mpa_pool,
+        return_value=mpa_pool_factory(client_id="CLI-1111-1111"),
     )
 
     client = mocker.MagicMock()
@@ -537,7 +536,7 @@ def test_validate_selected_split_billing_invalid_status(
 
 
 def test_validate_selected_split_billing_pls_enabled(
-    mocker, order_factory, order_parameters_factory, mpa_pool, product_items
+    mocker, order_factory, order_parameters_factory, mpa_pool_factory, product_items
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -551,11 +550,9 @@ def test_validate_selected_split_billing_pls_enabled(
         "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
         return_value=product_items,
     )
-    mpa_pool.client_id = "CLI-1111-1111"
-    mpa_pool.status = MPAStatusEnum.ASSIGNED
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_mpa_account",
-        return_value=mpa_pool,
+        return_value=mpa_pool_factory(client_id="CLI-1111-1111", status=MPAStatusEnum.ASSIGNED),
     )
 
     client = mocker.MagicMock()
@@ -584,7 +581,7 @@ def test_validate_selected_split_billing_pls_enabled(
     assert support_type_parameter in result["parameters"]["ordering"]
 
 
-def test_validate_no_items(mocker, order_factory, order_parameters_factory, mpa_pool):
+def test_validate_no_items(mocker, order_factory, order_parameters_factory, mpa_pool_factory):
     order = order_factory(
         order_parameters=order_parameters_factory(
             account_type=AccountTypesEnum.EXISTING_ACCOUNT,
@@ -597,11 +594,9 @@ def test_validate_no_items(mocker, order_factory, order_parameters_factory, mpa_
         "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
         return_value=[],
     )
-    mpa_pool.client_id = "CLI-1111-1111"
-    mpa_pool.status = MPAStatusEnum.ASSIGNED
     mocker.patch(
         "swo_aws_extension.flows.validation.purchase.get_mpa_account",
-        return_value=mpa_pool,
+        return_value=mpa_pool_factory(client_id="CLI-1111-1111", status=MPAStatusEnum.ASSIGNED),
     )
 
     client = mocker.MagicMock()

@@ -45,6 +45,13 @@ class InitialAWSContext(BaseContext):
     def pls_enabled(self):
         return is_partner_led_support_enabled(self.order)
 
+    @property
+    def seller_country(self):
+        country = self.order.get("seller", {}).get("address", {}).get("country", "")
+        if not country:
+            raise ValueError(f"{self.order_id} - Seller country is not included in the order.")
+        return country
+
     def is_type_transfer_with_organization(self):
         return get_transfer_type(self.order) == TransferTypesEnum.TRANSFER_WITH_ORGANIZATION
 

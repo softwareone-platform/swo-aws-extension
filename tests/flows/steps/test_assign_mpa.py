@@ -1,4 +1,5 @@
 import botocore.exceptions
+import pytest
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.constants import PhasesEnum, TransferTypesEnum
@@ -79,7 +80,7 @@ def test_assign_mpa_phase_assign_mpa(
     config,
     aws_client_factory,
     fulfillment_parameters_factory,
-    mpa_pool,
+    mpa_pool_factory,
     agreement_factory,
 ):
     order = order_factory(
@@ -92,7 +93,7 @@ def test_assign_mpa_phase_assign_mpa(
 
     context = PurchaseContext(order=order)
     context.aws_client = aws_client
-    context.airtable_mpa = mpa_pool
+    context.airtable_mpa = mpa_pool_factory()
     next_step_mock = mocker.Mock()
 
     updated_order = set_phase(order, PhasesEnum.PRECONFIGURATION_MPA)
@@ -118,7 +119,12 @@ def test_assign_mpa_phase_assign_mpa(
 
 
 def test_assign_mpa_phase_assign_mpa_credentials_error(
-    mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory, mpa_pool
+    mocker,
+    order_factory,
+    config,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    mpa_pool_factory,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA)
@@ -138,7 +144,7 @@ def test_assign_mpa_phase_assign_mpa_credentials_error(
 
     context = PurchaseContext(order=order)
     context.aws_client = aws_client
-    context.airtable_mpa = mpa_pool
+    context.airtable_mpa = mpa_pool_factory()
     next_step_mock = mocker.Mock()
 
     mocked_update_order = mocker.patch("swo_aws_extension.flows.steps.assign_mpa.update_order")
@@ -184,7 +190,47 @@ def test_assign_mpa_phase_not_mpa_account(
     context.airtable_mpa = None
     next_step_mock = mocker.Mock()
     mocked_update_order = mocker.patch("swo_aws_extension.flows.steps.assign_mpa.update_order")
+    mocked_pool_notification_model = mocker.MagicMock()
+    mocker.patch(
+        "swo_aws_extension.airtable.models.get_pool_notification_model",
+        return_value=mocked_pool_notification_model,
+    )
+    mocked_pool_notification_model.first.return_value = None
+    assign_mpa = AssignMPA(config, "test_role_name")
+    assign_mpa(mpt_client_mock, context, next_step_mock)
+    mock_client.get_caller_identity.assert_not_called()
 
+    next_step_mock.assert_not_called()
+    mocked_update_order.assert_not_called()
+
+
+def test_assign_mpa_phase_not_mpa_account_notification_already_created(
+    mocker,
+    order_factory,
+    config,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    pool_notification_factory,
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA)
+    )
+
+    mpt_client_mock = mocker.Mock(spec=MPTClient)
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.get_caller_identity.return_value = {}
+
+    context = PurchaseContext(order=order)
+    context.aws_client = aws_client
+    context.airtable_mpa = None
+    next_step_mock = mocker.Mock()
+    mocked_update_order = mocker.patch("swo_aws_extension.flows.steps.assign_mpa.update_order")
+    mocked_pool_notification_model = mocker.MagicMock()
+    mocker.patch(
+        "swo_aws_extension.airtable.models.get_pool_notification_model",
+        return_value=mocked_pool_notification_model,
+    )
+    mocked_pool_notification_model.first.return_value = pool_notification_factory()
     assign_mpa = AssignMPA(config, "test_role_name")
     assign_mpa(mpt_client_mock, context, next_step_mock)
     mock_client.get_caller_identity.assert_not_called()
@@ -224,6 +270,11 @@ def test_assign_mpa_split_billing_valid_mpa(
     mocked_update_agreement = mocker.patch(
         "swo_aws_extension.flows.steps.assign_mpa.update_agreement",
         return_value=agreement_factory(vendor_id="123456789012"),
+    )
+    mocked_pool_notification_model = mocker.MagicMock()
+    mocker.patch(
+        "swo_aws_extension.airtable.models.get_pool_notification_model",
+        return_value=mocked_pool_notification_model,
     )
     mocker.patch(
         "swo_aws_extension.flows.steps.assign_mpa.is_split_billing_mpa_id_valid",
@@ -286,3 +337,39 @@ def test_assign_mpa_split_billing_invalid_mpa(
     next_step_mock.assert_not_called()
     mocked_update_order.assert_not_called()
     mocked_switch_order.assert_called_once()
+
+
+def test_assign_mpa_empty_country(
+    mocker,
+    order_factory,
+    config,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    agreement_factory,
+    mpa_pool_factory,
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA)
+    )
+    order["seller"]["address"]["country"] = ""
+
+    mpt_client_mock = mocker.Mock(spec=MPTClient)
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.get_caller_identity.return_value = {}
+
+    context = PurchaseContext(order=order)
+    context.aws_client = aws_client
+    context.airtable_mpa = None
+    next_step_mock = mocker.Mock()
+    mocked_pool_notification_model = mocker.MagicMock()
+    mocker.patch(
+        "swo_aws_extension.airtable.models.get_pool_notification_model",
+        return_value=mocked_pool_notification_model,
+    )
+    mocked_pool_notification_model.first.return_value = None
+
+    assign_mpa = AssignMPA(config, "test_role_name")
+    with pytest.raises(ValueError) as e:
+        assign_mpa(mpt_client_mock, context, next_step_mock)
+
+    assert f"{context.order_id} - Seller country is not included in the order." in str(e.value)

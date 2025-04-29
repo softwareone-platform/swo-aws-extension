@@ -73,6 +73,18 @@ def fulfill_order(client, context):
         raise
 
 
+def get_mpa_by_country_and_pls(mpa_pool, country, pls):
+    """
+    Get list of MPA by country and PLS status for the provided MPA pool
+    Args:
+        mpa_pool (list): List of MPAs
+        country (str): Country code
+        pls (bool): PLS status
+    Returns: List of MPAs
+    """
+    return [mpa for mpa in mpa_pool if mpa.country == country and mpa.pls_enabled == pls]
+
+
 def setup_contexts(mpt_client, orders):
     """
     List of contexts from orders
@@ -83,7 +95,7 @@ def setup_contexts(mpt_client, orders):
     Returns: List of contexts
     """
     purchase_orders_pls_status_map = {
-        order["id"]: is_partner_led_support_enabled(order)
+        order["id"]: (order["seller"]["address"]["country"], is_partner_led_support_enabled(order))
         for order in orders
         if not order.get("agreement", {}).get("externalIds", {}).get("vendor", "")
         and get_transfer_type(order)
@@ -92,10 +104,13 @@ def setup_contexts(mpt_client, orders):
             TransferTypesEnum.SPLIT_BILLING,
         ]
     }
-    pls_mpa_pool_map = {
-        pls: get_available_mpa_from_pool(pls)
-        for pls in set(purchase_orders_pls_status_map.values())
-    }
+    pls_mpa_pool_map = {}
+    if purchase_orders_pls_status_map:
+        mpa_pool = get_available_mpa_from_pool()
+        pls_mpa_pool_map = {
+            f"{country}_{pls}": get_mpa_by_country_and_pls(mpa_pool, country, pls)
+            for country, pls in set(purchase_orders_pls_status_map.values())
+        }
 
     contexts = []
 
@@ -103,13 +118,13 @@ def setup_contexts(mpt_client, orders):
         context = InitialAWSContext(order=order)
         if context.is_purchase_order():
             if order["id"] in purchase_orders_pls_status_map:
-                pls_status = purchase_orders_pls_status_map[order["id"]]
+                country, pls = purchase_orders_pls_status_map[order["id"]]
                 # Check if there is an available MPA for the order.
                 # If there is, assign it to the context.
                 # Otherwise, leave it as None to be handled on the order processed.
-                if pls_mpa_pool_map[pls_status]:
+                if pls_mpa_pool_map.get(f"{country}_{pls}", None):
                     # Assign first available MPA from the pool
-                    context.airtable_mpa = pls_mpa_pool_map[pls_status].pop(0)
+                    context.airtable_mpa = pls_mpa_pool_map[f"{country}_{pls}"].pop(0)
 
         contexts.append(context)
 

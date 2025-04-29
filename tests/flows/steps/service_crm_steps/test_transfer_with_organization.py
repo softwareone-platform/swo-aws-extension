@@ -130,11 +130,11 @@ def test_create_transfer_request_ticket_with_organization_step_ticket_exist(
     next_step_mock.assert_called_once()
 
 
-def test_create_transfer_request_ticket_skipped(mocker, order, service_client):
+def test_create_transfer_request_ticket_skipped(mocker, mock_order, service_client):
     """
     Test that the step is skipped for orders that are not transfer with organization.
     """
-    context = PurchaseContext(order=order)
+    context = PurchaseContext(order=mock_order)
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
 
@@ -184,11 +184,11 @@ def test_await_ticket_continue_if_completed(
     next_step_mock.assert_called_once()
 
 
-def test_skip_await_ticket(mocker, order):
+def test_skip_await_ticket(mocker, mock_order):
     """
     Test skipping ticket if not set
     """
-    context = PurchaseContext(order=order)
+    context = PurchaseContext(order=mock_order)
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
 

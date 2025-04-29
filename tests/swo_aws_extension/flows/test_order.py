@@ -11,14 +11,14 @@ def order_context(order):
     return PurchaseContext(order=order, order_id="ORD-123-123")
 
 
-def test_order_string_representation(order):
-    order_context = PurchaseContext(order)
+def test_order_string_representation(mock_order):
+    order_context = PurchaseContext(mock_order)
     representation = str(order_context)
     assert "Context:" in representation
     assert order_context.order_id in representation
     assert order_context.order_type in representation
 
-    TerminateContext(order=order)
+    TerminateContext(order=mock_order)
     representation = str(order_context)
     assert "Context:" in representation
     assert order_context.order_id in representation

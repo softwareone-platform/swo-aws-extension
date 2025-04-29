@@ -6,7 +6,11 @@ from mpt_extension_sdk.mpt_http.mpt import update_agreement, update_order
 
 from swo_aws_extension.airtable.models import (
     MPAStatusEnum,
+    NotificationStatusEnum,
+    NotificationTypeEnum,
+    create_pool_notification,
     get_mpa_view_link,
+    has_open_notification,
 )
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
@@ -103,9 +107,21 @@ class AssignMPA(Step):
 
         if not context.airtable_mpa:
             logger.error(
-                f"{context.order_id} - Error - No MPA available in the pool with PLS "
-                + ("enabled" if context.pls_enabled else "disabled")
+                f"{context.order_id} - Error - No MPA available in the pool for country"
+                f" {context.seller_country} with PLS enabled: {context.pls_enabled}"
             )
+            if not has_open_notification(context.seller_country, context.pls_enabled):
+                new_notification = {
+                    "status": NotificationStatusEnum.NEW,
+                    "notification_type": NotificationTypeEnum.EMPTY,
+                    "pls_enabled": context.pls_enabled,
+                    "country": context.seller_country,
+                }
+                create_pool_notification(new_notification)
+                logger.info(
+                    f"{context.order_id} - Action - Created new empty notification for "
+                    f"{context.seller_country} with PLS status: {context.pls_enabled}"
+                )
             return
 
         # validate mpa_id

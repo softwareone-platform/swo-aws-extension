@@ -139,7 +139,7 @@ def test_process_one_order_with_invitations_accepted(
     fulfillment_parameters_factory,
     agreement_factory,
     handshake_data_factory,
-    mpa_pool,
+    mpa_pool_factory,
 ):
     order_parameters = order_parameters_factory(
         account_type=AccountTypesEnum.EXISTING_ACCOUNT,
@@ -174,7 +174,7 @@ def test_process_one_order_with_invitations_accepted(
     )
     mocker.patch(
         "swo_aws_extension.flows.steps.setup_context.get_mpa_account",
-        return_value=mpa_pool,
+        return_value=mpa_pool_factory(),
     )
     process_order = mocker.patch(
         "swo_aws_extension.flows.jobs.process_aws_invitations.SetupOrderProcessingStep.process_order",
@@ -272,10 +272,10 @@ def test_get_quering_orders_exceptions(mocker, aws_invitation_processor, order_f
     assert len(orders) == 0
 
 
-def test_setup_order_processing_step_process_order(mocker, order, mpt_client):
+def test_setup_order_processing_step_process_order(mocker, mock_order, mpt_client):
     next_step = mocker.MagicMock()
     step = SetupOrderProcessingStep()
-    context = PurchaseContext(order)
+    context = PurchaseContext(mock_order)
 
     mpt_client.post = mocker.MagicMock(
         return_value=mocker.MagicMock(spec=Response, status_code=200)
