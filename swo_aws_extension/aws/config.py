@@ -1,7 +1,33 @@
+import os
+
 from django.conf import settings
 
 
 class Config:
+    def get_file_contents(self, file_path: str) -> str:
+        """
+        Get the contents of a file.
+        """
+        if not os.path.exists(file_path):
+            return None
+        with open(file_path, encoding="utf-8") as file:
+            return file.read()
+
+    def setup_azure_env(self):
+        password = os.environ.get("AZURE_CLIENT_CERTIFICATE_PASSWORD", None)
+        password_path = os.environ.get("AZURE_CLIENT_PASSWORD_PATH", None)
+        if not password and password_path:
+            os.environ["AZURE_CLIENT_CERTIFICATE_PASSWORD"] = self.get_file_contents(password_path)
+
+    def __init__(self):
+        self.setup_azure_env()
+
+    def azure_client_password_path(self) -> str:
+        """
+        Get the path to the Azure client certificate password.
+        """
+        return settings.EXTENSION_CONFIG["AZURE_CLIENT_PASSWORD_PATH"]
+
     @property
     def ccp_client_id(self) -> str:
         return settings.EXTENSION_CONFIG["CCP_CLIENT_ID"]
