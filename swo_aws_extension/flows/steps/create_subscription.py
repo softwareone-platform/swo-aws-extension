@@ -10,7 +10,7 @@ from mpt_extension_sdk.mpt_http.mpt import (
 )
 from mpt_extension_sdk.mpt_http.utils import find_first
 
-from swo_aws_extension.constants import PhasesEnum
+from swo_aws_extension.constants import PhasesEnum, TransferTypesEnum
 from swo_aws_extension.flows.jobs.synchronize_agreements import sync_agreement_subscriptions
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.parameters import (
@@ -18,6 +18,7 @@ from swo_aws_extension.parameters import (
     get_account_email,
     get_account_name,
     get_phase,
+    get_transfer_type,
     set_phase,
 )
 
@@ -60,7 +61,7 @@ class CreateSubscription(Step):
 
         if not self.subscription_exist_for_account_id(client, context.order_id, account_id):
             logger.info(
-                f"{context.order_id} - Intent - " f"Creating subscription for account {account_id}"
+                f"{context.order_id} - Intent - Creating subscription for account {account_id}"
             )
 
             self.add_subscription(
@@ -70,14 +71,18 @@ class CreateSubscription(Step):
                 account_email,
                 account_name,
             )
-
-        context.order = set_phase(context.order, PhasesEnum.CCP_ONBOARD)
+        next_phase = (
+            PhasesEnum.CREATE_SUBSCRIPTIONS
+            if get_transfer_type(context.order) == TransferTypesEnum.SPLIT_BILLING
+            else PhasesEnum.CCP_ONBOARD
+        )
+        context.order = set_phase(context.order, next_phase)
         update_order(client, context.order_id, parameters=context.order["parameters"])
 
         logger.info(
             f"'{context.order_id} - Action - {PhasesEnum.CREATE_SUBSCRIPTIONS}' "
             f"completed successfully. "
-            f"Proceeding to next phase '{PhasesEnum.CCP_ONBOARD}'"
+            f"Proceeding to next phase '{next_phase}'"
         )
         next_step(client, context)
 
@@ -113,11 +118,7 @@ class CreateSubscription(Step):
             "externalIds": {
                 "vendor": account_id,
             },
-            "lines": [
-                {
-                    "id": context.order["lines"][0]["id"],
-                },
-            ],
+            "lines": [{"id": order_line["id"]} for order_line in context.order["lines"]],
         }
         subscription = create_subscription(client, context.order_id, subscription)
         logger.info(

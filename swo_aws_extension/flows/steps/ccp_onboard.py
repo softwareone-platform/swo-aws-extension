@@ -76,6 +76,10 @@ class CCPOnboard(Step):
             f" Notify the failure and continue"
         )
         self._notify_ccp_onboard_failure(context)
+        context.order = set_phase(context.order, PhasesEnum.COMPLETED)
+        context.order = update_order(
+            mpt_client, context.order_id, parameters=context.order["parameters"]
+        )
         next_step(mpt_client, context)
 
     @staticmethod

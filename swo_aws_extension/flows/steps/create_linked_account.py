@@ -66,7 +66,7 @@ class CreateLinkedAccount(Step):
                         OrderParametersEnum.ACCOUNT_NAME,
                         readonly=False,
                         hidden=False,
-                        required=False
+                        required=False,
                     )
                     context.order = set_account_request_id(context.order, "")
                     ignore_params = list_ordering_parameters_with_errors(context.order)
