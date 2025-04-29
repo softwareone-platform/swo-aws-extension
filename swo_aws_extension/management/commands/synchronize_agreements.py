@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from mpt_extension_sdk.core.utils import setup_client
 
@@ -35,5 +36,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.info("Start synchronizing agreements...")
         client = setup_client()
-        synchronize_agreements(client, config, options["agreements"], options["dry_run"])
+        synchronize_agreements(
+            client, config, options["agreements"], options["dry_run"], settings.MPT_PRODUCTS_IDS
+        )
         self.success("Synchronizing agreements completed.")

@@ -40,7 +40,9 @@ def test_create_subscription_new_account(
             phase=PhasesEnum.CREATE_SUBSCRIPTIONS
         ),
     )
-    subscription = subscription_factory()
+    subscription = subscription_factory(
+        lines=[{"id": order_line["id"]} for order_line in order["lines"]]
+    )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
@@ -177,6 +179,7 @@ def test_create_subscription_transfer_account(
         account_name="Test Account",
         account_email="test@example.com",
         vendor_id="123456789012",
+        lines=[{"id": order_line["id"]} for order_line in order["lines"]],
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")

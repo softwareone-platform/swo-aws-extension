@@ -20,6 +20,7 @@ from swo_aws_extension.airtable.models import (
 from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
 from swo_aws_extension.aws.config import get_config
 from swo_aws_extension.constants import (
+    AWS_ITEMS_SKUS,
     AccountTypesEnum,
     PhasesEnum,
     SupportTypesEnum,
@@ -1086,7 +1087,12 @@ def subscription_factory(lines_factory):
         account_name="account_name",
         vendor_id="account_id",
         status="Active",
+        lines=None,
     ):
+        if lines is None:
+            lines = []
+            for sku in AWS_ITEMS_SKUS:
+                lines.extend(lines_factory(external_vendor_id=sku, name=sku, quantity=1))
         return {
             "id": "SUB-1000-2000-3000",
             "status": status,
@@ -1099,7 +1105,7 @@ def subscription_factory(lines_factory):
                 ]
             },
             "externalIds": {"vendor": vendor_id},
-            "lines": [{"id": "ALI-2119-4550-8674-5962-0001"}],
+            "lines": lines,
         }
 
     return _subscription
@@ -1621,3 +1627,17 @@ def aws_accounts_factory():
         }
 
     return _account
+
+
+@pytest.fixture()
+def product_items(lines_factory):
+    return [
+        {
+            "id": "ITM-1234-1234-1234-0001",
+            "name": sku,
+            "externalIds": {
+                "vendor": sku,
+            },
+        }
+        for sku in AWS_ITEMS_SKUS
+    ]
