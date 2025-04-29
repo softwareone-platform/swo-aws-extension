@@ -17,7 +17,13 @@ from swo_aws_extension.flows.order import (
 )
 from swo_aws_extension.flows.validation.purchase import is_split_billing_mpa_id_valid
 from swo_aws_extension.notifications import Button, send_error
-from swo_aws_extension.parameters import get_phase, get_transfer_type, set_phase
+from swo_aws_extension.parameters import (
+    get_phase,
+    get_transfer_type,
+    list_ordering_parameters_with_errors,
+    set_ordering_parameters_to_readonly,
+    set_phase,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +80,10 @@ class AssignMPA(Step):
             return
         if get_transfer_type(context.order) == TransferTypesEnum.SPLIT_BILLING:
             if not is_split_billing_mpa_id_valid(context):
+                parameter_ids_with_errors = list_ordering_parameters_with_errors(context.order)
+                context.order = set_ordering_parameters_to_readonly(
+                    context.order, ignore=parameter_ids_with_errors
+                )
                 switch_order_to_query(client, context.order)
                 logger.error(
                     f"{context.order_id} - Querying - MPA Invalid. Order switched to query"

@@ -17,7 +17,9 @@ from swo_aws_extension.parameters import (
     OrderParametersEnum,
     get_account_request_id,
     get_phase,
+    list_ordering_parameters_with_errors,
     set_ordering_parameter_error,
+    set_ordering_parameters_to_readonly,
     set_phase,
 )
 
@@ -99,6 +101,10 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
                 context.order,
                 OrderParametersEnum.MASTER_PAYER_ID,
                 ERR_TRANSFER_WITH_ORG_MISSING_MPA_ID.to_dict(),
+            )
+            parameter_ids_with_errors = list_ordering_parameters_with_errors(context.order)
+            context.order = set_ordering_parameters_to_readonly(
+                context.order, ignore=parameter_ids_with_errors
             )
             if context.order_status != MPT_ORDER_STATUS_QUERYING:
                 context.order = switch_order_to_query(client, context.order)

@@ -19,7 +19,9 @@ from swo_aws_extension.parameters import (
     MAX_ACCOUNT_TRANSFER,
     OrderParametersEnum,
     get_account_id,
+    list_ordering_parameters_with_errors,
     set_ordering_parameter_error,
+    set_ordering_parameters_to_readonly,
 )
 
 logger = logging.getLogger(__name__)
@@ -58,6 +60,10 @@ class ValidatePurchaseTransferWithoutOrganizationStep(Step):
                 OrderParametersEnum.ACCOUNT_ID,
                 ERR_TRANSFER_WITHOUT_ORG_MISSING_ACCOUNT_ID.to_dict(),
             )
+            parameter_ids_with_errors = list_ordering_parameters_with_errors(context.order)
+            context.order = set_ordering_parameters_to_readonly(
+                context.order, ignore=parameter_ids_with_errors
+            )
             self.order_to_querying(client, context)
             logger.info(
                 f"{context.order_id} - Querying - Transfer without organization has "
@@ -72,6 +78,10 @@ class ValidatePurchaseTransferWithoutOrganizationStep(Step):
                 OrderParametersEnum.ACCOUNT_ID,
                 ERR_INVALID_ACCOUNTS_FORMAT.to_dict(),
             )
+            parameter_ids_with_errors = list_ordering_parameters_with_errors(context.order)
+            context.order = set_ordering_parameters_to_readonly(
+                context.order, ignore=parameter_ids_with_errors
+            )
             self.order_to_querying(client, context)
             logger.info(
                 f"{context.order_id} - Querying - Invalid accounts ID format in `orderAccountId`. "
@@ -84,6 +94,10 @@ class ValidatePurchaseTransferWithoutOrganizationStep(Step):
                 context.order,
                 OrderParametersEnum.ACCOUNT_ID,
                 ERR_TRANSFER_TOO_MANY_ACCOUNTS.to_dict(),
+            )
+            parameter_ids_with_errors = list_ordering_parameters_with_errors(context.order)
+            context.order = set_ordering_parameters_to_readonly(
+                context.order, ignore=parameter_ids_with_errors
             )
             self.order_to_querying(client, context)
             logger.info(

@@ -532,3 +532,43 @@ def reset_ordering_parameters(order, list_parameters):
         )
 
     return updated_order
+
+
+def list_ordering_parameters_with_errors(order) -> list[str]:
+    """
+    List all ordering parameters externalId with errors.
+    Args:
+        order (dict): The order that contains the parameter.
+
+    Returns:
+        list: List of parameter external IDs with errors.
+    """
+    return [
+        param.get("externalId")
+        for param in order["parameters"][PARAM_PHASE_ORDERING]
+        if param.get("error")
+    ]
+
+
+def set_ordering_parameters_to_readonly(order, ignore: list[str], hide_param=True):
+    """
+    Set the readonly constraint on all ordering parameters except the ones in ignore list
+    Args:
+        order (dict): The order that contains the parameter.
+        ignore (list): List of parameter external IDs to not set as readonly.
+
+    Returns:
+        dict: The order updated.
+    """
+    updated_order = copy.deepcopy(order)
+
+    for param in updated_order["parameters"][PARAM_PHASE_ORDERING]:
+        if param.get("externalId") in ignore:
+            continue
+        if "constraints" not in param or not param["constraints"]:
+            param["constraints"] = {}
+        param["constraints"]["readonly"] = True
+        if hide_param:
+            param["constraints"]["hidden"] = True
+
+    return updated_order

@@ -19,9 +19,12 @@ from swo_aws_extension.parameters import (
     get_account_email,
     get_account_name,
     get_phase,
+    list_ordering_parameters_with_errors,
     set_account_request_id,
     set_ordering_parameter_error,
+    set_ordering_parameters_to_readonly,
     set_phase,
+    update_ordering_parameter_constraints,
 )
 
 logger = logging.getLogger(__name__)
@@ -57,7 +60,20 @@ class CreateLinkedAccount(Step):
                         OrderParametersEnum.ROOT_ACCOUNT_EMAIL,
                         ERR_EMAIL_ALREADY_EXIST.to_dict(),
                     )
+
+                    context.order = update_ordering_parameter_constraints(
+                        context.order,
+                        OrderParametersEnum.ACCOUNT_NAME,
+                        readonly=False,
+                        hidden=False,
+                        required=False
+                    )
                     context.order = set_account_request_id(context.order, "")
+                    ignore_params = list_ordering_parameters_with_errors(context.order)
+                    ignore_params.append(OrderParametersEnum.ACCOUNT_NAME)
+                    context.order = set_ordering_parameters_to_readonly(
+                        context.order, ignore=ignore_params
+                    )
                     switch_order_to_query(client, context.order)
                     logger.warning("Order switched to query")
                     return
@@ -89,6 +105,10 @@ class CreateLinkedAccount(Step):
             are_invalid_parameters = True
 
         if are_invalid_parameters:
+            parameter_ids_with_errors = list_ordering_parameters_with_errors(context.order)
+            context.order = set_ordering_parameters_to_readonly(
+                context.order, ignore=parameter_ids_with_errors
+            )
             switch_order_to_query(client, context.order)
             logger.warning("Order switched to query")
             return

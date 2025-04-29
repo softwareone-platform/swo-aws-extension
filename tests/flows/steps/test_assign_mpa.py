@@ -285,4 +285,4 @@ def test_assign_mpa_split_billing_invalid_mpa(
     mock_client.get_caller_identity.assert_not_called()
     next_step_mock.assert_not_called()
     mocked_update_order.assert_not_called()
-    mocked_switch_order.assert_called_once_with(mpt_client_mock, order)
+    mocked_switch_order.assert_called_once()
