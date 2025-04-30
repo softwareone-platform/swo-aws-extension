@@ -248,14 +248,16 @@ def test_await_crm_ticket_status_ticket_in_target_status(
     next_step.assert_called_once_with(client, context)
 
 
-def test_create_keeper_ticket(mocker, crm_client, order, next_step, service_request, mpa_pool):
+def test_create_keeper_ticket(
+    mocker, crm_client, mock_order, next_step, service_request, mpa_pool_factory
+):
     mocker.patch(
         "swo_aws_extension.flows.steps.service_crm_steps.get_service_client",
         return_value=crm_client,
     )
     crm_client.create_service_request.return_value = {"id": "12345"}
     client = Mock(spec=MPTClient)
-    context = PurchaseContext(order=order, airtable_mpa=mpa_pool)
+    context = PurchaseContext(order=mock_order, airtable_mpa=mpa_pool_factory())
 
     step = CreateUpdateKeeperTicketStep()
     step(client, context, next_step)
@@ -265,18 +267,18 @@ def test_create_keeper_ticket(mocker, crm_client, order, next_step, service_requ
 
 
 def test_create_keeper_ticket_fail_if_not_mpa_pool(
-    mocker, crm_client, order, next_step, service_request, mpa_pool
+    mocker, crm_client, mock_order, next_step, service_request
 ):
     crm_client.create_service_request.return_value = {"id": "12345"}
     client = Mock(spec=MPTClient)
-    context = PurchaseContext(order=order, airtable_mpa=None)
+    context = PurchaseContext(order=mock_order, airtable_mpa=None)
     step = CreateUpdateKeeperTicketStep()
     with pytest.raises(RuntimeError):
         step(client, context, next_step)
 
 
 def test_create_keeper_ticket_fail_it_no_ticket_id(
-    mocker, crm_client, order, next_step, service_request, mpa_pool
+    mocker, crm_client, mock_order, next_step, service_request, mpa_pool_factory
 ):
     mocker.patch(
         "swo_aws_extension.flows.steps.service_crm_steps.get_service_client",
@@ -284,7 +286,7 @@ def test_create_keeper_ticket_fail_it_no_ticket_id(
     )
     crm_client.create_service_request.return_value = {"id": None}
     client = Mock(spec=MPTClient)
-    context = PurchaseContext(order=order, airtable_mpa=mpa_pool)
+    context = PurchaseContext(order=mock_order, airtable_mpa=mpa_pool_factory())
 
     step = CreateUpdateKeeperTicketStep()
     with pytest.raises(ValueError):

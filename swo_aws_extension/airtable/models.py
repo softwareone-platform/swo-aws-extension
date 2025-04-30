@@ -3,7 +3,7 @@ from enum import StrEnum
 from functools import cache
 
 from django.conf import settings
-from pyairtable.formulas import AND, EQUAL, FIELD, STR_VALUE
+from pyairtable.formulas import AND, EQUAL, FIELD, NOT_EQUAL, STR_VALUE
 from pyairtable.orm import Model, fields
 from requests import HTTPError
 
@@ -27,6 +27,7 @@ class NotificationTicketStatusEnum(StrEnum):
 
 
 class NotificationStatusEnum(StrEnum):
+    NEW = "New"
     PENDING = "Pending"
     DONE = "Done"
 
@@ -74,6 +75,7 @@ def get_master_payer_account_pool_model(base_info):
         account_email = fields.TextField("Account Email")
         account_name = fields.TextField("Account Name")
         pls_enabled = fields.CheckboxField(PLS_ENABLED)
+        country = fields.TextField("Country")
         status = fields.SelectField("Status")
         agreement_id = fields.TextField("Agreement Id")
         client_id = fields.TextField("Client Id")
@@ -106,6 +108,7 @@ def get_pool_notification_model(base_info):
         notification_id = fields.AutoNumberField("Id")
         notification_type = fields.SelectField("Notification Type")
         pls_enabled = fields.CheckboxField(PLS_ENABLED)
+        country = fields.TextField("Country")
         ticket_id = fields.TextField("Ticket Id")
         ticket_state = fields.TextField("Ticket State")
         status = fields.SelectField("Status")
@@ -118,11 +121,10 @@ def get_pool_notification_model(base_info):
     return PoolNotification
 
 
-def get_available_mpa_from_pool(pls_enabled):
+def get_available_mpa_from_pool():
     """
-    Returns the available MPAs from the pool for a given PLS value.
+    Returns the list of available MPAs from the pool.
     Args:
-        pls_enabled (bool): Whether the MPA has PLS enabled.
 
     Returns:
         list: The available MPAs.
@@ -130,33 +132,27 @@ def get_available_mpa_from_pool(pls_enabled):
     """
     mpa_pool = get_master_payer_account_pool_model(AirTableBaseInfo.for_mpa_pool())
 
-    return mpa_pool.all(
-        formula=AND(
-            FIELD(PLS_ENABLED) if pls_enabled else f"NOT({FIELD(PLS_ENABLED)})",
-            EQUAL(FIELD("Status"), STR_VALUE(MPAStatusEnum.READY)),
-        )
-    )
+    return mpa_pool.all(formula=EQUAL(FIELD("Status"), STR_VALUE(MPAStatusEnum.READY)))
 
 
-def get_pending_notifications():
+def get_notifications_by_status(status):
     """
-    Returns the pending notifications from the pool for the selected PLS status.
+    Returns the list for pool notifications for the selected status
 
     Returns:
-        list[PoolNotification]: The pending notifications for the selected PLS status.
+        list[PoolNotification]: The pending notifications for the selected status.
     """
     pool_notification = get_pool_notification_model(AirTableBaseInfo.for_mpa_pool())
-    pending_notifications = pool_notification.all(
-        formula=EQUAL(FIELD("Status"), STR_VALUE(NotificationStatusEnum.PENDING))
-    )
+    pending_notifications = pool_notification.all(formula=EQUAL(FIELD("Status"), STR_VALUE(status)))
     return pending_notifications
 
 
-def has_pending_notifications(pls_enabled):
+def has_open_notification(country, pls_enabled):
     """
     Returns whether there are pending notifications for the selected PLS status.
 
     Args:
+        country (str): The country.
         pls_enabled (bool): Whether the MPA has PLS enabled.
 
     Returns:
@@ -166,10 +162,23 @@ def has_pending_notifications(pls_enabled):
     pending_notifications = pool_notification.first(
         formula=AND(
             FIELD(PLS_ENABLED) if pls_enabled else f"NOT({FIELD(PLS_ENABLED)})",
-            EQUAL(FIELD("Status"), STR_VALUE(NotificationStatusEnum.PENDING)),
+            NOT_EQUAL(FIELD("Status"), STR_VALUE(NotificationStatusEnum.DONE)),
+            EQUAL(FIELD("Country"), country),
         )
     )
     return bool(pending_notifications)
+
+
+def get_open_notifications():
+    """
+    Returns the list of open notifications.
+    Returns:
+        list[PoolNotification]: The open notifications.
+    """
+    pool_notification = get_pool_notification_model(AirTableBaseInfo.for_mpa_pool())
+    return pool_notification.all(
+        formula=NOT_EQUAL(FIELD("Status"), STR_VALUE(NotificationStatusEnum.DONE))
+    )
 
 
 def get_mpa_view_link():
@@ -217,3 +226,16 @@ def get_mpa_account(mpa_account_id):
     mpa_pool = get_master_payer_account_pool_model(AirTableBaseInfo.for_mpa_pool())
 
     return mpa_pool.first(formula=EQUAL(FIELD("Account Id"), mpa_account_id))
+
+
+def get_mpa_accounts():
+    """
+    Get all the MPA accounts from the pool.
+
+    Returns:
+        list: The MPA accounts.
+    """
+
+    mpa_pool = get_master_payer_account_pool_model(AirTableBaseInfo.for_mpa_pool())
+
+    return mpa_pool.all()

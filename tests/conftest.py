@@ -524,6 +524,7 @@ def order_factory(
     fulfillment_parameters_factory,
     lines_factory,
     buyer_factory,
+    seller,
     status="Processing",
     deployment_id="",
 ):
@@ -582,7 +583,7 @@ def order_factory(
                 "ordering": order_parameters,
             },
             "product": {"id": "PRD-1111-1111", "name": "AWS"},
-            "seller": {"id": "SEL-1111-1111"},
+            "seller": seller,
             "buyer": buyer or buyer_factory(),
             "client": {"id": "CLI-1111-1111"},
             "audit": {
@@ -603,7 +604,7 @@ def order_factory(
 
 
 @pytest.fixture()
-def order(order_factory):
+def mock_order(order_factory):
     return order_factory()
 
 
@@ -1025,9 +1026,9 @@ def mock_worker_call_command(mocker):
 
 
 @pytest.fixture()
-def mock_get_order_for_producer(order, order_factory):
+def mock_get_order_for_producer(mock_order, order_factory):
     return {
-        "data": [order],
+        "data": [mock_order],
         META: {
             "pagination": {
                 "offset": 0,
@@ -1326,32 +1327,59 @@ def base_info():
 
 
 @pytest.fixture()
-def mpa_pool(mocker):
-    mpa_pool = mocker.MagicMock()
-    mpa_pool.account_id = "Account Id"
-    mpa_pool.account_email = "test@email.com"
-    mpa_pool.account_name = ACCOUNT_NAME
-    mpa_pool.pls_enabled = True
-    mpa_pool.status = "Ready"
-    mpa_pool.agreement_id = ""
-    mpa_pool.client_id = "client_id"
-    mpa_pool.scu = "XX-SCU-200500"
-    mpa_pool.buyer_id = ""
+def mpa_pool_factory(mocker):
+    def _mpa_pool(
+        account_id="Account Id",
+        account_email="test@email.com",
+        account_name=ACCOUNT_NAME,
+        pls_enabled=True,
+        status="Ready",
+        agreement_id="",
+        client_id="client_id",
+        scu="XX-SCU-200500",
+        buyer_id="",
+        country="US",
+    ):
+        mpa_pool = mocker.MagicMock()
+        mpa_pool.account_id = account_id
+        mpa_pool.account_email = account_email
+        mpa_pool.account_name = account_name
+        mpa_pool.pls_enabled = pls_enabled
+        mpa_pool.status = status
+        mpa_pool.agreement_id = agreement_id
+        mpa_pool.client_id = client_id
+        mpa_pool.scu = scu
+        mpa_pool.buyer_id = buyer_id
+        mpa_pool.country = country
 
-    return mpa_pool
+        return mpa_pool
+
+    return _mpa_pool
 
 
 @pytest.fixture()
-def pool_notification(mocker):
-    pool_notification = mocker.MagicMock()
-    pool_notification.notification_id = 1
-    pool_notification.notification_type = NotificationTypeEnum.WARNING
-    pool_notification.pls_enabled = True
-    pool_notification.ticket_id = "Ticket Id"
-    pool_notification.ticket_state = "New"
-    pool_notification.status = NotificationStatusEnum.PENDING
+def pool_notification_factory(mocker):
+    def _pool_notification(
+        notification_id=1,
+        notification_type=NotificationTypeEnum.WARNING,
+        pls_enabled=True,
+        ticket_id="Ticket Id",
+        ticket_state="New",
+        status=NotificationStatusEnum.PENDING,
+        country="US",
+    ):
+        pool_notification = mocker.MagicMock()
+        pool_notification.notification_id = notification_id
+        pool_notification.notification_type = notification_type
+        pool_notification.pls_enabled = pls_enabled
+        pool_notification.ticket_id = ticket_id
+        pool_notification.ticket_state = ticket_state
+        pool_notification.status = status
+        pool_notification.country = country
 
-    return pool_notification
+        return pool_notification
+
+    return _pool_notification
 
 
 @pytest.fixture()

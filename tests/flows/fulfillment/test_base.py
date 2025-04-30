@@ -16,7 +16,7 @@ from swo_aws_extension.flows.fulfillment import fulfill_order
 from swo_aws_extension.flows.fulfillment.base import setup_contexts
 from swo_aws_extension.flows.order import InitialAWSContext, TerminateContext
 from swo_aws_extension.parameters import set_crm_ticket_id
-from swo_crm_service_client import CRMServiceClient, ServiceRequest
+from swo_crm_service_client import ServiceRequest
 
 
 def test_fulfill_order_exception(mocker, mpt_error_factory, order_factory):
@@ -54,26 +54,37 @@ def test_setup_contexts_without_mpa_account_id(
     order_factory,
     fulfillment_parameters_factory,
     order_parameters_factory,
-    mpa_pool,
+    mpa_pool_factory,
     buyer,
 ):
     order_without_mpa = order_factory(
         order_id="ORD-1",
         fulfillment_parameters=fulfillment_parameters_factory(),
     )
+    order_without_mpa_2 = order_factory(
+        order_id="ORD-2",
+        fulfillment_parameters=fulfillment_parameters_factory(),
+    )
 
-    orders = [order_without_mpa]
+    orders = [order_without_mpa, order_without_mpa_2]
     mocked_master_payer_account_pool_model = mocker.MagicMock()
     mocker.patch(
         "swo_aws_extension.airtable.models.get_master_payer_account_pool_model",
         return_value=mocked_master_payer_account_pool_model,
     )
-    mocked_master_payer_account_pool_model.all.return_value = [mpa_pool]
+    mpa_pool = mpa_pool_factory()
+    mocked_master_payer_account_pool_model.all.return_value = [
+        mpa_pool,
+        mpa_pool,
+        mpa_pool,
+    ]
 
     contexts = setup_contexts(mpt_client, orders)
-    assert len(contexts) == 1
+    assert len(contexts) == 2
     assert contexts[0] == InitialAWSContext(order=order_without_mpa, airtable_mpa=mpa_pool)
     assert contexts[0].airtable_mpa == mpa_pool
+    assert contexts[1] == InitialAWSContext(order=order_without_mpa_2, airtable_mpa=mpa_pool)
+    assert contexts[1].airtable_mpa == mpa_pool
 
     mocked_master_payer_account_pool_model.all.assert_called_once()
 
@@ -116,8 +127,8 @@ def test_fulfill_terminate_account_flow(
     fulfillment_parameters_factory,
     data_aws_account_factory,
     service_request_ticket_factory,
+    service_client,
 ):
-    service_client = mocker.Mock(spec=CRMServiceClient)
     _, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.close_account.return_value = {}
     mock_client.list_accounts.return_value = {
@@ -374,7 +385,7 @@ def test_is_type_unknown(
         ),
     )
     teams_notification = mocker.patch(
-        "swo_aws_extension.flows.fulfillment." "base.notify_unhandled_exception_in_teams"
+        "swo_aws_extension.flows.fulfillment.base.notify_unhandled_exception_in_teams"
     )
     with pytest.raises(RuntimeError):
         fulfill_order(mocker.MagicMock(), InitialAWSContext(order=order))
