@@ -163,7 +163,7 @@ def has_open_notification(country, pls_enabled):
         formula=AND(
             FIELD(PLS_ENABLED) if pls_enabled else f"NOT({FIELD(PLS_ENABLED)})",
             NOT_EQUAL(FIELD("Status"), STR_VALUE(NotificationStatusEnum.DONE)),
-            EQUAL(FIELD("Country"), country),
+            EQUAL(FIELD("Country"), STR_VALUE(country)),
         )
     )
     return bool(pending_notifications)
