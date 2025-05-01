@@ -288,8 +288,11 @@ def test_await_invitation_link_step_all_accepted(
         ),
     )
 
-    def update_order(mpt, order_id, parameters):
+    def update_order(mpt, order_id, parameters, template=None):
         order["parameters"] = parameters
+        if not template:
+            template = order.get("template", None)
+        order["template"] = template
         return order
 
     mocker.patch(

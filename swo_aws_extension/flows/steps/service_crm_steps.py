@@ -22,9 +22,14 @@ from swo_aws_extension.constants import (
     CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL_INFO,
     CRM_TRANSFER_WITH_ORGANIZATION_SUMMARY,
     CRM_TRANSFER_WITH_ORGANIZATION_TITLE,
+    OrderProcessingTemplateEnum,
 )
 from swo_aws_extension.crm_service_client.config import get_service_client
-from swo_aws_extension.flows.order import InitialAWSContext, PurchaseContext
+from swo_aws_extension.flows.order import (
+    MPT_ORDER_STATUS_PROCESSING,
+    InitialAWSContext,
+    PurchaseContext,
+)
 from swo_aws_extension.notifications import get_notifications_recipient
 from swo_aws_extension.parameters import (
     get_crm_ccp_ticket_id,
@@ -218,7 +223,21 @@ class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
             f"with id={crm_ticket_id}"
         )
         context.order = set_crm_transfer_organization_ticket_id(context.order, crm_ticket_id)
-        update_order(client, context.order_id, parameters=context.order["parameters"])
+        context.update_template(
+            client,
+            MPT_ORDER_STATUS_PROCESSING,
+            OrderProcessingTemplateEnum.TRANSFER_WITH_ORG_TICKET_CREATED,
+        )
+        update_order(
+            client,
+            context.order_id,
+            parameters=context.order["parameters"],
+            template=context.template,
+        )
+        logger.info(
+            f"{context.order_id} - Action - Created transfer service request ticket with "
+            f"id={crm_ticket_id}"
+        )
 
     @staticmethod
     def should_create_ticket_criteria(context):

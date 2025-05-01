@@ -29,7 +29,7 @@ def test_extension_web_application_load_config(mock_gunicorn_logging_config):
     assert ext_web_app.options == gunicorn_options
 
 
-def test_start_event_consumer(
+def test_event_consumer(
     mocker,
     mock_gunicorn_logging_config,
     mock_worker_initialize,
@@ -46,7 +46,7 @@ def test_start_event_consumer(
     mock_call_command.assert_called_once()
 
 
-def test_start_gunicorn(
+def test_gunicorn(
     mocker,
     mock_gunicorn_logging_config,
     mock_worker_initialize,

@@ -1,5 +1,6 @@
 from mpt_extension_sdk.flows.context import ORDER_TYPE_CHANGE
 from mpt_extension_sdk.mpt_http.base import MPTClient
+from requests import Response
 
 from swo_aws_extension.constants import PhasesEnum, TransferTypesEnum
 from swo_aws_extension.flows.order import PurchaseContext
@@ -24,6 +25,10 @@ def test_transfer_with_org_step(
             transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
         ),
     )
+    template_response = Response()
+    template_response._content = b'{"data": ["template"]}'
+    template_response.status_code = 200
+    mpt_client_mock.get = mocker.Mock(return_value=template_response)
 
     step = SetupContextPurchaseTransferWithOrganizationStep(config, "role_name")
     context = PurchaseContext(aws_client=None, order=order)
@@ -59,6 +64,11 @@ def test_transfer_with_org_step_with_mpa(
         "swo_aws_extension.flows.steps.setup_context.get_mpa_account",
         return_value=mpa_pool_factory(),
     )
+    template_response = Response()
+    template_response._content = b'{"data": ["template"]}'
+    template_response.status_code = 200
+    mpt_client_mock.get = mocker.Mock(return_value=template_response)
+
     setup_aws_mock = mocker.patch(
         "swo_aws_extension.flows.steps.setup_context."
         "SetupContextPurchaseTransferWithOrganizationStep.setup_aws"
