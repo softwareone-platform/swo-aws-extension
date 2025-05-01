@@ -1,3 +1,5 @@
+import copy
+
 import botocore.exceptions
 import pytest
 from mpt_extension_sdk.mpt_http.base import MPTClient
@@ -6,7 +8,7 @@ from swo_aws_extension.constants import PhasesEnum, TransferTypesEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps import AssignMPA
 from swo_aws_extension.notifications import Button
-from swo_aws_extension.parameters import set_phase
+from swo_aws_extension.parameters import get_mpa_email, set_phase
 
 
 def test_assign_mpa_phase_not_assign_mpa(
@@ -96,10 +98,14 @@ def test_assign_mpa_phase_assign_mpa(
     context.airtable_mpa = mpa_pool_factory()
     next_step_mock = mocker.Mock()
 
-    updated_order = set_phase(order, PhasesEnum.PRECONFIGURATION_MPA)
+    def update_order_side_effect(*args, **kwargs):
+        updated_order = copy.deepcopy(order)
+        updated_order["parameters"] = kwargs["parameters"]
+        return updated_order
+
     mocked_update_order = mocker.patch(
         "swo_aws_extension.flows.steps.assign_mpa.update_order",
-        return_value=updated_order,
+        side_effect=update_order_side_effect,
     )
     mocker.patch(
         "swo_aws_extension.flows.steps.assign_mpa.update_agreement",
@@ -111,6 +117,7 @@ def test_assign_mpa_phase_assign_mpa(
     mock_client.get_caller_identity.assert_called_once()
 
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
+    assert get_mpa_email(context.order) == "test@email.com"
     mocked_update_order.assert_called_once_with(
         mpt_client_mock,
         context.order["id"],

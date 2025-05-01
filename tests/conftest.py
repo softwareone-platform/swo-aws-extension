@@ -146,6 +146,7 @@ def fulfillment_parameters_factory():
         crm_ticket_id="",
         existing_account_crm_ticket="",
         ccp_engagement_id="",
+        mpa_email="",
     ):
         return [
             {
@@ -182,6 +183,13 @@ def fulfillment_parameters_factory():
                 "externalId": FulfillmentParametersEnum.CCP_ENGAGEMENT_ID,
                 "type": "SingleLineText",
                 "value": ccp_engagement_id,
+            },
+            {
+                "id": "PAR-1234-5680",
+                "name": "CCP Engagement ID",
+                "externalId": FulfillmentParametersEnum.MPA_EMAIL,
+                "type": "Email",
+                "value": mpa_email,
             },
         ]
 
