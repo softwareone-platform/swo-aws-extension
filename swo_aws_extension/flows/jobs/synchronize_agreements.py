@@ -1,5 +1,7 @@
 import logging
+from datetime import datetime, timezone
 
+from dateutil.relativedelta import relativedelta
 from mpt_extension_sdk.mpt_http.mpt import (
     create_agreement_subscription,
     get_agreements_by_query,
@@ -11,6 +13,7 @@ from mpt_extension_sdk.mpt_http.utils import find_first
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import (
     AWS_ITEMS_SKUS,
+    MPT_DATE_TIME_FORMAT,
     SWO_EXTENSION_MANAGEMENT_ROLE,
     TAG_AGREEMENT_ID,
     SubscriptionStatusEnum,
@@ -188,6 +191,9 @@ def _synchronize_new_accounts(mpt_client, agreement, agreement_accounts, dry_run
                     f"skus {AWS_ITEMS_SKUS}"
                 )
                 continue
+            now = datetime.now(timezone.utc)
+            start_date = now.strftime(MPT_DATE_TIME_FORMAT)
+            renewal_date = (now + relativedelta(months=1)).strftime(MPT_DATE_TIME_FORMAT)
 
             subscription = {
                 "name": f"Subscription for {account_name} ({account_id})",
@@ -206,9 +212,8 @@ def _synchronize_new_accounts(mpt_client, agreement, agreement_accounts, dry_run
                 "externalIds": {
                     "vendor": account_id,
                 },
-                # TODO pending to confirm dates with PDM
-                "startDate": "2025-04-16T11:00:00.000Z",
-                "commitmentDate": "2025-05-08T03:00:00.000Z",
+                "startDate": start_date,
+                "commitmentDate": renewal_date,
                 "autoRenew": True,
                 "agreement": {"id": agreement["id"]},
                 "lines": [{"item": item, "quantity": 1} for item in items],
