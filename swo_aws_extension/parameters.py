@@ -30,6 +30,7 @@ class FulfillmentParametersEnum(StrEnum):
     CRM_TICKET_ID = "crmTicketId"
     EXISTING_ACCOUNT_CRM_TICKET = "existingAccountCRMTicket"
     CCP_ENGAGEMENT_ID = "ccpEngagementId"
+    MPA_EMAIL = "mpaEmail"
 
 
 def get_parameter(parameter_phase, source, param_external_id):
@@ -571,4 +572,41 @@ def set_ordering_parameters_to_readonly(order, ignore: list[str], hide_param=Tru
         if hide_param:
             param["constraints"]["hidden"] = True
 
+    return updated_order
+
+
+def get_mpa_email(order):
+    """
+    Get the MPA email from the corresponding fulfillment parameter or None if it is not set.
+
+    Args:
+        order (dict): The order that contains the parameter.
+
+    Returns:
+        str: The MPA email provided by client or None if it isn't set.
+    """
+    param = get_fulfillment_parameter(
+        order,
+        FulfillmentParametersEnum.MPA_EMAIL,
+    )
+    return param.get("value", None)
+
+
+def set_mpa_email(order, mpa_email):
+    """
+    Set the MPA email on the fulfillment parameters.
+
+    Args:
+        order (dict): The order that contains the parameter.
+        mpa_email (str): The MPA email of the order.
+
+    Returns:
+        dict: The order updated.
+    """
+    updated_order = copy.deepcopy(order)
+    param = get_fulfillment_parameter(
+        updated_order,
+        FulfillmentParametersEnum.MPA_EMAIL,
+    )
+    param["value"] = mpa_email
     return updated_order

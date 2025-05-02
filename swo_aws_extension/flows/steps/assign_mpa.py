@@ -25,6 +25,7 @@ from swo_aws_extension.parameters import (
     get_phase,
     get_transfer_type,
     list_ordering_parameters_with_errors,
+    set_mpa_email,
     set_ordering_parameters_to_readonly,
     set_phase,
 )
@@ -162,6 +163,7 @@ class AssignMPA(Step):
         airtable_mpa.save()
 
         context.airtable_mpa = airtable_mpa
+        context.order = set_mpa_email(context.order, context.airtable_mpa.account_email)
         setup_agreement_external_id(client, context, context.airtable_mpa.account_id)
 
         context.order = set_phase(context.order, PhasesEnum.PRECONFIGURATION_MPA)
