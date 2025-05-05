@@ -6,11 +6,23 @@ from mpt_extension_sdk.mpt_http.mpt import update_order
 from requests import HTTPError
 
 from swo_aws_extension.airtable.models import get_mpa_account
-from swo_aws_extension.constants import CCPOnboardStatusEnum, PhasesEnum
+from swo_aws_extension.constants import (
+    CRM_CCP_TICKET_ADDITIONAL_INFO,
+    CRM_CCP_TICKET_SUMMARY,
+    CRM_CCP_TICKET_TITLE,
+    CCPOnboardStatusEnum,
+    PhasesEnum,
+)
 from swo_aws_extension.crm_service_client import get_service_client
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.notifications import send_error
-from swo_aws_extension.parameters import get_phase, set_ccp_engagement_id, set_phase
+from swo_aws_extension.parameters import (
+    get_crm_ccp_ticket_id,
+    get_phase,
+    set_ccp_engagement_id,
+    set_crm_ccp_ticket_id,
+    set_phase,
+)
 from swo_ccp_client.client import CCPClient
 from swo_crm_service_client import ServiceRequest
 
@@ -75,7 +87,7 @@ class CCPOnboard(Step):
             f"CCP Onboarding is in status {onboard_status['engagementState']}."
             f" Notify the failure and continue"
         )
-        self._notify_ccp_onboard_failure(context)
+        self._notify_ccp_onboard_failure(context, onboard_status)
         context.order = set_phase(context.order, PhasesEnum.COMPLETED)
         context.order = update_order(
             mpt_client, context.order_id, parameters=context.order["parameters"]
@@ -118,32 +130,29 @@ class CCPOnboard(Step):
         logger.info("- Action - CCP Customer created. Waiting for onboarding")
 
     @staticmethod
-    def _notify_ccp_onboard_failure(context):
+    def _notify_ccp_onboard_failure(context, onboard_status):
         """
         Create a fail ticket notification.
         Args:
             context: PurchaseContext object containing order details.
         """
+        ccp_ticket_id = get_crm_ccp_ticket_id(context.order)
+        if ccp_ticket_id:
+            logger.info(f"CCP Onboard failure ticket already created ({ccp_ticket_id}). Skip.")
+            return
+
         crm_client = get_service_client()
-        # TODO pending definition of ticket details by the PDM team
-        summary = (
-            f"Dear CCP team, please check the status of onboard customer"
-            f" {context.ccp_engagement_id} within CCP and CDE as a call error took place"
-            f" that prevented the marketplace automation to run all scripts. Thanks!"
+        title = CRM_CCP_TICKET_TITLE.format(ccp_engagement_id=context.ccp_engagement_id)
+        summary = CRM_CCP_TICKET_SUMMARY.format(
+            ccp_engagement_id=context.ccp_engagement_id,
+            order_id=context.order_id,
+            onboard_status=onboard_status,
         )
-        title = f"CCP Onboard failed {context.ccp_engagement_id}"
         service_request = ServiceRequest(
-            external_user_email="test@example.com",
-            external_username="test@example.com",
-            requester="Supplier.Portal",
-            sub_service="Service Activation",
-            global_academic_ext_user_id="globalacademicExtUserId",
-            additional_info="CCP Onboard failed",
-            summary=summary,
-            title=title,
-            service_type="MarketPlaceServiceActivation",
+            additional_info=CRM_CCP_TICKET_ADDITIONAL_INFO, summary=summary, title=title
         )
         ticket = crm_client.create_service_request(None, service_request)
+        context.order = set_crm_ccp_ticket_id(context.order, ticket.get("id", ""))
         logger.info(
             f"Service request ticket created with id: {ticket.get('id', '')}. Continue purchase"
         )

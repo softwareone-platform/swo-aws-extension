@@ -7,6 +7,7 @@ from swo_aws_extension.constants import CRM_TICKET_RESOLVED_STATE
 from swo_aws_extension.flows.order import PurchaseContext, TerminateContext
 from swo_aws_extension.flows.steps.service_crm_steps import (
     AwaitCRMTicketStatusStep,
+    CreateOnboardTicketStep,
     CreateServiceRequestStep,
     CreateUpdateKeeperTicketStep,
 )
@@ -291,3 +292,75 @@ def test_create_keeper_ticket_fail_it_no_ticket_id(
     step = CreateUpdateKeeperTicketStep()
     with pytest.raises(ValueError):
         step(client, context, next_step)
+
+
+def test_create_onboard_ticket(
+    mocker, crm_client, mock_order, next_step, service_request, mpa_pool_factory
+):
+    mocker.patch(
+        "swo_aws_extension.flows.steps.service_crm_steps.get_service_client",
+        return_value=crm_client,
+    )
+    crm_client.create_service_request.return_value = {"id": "12345"}
+    client = Mock(spec=MPTClient)
+    context = PurchaseContext(order=mock_order, airtable_mpa=mpa_pool_factory())
+
+    step = CreateOnboardTicketStep()
+    step(client, context, next_step)
+
+    crm_client.create_service_request.assert_called_once()
+    next_step.assert_called_once_with(client, context)
+
+
+def test_create_onboard_ticket_fail_it_no_ticket_id(
+    mocker, crm_client, mock_order, next_step, service_request, mpa_pool_factory
+):
+    mocker.patch(
+        "swo_aws_extension.flows.steps.service_crm_steps.get_service_client",
+        return_value=crm_client,
+    )
+    crm_client.create_service_request.return_value = {"id": None}
+    client = Mock(spec=MPTClient)
+    context = PurchaseContext(order=mock_order, airtable_mpa=mpa_pool_factory())
+
+    step = CreateOnboardTicketStep()
+    with pytest.raises(ValueError):
+        step(client, context, next_step)
+
+
+def test_create_onboard_ticket_fail_if_not_mpa_pool(
+    mocker, crm_client, mock_order, next_step, service_request
+):
+    crm_client.create_service_request.return_value = {"id": "12345"}
+    client = Mock(spec=MPTClient)
+    context = PurchaseContext(order=mock_order, airtable_mpa=None)
+    step = CreateUpdateKeeperTicketStep()
+    with pytest.raises(RuntimeError):
+        step(client, context, next_step)
+
+
+def test_create_onboard_require_attention_ticket(
+    mocker,
+    crm_client,
+    next_step,
+    service_request,
+    mpa_pool_factory,
+    order_factory,
+    fulfillment_parameters_factory,
+):
+    mocker.patch(
+        "swo_aws_extension.flows.steps.service_crm_steps.get_service_client",
+        return_value=crm_client,
+    )
+    crm_client.create_service_request.return_value = {"id": "12345"}
+    client = Mock(spec=MPTClient)
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(crm_ccp_ticket_id="12345")
+    )
+    context = PurchaseContext(order=order, airtable_mpa=mpa_pool_factory())
+
+    step = CreateOnboardTicketStep()
+    step(client, context, next_step)
+
+    crm_client.create_service_request.assert_called_once()
+    next_step.assert_called_once_with(client, context)

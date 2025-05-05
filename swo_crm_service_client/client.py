@@ -4,6 +4,14 @@ from urllib.parse import urljoin
 from requests import Session
 from requests.adapters import HTTPAdapter, Retry
 
+from swo_aws_extension.constants import (
+    CRM_EXTERNAL_EMAIL,
+    CRM_GLOBAL_EXT_USER_ID,
+    CRM_REQUESTER,
+    CRM_SERVICE_TYPE,
+    CRM_SUB_SERVICE,
+)
+
 
 class ServiceCRMException(Exception):
     pass
@@ -11,15 +19,15 @@ class ServiceCRMException(Exception):
 
 @dataclass
 class ServiceRequest:
-    external_user_email: str
-    external_username: str
-    requester: str
-    sub_service: str
-    global_academic_ext_user_id: str
-    additional_info: str
-    summary: str
-    title: str
-    service_type: str
+    external_user_email: str = CRM_EXTERNAL_EMAIL
+    external_username: str = CRM_EXTERNAL_EMAIL
+    requester: str = CRM_REQUESTER
+    sub_service: str = CRM_SUB_SERVICE
+    global_academic_ext_user_id: str = CRM_GLOBAL_EXT_USER_ID
+    additional_info: str = ""
+    summary: str = ""
+    title: str = ""
+    service_type: str = CRM_SERVICE_TYPE
 
     def to_api_dict(self) -> dict:
         return {

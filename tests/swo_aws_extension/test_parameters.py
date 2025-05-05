@@ -3,11 +3,11 @@ from swo_aws_extension.parameters import (
     PARAM_PHASE_ORDERING,
     FulfillmentParametersEnum,
     OrderParametersEnum,
-    get_crm_ticket_id,
+    get_crm_termination_ticket_id,
     get_ordering_parameter,
     get_parameter,
     get_termination_type_parameter,
-    set_crm_ticket_id,
+    set_crm_termination_ticket_id,
     set_ordering_parameter_error,
 )
 
@@ -72,37 +72,37 @@ def test_set_ordering_parameter_error_with_required_false():
     assert param["constraints"] == {"hidden": False, "required": False}
 
 
-def test_get_crm_ticket_id():
+def test_get_termination_ticket_id():
     order = {
         "parameters": {
             "fulfillment": [
                 {
-                    "externalId": FulfillmentParametersEnum.CRM_TICKET_ID,
+                    "externalId": FulfillmentParametersEnum.CRM_TERMINATION_TICKET_ID,
                     "value": "ticket_123",
                 }
             ]
         }
     }
-    assert get_crm_ticket_id(order) == "ticket_123"
+    assert get_crm_termination_ticket_id(order) == "ticket_123"
 
 
-def test_get_crm_ticket_id_not_set():
+def test_get_crm_termination_ticket_id_not_set():
     order = {"parameters": {"fulfillment": []}}
-    assert get_crm_ticket_id(order) is None
+    assert get_crm_termination_ticket_id(order) is None
 
 
-def test_set_crm_ticket_id():
+def test_set_crm_termination_ticket_id():
     order = {
         "parameters": {
             "fulfillment": [
                 {
-                    "externalId": FulfillmentParametersEnum.CRM_TICKET_ID,
+                    "externalId": FulfillmentParametersEnum.CRM_TERMINATION_TICKET_ID,
                     "value": "old_ticket",
                 }
             ]
         }
     }
-    updated_order = set_crm_ticket_id(order, "new_ticket")
+    updated_order = set_crm_termination_ticket_id(order, "new_ticket")
     assert updated_order["parameters"]["fulfillment"][0]["value"] == "new_ticket"
 
 
