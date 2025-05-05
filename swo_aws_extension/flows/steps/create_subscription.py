@@ -25,6 +25,59 @@ from swo_aws_extension.parameters import (
 logger = logging.getLogger(__name__)
 
 
+def subscription_exist_for_account_id(client, order_id, account_id):
+    """
+    Check if a subscription for the account already exists
+    """
+    order_subscription = get_order_subscription_by_external_id(
+        client,
+        order_id,
+        account_id,
+    )
+    return order_subscription is not None
+
+
+def add_subscription(client, context, account_id, account_email, account_name):
+    """
+    Add a subscription for the new AWS account created
+
+    Args:
+        client (MPTClient): The MPT client instance.
+        context (PurchaseContext): The purchase context.
+        account_id (str): The ID of the AWS account.
+        account_email (str): The email associated with the AWS account.
+        account_name (str): The name of the AWS account.
+
+    """
+    logger.info(f"{context.order_id} - Intent - Creating subscription for account {account_id}")
+
+    subscription = {
+        "name": f"Subscription for {account_name} ({account_id})",
+        "autoRenew": True,
+        "parameters": {
+            "fulfillment": [
+                {
+                    "externalId": FulfillmentParametersEnum.ACCOUNT_EMAIL,
+                    "value": account_email,
+                },
+                {
+                    "externalId": FulfillmentParametersEnum.ACCOUNT_NAME,
+                    "value": account_name,
+                },
+            ]
+        },
+        "externalIds": {
+            "vendor": account_id,
+        },
+        "lines": [{"id": order_line["id"]} for order_line in context.order["lines"]],
+    }
+    subscription = create_subscription(client, context.order_id, subscription)
+    logger.info(
+        f"{context.order_id} - Action -  subscription for {account_id} "
+        f"({subscription["id"]}) created"
+    )
+
+
 class CreateSubscription(Step):
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         if get_phase(context.order) != PhasesEnum.CREATE_SUBSCRIPTIONS:
@@ -59,12 +112,8 @@ class CreateSubscription(Step):
             account_email = get_account_email(context.order)
             account_name = get_account_name(context.order)
 
-        if not self.subscription_exist_for_account_id(client, context.order_id, account_id):
-            logger.info(
-                f"{context.order_id} - Intent - Creating subscription for account {account_id}"
-            )
-
-            self.add_subscription(
+        if not subscription_exist_for_account_id(client, context.order_id, account_id):
+            add_subscription(
                 client,
                 context,
                 account_id,
@@ -86,46 +135,6 @@ class CreateSubscription(Step):
         )
         next_step(client, context)
 
-    @staticmethod
-    def subscription_exist_for_account_id(client, order_id, account_id):
-        """
-        Check if a subscription for the account already exists
-        """
-        order_subscription = get_order_subscription_by_external_id(
-            client,
-            order_id,
-            account_id,
-        )
-        return order_subscription is not None
-
-    @staticmethod
-    def add_subscription(client, context, account_id, account_email, account_name):
-        subscription = {
-            "name": f"Subscription for {account_name} ({account_id})",
-            "autoRenew": True,
-            "parameters": {
-                "fulfillment": [
-                    {
-                        "externalId": FulfillmentParametersEnum.ACCOUNT_EMAIL,
-                        "value": account_email,
-                    },
-                    {
-                        "externalId": FulfillmentParametersEnum.ACCOUNT_NAME,
-                        "value": account_name,
-                    },
-                ]
-            },
-            "externalIds": {
-                "vendor": account_id,
-            },
-            "lines": [{"id": order_line["id"]} for order_line in context.order["lines"]],
-        }
-        subscription = create_subscription(client, context.order_id, subscription)
-        logger.info(
-            f"{context.order_id} - Action -  subscription for {account_id} "
-            f"({subscription["id"]}) created"
-        )
-
 
 class SynchronizeAgreementSubscriptionsStep(CreateSubscription):
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
@@ -133,4 +142,23 @@ class SynchronizeAgreementSubscriptionsStep(CreateSubscription):
         agreement = get_agreement(client, context.order["agreement"]["id"])
         sync_agreement_subscriptions(client, context.aws_client, agreement)
         logger.info(f"{context.order_id} - Completed - Synchronize agreement subscriptions")
+        next_step(client, context)
+
+
+class CreateChangeSubscriptionStep(Step):
+    def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+        account_id = context.account_creation_status.account_id
+
+        if not subscription_exist_for_account_id(client, context.order_id, account_id):
+            add_subscription(
+                client,
+                context,
+                account_id,
+                context.root_account_email,
+                context.account_name,
+            )
+
+        logger.info(
+            f"'{context.order_id} - Action - Create Change Subscription completed successfully. "
+        )
         next_step(client, context)

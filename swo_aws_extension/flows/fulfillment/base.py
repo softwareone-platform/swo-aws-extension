@@ -12,6 +12,7 @@ from swo_aws_extension.flows.fulfillment.pipelines import (
     terminate,
 )
 from swo_aws_extension.flows.order import (
+    ChangeContext,
     InitialAWSContext,
     PurchaseContext,
     TerminateContext,
@@ -58,6 +59,7 @@ def fulfill_order(client, context):
                 purchase.run(client, context)
         elif context.is_change_order():
             logger.info(f"{context.order_id} - Pipeline - Starting: change order")
+            context = ChangeContext.from_context(context)
             change_order.run(client, context)
         elif context.is_termination_order():  # pragma: no branch
             context = TerminateContext.from_context(context)

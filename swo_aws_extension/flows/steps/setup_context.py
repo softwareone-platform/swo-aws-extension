@@ -72,6 +72,26 @@ class SetupPurchaseContext(SetupContext):
         next_step(client, context)
 
 
+class SetupChangeContext(SetupContext):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def setup_account_request_id(context):
+        account_request_id = get_account_request_id(context.order)
+        if account_request_id:
+            context.account_creation_status = context.aws_client.get_linked_account_status(
+                account_request_id
+            )
+            logger.info(f"{context.order_id} - Action - Setup setup_account_request_id in context")
+
+    def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
+        self.setup_aws(context)
+        self.setup_account_request_id(context)
+        logger.info(f"{context.order_id} - Next - SetupChangeContext completed successfully")
+        next_step(client, context)
+
+
 class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
     def __call__(self, client, context: PurchaseContext, next_step):
         """

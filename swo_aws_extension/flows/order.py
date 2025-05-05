@@ -9,9 +9,12 @@ from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
 from swo_aws_extension.constants import SupportTypesEnum, TransferTypesEnum
 from swo_aws_extension.notifications import send_email_notification
 from swo_aws_extension.parameters import (
+    ChangeOrderParametersEnum,
+    OrderParametersEnum,
     get_account_id,
     get_ccp_engagement_id,
     get_master_payer_id,
+    get_parameter_value,
     get_phase,
     get_support_type,
     get_termination_type_parameter,
@@ -107,6 +110,20 @@ class PurchaseContext(InitialAWSContext):
         except (AttributeError, KeyError, TypeError):
             return None
 
+    @property
+    def root_account_email(self):
+        """
+        Return the root account email of the order
+        """
+        return get_parameter_value(self.order, OrderParametersEnum.ROOT_ACCOUNT_EMAIL)
+
+    @property
+    def account_name(self):
+        """
+        Return the account name of the order
+        """
+        return get_parameter_value(self.order, OrderParametersEnum.ACCOUNT_NAME)
+
     def __str__(self):
         return f"PurchaseContext: {self.order_id} {self.order_type} - MPA: {self.mpa_account}"
 
@@ -188,4 +205,26 @@ class TerminateContext(InitialAWSContext):
         return (
             super().__str__() + f" - Terminate - Terminating AWS Accounts: "
             f"{", ".join(self.terminating_subscriptions_aws_account_ids)}"
+        )
+
+
+class ChangeContext(InitialAWSContext):
+    @property
+    def root_account_email(self):
+        """
+        Return the root account email of the order
+        """
+        return get_parameter_value(self.order, ChangeOrderParametersEnum.ROOT_ACCOUNT_EMAIL)
+
+    @property
+    def account_name(self):
+        """
+        Return the account name of the order
+        """
+        return get_parameter_value(self.order, ChangeOrderParametersEnum.ACCOUNT_NAME)
+
+    def __str__(self):
+        return (
+            super().__str__()
+            + f" - Change - Creating AWS Account: {self.account_name} - {self.root_account_email}"
         )
