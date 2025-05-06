@@ -6,7 +6,7 @@ from mpt_extension_sdk.mpt_http.mpt import complete_order, get_product_template_
 from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.order import MPT_ORDER_STATUS_COMPLETED
 from swo_aws_extension.notifications import send_email_notification
-from swo_aws_extension.parameters import get_phase
+from swo_aws_extension.parameters import get_phase, set_account_request_id
 
 logger = logging.getLogger(__name__)
 
@@ -50,5 +50,16 @@ class CompletePurchaseOrder(CompleteOrder):
             )
             next_step(client, context)
             return
+        context.order = set_account_request_id(context.order, "")
+        self._complete_order(client, context)
+        next_step(client, context)
+
+
+class CompleteChangeOrder(CompleteOrder):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __call__(self, client, context, next_step):
+        context.order = set_account_request_id(context.order, "")
         self._complete_order(client, context)
         next_step(client, context)

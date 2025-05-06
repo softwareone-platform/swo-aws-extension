@@ -3,14 +3,17 @@ from mpt_extension_sdk.flows.pipeline import Pipeline
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import SWO_EXTENSION_MANAGEMENT_ROLE
 from swo_aws_extension.flows.steps import (
+    AddLinkedAccountStep,
     AssignMPA,
     AssignTransferMPAStep,
     AwaitInvitationLinksStep,
     AwaitTerminationServiceRequestStep,
     AwaitTransferRequestTicketWithOrganizationStep,
+    CompleteChangeOrder,
     CompleteOrder,
     CompletePurchaseOrder,
-    CreateLinkedAccount,
+    CreateChangeSubscriptionStep,
+    CreateInitialLinkedAccountStep,
     CreateSubscription,
     CreateTerminationServiceRequestStep,
     CreateTransferRequestTicketWithOrganizationStep,
@@ -18,6 +21,7 @@ from swo_aws_extension.flows.steps import (
     MPAPreConfiguration,
     SendInvitationLinksStep,
     SetupAgreementIdInAccountTagsStep,
+    SetupChangeContext,
     SetupContext,
     SetupContextPurchaseTransferWithOrganizationStep,
     SetupContextPurchaseTransferWithoutOrganizationStep,
@@ -38,7 +42,7 @@ purchase = Pipeline(
     SetupPurchaseContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
     AssignMPA(config, SWO_EXTENSION_MANAGEMENT_ROLE),
     MPAPreConfiguration(),
-    CreateLinkedAccount(),
+    CreateInitialLinkedAccountStep(),
     CreateSubscription(),
     CCPOnboard(config),
     CreateUpdateKeeperTicketStep(),
@@ -78,8 +82,11 @@ purchase_transfer_without_organization = Pipeline(
 )
 
 change_order = Pipeline(
-    CreateSubscription(),
-    CompleteOrder("purchase_order"),
+    SetupChangeContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    AddLinkedAccountStep(),
+    CreateChangeSubscriptionStep(),
+    CompleteChangeOrder("purchase_order"),
+    SynchronizeAgreementSubscriptionsStep(),
 )
 
 terminate = Pipeline(

@@ -1,11 +1,16 @@
 from swo_aws_extension.flows.steps.assign_mpa import AssignMPA, AssignTransferMPAStep
 from swo_aws_extension.flows.steps.ccp_onboard import CCPOnboard
 from swo_aws_extension.flows.steps.complete_order import (
+    CompleteChangeOrder,
     CompleteOrder,
     CompletePurchaseOrder,
 )
-from swo_aws_extension.flows.steps.create_linked_account import CreateLinkedAccount
+from swo_aws_extension.flows.steps.create_linked_account import (
+    AddLinkedAccountStep,
+    CreateInitialLinkedAccountStep,
+)
 from swo_aws_extension.flows.steps.create_subscription import (
+    CreateChangeSubscriptionStep,
     CreateSubscription,
     SynchronizeAgreementSubscriptionsStep,
 )
@@ -27,6 +32,7 @@ from swo_aws_extension.flows.steps.setup_agreement_id_in_account_tags import (
     SetupAgreementIdInAccountTagsStep,
 )
 from swo_aws_extension.flows.steps.setup_context import (
+    SetupChangeContext,
     SetupContext,
     SetupContextPurchaseTransferWithOrganizationStep,
     SetupContextPurchaseTransferWithoutOrganizationStep,
@@ -40,7 +46,7 @@ __all__ = [
     "AwaitTransferRequestTicketWithOrganizationStep",
     "CompleteOrder",
     "CompletePurchaseOrder",
-    "CreateLinkedAccount",
+    "CreateInitialLinkedAccountStep",
     "CreateServiceRequestStep",
     "CreateTerminationServiceRequestStep",
     "CreateTransferRequestTicketWithOrganizationStep",
@@ -59,4 +65,8 @@ __all__ = [
     "ValidatePurchaseTransferWithoutOrganizationStep",
     "SendInvitationLinksStep",
     "AwaitInvitationLinksStep",
+    "SetupChangeContext",
+    "AddLinkedAccountStep",
+    "CreateChangeSubscriptionStep",
+    "CompleteChangeOrder",
 ]

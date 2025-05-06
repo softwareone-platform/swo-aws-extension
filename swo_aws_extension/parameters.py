@@ -22,6 +22,11 @@ class OrderParametersEnum(StrEnum):
     MASTER_PAYER_ID = "masterPayerId"
 
 
+class ChangeOrderParametersEnum(StrEnum):
+    ACCOUNT_NAME = "changeOrderAccountName"
+    ROOT_ACCOUNT_EMAIL = "changeOrderRootAccountEmail"
+
+
 class FulfillmentParametersEnum(StrEnum):
     PHASE = "phase"
     ACCOUNT_REQUEST_ID = "accountRequestId"
@@ -587,6 +592,22 @@ def set_parameter_value(order, parameter_id, value):
     )
     param["value"] = value
     return updated_order
+
+
+def get_parameter_value(order, parameter_id):
+    """
+    Get the value of a parameter in the order.
+    Args:
+        order (dict): The order that contains the parameter.
+        parameter_id (str): The external identifier of the parameter.
+    Returns:
+        any: The value of the parameter.
+    """
+    param = get_ordering_parameter(
+        order,
+        parameter_id,
+    )
+    return param.get("value", None)
 
 
 def reset_ordering_parameters(order, list_parameters):

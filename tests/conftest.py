@@ -26,7 +26,11 @@ from swo_aws_extension.constants import (
     SupportTypesEnum,
     TerminationParameterChoices,
 )
-from swo_aws_extension.parameters import FulfillmentParametersEnum, OrderParametersEnum
+from swo_aws_extension.parameters import (
+    ChangeOrderParametersEnum,
+    FulfillmentParametersEnum,
+    OrderParametersEnum,
+)
 from swo_ccp_client.client import CCPClient
 from swo_crm_service_client import CRMServiceClient
 
@@ -64,6 +68,8 @@ def order_parameters_factory(constraints):
         transfer_type=None,
         master_payer_id=None,
         contact=None,
+        change_order_email=ACCOUNT_EMAIL,
+        change_order_name="account_name",
     ):
         return [
             {
@@ -132,6 +138,22 @@ def order_parameters_factory(constraints):
                 "externalId": OrderParametersEnum.CONTACT,
                 "type": "Contact",
                 "value": contact,
+            },
+            {
+                "id": "PAR-1234-5655",
+                "name": "AWS account email",
+                "externalId": ChangeOrderParametersEnum.ROOT_ACCOUNT_EMAIL,
+                "type": "SingleLineText",
+                "value": change_order_email,
+                "constraints": constraints,
+            },
+            {
+                "id": "PAR-1234-5656",
+                "name": ACCOUNT_NAME,
+                "externalId": ChangeOrderParametersEnum.ACCOUNT_NAME,
+                "type": "SingleLineText",
+                "value": change_order_name,
+                "constraints": constraints,
             },
         ]
 

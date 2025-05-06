@@ -5,8 +5,9 @@ from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import PhasesEnum
-from swo_aws_extension.flows.order import PurchaseContext
+from swo_aws_extension.flows.order import ChangeContext, PurchaseContext
 from swo_aws_extension.flows.steps.setup_context import (
+    SetupChangeContext,
     SetupContext,
     SetupContextPurchaseTransferWithoutOrganizationStep,
     SetupPurchaseContext,
@@ -214,3 +215,98 @@ def test_transfer_without_organization(
     next_step.assert_called_once()
     assert get_phase(context.order) == PhasesEnum.ASSIGN_MPA
     setup_aws_mock.assert_called_once()
+
+
+def test_setup_change_context(
+    mocker, order_factory, config, requests_mocker, agreement_factory, mpa_pool_factory
+):
+    role_name = "test_role"
+    order = order_factory(agreement=agreement_factory(vendor_id="123456789012"))
+    mpt_client_mock = mocker.Mock(spec=MPTClient)
+    credentials = {
+        "AccessKeyId": "test_access_key",
+        "SecretAccessKey": "test_secret_key",
+        "SessionToken": "test_session_token",
+    }
+    requests_mocker.post(
+        config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=200
+    )
+    mocker.patch.object(
+        CCPClient,
+        "get_secret_from_key_vault",
+        return_value="client_secret",
+    )
+
+    mock_boto3_client = mocker.patch("boto3.client")
+    mock_client = mock_boto3_client.return_value
+
+    mock_client.assume_role_with_web_identity.return_value = {"Credentials": credentials}
+    next_step_mock = mocker.Mock()
+
+    context = ChangeContext(order=order)
+
+    mocker.patch("swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient))
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.get_mpa_account",
+        return_value=mpa_pool_factory(),
+    )
+
+    setup_context = SetupChangeContext(config, role_name)
+    setup_context(mpt_client_mock, context, next_step_mock)
+
+    assert isinstance(context.aws_client, AWSClient)
+    assert mock_client.assume_role_with_web_identity.call_count == 1
+    next_step_mock.assert_called_once_with(mpt_client_mock, context)
+
+
+def test_setup_change_context_set_account_creation_status(
+    mocker,
+    order_factory,
+    config,
+    requests_mocker,
+    agreement_factory,
+    mpa_pool_factory,
+    aws_client_factory,
+    create_account_status,
+    fulfillment_parameters_factory,
+):
+    role_name = "test_role"
+    order = order_factory(
+        agreement=agreement_factory(vendor_id="123456789012"),
+        fulfillment_parameters=fulfillment_parameters_factory(account_request_id="123456789012"),
+    )
+    mpt_client_mock = mocker.Mock(spec=MPTClient)
+    credentials = {
+        "AccessKeyId": "test_access_key",
+        "SecretAccessKey": "test_secret_key",
+        "SessionToken": "test_session_token",
+    }
+    requests_mocker.post(
+        config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=200
+    )
+    mocker.patch.object(
+        CCPClient,
+        "get_secret_from_key_vault",
+        return_value="client_secret",
+    )
+
+    next_step_mock = mocker.Mock()
+    context = ChangeContext(order=order)
+
+    mocker.patch("swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient))
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.describe_create_account_status.return_value = create_account_status()
+    mock_client.assume_role_with_web_identity.return_value = {"Credentials": credentials}
+
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.get_mpa_account",
+        return_value=mpa_pool_factory(),
+    )
+
+    setup_context = SetupChangeContext(config, role_name)
+    setup_context(mpt_client_mock, context, next_step_mock)
+
+    assert isinstance(context.aws_client, AWSClient)
+    assert mock_client.assume_role_with_web_identity.call_count == 2
+    next_step_mock.assert_called_once_with(mpt_client_mock, context)
+    assert context.account_creation_status is not None
