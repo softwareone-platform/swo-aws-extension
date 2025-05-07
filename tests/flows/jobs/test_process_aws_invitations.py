@@ -54,7 +54,7 @@ def test_check_invitation_links_step(mocker, order_factory, fulfillment_paramete
             phase=PhasesEnum.CREATE_SUBSCRIPTIONS,
         )
     )
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     step(client, context, next_step)
     next_step.assert_not_called()
 
@@ -63,7 +63,7 @@ def test_check_invitation_links_step(mocker, order_factory, fulfillment_paramete
             phase=PhasesEnum.ASSIGN_MPA,
         )
     )
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     step(client, context, next_step)
     next_step.assert_not_called()
 

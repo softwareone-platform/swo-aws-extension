@@ -18,7 +18,7 @@ def test_create_subscription_phase_invalid_phase(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = InitialAWSContext(order=order)
+    context = InitialAWSContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -58,7 +58,7 @@ def test_create_subscription_new_account(
         return_value=subscription,
     )
 
-    context = InitialAWSContext(order=order)
+    context = InitialAWSContext.from_order_data(order)
     context.aws_client = aws_client
     context.account_creation_status = account_creation_status_factory(account_id="account_id")
     next_step_mock = mocker.Mock()
@@ -97,7 +97,7 @@ def test_create_subscription_phase_subscription_already_created(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = InitialAWSContext(order=order)
+    context = InitialAWSContext.from_order_data(order)
     context.aws_client = aws_client
     context.account_creation_status = account_creation_status_factory(account_id="account_id")
     next_step_mock = mocker.Mock()
@@ -136,7 +136,7 @@ def test_synchronize_agreement_subscriptions(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = InitialAWSContext(order=order)
+    context = InitialAWSContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -154,7 +154,7 @@ def test_synchronize_agreement_subscriptions(
     mocked_sync_agreement_subscriptions.assert_called_once_with(
         mpt_client_mock, aws_client, mock_agreement
     )
-    mocked_get_agreement.assert_called_once_with(mpt_client_mock, context.order["agreement"]["id"])
+    mocked_get_agreement.assert_called_once_with(mpt_client_mock, context.agreement["id"])
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
 
 
@@ -196,7 +196,7 @@ def test_create_subscription_transfer_account(
         return_value=subscription,
     )
 
-    context = InitialAWSContext(order=order)
+    context = InitialAWSContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -251,7 +251,7 @@ def test_create_subscription_transfer_account_no_accounts(
         return_value=subscription,
     )
 
-    context = InitialAWSContext(order=order)
+    context = InitialAWSContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -288,7 +288,7 @@ def test_create_change_subscription(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = ChangeContext(order=order)
+    context = ChangeContext.from_order_data(order)
     context.aws_client = aws_client
     context.account_creation_status = account_creation_status_factory(account_id="account_id")
     next_step_mock = mocker.Mock()
@@ -335,7 +335,7 @@ def test_create_change_subscription_already_exists(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = ChangeContext(order=order)
+    context = ChangeContext.from_order_data(order)
     context.aws_client = aws_client
     context.account_creation_status = account_creation_status_factory(account_id="account_id")
     next_step_mock = mocker.Mock()

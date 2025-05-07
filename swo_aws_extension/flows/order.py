@@ -36,11 +36,14 @@ class InitialAWSContext(BaseContext):
     aws_client: AWSClient | None = None
     airtable_mpa: Model | None = None
     account_creation_status: AccountCreationStatus | None = None
+    agreement: dict | None = None
+    seller: dict | None = None
+    buyer: dict | None = None
 
     @property
     def mpa_account(self):
         try:
-            return self.order.get("agreement", {}).get("externalIds", {}).get("vendor", "")
+            return self.agreement.get("externalIds", {}).get("vendor", "")
         except (AttributeError, KeyError, TypeError):
             return None
 
@@ -50,7 +53,7 @@ class InitialAWSContext(BaseContext):
 
     @property
     def seller_country(self):
-        country = self.order.get("seller", {}).get("address", {}).get("country", "")
+        country = self.seller.get("address", {}).get("country", "")
         if not country:
             raise ValueError(f"{self.order_id} - Seller country is not included in the order.")
         return country
@@ -67,6 +70,24 @@ class InitialAWSContext(BaseContext):
         Return the order state
         """
         return self.order.get("status")
+
+    @classmethod
+    def from_order_data(cls, order):
+        """
+        Initialize an InitialAWSContext instance from an order dictionary.
+
+        Args:
+            order (dict): The order data.
+
+        Returns:
+            InitialAWSContext: An instance of InitialAWSContext with populated fields.
+        """
+        return cls(
+            agreement=order.pop("agreement", {}),
+            seller=order.pop("seller", {}),
+            buyer=order.pop("buyer", {}),
+            order=order,
+        )
 
 
 @dataclass
@@ -106,7 +127,7 @@ class PurchaseContext(InitialAWSContext):
         Return the agreement id of the order
         """
         try:
-            return self.order.get("agreement", {}).get("id")
+            return self.agreement.get("id")
         except (AttributeError, KeyError, TypeError):
             return None
 
@@ -128,7 +149,7 @@ class PurchaseContext(InitialAWSContext):
         return f"PurchaseContext: {self.order_id} {self.order_type} - MPA: {self.mpa_account}"
 
 
-def switch_order_to_query(client, order, template_name=None):
+def switch_order_to_query(client, order, buyer, template_name=None):
     """
     Switches the status of an MPT order to 'query' and resetting due date and
     initiating a query order process.
@@ -136,6 +157,7 @@ def switch_order_to_query(client, order, template_name=None):
     Args:
         client (MPTClient): An instance of the Marketplace platform client.
         order (dict): The MPT order to be switched to 'query' status.
+        buyer (dict): The buyer of the order.
         template_name: The name of the template to use, if None -> use default
 
     Returns:
@@ -154,14 +176,12 @@ def switch_order_to_query(client, order, template_name=None):
     if order.get("error"):
         kwargs["error"] = order["error"]
 
-    agreement = order["agreement"]
     order = query_order(
         client,
         order["id"],
         **kwargs,
     )
-    order["agreement"] = agreement
-    send_email_notification(client, order)
+    send_email_notification(client, order, buyer)
     return order
 
 

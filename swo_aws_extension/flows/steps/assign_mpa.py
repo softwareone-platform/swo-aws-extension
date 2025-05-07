@@ -36,25 +36,23 @@ logger = logging.getLogger(__name__)
 def coppy_context_data_to_mpa_pool_model(context, airtable_mpa, status=None):
     if status is None:
         status = MPAStatusEnum.ASSIGNED
-    scu = context.order.get("buyer", {}).get("externalId", {}).get("erpCustomer", "")
+    scu = context.buyer.get("externalId", {}).get("erpCustomer", "")
     airtable_mpa.status = status
     airtable_mpa.agreement_id = context.agreement_id
     airtable_mpa.scu = scu
-    airtable_mpa.buyer_id = context.order.get("buyer", {}).get("id", {})
+    airtable_mpa.buyer_id = context.buyer.get("id", {})
     airtable_mpa.client_id = context.order.get("client", {}).get("id")
     airtable_mpa.error_description = ""
     return airtable_mpa
 
 
 def setup_agreement_external_id(client, context, account_id):
-    context.order["agreement"] = update_agreement(
+    context.agreement = update_agreement(
         client,
-        context.order["agreement"]["id"],
+        context.agreement["id"],
         externalIds={"vendor": account_id},
     )
-    logger.info(
-        f"Updating agreement {context.order["agreement"]["id"]} external id to {account_id}"
-    )
+    logger.info(f"Updating agreement {context.agreement["id"]} external id to {account_id}")
 
 
 class AssignMPA(Step):
@@ -89,7 +87,7 @@ class AssignMPA(Step):
                 context.order = set_ordering_parameters_to_readonly(
                     context.order, ignore=parameter_ids_with_errors
                 )
-                switch_order_to_query(client, context.order)
+                switch_order_to_query(client, context.order, context.buyer)
                 logger.error(
                     f"{context.order_id} - Querying - MPA Invalid. Order switched to query"
                 )

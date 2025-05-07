@@ -20,7 +20,7 @@ def test_setup_agreement_id_in_account_tags_success(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.list_accounts.return_value = aws_accounts_factory()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
     setup_account_tags = SetupAgreementIdInAccountTagsStep()
@@ -52,7 +52,7 @@ def test_setup_agreement_id_in_account_tags_no_active_accounts(
     mock_client.list_accounts.return_value = aws_accounts_factory(status="SUSPENDED")
     mock_client.add_tags_for_resource = mocker.Mock()
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -79,7 +79,7 @@ def test_setup_agreement_id_skip_phase(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.list_accounts.return_value = aws_accounts_factory()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
     setup_account_tags = SetupAgreementIdInAccountTagsStep()

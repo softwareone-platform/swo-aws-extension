@@ -28,7 +28,7 @@ def test_validate_new_account_empty_values(
         return_value=product_items,
     )
     client = mocker.MagicMock()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     has_errors, result = validate_purchase_order(client, context)
 
     assert result["parameters"]["ordering"][0]["constraints"] == {
@@ -59,7 +59,7 @@ def test_validate_new_account_with_values(
         return_value=product_items,
     )
     client = mocker.MagicMock()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     has_errors, result = validate_purchase_order(client, context)
 
     assert result["parameters"]["ordering"][0]["constraints"] == {
@@ -91,7 +91,7 @@ def test_validate_selected_existing_account_empty_values(
     )
 
     client = mocker.MagicMock()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     has_errors, result = validate_purchase_order(client, context)
 
     transfer_type_parameter = {
@@ -138,7 +138,7 @@ def test_validate_selected_transfer_with_org_empty_values(
     )
 
     client = mocker.MagicMock()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     _, result = validate_purchase_order(client, context)
 
     transfer_type_parameter = {
@@ -192,7 +192,7 @@ def test_validate_selected_transfer_with_org_with_values(
         return_value=product_items,
     )
     client = mocker.MagicMock()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     _, result = validate_purchase_order(client, context)
 
     transfer_type_parameter = {
@@ -245,7 +245,7 @@ def test_validate_selected_transfer_without_org_empty_values(
         return_value=product_items,
     )
     client = mocker.MagicMock()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     _, result = validate_purchase_order(client, context)
 
     transfer_type_parameter = {
@@ -300,7 +300,7 @@ def test_validate_selected_transfer_without_org_with_values(
     )
 
     client = mocker.MagicMock()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     _, result = validate_purchase_order(client, context)
 
     transfer_type_parameter = {
@@ -355,7 +355,7 @@ def test_validate_selected_transfer_without_org_with_invalid_values(
     )
 
     client = mocker.MagicMock()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     _, result = validate_purchase_order(client, context)
 
     transfer_type_parameter = {
@@ -413,7 +413,7 @@ def test_validate_selected_split_billing_empty_mpa_id(
     )
 
     client = mocker.MagicMock()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     _, result = validate_purchase_order(client, context)
 
     master_payer_id_parameter = {
@@ -449,7 +449,7 @@ def test_validate_selected_split_billing_mpa_not_found_in_airtable(
     )
 
     client = mocker.MagicMock()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     _, result = validate_purchase_order(client, context)
 
     master_payer_id_parameter = {
@@ -485,7 +485,7 @@ def test_validate_selected_split_billing_invalid_client(
     )
 
     client = mocker.MagicMock()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     _, result = validate_purchase_order(client, context)
 
     master_payer_id_parameter = {
@@ -520,7 +520,7 @@ def test_validate_selected_split_billing_invalid_status(
     )
 
     client = mocker.MagicMock()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     _, result = validate_purchase_order(client, context)
 
     master_payer_id_parameter = {
@@ -556,7 +556,7 @@ def test_validate_selected_split_billing_pls_enabled(
     )
 
     client = mocker.MagicMock()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     _, result = validate_purchase_order(client, context)
 
     master_payer_id_parameter = {
@@ -600,7 +600,7 @@ def test_validate_no_items(mocker, order_factory, order_parameters_factory, mpa_
     )
 
     client = mocker.MagicMock()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     _, result = validate_purchase_order(client, context)
 
     master_payer_id_parameter = {

@@ -34,7 +34,8 @@ def test_assign_transfer_mpa_first_run(
     )
 
     aws_client, aws_mock = aws_client_factory(config, "test_account_id", "test_role_name")
-    context = PurchaseContext(aws_client=aws_client, order=order)
+    context = PurchaseContext.from_order_data(order)
+    context.aws_client = aws_client
 
     aws_mock.describe_organization.return_value = {
         "Organization": {
@@ -68,7 +69,7 @@ def test_assign_transfer_initialize_aws(
     agreement_factory,
 ):
     mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, aws_mock = aws_client_factory(config, "test_account_id", "test_role_name")
+    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION,
@@ -80,7 +81,8 @@ def test_assign_transfer_initialize_aws(
             transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
         ),
     )
-    context = PurchaseContext(aws_client=None, order=order)
+    context = PurchaseContext.from_order_data(order)
+    context.aws_client = None
     step = AssignTransferMPAStep(config, "role_name")
 
     def mock_setup_aws(context):
@@ -107,7 +109,6 @@ def test_assign_transfer_failed_aws_access(
     agreement_factory,
 ):
     mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, aws_mock = aws_client_factory(config, "test_account_id", "test_role_name")
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION,
@@ -119,7 +120,8 @@ def test_assign_transfer_failed_aws_access(
             transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
         ),
     )
-    context = PurchaseContext(aws_client=None, order=order)
+    context = PurchaseContext.from_order_data(order)
+    context.aws_client = None
     step = AssignTransferMPAStep(config, "role_name")
 
     next_step_mock = mocker.Mock()

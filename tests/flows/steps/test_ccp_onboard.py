@@ -37,7 +37,7 @@ def test_onboard_ccp_customer(
         return_value=updated_order,
     )
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
     mocked_master_payer_account_pool_model = mocker.MagicMock()
@@ -79,7 +79,7 @@ def test_check_onboard_ccp_status_running(
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -109,7 +109,7 @@ def test_check_onboard_ccp_status_fail(
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -157,7 +157,7 @@ def test_check_onboard_ccp_status_succeeded(
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -199,7 +199,7 @@ def test_check_onboard_ccp_http_error(
     mocked_send_error = mocker.patch("swo_aws_extension.flows.steps.ccp_onboard.send_error")
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -216,7 +216,7 @@ def test_ccp_onboard_phase_not_ccp_onboard(mocker, order_factory, config, aws_cl
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 

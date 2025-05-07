@@ -26,15 +26,13 @@ class CompleteOrder(Step):
             MPT_ORDER_STATUS_COMPLETED,
             self.template_name,
         )
-        agreement = context.order["agreement"]
         context.order = complete_order(
             client,
             context.order_id,
             template,
             parameters=context.order["parameters"],
         )
-        context.order["agreement"] = agreement
-        send_email_notification(client, context.order)
+        send_email_notification(client, context.order, context.buyer)
         logger.info(f"{context.order_id} - Completed - order has been completed successfully")
 
 

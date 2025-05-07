@@ -265,7 +265,7 @@ class AwaitInvitationLinksStep(Step):
                 context.order, ignore=parameter_ids_with_errors
             )
             if context.order_status != MPT_ORDER_STATUS_QUERYING:
-                switch_order_to_query(client, context.order)
+                switch_order_to_query(client, context.order, context.buyer)
             else:
                 update_order(client, context.order_id, parameters=context.order["parameters"])
             logger.info(

@@ -18,7 +18,7 @@ class SetupAgreementIdInAccountTagsStep(Step):
             return
 
         logger.info(f"{context.order_id} - Start - Setup agreement Id in account tags")
-        agreement_id = context.order.get("agreement", {}).get("id")
+        agreement_id = context.agreement.get("id")
         accounts = context.aws_client.list_accounts()
         for account in accounts:
             account_id = account["Id"]

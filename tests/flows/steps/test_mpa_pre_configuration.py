@@ -18,7 +18,7 @@ def test_mpa_pre_configuration_phase_preconfig_mpa(
     mock_client.list_roots.return_value = roots_factory()
     mock_client.enable_policy_type.return_value = roots_factory()
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -54,7 +54,7 @@ def test_mpa_pre_configuration_phase_not_preconfig_mpa(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -86,7 +86,7 @@ def test_mpa_pre_configuration_phase_preconfig_mpa_next_step_transfer(
     mock_client.list_roots.return_value = roots_factory()
     mock_client.enable_policy_type.return_value = roots_factory()
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 

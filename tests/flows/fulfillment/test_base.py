@@ -34,7 +34,7 @@ def test_fulfill_order_exception(mocker, mpt_error_factory, order_factory):
     )
 
     new_order = order_factory(order_id="ORD-FFFF")
-    context = InitialAWSContext(order=new_order)
+    context = InitialAWSContext.from_order_data(new_order)
     with pytest.raises(AWSHttpError):
         fulfill_order(mocker.MagicMock(), context)
 
@@ -84,9 +84,23 @@ def test_setup_contexts_without_mpa_account_id(
 
     contexts = setup_contexts(mpt_client, orders)
     assert len(contexts) == 2
-    assert contexts[0] == InitialAWSContext(order=order_without_mpa, airtable_mpa=mpa_pool)
+    context_without_mpa = InitialAWSContext.from_order_data(
+        order_factory(
+            order_id="ORD-1",
+            fulfillment_parameters=fulfillment_parameters_factory(),
+        )
+    )
+    context_without_mpa.airtable_mpa = mpa_pool
+    context_without_mpa_2 = InitialAWSContext.from_order_data(
+        order_factory(
+            order_id="ORD-2",
+            fulfillment_parameters=fulfillment_parameters_factory(),
+        )
+    )
+    context_without_mpa_2.airtable_mpa = mpa_pool
+    assert contexts[0] == context_without_mpa
     assert contexts[0].airtable_mpa == mpa_pool
-    assert contexts[1] == InitialAWSContext(order=order_without_mpa_2, airtable_mpa=mpa_pool)
+    assert contexts[1] == context_without_mpa_2
     assert contexts[1].airtable_mpa == mpa_pool
 
     mocked_master_payer_account_pool_model.all.assert_called_once()
@@ -141,7 +155,7 @@ def test_fulfill_terminate_account_flow(
     service_client.get_service_requests.return_value = service_request_ticket_factory(
         ticket_id="1234-5678", state="New"
     )
-    context = TerminateContext(order=order_close_account)
+    context = TerminateContext.from_order_data(order_close_account)
     mocker.patch(
         "swo_aws_extension.flows.steps.service_crm_steps.get_service_client",
         return_value=service_client,
@@ -251,7 +265,7 @@ def test_is_type_transfer_with_organization(
             transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
         ),
     )
-    fulfill_order(mocker.MagicMock(), InitialAWSContext(order=order))
+    fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
 
     pipeline_mock_purchase_transfer_with_organization.assert_called_once()
     pipeline_mock_purchase_transfer_without_organization.assert_not_called()
@@ -277,7 +291,7 @@ def test_is_type_transfer_without_organization(
             transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
         ),
     )
-    fulfill_order(mocker.MagicMock(), InitialAWSContext(order=order))
+    fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
 
     pipeline_mock_purchase_transfer_with_organization.assert_not_called()
     pipeline_mock_purchase_transfer_without_organization.assert_called_once()
@@ -303,7 +317,7 @@ def test_is_type_purchase(
             transfer_type="",
         ),
     )
-    fulfill_order(mocker.MagicMock(), InitialAWSContext(order=order))
+    fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
 
     pipeline_mock_purchase_transfer_with_organization.assert_not_called()
     pipeline_mock_purchase_transfer_without_organization.assert_not_called()
@@ -329,7 +343,7 @@ def test_is_type_change_order(
             transfer_type="",
         ),
     )
-    fulfill_order(mocker.MagicMock(), InitialAWSContext(order=order))
+    fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
 
     pipeline_mock_purchase_transfer_with_organization.assert_not_called()
     pipeline_mock_purchase_transfer_without_organization.assert_not_called()
@@ -355,7 +369,7 @@ def test_is_type_termination(
             transfer_type="",
         ),
     )
-    fulfill_order(mocker.MagicMock(), InitialAWSContext(order=order))
+    fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
 
     pipeline_mock_purchase_transfer_with_organization.assert_not_called()
     pipeline_mock_purchase_transfer_without_organization.assert_not_called()
@@ -385,7 +399,7 @@ def test_is_type_unknown(
         "swo_aws_extension.flows.fulfillment.base.notify_unhandled_exception_in_teams"
     )
     with pytest.raises(RuntimeError):
-        fulfill_order(mocker.MagicMock(), InitialAWSContext(order=order))
+        fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
 
     pipeline_mock_purchase_transfer_with_organization.assert_not_called()
     pipeline_mock_purchase_transfer_without_organization.assert_not_called()

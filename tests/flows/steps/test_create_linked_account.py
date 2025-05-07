@@ -31,7 +31,7 @@ def test_create_linked_account_phase_create_linked_account(
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.create_account.return_value = create_account_status()
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -48,7 +48,7 @@ def test_create_linked_account_phase_create_linked_account(
         Email="test@aws.com",
         IamUserAccessToBilling="DENY",
         RoleName="OrganizationAccountAccessRole",
-        Tags=[{"Key": TAG_AGREEMENT_ID, "Value": context.order.get("agreement", {}).get("id")}],
+        Tags=[{"Key": TAG_AGREEMENT_ID, "Value": context.agreement.get("id")}],
     )
 
     assert (
@@ -84,7 +84,7 @@ def test_create_linked_account_phase_check_linked_account_in_progress(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     context.account_creation_status = account_creation_status_factory(status="IN_PROGRESS")
     next_step_mock = mocker.Mock()
@@ -113,7 +113,7 @@ def test_create_linked_account_phase_check_linked_account_succeed(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     context.account_creation_status = account_creation_status_factory(status="SUCCEEDED")
     next_step_mock = mocker.Mock()
@@ -154,7 +154,7 @@ def test_create_linked_account_phase_check_linked_account_email_already_exist(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     context.account_creation_status = account_creation_status_factory(
         status="FAILED", failure_reason="EMAIL_ALREADY_EXISTS"
@@ -202,7 +202,7 @@ def test_create_linked_account_phase_check_linked_account_failed(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     context.account_creation_status = account_creation_status_factory(
         status="FAILED", failure_reason="ACCOUNT_LIMIT_EXCEEDED"
@@ -231,7 +231,7 @@ def test_create_linked_account_phase_empty_parameters(
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
     mocked_get_product_template_or_default = mocker.patch(
@@ -274,7 +274,7 @@ def test_create_linked_account_invalid_phase(
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
     create_linked_account = CreateInitialLinkedAccountStep()
@@ -301,7 +301,7 @@ def test_add_linked_account_phase_create_linked_account(
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.create_account.return_value = create_account_status()
 
-    context = ChangeContext(order=order)
+    context = ChangeContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -318,7 +318,7 @@ def test_add_linked_account_phase_create_linked_account(
         Email="test@aws.com",
         IamUserAccessToBilling="DENY",
         RoleName="OrganizationAccountAccessRole",
-        Tags=[{"Key": TAG_AGREEMENT_ID, "Value": context.order.get("agreement", {}).get("id")}],
+        Tags=[{"Key": TAG_AGREEMENT_ID, "Value": context.agreement.get("id")}],
     )
 
     assert (
@@ -354,7 +354,7 @@ def test_add_linked_account_phase_check_linked_account_in_progress(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = ChangeContext(order=order)
+    context = ChangeContext.from_order_data(order)
     context.aws_client = aws_client
     context.account_creation_status = account_creation_status_factory(status="IN_PROGRESS")
     next_step_mock = mocker.Mock()
@@ -383,7 +383,7 @@ def test_add_linked_account_phase_check_linked_account_succeed(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = ChangeContext(order=order)
+    context = ChangeContext.from_order_data(order)
     context.aws_client = aws_client
     context.account_creation_status = account_creation_status_factory(status="SUCCEEDED")
     next_step_mock = mocker.Mock()
@@ -410,7 +410,7 @@ def test_add_linked_account_phase_check_linked_account_email_already_exist(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = ChangeContext(order=order)
+    context = ChangeContext.from_order_data(order)
     context.aws_client = aws_client
     context.account_creation_status = account_creation_status_factory(
         status="FAILED", failure_reason="EMAIL_ALREADY_EXISTS"
@@ -457,7 +457,7 @@ def test_add_linked_account_phase_empty_parameters(
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
-    context = ChangeContext(order=order)
+    context = ChangeContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
     mocked_get_product_template_or_default = mocker.patch(

@@ -129,7 +129,7 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
                 context.order, ignore=parameter_ids_with_errors
             )
             if context.order_status != MPT_ORDER_STATUS_QUERYING:
-                context.order = switch_order_to_query(client, context.order)
+                context.order = switch_order_to_query(client, context.order, context.buyer)
             else:
                 context.order = update_order(client, context.order_id, parameters=context.order)
             logger.info(

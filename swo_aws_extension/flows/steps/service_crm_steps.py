@@ -120,9 +120,6 @@ class CreateServiceRequestStep(Step):
         response = crm_client.create_service_request(context.order_id, service_request)
         ticket_id = response.get("id", None)
         self.ticket_id_saver(client, context, ticket_id)
-        logger.info(
-            f"{context.order_id} - Action - Created service request with ticket_id={ticket_id}"
-        )
         next_step(client, context)
 
 
@@ -161,6 +158,10 @@ class CreateTerminationServiceRequestStep(CreateServiceRequestStep):
     def save_ticket(client, context, crm_ticket_id):
         if not crm_ticket_id:
             raise ValueError("Updating crm service ticket id - Ticket id is required.")
+        logger.info(
+            f"{context.order_id} - Action - Ticket created for terminate account "
+            f"with id={crm_ticket_id}"
+        )
         context.order = set_crm_termination_ticket_id(context.order, crm_ticket_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])
 
@@ -188,7 +189,7 @@ class AwaitTerminationServiceRequestStep(AwaitCRMTicketStatusStep):
 class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
     @staticmethod
     def build_service_request(context: PurchaseContext):
-        email_address = get_notifications_recipient(context.order)
+        email_address = get_notifications_recipient(context.order, context.buyer)
         master_payer_id = get_master_payer_id(context.order)
         if not master_payer_id:
             raise ValueError(
@@ -212,6 +213,10 @@ class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
     def save_ticket(client, context, crm_ticket_id):
         if not crm_ticket_id:
             raise ValueError("Updating crm service ticket id - Ticket id is required.")
+        logger.info(
+            f"{context.order_id} - Action - Ticket created for transfer organization "
+            f"with id={crm_ticket_id}"
+        )
         context.order = set_crm_transfer_organization_ticket_id(context.order, crm_ticket_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])
 

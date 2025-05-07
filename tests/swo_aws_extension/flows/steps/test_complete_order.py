@@ -15,9 +15,7 @@ def context(order_factory, fulfillment_parameters_factory):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED)
     )
-    order_context = InitialAWSContext(
-        order=order,
-    )
+    order_context = InitialAWSContext.from_order_data(order)
     return order_context
 
 
@@ -58,5 +56,5 @@ def test_complete_order_success(mocker, client, context, next_step):
     mock_complete_order.assert_called_once_with(
         client, context.order_id, "template", parameters=expected_parameters
     )
-    mock_send_email.assert_called_once_with(client, context.order)
+    mock_send_email.assert_called_once_with(client, context.order, context.buyer)
     next_step.assert_called_once_with(client, context)

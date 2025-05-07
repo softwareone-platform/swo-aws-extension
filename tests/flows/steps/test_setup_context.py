@@ -52,7 +52,7 @@ def test_setup_context_get_mpa_credentials(
     mock_client.assume_role_with_web_identity.return_value = {"Credentials": credentials}
     next_step_mock = mocker.Mock()
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
 
     mocker.patch("swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient))
 
@@ -82,7 +82,7 @@ def test_setup_context_without_account_id_raise_exception(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
 
     next_step_mock = mocker.Mock()
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     setup_context = SetupContext(config, role_name)
     with pytest.raises(ValueError):
         setup_context(mpt_client_mock, context, next_step_mock)
@@ -114,7 +114,7 @@ def test_setup_purchase_context_get_mpa_credentials(
     mock_client.assume_role_with_web_identity.return_value = {"Credentials": credentials}
     next_step_mock = mocker.Mock()
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
 
     mocker.patch("swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient))
     mocker.patch(
@@ -160,7 +160,7 @@ def test_setup_context_get_account_creation_status(
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.describe_create_account_status.return_value = create_account_status()
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
 
     setup_context = SetupPurchaseContext(config, role_name)
@@ -208,7 +208,7 @@ def test_transfer_without_organization(
         "swo_aws_extension.flows.steps.setup_context.SetupContextPurchaseTransferWithoutOrganizationStep.setup_aws"
     )
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     next_step = mocker.MagicMock()
     step = SetupContextPurchaseTransferWithoutOrganizationStep(config, "role_name")
     step(mocker.MagicMock(), context, next_step)
@@ -243,7 +243,7 @@ def test_setup_change_context(
     mock_client.assume_role_with_web_identity.return_value = {"Credentials": credentials}
     next_step_mock = mocker.Mock()
 
-    context = ChangeContext(order=order)
+    context = ChangeContext.from_order_data(order)
 
     mocker.patch("swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient))
     mocker.patch(
@@ -291,10 +291,10 @@ def test_setup_change_context_set_account_creation_status(
     )
 
     next_step_mock = mocker.Mock()
-    context = ChangeContext(order=order)
+    context = ChangeContext.from_order_data(order)
 
     mocker.patch("swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient))
-    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    _, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.describe_create_account_status.return_value = create_account_status()
     mock_client.assume_role_with_web_identity.return_value = {"Credentials": credentials}
 
