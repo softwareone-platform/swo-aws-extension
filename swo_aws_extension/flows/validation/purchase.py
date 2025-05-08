@@ -228,8 +228,7 @@ def is_split_billing_mpa_id_valid(context):
         f"{context.order_id} - MPA: {mpa_id}. Validating if already exist on "
         f"Airtable for the same Client"
     )
-    mpa_account = get_mpa_account(mpa_id)
-    if not mpa_account:
+    if not context.airtable_mpa:
         logger.error(f"{context.order_id} - MPA: {mpa_id}. MPA account not found.")
         context.order = set_ordering_parameter_error(
             context.order,
@@ -237,14 +236,14 @@ def is_split_billing_mpa_id_valid(context):
             ERR_SPLIT_BILLING_INVALID_MPA_ID.to_dict(),
         )
         is_valid = False
-    elif mpa_account.client_id != context.order.get("client", {}).get("id"):
+    elif context.airtable_mpa.client_id != context.order.get("client", {}).get("id"):
         context.order = set_ordering_parameter_error(
             context.order,
             OrderParametersEnum.MASTER_PAYER_ID,
             ERR_SPLIT_BILLING_INVALID_CLIENT_ID_MPA_ID.to_dict(),
         )
         is_valid = False
-    elif mpa_account.status not in [MPAStatusEnum.ASSIGNED, MPAStatusEnum.TRANSFERRED]:
+    elif context.airtable_mpa.status not in [MPAStatusEnum.ASSIGNED, MPAStatusEnum.TRANSFERRED]:
         context.order = set_ordering_parameter_error(
             context.order,
             OrderParametersEnum.MASTER_PAYER_ID,
@@ -254,7 +253,7 @@ def is_split_billing_mpa_id_valid(context):
     else:
         support_type = (
             SupportTypesEnum.PARTNER_LED_SUPPORT
-            if mpa_account.pls_enabled
+            if context.airtable_mpa.pls_enabled
             else SupportTypesEnum.RESOLD_SUPPORT
         )
         context.order = set_support_type(context.order, support_type)
@@ -300,7 +299,7 @@ class ValidateSplitBillingStep(Step):
                     readonly=False,
                 )
             return
-
+        context.airtable_mpa = get_mpa_account(get_master_payer_id(context.order))
         if is_split_billing_mpa_id_valid(context):
             next_step(client, context)
 

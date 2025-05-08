@@ -225,6 +225,14 @@ def pipeline_mock_purchase_transfer_without_organization(mocker):
 
 
 @pytest.fixture()
+def pipeline_mock_purchase_split_billing(mocker):
+    mock = mocker.patch(
+        "swo_aws_extension.flows.fulfillment.base.purchase_split_billing.run",
+    )
+    return mock
+
+
+@pytest.fixture()
 def pipeline_mock_change_order(mocker):
     mock = mocker.patch(
         "swo_aws_extension.flows.fulfillment.base.change_order.run",
@@ -295,6 +303,34 @@ def test_is_type_transfer_without_organization(
 
     pipeline_mock_purchase_transfer_with_organization.assert_not_called()
     pipeline_mock_purchase_transfer_without_organization.assert_called_once()
+    pipeline_mock_purchase.assert_not_called()
+    pipeline_mock_change_order.assert_not_called()
+    pipeline_mock_terminate.assert_not_called()
+
+
+def test_is_type_split_billing(
+    mocker,
+    order_factory,
+    order_parameters_factory,
+    pipeline_mock_purchase_transfer_with_organization,
+    pipeline_mock_purchase_transfer_without_organization,
+    pipeline_mock_purchase_split_billing,
+    pipeline_mock_purchase,
+    pipeline_mock_change_order,
+    pipeline_mock_terminate,
+):
+    order = order_factory(
+        order_type=ORDER_TYPE_PURCHASE,
+        order_parameters=order_parameters_factory(
+            account_type=AccountTypesEnum.EXISTING_ACCOUNT,
+            transfer_type=TransferTypesEnum.SPLIT_BILLING,
+        ),
+    )
+    fulfill_order(mocker.MagicMock(), InitialAWSContext(order=order))
+
+    pipeline_mock_purchase_transfer_with_organization.assert_not_called()
+    pipeline_mock_purchase_transfer_without_organization.assert_not_called()
+    pipeline_mock_purchase_split_billing.assert_called_once()
     pipeline_mock_purchase.assert_not_called()
     pipeline_mock_change_order.assert_not_called()
     pipeline_mock_terminate.assert_not_called()

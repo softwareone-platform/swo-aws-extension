@@ -7,6 +7,7 @@ from swo_aws_extension.flows.error import strip_trace_id
 from swo_aws_extension.flows.fulfillment.pipelines import (
     change_order,
     purchase,
+    purchase_split_billing,
     purchase_transfer_with_organization,
     purchase_transfer_without_organization,
     terminate,
@@ -54,6 +55,11 @@ def fulfill_order(client, context):
                     f"purchase transfer without organization"
                 )
                 purchase_transfer_without_organization.run(client, context)
+            elif context.is_split_billing():
+                logger.info(
+                    f"{context.order_id} - Pipeline - Starting: purchase split billing order"
+                )
+                purchase_split_billing.run(client, context)
             else:
                 logger.info(f"{context.order_id} - Pipeline - Starting: purchase")
                 purchase.run(client, context)

@@ -1,4 +1,8 @@
-from swo_aws_extension.flows.steps.assign_mpa import AssignMPA, AssignTransferMPAStep
+from swo_aws_extension.flows.steps.assign_mpa import (
+    AssignMPA,
+    AssignSplitBillingMPA,
+    AssignTransferMPAStep,
+)
 from swo_aws_extension.flows.steps.ccp_onboard import CCPOnboard
 from swo_aws_extension.flows.steps.complete_order import (
     CompleteChangeOrderStep,
@@ -71,4 +75,5 @@ __all__ = [
     "SetupChangeContext",
     "AddLinkedAccountStep",
     "CreateChangeSubscriptionStep",
+    "AssignSplitBillingMPA",
 ]

@@ -10,7 +10,7 @@ from mpt_extension_sdk.mpt_http.mpt import (
 )
 from mpt_extension_sdk.mpt_http.utils import find_first
 
-from swo_aws_extension.constants import PhasesEnum, TransferTypesEnum
+from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.jobs.synchronize_agreements import sync_agreement_subscriptions
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.parameters import (
@@ -18,7 +18,6 @@ from swo_aws_extension.parameters import (
     get_account_email,
     get_account_name,
     get_phase,
-    get_transfer_type,
     set_phase,
 )
 
@@ -122,7 +121,7 @@ class CreateSubscription(Step):
             )
         next_phase = (
             PhasesEnum.CREATE_SUBSCRIPTIONS
-            if get_transfer_type(context.order) == TransferTypesEnum.SPLIT_BILLING
+            if context.is_split_billing()
             else PhasesEnum.CCP_ONBOARD
         )
         context.order = set_phase(context.order, next_phase)

@@ -1,4 +1,5 @@
 import copy
+from copy import deepcopy
 
 import botocore.exceptions
 import pytest
@@ -6,9 +7,9 @@ from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.constants import PhasesEnum, TransferTypesEnum
 from swo_aws_extension.flows.order import PurchaseContext
-from swo_aws_extension.flows.steps import AssignMPA
+from swo_aws_extension.flows.steps import AssignMPA, AssignSplitBillingMPA
 from swo_aws_extension.notifications import Button
-from swo_aws_extension.parameters import get_mpa_email, set_phase
+from swo_aws_extension.parameters import get_mpa_email, set_mpa_email, set_phase
 
 
 def test_assign_mpa_phase_not_assign_mpa(
@@ -254,6 +255,7 @@ def test_assign_mpa_split_billing_valid_mpa(
     fulfillment_parameters_factory,
     agreement_factory,
     order_parameters_factory,
+    mpa_pool_factory,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA),
@@ -261,6 +263,7 @@ def test_assign_mpa_split_billing_valid_mpa(
             transfer_type=TransferTypesEnum.SPLIT_BILLING, master_payer_id="123456789012"
         ),
     )
+    initial_order = deepcopy(order)
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
@@ -269,7 +272,7 @@ def test_assign_mpa_split_billing_valid_mpa(
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
-    updated_order = set_phase(order, PhasesEnum.PRECONFIGURATION_MPA)
+    updated_order = set_phase(order, PhasesEnum.CREATE_ACCOUNT)
     mocked_update_order = mocker.patch(
         "swo_aws_extension.flows.steps.assign_mpa.update_order",
         return_value=updated_order,
@@ -277,6 +280,10 @@ def test_assign_mpa_split_billing_valid_mpa(
     mocked_update_agreement = mocker.patch(
         "swo_aws_extension.flows.steps.assign_mpa.update_agreement",
         return_value=agreement_factory(vendor_id="123456789012"),
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.steps.assign_mpa.get_mpa_account",
+        return_value=mpa_pool_factory(),
     )
     mocked_pool_notification_model = mocker.MagicMock()
     mocker.patch(
@@ -288,15 +295,17 @@ def test_assign_mpa_split_billing_valid_mpa(
         return_value=True,
     )
 
-    assign_mpa = AssignMPA(config, "test_role_name")
+    assign_mpa = AssignSplitBillingMPA(config, "test_role_name")
     assign_mpa(mpt_client_mock, context, next_step_mock)
 
     mock_client.get_caller_identity.assert_not_called()
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
+    initial_order = set_phase(initial_order, PhasesEnum.CREATE_ACCOUNT)
+    initial_order = set_mpa_email(initial_order, context.airtable_mpa.account_email)
     mocked_update_order.assert_called_once_with(
         mpt_client_mock,
         context.order["id"],
-        parameters=context.order["parameters"],
+        parameters=initial_order["parameters"],
     )
     mocked_update_agreement.assert_called_once_with(
         mpt_client_mock,
@@ -313,6 +322,7 @@ def test_assign_mpa_split_billing_invalid_mpa(
     fulfillment_parameters_factory,
     agreement_factory,
     order_parameters_factory,
+    mpa_pool_factory,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA),
@@ -336,8 +346,11 @@ def test_assign_mpa_split_billing_invalid_mpa(
         "swo_aws_extension.flows.steps.assign_mpa.is_split_billing_mpa_id_valid",
         return_value=False,
     )
-
-    assign_mpa = AssignMPA(config, "test_role_name")
+    mocker.patch(
+        "swo_aws_extension.flows.steps.assign_mpa.get_mpa_account",
+        return_value=mpa_pool_factory(),
+    )
+    assign_mpa = AssignSplitBillingMPA(config, "test_role_name")
     assign_mpa(mpt_client_mock, context, next_step_mock)
 
     mock_client.get_caller_identity.assert_not_called()
@@ -380,3 +393,30 @@ def test_assign_mpa_empty_country(
         assign_mpa(mpt_client_mock, context, next_step_mock)
 
     assert f"{context.order_id} - Seller country is not included in the order." in str(e.value)
+
+
+def test_assign_split_billing_mpa_phase_not_assign_mpa(
+    mocker,
+    order_factory,
+    config,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    agreement_factory,
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED),
+        agreement=agreement_factory(vendor_id="123456789012"),
+    )
+
+    mpt_client_mock = mocker.Mock(spec=MPTClient)
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+
+    context = PurchaseContext(order=order)
+    context.aws_client = aws_client
+    next_step_mock = mocker.Mock()
+
+    assign_mpa = AssignSplitBillingMPA(config, "test_role_name")
+    assign_mpa(mpt_client_mock, context, next_step_mock)
+
+    mock_client.get_caller_identity.assert_not_called()
+    next_step_mock.assert_called_once_with(mpt_client_mock, context)

@@ -5,6 +5,7 @@ from swo_aws_extension.constants import SWO_EXTENSION_MANAGEMENT_ROLE
 from swo_aws_extension.flows.steps import (
     AddLinkedAccountStep,
     AssignMPA,
+    AssignSplitBillingMPA,
     AssignTransferMPAStep,
     AwaitInvitationLinksStep,
     AwaitTerminationServiceRequestStep,
@@ -47,6 +48,14 @@ purchase = Pipeline(
     CCPOnboard(config),
     CreateUpdateKeeperTicketStep(),
     CreateOnboardTicketStep(),
+    CompletePurchaseOrderStep(),
+)
+
+purchase_split_billing = Pipeline(
+    SetupPurchaseContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    AssignSplitBillingMPA(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    CreateInitialLinkedAccountStep(),
+    CreateSubscription(),
     CompletePurchaseOrderStep(),
 )
 
