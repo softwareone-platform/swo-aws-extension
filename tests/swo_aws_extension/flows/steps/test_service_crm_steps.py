@@ -258,8 +258,8 @@ def test_create_keeper_ticket(
     )
     crm_client.create_service_request.return_value = {"id": "12345"}
     client = Mock(spec=MPTClient)
-    context = PurchaseContext(order=mock_order, airtable_mpa=mpa_pool_factory())
-
+    context = PurchaseContext.from_order_data(mock_order)
+    context.airtable_mpa = mpa_pool_factory()
     step = CreateUpdateKeeperTicketStep()
     step(client, context, next_step)
 
@@ -272,7 +272,8 @@ def test_create_keeper_ticket_fail_if_not_mpa_pool(
 ):
     crm_client.create_service_request.return_value = {"id": "12345"}
     client = Mock(spec=MPTClient)
-    context = PurchaseContext(order=mock_order, airtable_mpa=None)
+    context = PurchaseContext.from_order_data(mock_order)
+    context.airtable_mpa = None
     step = CreateUpdateKeeperTicketStep()
     with pytest.raises(RuntimeError):
         step(client, context, next_step)
@@ -287,8 +288,8 @@ def test_create_keeper_ticket_fail_it_no_ticket_id(
     )
     crm_client.create_service_request.return_value = {"id": None}
     client = Mock(spec=MPTClient)
-    context = PurchaseContext(order=mock_order, airtable_mpa=mpa_pool_factory())
-
+    context = PurchaseContext.from_order_data(mock_order)
+    context.airtable_mpa = mpa_pool_factory()
     step = CreateUpdateKeeperTicketStep()
     with pytest.raises(ValueError):
         step(client, context, next_step)
@@ -303,8 +304,8 @@ def test_create_onboard_ticket(
     )
     crm_client.create_service_request.return_value = {"id": "12345"}
     client = Mock(spec=MPTClient)
-    context = PurchaseContext(order=mock_order, airtable_mpa=mpa_pool_factory())
-
+    context = PurchaseContext.from_order_data(mock_order)
+    context.airtable_mpa = mpa_pool_factory()
     step = CreateOnboardTicketStep()
     step(client, context, next_step)
 
@@ -321,8 +322,9 @@ def test_create_onboard_ticket_fail_it_no_ticket_id(
     )
     crm_client.create_service_request.return_value = {"id": None}
     client = Mock(spec=MPTClient)
-    context = PurchaseContext(order=mock_order, airtable_mpa=mpa_pool_factory())
 
+    context = PurchaseContext.from_order_data(mock_order)
+    context.airtable_mpa = mpa_pool_factory()
     step = CreateOnboardTicketStep()
     with pytest.raises(ValueError):
         step(client, context, next_step)
@@ -333,7 +335,8 @@ def test_create_onboard_ticket_fail_if_not_mpa_pool(
 ):
     crm_client.create_service_request.return_value = {"id": "12345"}
     client = Mock(spec=MPTClient)
-    context = PurchaseContext(order=mock_order, airtable_mpa=None)
+    context = PurchaseContext.from_order_data(mock_order)
+    context.airtable_mpa = None
     step = CreateUpdateKeeperTicketStep()
     with pytest.raises(RuntimeError):
         step(client, context, next_step)
@@ -357,8 +360,8 @@ def test_create_onboard_require_attention_ticket(
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(crm_ccp_ticket_id="12345")
     )
-    context = PurchaseContext(order=order, airtable_mpa=mpa_pool_factory())
-
+    context = PurchaseContext.from_order_data(order)
+    context.airtable_mpa = mpa_pool_factory()
     step = CreateOnboardTicketStep()
     step(client, context, next_step)
 

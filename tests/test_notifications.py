@@ -210,7 +210,7 @@ def test_send_email_exception(mocker, settings, caplog):
         )
 
     assert (
-        "Cannot send notification email with " "subject 'email-subject' to: customer@domain.com"
+        "Cannot send notification email with subject 'email-subject' to: customer@domain.com"
     ) in caplog.text
 
 
@@ -249,7 +249,7 @@ def test_send_email_notification(
         buyer=buyer,
         status=MPT_ORDER_STATUS_QUERYING,
     )
-    send_email_notification(mpt_client, order)
+    send_email_notification(mpt_client, order, buyer)
     mock_send_email.assert_called_once()
     mock_get_rendered_template.assert_called_once()
 
@@ -266,6 +266,6 @@ def test_send_email_notification_no_email(
         buyer={},
         status=MPT_ORDER_STATUS_QUERYING,
     )
-    send_email_notification(mpt_client, order)
+    send_email_notification(mpt_client, order, {})
     mock_send_email.assert_not_called()
     mock_get_rendered_template.assert_not_called()

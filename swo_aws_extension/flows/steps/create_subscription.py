@@ -139,7 +139,7 @@ class CreateSubscription(Step):
 class SynchronizeAgreementSubscriptionsStep(CreateSubscription):
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         logger.info(f"{context.order_id} - Start - Synchronize agreement subscriptions")
-        agreement = get_agreement(client, context.order["agreement"]["id"])
+        agreement = get_agreement(client, context.agreement["id"])
         sync_agreement_subscriptions(client, context.aws_client, agreement)
         logger.info(f"{context.order_id} - Completed - Synchronize agreement subscriptions")
         next_step(client, context)

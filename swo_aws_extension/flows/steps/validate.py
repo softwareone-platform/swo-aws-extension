@@ -113,7 +113,7 @@ class ValidatePurchaseTransferWithoutOrganizationStep(Step):
 
     def order_to_querying(self, client, context):
         if context.order_status != MPT_ORDER_STATUS_QUERYING:
-            switch_order_to_query(client, context.order)
+            switch_order_to_query(client, context.order, context.buyer)
         else:
             update_order(
                 client,

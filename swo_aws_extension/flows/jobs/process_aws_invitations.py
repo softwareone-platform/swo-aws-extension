@@ -89,7 +89,7 @@ class AWSInvitationsProcessor:
     def prepare_contexts(self) -> list[PurchaseContext]:
         contexts = []
         for o in self.get_querying_orders():
-            contexts.append(PurchaseContext(order=o))
+            contexts.append(PurchaseContext.from_order_data(o))
 
         return contexts
 

@@ -147,17 +147,17 @@ def send_email(recipient, subject, template_name, context):
         )
 
 
-def get_notifications_recipient(order):
+def get_notifications_recipient(order, buyer):
     return (get_ordering_parameter(order, OrderParametersEnum.CONTACT).get("value", {}) or {}).get(
         "email"
-    ) or (order["buyer"].get("contact", {}) or {}).get("email")
+    ) or (buyer.get("contact", {}) or {}).get("email")
 
 
 def md2html(template):
     return MarkdownIt("commonmark", {"breaks": True, "html": True}).render(template)
 
 
-def send_email_notification(client, order):
+def send_email_notification(client, order, buyer):
     """
     Send a notification email to the customer according to the
     current order status.
@@ -167,13 +167,14 @@ def send_email_notification(client, order):
         client (MPTClient): The client used to consume the
         MPT API.
         order (dict): The order for which the notification should be sent.
+        buyer (dict): The buyer of the order.
     """
     email_notification_enabled = bool(
         settings.EXTENSION_CONFIG.get("EMAIL_NOTIFICATIONS_ENABLED", False)
     )
 
     if email_notification_enabled:
-        recipient = get_notifications_recipient(order)
+        recipient = get_notifications_recipient(order, buyer)
         if not recipient:
             logger.warning(
                 f"Cannot send email notifications for order {order['id']}: no recipient found"

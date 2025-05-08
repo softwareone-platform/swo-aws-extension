@@ -27,7 +27,7 @@ def test_assign_mpa_phase_not_assign_mpa(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -54,7 +54,7 @@ def test_assign_mpa_phase_mpa_already_assigned(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -93,7 +93,7 @@ def test_assign_mpa_phase_assign_mpa(
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.get_caller_identity.return_value = {}
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     context.airtable_mpa = mpa_pool_factory()
     next_step_mock = mocker.Mock()
@@ -149,7 +149,7 @@ def test_assign_mpa_phase_assign_mpa_credentials_error(
         error_response, "get_caller_identity"
     )
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     context.airtable_mpa = mpa_pool_factory()
     next_step_mock = mocker.Mock()
@@ -192,7 +192,7 @@ def test_assign_mpa_phase_not_mpa_account(
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.get_caller_identity.return_value = {}
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     context.airtable_mpa = None
     next_step_mock = mocker.Mock()
@@ -227,7 +227,7 @@ def test_assign_mpa_phase_not_mpa_account_notification_already_created(
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.get_caller_identity.return_value = {}
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     context.airtable_mpa = None
     next_step_mock = mocker.Mock()
@@ -265,7 +265,7 @@ def test_assign_mpa_split_billing_valid_mpa(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -300,7 +300,7 @@ def test_assign_mpa_split_billing_valid_mpa(
     )
     mocked_update_agreement.assert_called_once_with(
         mpt_client_mock,
-        context.order["agreement"]["id"],
+        context.agreement["id"],
         externalIds={"vendor": "123456789012"},
     )
 
@@ -324,7 +324,7 @@ def test_assign_mpa_split_billing_invalid_mpa(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
@@ -364,7 +364,7 @@ def test_assign_mpa_empty_country(
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.get_caller_identity.return_value = {}
 
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     context.airtable_mpa = None
     next_step_mock = mocker.Mock()

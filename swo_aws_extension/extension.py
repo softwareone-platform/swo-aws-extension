@@ -41,7 +41,7 @@ def process_order_fulfillment(client, event):
 )
 def process_order_validation(request, order: dict = Body(None)):
     try:
-        context = InitialAWSContext(order=order)
+        context = InitialAWSContext.from_order_data(order=order)
         validated_order = validate_order(request.client, context)
         logger.debug(f"Validated order: {pformat(validated_order)}")
         return 200, validated_order

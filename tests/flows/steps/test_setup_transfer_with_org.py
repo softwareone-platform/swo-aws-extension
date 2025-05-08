@@ -64,7 +64,7 @@ def test_transfer_with_org_step_with_mpa(
         "SetupContextPurchaseTransferWithOrganizationStep.setup_aws"
     )
     step = SetupContextPurchaseTransferWithOrganizationStep(config, "role_name")
-    context = PurchaseContext(aws_client=None, order=order)
+    context = PurchaseContext.from_order_data(order)
     step(mpt_client_mock, context, next_step_mock)
     mpt_client_mock.put.assert_called_once()  # Setting up phase
     assert get_phase(context.order) == PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION
@@ -88,7 +88,7 @@ def test_setup_querying(
         ),
     )
 
-    def return_order(client, order):
+    def return_order(client, order, buyer):
         return order
 
     switch_order_to_query_mock = mocker.patch(
@@ -96,7 +96,7 @@ def test_setup_querying(
         side_effect=return_order,
     )
     step = SetupContextPurchaseTransferWithOrganizationStep(config, "role_name")
-    context = PurchaseContext(aws_client=None, order=order)
+    context = PurchaseContext.from_order_data(order)
     step(mpt_client_mock, context, next_step_mock)
     switch_order_to_query_mock.assert_called_once()
     next_step_mock.assert_not_called()

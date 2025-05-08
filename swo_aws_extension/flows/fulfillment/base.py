@@ -117,7 +117,7 @@ def setup_contexts(mpt_client, orders):
     contexts = []
 
     for order in orders:
-        context = InitialAWSContext(order=order)
+        context = InitialAWSContext.from_order_data(order)
         if context.is_purchase_order():
             if order["id"] in purchase_orders_pls_status_map:
                 country, pls = purchase_orders_pls_status_map[order["id"]]

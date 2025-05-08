@@ -56,7 +56,8 @@ def test_success(
     }
     aws_mock.describe_organization.return_value = organization_details_response_data
     next_step = mocker.MagicMock()
-    context = PurchaseContext(order=order, aws_client=aws_client)
+    context = PurchaseContext.from_order_data(order)
+    context.aws_client = aws_client
     step = RegisterTransferredMPAToAirtableStep()
 
     step(mpt_client, context, next_step)
@@ -94,7 +95,7 @@ def test_skip(
         return_value=mpa_pool_model_mock,
     )
     logger = mocker.patch("swo_aws_extension.flows.steps.register_transfered_mpa_airtable.logger")
-    aws_client, aws_mock = aws_client_factory(config, "test_account_id", "test_role_name")
+    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
     context = PurchaseContext(aws_client=aws_client, order=order, airtable_mpa=mpa_pool_model_mock)
     next_step = mocker.MagicMock()
     step = RegisterTransferredMPAToAirtableStep()

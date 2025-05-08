@@ -13,7 +13,7 @@ def test_validate_with_all_ok(mocker, order_factory, order_parameters_factory):
         ),
         order_type=ORDER_TYPE_PURCHASE,
     )
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     mocker.patch("swo_aws_extension.flows.steps.validate.set_ordering_parameter_error")
     step = ValidatePurchaseTransferWithoutOrganizationStep()
     next_step = mocker.Mock()
@@ -31,7 +31,7 @@ def test_is_not_purchase_order(mocker, order_factory, order_parameters_factory):
         ),
         order_type=ORDER_TYPE_CHANGE,
     )
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     step = ValidatePurchaseTransferWithoutOrganizationStep()
     next_step = mocker.Mock()
     client = mocker.Mock()
@@ -50,7 +50,7 @@ def test_is_not_transfer_without_organization(mocker, order_factory, order_param
         ),
         order_type=ORDER_TYPE_PURCHASE,
     )
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     assert context.is_purchase_order() is True
     step = ValidatePurchaseTransferWithoutOrganizationStep()
     next_step = mocker.Mock()
@@ -70,7 +70,7 @@ def test_invalid_account_ids(mocker, order_factory, order_parameters_factory):
         ),
         order_type=ORDER_TYPE_PURCHASE,
     )
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     mocker.patch("swo_aws_extension.flows.steps.validate.set_ordering_parameter_error")
     mock_to_query = mocker.patch("swo_aws_extension.flows.steps.validate.switch_order_to_query")
     step = ValidatePurchaseTransferWithoutOrganizationStep()
@@ -89,7 +89,7 @@ def test_no_account_ids(mocker, order_factory, order_parameters_factory):
         ),
         order_type=ORDER_TYPE_PURCHASE,
     )
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     mocker.patch("swo_aws_extension.flows.steps.validate.set_ordering_parameter_error")
     mock_to_query = mocker.patch("swo_aws_extension.flows.steps.validate.switch_order_to_query")
     step = ValidatePurchaseTransferWithoutOrganizationStep()
@@ -110,7 +110,7 @@ def test_too_many_accounts(mocker, order_factory, order_parameters_factory):
         ),
         order_type=ORDER_TYPE_PURCHASE,
     )
-    context = PurchaseContext(order=order)
+    context = PurchaseContext.from_order_data(order)
     mocker.patch(
         "swo_aws_extension.flows.steps.validate.set_ordering_parameter_error", return_value=order
     )

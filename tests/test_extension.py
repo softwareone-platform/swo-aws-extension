@@ -57,7 +57,7 @@ def test_process_order_validation(client, mocker, order_factory, jwt_token, webh
     )
     assert resp.status_code == 200
     assert resp.json() == order
-    context = InitialAWSContext(order=order)
+    context = InitialAWSContext.from_order_data(order)
     m_validate.assert_called_once_with(mocker.ANY, context)
 
 
