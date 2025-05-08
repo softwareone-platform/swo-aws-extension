@@ -1,5 +1,6 @@
 import pytest
 from mpt_extension_sdk.mpt_http.base import MPTClient
+from requests import Response
 
 from swo_aws_extension.constants import CRM_TICKET_RESOLVED_STATE, TransferTypesEnum
 from swo_aws_extension.flows.order import PurchaseContext
@@ -70,6 +71,11 @@ def test_create_transfer_request_ticket_with_organization_step_creates_ticket(
     context = PurchaseContext.from_order_data(order_transfer_with_organization)
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
+
+    template_response = Response()
+    template_response._content = b'{"data": ["template"]}'
+    template_response.status_code = 200
+    mpt_client_mock.get = mocker.Mock(return_value=template_response)
 
     service_client.create_service_request.return_value = {"id": "CS0004721"}
     update_order_mock = mocker.patch(

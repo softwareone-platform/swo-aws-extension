@@ -9,9 +9,9 @@ from swo_aws_extension.flows.steps import (
     AwaitInvitationLinksStep,
     AwaitTerminationServiceRequestStep,
     AwaitTransferRequestTicketWithOrganizationStep,
-    CompleteChangeOrder,
-    CompleteOrder,
-    CompletePurchaseOrder,
+    CompleteChangeOrderStep,
+    CompletePurchaseOrderStep,
+    CompleteTerminationOrderStep,
     CreateChangeSubscriptionStep,
     CreateInitialLinkedAccountStep,
     CreateSubscription,
@@ -47,7 +47,7 @@ purchase = Pipeline(
     CCPOnboard(config),
     CreateUpdateKeeperTicketStep(),
     CreateOnboardTicketStep(),
-    CompletePurchaseOrder("purchase_order"),
+    CompletePurchaseOrderStep(),
 )
 
 purchase_transfer_with_organization = Pipeline(
@@ -61,7 +61,7 @@ purchase_transfer_with_organization = Pipeline(
     CreateSubscription(),
     CCPOnboard(config),
     CreateOnboardTicketStep(),
-    CompletePurchaseOrder("purchase_order"),
+    CompletePurchaseOrderStep(),
     SynchronizeAgreementSubscriptionsStep(),
 )
 
@@ -77,7 +77,7 @@ purchase_transfer_without_organization = Pipeline(
     CCPOnboard(config),
     CreateUpdateKeeperTicketStep(),
     CreateOnboardTicketStep(),
-    CompletePurchaseOrder("purchase_order"),
+    CompletePurchaseOrderStep(),
     SynchronizeAgreementSubscriptionsStep(),
 )
 
@@ -85,7 +85,7 @@ change_order = Pipeline(
     SetupChangeContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
     AddLinkedAccountStep(),
     CreateChangeSubscriptionStep(),
-    CompleteChangeOrder("purchase_order"),
+    CompleteChangeOrderStep(),
     SynchronizeAgreementSubscriptionsStep(),
 )
 
@@ -93,5 +93,5 @@ terminate = Pipeline(
     SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
     CreateTerminationServiceRequestStep(),
     AwaitTerminationServiceRequestStep(),
-    CompleteOrder("purchase_order"),
+    CompleteTerminationOrderStep(),
 )

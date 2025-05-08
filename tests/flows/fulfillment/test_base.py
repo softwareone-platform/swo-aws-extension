@@ -165,7 +165,7 @@ def test_fulfill_terminate_account_flow(
     )
 
     mocker.patch(
-        "swo_aws_extension.flows.steps.complete_order.get_product_template_or_default",
+        "swo_aws_extension.flows.order.get_product_template_or_default",
         return_value="template",
     )
     complete_order_mock = mocker.patch(

@@ -1,6 +1,6 @@
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
-from swo_aws_extension.constants import TAG_AGREEMENT_ID, PhasesEnum
+from swo_aws_extension.constants import TAG_AGREEMENT_ID, OrderQueryingTemplateEnum, PhasesEnum
 from swo_aws_extension.flows.error import (
     ERR_ACCOUNT_NAME_EMPTY,
     ERR_EMAIL_ALREADY_EXIST,
@@ -175,7 +175,7 @@ def test_create_linked_account_phase_check_linked_account_email_already_exist(
         mpt_client_mock,
         "PRD-1111-1111",
         "Querying",
-        name=None,
+        name=OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE,
     )
     mocked_query_order.assert_called_once_with(
         mpt_client_mock,
@@ -383,6 +383,11 @@ def test_add_linked_account_phase_check_linked_account_succeed(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
 
+    mocker.patch(
+        "swo_aws_extension.flows.order.get_product_template_or_default",
+        return_value={"id": "TPL-964-112"},
+    )
+
     context = ChangeContext.from_order_data(order)
     context.aws_client = aws_client
     context.account_creation_status = account_creation_status_factory(status="SUCCEEDED")
@@ -415,6 +420,7 @@ def test_add_linked_account_phase_check_linked_account_email_already_exist(
     context.account_creation_status = account_creation_status_factory(
         status="FAILED", failure_reason="EMAIL_ALREADY_EXISTS"
     )
+
     next_step_mock = mocker.Mock()
 
     mocked_get_product_template_or_default = mocker.patch(
@@ -431,7 +437,7 @@ def test_add_linked_account_phase_check_linked_account_email_already_exist(
         mpt_client_mock,
         "PRD-1111-1111",
         "Querying",
-        name=None,
+        name=OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE,
     )
     mocked_query_order.assert_called_once_with(
         mpt_client_mock,

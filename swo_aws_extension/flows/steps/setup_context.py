@@ -6,14 +6,19 @@ from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.airtable.models import get_mpa_account
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.constants import PhasesEnum
+from swo_aws_extension.constants import (
+    ORDER_DEFAULT_TEMPLATE,
+    PhasesEnum,
+)
 from swo_aws_extension.flows.error import ERR_TRANSFER_WITH_ORG_MISSING_MPA_ID
 from swo_aws_extension.flows.order import (
+    MPT_ORDER_STATUS_PROCESSING,
     MPT_ORDER_STATUS_QUERYING,
     InitialAWSContext,
     PurchaseContext,
     switch_order_to_query,
 )
+from swo_aws_extension.flows.template import TemplateNameManager
 from swo_aws_extension.parameters import (
     OrderParametersEnum,
     get_account_request_id,
@@ -44,7 +49,21 @@ class SetupContext(Step):
             f"successfully"
         )
 
+    def init_template(self, client: MPTClient, context: InitialAWSContext):
+        if context.template_name != ORDER_DEFAULT_TEMPLATE:
+            return
+
+        template_name = TemplateNameManager.processing(context)
+
+        context.update_template(client, MPT_ORDER_STATUS_PROCESSING, template_name)
+        update_order(
+            client,
+            context.order_id,
+            template=context.template,
+        )
+
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
+        self.init_template(client, context)
         self.setup_aws(context)
         logger.info(f"{context.order_id} - Next - SetupContext completed successfully")
         next_step(client, context)
@@ -64,11 +83,13 @@ class SetupPurchaseContext(SetupContext):
             logger.info(f"{context.order_id} - Action - Setup setup_account_request_id in context")
 
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
+        self.init_template(client, context)
         if context.mpa_account:
             self.setup_aws(context)
             context.airtable_mpa = get_mpa_account(context.mpa_account)
         self.setup_account_request_id(context)
         logger.info(f"{context.order_id} - Next - SetupPurchaseContext completed successfully")
+
         next_step(client, context)
 
 
@@ -86,6 +107,7 @@ class SetupChangeContext(SetupContext):
             logger.info(f"{context.order_id} - Action - Setup setup_account_request_id in context")
 
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
+        self.init_template(client, context)
         self.setup_aws(context)
         self.setup_account_request_id(context)
         logger.info(f"{context.order_id} - Next - SetupChangeContext completed successfully")
@@ -101,6 +123,7 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
         - (Validate) Check if master payer id is set, set to querying otherwise
         - Setup AWS client
         """
+        self.init_template(client, context)
         if not context.is_purchase_order():
             logger.info(f"{context.order_id} - Skip - Is not a purchase order")
             next_step(client, context)
@@ -113,7 +136,12 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
         phase = get_phase(context.order)
         if not phase:
             context.order = set_phase(context.order, PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION)
-            update_order(client, context.order_id, parameters=context.order["parameters"])
+
+            update_order(
+                client,
+                context.order_id,
+                parameters=context.order["parameters"],
+            )
             logger.info(
                 f"{context.order_id} - Action - Updated phase to {get_phase(context.order)}"
             )
@@ -151,6 +179,7 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
 
 class SetupContextPurchaseTransferWithoutOrganizationStep(SetupContext):
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
+        self.init_template(client, context)
         phase = get_phase(context.order)
         if not phase:
             context.order = set_phase(context.order, PhasesEnum.ASSIGN_MPA)

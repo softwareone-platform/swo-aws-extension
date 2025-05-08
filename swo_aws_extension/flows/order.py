@@ -1,4 +1,5 @@
 import copy
+import logging
 from dataclasses import dataclass
 
 from mpt_extension_sdk.flows.context import Context as BaseContext
@@ -24,6 +25,9 @@ from swo_aws_extension.parameters import (
 MPT_ORDER_STATUS_PROCESSING = "Processing"
 MPT_ORDER_STATUS_QUERYING = "Querying"
 MPT_ORDER_STATUS_COMPLETED = "Completed"
+
+
+logger = logging.getLogger(__name__)
 
 
 def is_partner_led_support_enabled(order):
@@ -64,6 +68,9 @@ class InitialAWSContext(BaseContext):
     def is_type_transfer_without_organization(self):
         return get_transfer_type(self.order) == TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION
 
+    def is_split_billing(self):
+        return get_transfer_type(self.order) == TransferTypesEnum.SPLIT_BILLING
+
     @property
     def order_status(self):
         """
@@ -88,6 +95,28 @@ class InitialAWSContext(BaseContext):
             buyer=order.pop("buyer", {}),
             order=order,
         )
+
+    @property
+    def template_name(self):
+        return self.order.get("template", {}).get("name")
+
+    @property
+    def template(self):
+        return self.order.get("template")
+
+    def update_template(self, client, status, template_name):
+        """
+        Update the template name of the order
+        """
+        template = get_product_template_or_default(
+            client,
+            self.order["product"]["id"],
+            status,
+            template_name,
+        )
+        self.order["template"] = template
+        logger.info(f"{self.order_id} - Action - Updated template to {template_name}")
+        return self.order["template"]
 
 
 @dataclass

@@ -1,9 +1,10 @@
 from swo_aws_extension.flows.steps.assign_mpa import AssignMPA, AssignTransferMPAStep
 from swo_aws_extension.flows.steps.ccp_onboard import CCPOnboard
 from swo_aws_extension.flows.steps.complete_order import (
-    CompleteChangeOrder,
-    CompleteOrder,
-    CompletePurchaseOrder,
+    CompleteChangeOrderStep,
+    CompleteOrderStep,
+    CompletePurchaseOrderStep,
+    CompleteTerminationOrderStep,
 )
 from swo_aws_extension.flows.steps.create_linked_account import (
     AddLinkedAccountStep,
@@ -44,8 +45,10 @@ __all__ = [
     "AwaitCRMTicketStatusStep",
     "AwaitTerminationServiceRequestStep",
     "AwaitTransferRequestTicketWithOrganizationStep",
-    "CompleteOrder",
-    "CompletePurchaseOrder",
+    "CompleteOrderStep",
+    "CompletePurchaseOrderStep",
+    "CompleteChangeOrderStep",
+    "CompleteTerminationOrderStep",
     "CreateInitialLinkedAccountStep",
     "CreateServiceRequestStep",
     "CreateTerminationServiceRequestStep",
@@ -68,5 +71,4 @@ __all__ = [
     "SetupChangeContext",
     "AddLinkedAccountStep",
     "CreateChangeSubscriptionStep",
-    "CompleteChangeOrder",
 ]

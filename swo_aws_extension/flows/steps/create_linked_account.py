@@ -4,17 +4,19 @@ from mpt_extension_sdk.flows.pipeline import Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
-from swo_aws_extension.constants import PhasesEnum
+from swo_aws_extension.constants import OrderQueryingTemplateEnum, PhasesEnum
 from swo_aws_extension.flows.error import (
     ERR_ACCOUNT_NAME_EMPTY,
     ERR_EMAIL_ALREADY_EXIST,
     ERR_EMAIL_EMPTY,
 )
 from swo_aws_extension.flows.order import (
+    MPT_ORDER_STATUS_PROCESSING,
     ChangeContext,
     PurchaseContext,
     switch_order_to_query,
 )
+from swo_aws_extension.flows.template import TemplateNameManager
 from swo_aws_extension.parameters import (
     ChangeOrderParametersEnum,
     OrderParametersEnum,
@@ -57,11 +59,17 @@ def manage_create_linked_account_error(client, context, param_account_name, para
             hidden=False,
             required=False,
         )
+
         context.order = set_account_request_id(context.order, "")
         ignore_params = list_ordering_parameters_with_errors(context.order)
         ignore_params.append(param_account_name)
         context.order = set_ordering_parameters_to_readonly(context.order, ignore=ignore_params)
-        switch_order_to_query(client, context.order, context.buyer)
+        switch_order_to_query(
+            client,
+            context.order,
+            context.buyer,
+            template_name=OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE,
+        )
         logger.info(
             f"{context.order_id} - Querying - Order switched to query to provide a valid email"
         )
@@ -171,6 +179,15 @@ class AddLinkedAccountStep(Step):
         if context.account_creation_status:
             logger.info(f"{context.order_id} - Start - Checking linked account request status")
             if context.account_creation_status.status == "SUCCEEDED":
+                # If we set the template to querying, we need to set it back to processing
+                template_name = TemplateNameManager.processing(context)
+                context.update_template(client, MPT_ORDER_STATUS_PROCESSING, template_name)
+                update_order(
+                    client,
+                    context.order_id,
+                    parameters=context.order["parameters"],
+                    template=context.template,
+                )
                 logger.info(
                     f"{context.order_id} - Completed - AWS linked account created successfully"
                 )

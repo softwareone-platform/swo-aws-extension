@@ -210,3 +210,42 @@ class SubscriptionStatusEnum(StrEnum):
     TERMINATED = "Terminated"
     UPDATING = "Updating"
     TERMINATING = "Terminating"
+
+
+class TemplateTypeEnum(StrEnum):
+    ORDER_COMPLETED = "OrderCompleted"
+    ORDER_PROCESSING = "OrderProcessing"
+    ORDER_QUERYING = "OrderQuerying"
+
+
+class OrderCompletedTemplateEnum(StrEnum):
+    TRANSFER_WITH_ORG_WITH_PLS = "Order completed existing tenant"
+    TRANSFER_WITH_ORG_WITHOUT_PLS = "Order completed existing tenant"
+    TRANSFER_WITHOUT_ORG_WITH_PLS = "Order completed existing tenant"
+    TRANSFER_WITHOUT_ORG_WITHOUT_PLS = "Order completed existing tenant"
+    NEW_ACCOUNT_WITH_PLS = "Order completed new tenant"
+    NEW_ACCOUNT_WITHOUT_PLS = "Order completed new tenant"
+    TERMINATION = "Order completed existing tenant"
+    CHANGE = "Order completed existing tenant"
+    SPLIT_BILLING = "Order completed existing tenant"
+
+
+class OrderProcessingTemplateEnum(StrEnum):
+    NEW_ACCOUNT = "New Tenant - start processing"
+    CHANGE = "New Tenant - start processing"
+    TRANSFER_WITH_ORG = "New Tenant - start processing"
+    TRANSFER_WITHOUT_ORG = "New Tenant - start processing"
+    TRANSFER_WITH_ORG_TICKET_CREATED = "New Tenant - start processing"
+
+    TERMINATION = "New Tenant - start processing"
+    SPLIT_BILLING = "New Tenant - start processing"
+
+
+class OrderQueryingTemplateEnum(StrEnum):
+    NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE = (
+        "Order querying template - root e-mail provided not unique."  #
+    )
+    TRANSFER_AWAITING_INVITATIONS = "Transfer - invitation sent"
+
+
+ORDER_DEFAULT_TEMPLATE = OrderProcessingTemplateEnum.NEW_ACCOUNT
