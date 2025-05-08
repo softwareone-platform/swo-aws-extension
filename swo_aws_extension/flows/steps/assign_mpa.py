@@ -9,12 +9,13 @@ from swo_aws_extension.airtable.models import (
     NotificationStatusEnum,
     NotificationTypeEnum,
     create_pool_notification,
+    get_mpa_account,
     get_mpa_view_link,
     has_open_notification,
 )
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
-from swo_aws_extension.constants import PhasesEnum, TransferTypesEnum
+from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.order import (
     PurchaseContext,
     switch_order_to_query,
@@ -22,8 +23,8 @@ from swo_aws_extension.flows.order import (
 from swo_aws_extension.flows.validation.purchase import is_split_billing_mpa_id_valid
 from swo_aws_extension.notifications import Button, send_error
 from swo_aws_extension.parameters import (
+    get_master_payer_id,
     get_phase,
-    get_transfer_type,
     list_ordering_parameters_with_errors,
     set_mpa_email,
     set_ordering_parameters_to_readonly,
@@ -81,28 +82,6 @@ class AssignMPA(Step):
             )
             next_step(client, context)
             return
-        if get_transfer_type(context.order) == TransferTypesEnum.SPLIT_BILLING:
-            if not is_split_billing_mpa_id_valid(context):
-                parameter_ids_with_errors = list_ordering_parameters_with_errors(context.order)
-                context.order = set_ordering_parameters_to_readonly(
-                    context.order, ignore=parameter_ids_with_errors
-                )
-                switch_order_to_query(client, context.order, context.buyer)
-                logger.error(
-                    f"{context.order_id} - Querying - MPA Invalid. Order switched to query"
-                )
-                return
-            setup_agreement_external_id(client, context, context.order_master_payer_id)
-            context.order = set_phase(context.order, PhasesEnum.PRECONFIGURATION_MPA)
-            context.order = update_order(
-                client, context.order_id, parameters=context.order["parameters"]
-            )
-
-            logger.info(
-                f"{context.order_id} - Next - Split Billing Master Payer Account "
-                f"{context.mpa_account} assigned."
-            )
-            next_step(client, context)
 
         if not context.airtable_mpa:
             logger.error(
@@ -175,6 +154,55 @@ class AssignMPA(Step):
         next_step(client, context)
 
 
+class AssignSplitBillingMPA(Step):
+    def __init__(self, config, role_name):
+        self._config = config
+        self._role_name = role_name
+
+    def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+        phase = get_phase(context.order)
+        if phase and phase != PhasesEnum.ASSIGN_MPA:
+            logger.info(
+                f"{context.order_id} - Next - Current phase is '{phase}', "
+                f"skipping as it is not '{PhasesEnum.ASSIGN_MPA}'"
+            )
+            next_step(client, context)
+            return
+
+        context.airtable_mpa = get_mpa_account(get_master_payer_id(context.order))
+        if not is_split_billing_mpa_id_valid(context):
+            parameter_ids_with_errors = list_ordering_parameters_with_errors(context.order)
+            context.order = set_ordering_parameters_to_readonly(
+                context.order, ignore=parameter_ids_with_errors
+            )
+            switch_order_to_query(client, context.order, context.buyer)
+            logger.error(f"{context.order_id} - Querying - MPA Invalid. Order switched to query")
+            return
+
+        context.aws_client = AWSClient(
+            self._config, context.airtable_mpa.account_id, self._role_name
+        )
+
+        logger.info(
+            f"{context.order_id} - Action - MPA credentials for {context.airtable_mpa.account_id} "
+            f"retrieved successfully"
+        )
+
+        context.order = set_mpa_email(context.order, context.airtable_mpa.account_email)
+
+        setup_agreement_external_id(client, context, context.order_master_payer_id)
+        context.order = set_phase(context.order, PhasesEnum.CREATE_ACCOUNT)
+        context.order = update_order(
+            client, context.order_id, parameters=context.order["parameters"]
+        )
+
+        logger.info(
+            f"{context.order_id} - Next - Split Billing Master Payer Account "
+            f"{context.mpa_account} assigned."
+        )
+        next_step(client, context)
+
+
 class AssignTransferMPAStep(Step):
     def __init__(self, config, role_name):
         self._config = config
@@ -183,9 +211,8 @@ class AssignTransferMPAStep(Step):
     def setup_aws(self, context: PurchaseContext):
         context.aws_client = AWSClient(self._config, context.mpa_account, self._role_name)
 
-    def validate_mpa_credentials(self, context: PurchaseContext):
-        if not context.aws_client:
-            raise RuntimeError("AssignTransferMPAStep - AWS client is not set in context")
+    @staticmethod
+    def validate_mpa_credentials(context: PurchaseContext):
         context.aws_client.describe_organization()
 
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step: NextStep):
@@ -221,7 +248,7 @@ class AssignTransferMPAStep(Step):
             if not context.aws_client:
                 self.setup_aws(context)
             self.validate_mpa_credentials(context)
-            context.order = set_phase(context.order, PhasesEnum.CREATE_SUBSCRIPTIONS)
+            context.order = set_phase(context.order, PhasesEnum.PRECONFIGURATION_MPA)
             logger.info(
                 f"{context.order_id} - Action - Update phase to {PhasesEnum.CREATE_SUBSCRIPTIONS}"
             )

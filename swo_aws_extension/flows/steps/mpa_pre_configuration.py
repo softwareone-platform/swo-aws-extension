@@ -4,9 +4,9 @@ from mpt_extension_sdk.flows.pipeline import Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
-from swo_aws_extension.constants import AccountTypesEnum, PhasesEnum, TransferTypesEnum
+from swo_aws_extension.constants import AccountTypesEnum, PhasesEnum
 from swo_aws_extension.flows.order import PurchaseContext
-from swo_aws_extension.parameters import get_account_type, get_phase, get_transfer_type, set_phase
+from swo_aws_extension.parameters import get_account_type, get_phase, set_phase
 
 logger = logging.getLogger(__name__)
 
@@ -26,13 +26,11 @@ class MPAPreConfiguration(Step):
         context.aws_client.enable_scp()
 
         account_type = get_account_type(context.order)
-        transfer_type = get_transfer_type(context.order)
 
-        if (
-            account_type == AccountTypesEnum.NEW_ACCOUNT
-            or transfer_type == TransferTypesEnum.SPLIT_BILLING
-        ):
+        if account_type == AccountTypesEnum.NEW_ACCOUNT:
             next_phase = PhasesEnum.CREATE_ACCOUNT
+        elif context.is_type_transfer_with_organization():
+            next_phase = PhasesEnum.CREATE_SUBSCRIPTIONS
         else:
             next_phase = PhasesEnum.TRANSFER_ACCOUNT
 

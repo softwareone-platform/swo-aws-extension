@@ -130,6 +130,47 @@ def test_check_onboard_ccp_status_fail(
     next_step_mock.assert_called_once()
 
 
+def test_check_onboard_ccp_status_fail_ticket_already_created(
+    mocker,
+    order_factory,
+    config,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    ccp_client,
+    onboard_customer_status_factory,
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CCP_ONBOARD, ccp_engagement_id="123123", crm_ccp_ticket_id="12345"
+        )
+    )
+    mocked_onboard_status = mocker.patch(
+        "swo_ccp_client.client.CCPClient.get_onboard_status",
+        return_value=onboard_customer_status_factory(CCPOnboardStatusEnum.FAILED),
+    )
+    mpt_client_mock = mocker.Mock(spec=MPTClient)
+    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    context = PurchaseContext(order=order)
+    context.aws_client = aws_client
+    next_step_mock = mocker.Mock()
+
+    service_client = mocker.Mock(spec=CRMServiceClient)
+    mocker.patch(
+        "swo_aws_extension.flows.steps.ccp_onboard.get_service_client",
+        return_value=service_client,
+    )
+    mocked_send_error = mocker.patch("swo_aws_extension.flows.steps.ccp_onboard.send_error")
+
+    service_client.create_service_request.return_value = {"id": "1234-5678"}
+
+    ccp_onboard = CCPOnboard(config)
+    ccp_onboard(mpt_client_mock, context, next_step_mock)
+    assert mocked_onboard_status.call_count == 1
+    assert service_client.create_service_request.call_count == 0
+    assert mocked_send_error.call_count == 0
+    next_step_mock.assert_called_once()
+
+
 def test_check_onboard_ccp_status_succeeded(
     mocker,
     order_factory,

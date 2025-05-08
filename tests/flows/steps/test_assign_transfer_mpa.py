@@ -56,7 +56,7 @@ def test_assign_transfer_mpa_first_run(
     assert context.mpa_account == "123456789012"
     next_step_mock.assert_called_once()
     mpt_client_mock.put.assert_called()
-    assert get_phase(context.order) == PhasesEnum.CREATE_SUBSCRIPTIONS
+    assert get_phase(context.order) == PhasesEnum.PRECONFIGURATION_MPA
 
 
 def test_assign_transfer_initialize_aws(
@@ -95,7 +95,7 @@ def test_assign_transfer_initialize_aws(
     )
     step(mpt_client_mock, context, next_step_mock)
     mock_steup_aws.assert_called_once()
-    assert get_phase(context.order) == PhasesEnum.CREATE_SUBSCRIPTIONS
+    assert get_phase(context.order) == PhasesEnum.PRECONFIGURATION_MPA
     next_step_mock.assert_called_once()
 
 
