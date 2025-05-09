@@ -219,33 +219,33 @@ class TemplateTypeEnum(StrEnum):
 
 
 class OrderCompletedTemplateEnum(StrEnum):
-    TRANSFER_WITH_ORG_WITH_PLS = "Order completed existing tenant"
-    TRANSFER_WITH_ORG_WITHOUT_PLS = "Order completed existing tenant"
-    TRANSFER_WITHOUT_ORG_WITH_PLS = "Order completed existing tenant"
-    TRANSFER_WITHOUT_ORG_WITHOUT_PLS = "Order completed existing tenant"
-    NEW_ACCOUNT_WITH_PLS = "Order completed new tenant"
-    NEW_ACCOUNT_WITHOUT_PLS = "Order completed new tenant"
-    TERMINATION = "Order completed existing tenant"
-    CHANGE = "Order completed existing tenant"
-    SPLIT_BILLING = "Order completed existing tenant"
+    TRANSFER_WITH_ORG_WITH_PLS = "Order completed existing tenant with org - pls"
+    TRANSFER_WITH_ORG_WITHOUT_PLS = "Order completed existing tenant with org - no pls"
+    TRANSFER_WITHOUT_ORG_WITH_PLS = "Order completed existing tenant - pls"
+    TRANSFER_WITHOUT_ORG_WITHOUT_PLS = "Order completed existing tenant - no pls"
+    NEW_ACCOUNT_WITH_PLS = "Order completed new tenant - pls"
+    NEW_ACCOUNT_WITHOUT_PLS = "Order completed new tenant - no pls"
+    TERMINATION = "Termination order"
+    SPLIT_BILLING = "split agreement - add linked account"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
-    NEW_ACCOUNT = "New Tenant - start processing"
+    NEW_ACCOUNT = "New Tenant - processing"
     CHANGE = "New Tenant - start processing"
-    TRANSFER_WITH_ORG = "New Tenant - start processing"
-    TRANSFER_WITHOUT_ORG = "New Tenant - start processing"
+    TRANSFER_WITH_ORG = "Order processing template transfer with org"
+    TRANSFER_WITHOUT_ORG = "Order processing template transfer"
     TRANSFER_WITH_ORG_TICKET_CREATED = "New Tenant - start processing"
 
-    TERMINATION = "New Tenant - start processing"
-    SPLIT_BILLING = "New Tenant - start processing"
+    TERMINATION = "Processing Termination"
+    SPLIT_BILLING = "Split agreement- processing"
 
 
 class OrderQueryingTemplateEnum(StrEnum):
     NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE = (
         "Order querying template - root e-mail provided not unique."  #
     )
-    TRANSFER_AWAITING_INVITATIONS = "Transfer - invitation sent"
+    TRANSFER_AWAITING_INVITATIONS = "Querying - awaiting invitations acceptance"
+    TRANSFER_ORGANIZATION = "Sales order querying template - Organizational Transfer"
 
 
-ORDER_DEFAULT_TEMPLATE = OrderProcessingTemplateEnum.NEW_ACCOUNT
+ORDER_DEFAULT_TEMPLATE = OrderProcessingTemplateEnum.TRANSFER_WITHOUT_ORG
