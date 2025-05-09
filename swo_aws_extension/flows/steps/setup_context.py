@@ -7,7 +7,7 @@ from mpt_extension_sdk.mpt_http.mpt import update_order
 from swo_aws_extension.airtable.models import get_mpa_account
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import (
-    ORDER_DEFAULT_TEMPLATE,
+    ORDER_DEFAULT_PROCESSING_TEMPLATE,
     PhasesEnum,
 )
 from swo_aws_extension.flows.error import ERR_TRANSFER_WITH_ORG_MISSING_MPA_ID
@@ -50,11 +50,11 @@ class SetupContext(Step):
         )
 
     def init_template(self, client: MPTClient, context: InitialAWSContext):
-        if context.template_name != ORDER_DEFAULT_TEMPLATE:
+        if context.template_name != ORDER_DEFAULT_PROCESSING_TEMPLATE:
             logger.info(
                 f"{context.order_id} - Skip - Setup template: Template is not default. "
                 f"Current template: `{context.template_name}`, "
-                f"expected template: `{ORDER_DEFAULT_TEMPLATE}`"
+                f"expected template: `{ORDER_DEFAULT_PROCESSING_TEMPLATE}`"
             )
             return
 
