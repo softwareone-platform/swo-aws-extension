@@ -70,6 +70,7 @@ def order_parameters_factory(constraints):
         contact=None,
         change_order_email=ACCOUNT_EMAIL,
         change_order_name="account_name",
+        crm_termination_ticket_id="",
     ):
         return [
             {
@@ -155,6 +156,13 @@ def order_parameters_factory(constraints):
                 "value": change_order_name,
                 "constraints": constraints,
             },
+            {
+                "id": "PAR-1234-1678",
+                "name": "Service-Now Ticket Termination",
+                "externalId": OrderParametersEnum.CRM_TERMINATION_TICKET_ID,
+                "type": "SingleLineText",
+                "value": crm_termination_ticket_id,
+            },
         ]
 
     return _order_parameters
@@ -167,7 +175,6 @@ def fulfillment_parameters_factory():
         account_request_id="",
         crm_onboard_ticket_id="",
         crm_keeper_ticket_id="",
-        crm_termination_ticket_id="",
         crm_ccp_ticket_id="",
         crm_transfer_organization_ticket_id="",
         ccp_engagement_id="",
@@ -208,13 +215,6 @@ def fulfillment_parameters_factory():
                 "externalId": FulfillmentParametersEnum.CRM_ONBOARD_TICKET_ID,
                 "type": "SingleLineText",
                 "value": crm_onboard_ticket_id,
-            },
-            {
-                "id": "PAR-1234-1678",
-                "name": "Service-Now Ticket Termination",
-                "externalId": FulfillmentParametersEnum.CRM_TERMINATION_TICKET_ID,
-                "type": "SingleLineText",
-                "value": crm_termination_ticket_id,
             },
             {
                 "id": "PAR-1234-1678",
