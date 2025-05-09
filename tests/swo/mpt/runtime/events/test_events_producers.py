@@ -66,7 +66,8 @@ def test_event_producers_has_no_more_pages(
     assert has_more_pages is False
 
 
-def test_event_producer_start():
+def test_event_producer_start(mocker):
+    mocker.patch("swo.mpt.extensions.runtime.events.producers.OrderEventProducer.get_processing_orders", return_value=[])
     dispatcher = Dispatcher()
     dispatcher.start()
     order_event_producer = OrderEventProducer(dispatcher)
@@ -78,7 +79,8 @@ def test_event_producer_start():
     assert is_running
 
 
-def test_event_producer_stop():
+def test_event_producer_stop(mocker):
+    mocker.patch("swo.mpt.extensions.runtime.events.producers.OrderEventProducer.get_processing_orders", return_value=[])
     dispatcher = Dispatcher()
     dispatcher.start()
     order_event_producer = OrderEventProducer(dispatcher)
@@ -90,7 +92,8 @@ def test_event_producer_stop():
     assert not is_running
 
 
-def test_event_producer_sleep():
+def test_event_producer_sleep(mocker):
+    mocker.patch("swo.mpt.extensions.runtime.events.producers.OrderEventProducer.get_processing_orders", return_value=[])
     dispatcher = Dispatcher()
     dispatcher.start()
     order_event_producer = OrderEventProducer(dispatcher)
