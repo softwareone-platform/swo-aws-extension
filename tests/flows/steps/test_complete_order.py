@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 from mpt_extension_sdk.flows.context import (
     ORDER_TYPE_CHANGE,
@@ -35,14 +37,26 @@ def test_complete_order(
     context = InitialAWSContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
-    template = {"id": "TPL-964-112"}
+    template_data = {"id": "TPL-964-112", "name": OrderCompletedTemplateEnum.NEW_ACCOUNT_WITH_PLS}
     mocked_get_product_template_or_default = mocker.patch(
         "swo_aws_extension.flows.order.get_product_template_or_default",
-        return_value=template,
+        return_value=template_data,
     )
+
+    def dummy_complete_order(
+        _client,
+        _order_id,
+        template,
+        parameters,
+    ):
+        new_order = copy.deepcopy(order)
+        new_order["template"] = template
+        new_order["parameters"] = parameters
+        return new_order
+
     mocked_complete_order = mocker.patch(
         "swo_aws_extension.flows.steps.complete_order.complete_order",
-        return_value=order,
+        side_effect=dummy_complete_order,
     )
 
     complete_order = CompleteOrderStep()
@@ -57,8 +71,8 @@ def test_complete_order(
     mocked_complete_order.assert_called_once_with(
         mpt_client_mock,
         context.order_id,
-        template=template,
         parameters=context.order["parameters"],
+        template=template_data,
     )
 
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
@@ -214,6 +228,13 @@ def test_complete_change_order(
     context = ChangeContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
+
+    template = {"id": "TPL-964-112", "name": OrderCompletedTemplateEnum.CHANGE}
+    mocker.patch(
+        "swo_aws_extension.flows.order.get_product_template_or_default",
+        return_value=template,
+    )
+
     mocked_get_product_template_or_default = mocker.patch(
         "swo_aws_extension.flows.order.get_product_template_or_default",
         return_value={"id": "TPL-964-112"},

@@ -172,6 +172,11 @@ def test_fulfill_terminate_account_flow(
         "swo_aws_extension.flows.steps.complete_order.complete_order",
         return_value=order_close_account,
     )
+    template = {"id": "TPL-964-112", "name": "template-name"}
+    mocker.patch(
+        "swo_aws_extension.flows.order.get_product_template_or_default",
+        return_value=template,
+    )
 
     # Creates tickets and awaits completion
     fulfill_order(mpt_client, context)

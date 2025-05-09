@@ -34,6 +34,63 @@ def is_partner_led_support_enabled(order):
     return get_support_type(order) == SupportTypesEnum.PARTNER_LED_SUPPORT
 
 
+def set_template(order, template):
+    updated_order = copy.deepcopy(order)
+    updated_order["template"] = template
+    return updated_order
+
+
+def switch_order_to_query(client, order, buyer, template_name=None):
+    """
+    Switches the status of an MPT order to 'query' and resetting due date and
+    initiating a query order process.
+
+    Args:
+        client (MPTClient): An instance of the Marketplace platform client.
+        order (dict): The MPT order to be switched to 'query' status.
+        buyer (dict): The buyer of the order.
+        template_name: The name of the template to use, if None -> use default
+
+    Returns:
+        dict: The updated order.
+    """
+    template = get_product_template_or_default(
+        client,
+        order["product"]["id"],
+        MPT_ORDER_STATUS_QUERYING,
+        name=template_name,
+    )
+    kwargs = {
+        "parameters": order["parameters"],
+        "template": template,
+    }
+    if order.get("error"):
+        kwargs["error"] = order["error"]
+
+    order = query_order(
+        client,
+        order["id"],
+        **kwargs,
+    )
+    send_email_notification(client, order, buyer)
+    return order
+
+
+def reset_order_error(order):
+    """
+    Reset the error field of an order
+
+    Args:
+        order: The order to reset the error field of
+
+    Returns: The updated order
+
+    """
+    updated_order = copy.deepcopy(order)
+    updated_order["error"] = None
+    return updated_order
+
+
 @dataclass
 class InitialAWSContext(BaseContext):
     validation_succeeded: bool = True
@@ -114,7 +171,15 @@ class InitialAWSContext(BaseContext):
             status,
             template_name,
         )
-        self.order["template"] = template
+        found_template_name = template.get("name")
+        if found_template_name != template_name:
+            logger.error(
+                f"{self.order_id} - Template error - Template template_name=`{template_name}` "
+                f"not found for status `{status}`. "
+                f"Using template_name=`{found_template_name}` instead. "
+                f"Please check the template name and template setup in the MPT platform."
+            )
+        self.order = set_template(self.order, template)
         logger.info(f"{self.order_id} - Action - Updated template to {template_name}")
         return self.order["template"]
 
@@ -176,57 +241,6 @@ class PurchaseContext(InitialAWSContext):
 
     def __str__(self):
         return f"PurchaseContext: {self.order_id} {self.order_type} - MPA: {self.mpa_account}"
-
-
-def switch_order_to_query(client, order, buyer, template_name=None):
-    """
-    Switches the status of an MPT order to 'query' and resetting due date and
-    initiating a query order process.
-
-    Args:
-        client (MPTClient): An instance of the Marketplace platform client.
-        order (dict): The MPT order to be switched to 'query' status.
-        buyer (dict): The buyer of the order.
-        template_name: The name of the template to use, if None -> use default
-
-    Returns:
-        dict: The updated order.
-    """
-    template = get_product_template_or_default(
-        client,
-        order["product"]["id"],
-        MPT_ORDER_STATUS_QUERYING,
-        name=template_name,
-    )
-    kwargs = {
-        "parameters": order["parameters"],
-        "template": template,
-    }
-    if order.get("error"):
-        kwargs["error"] = order["error"]
-
-    order = query_order(
-        client,
-        order["id"],
-        **kwargs,
-    )
-    send_email_notification(client, order, buyer)
-    return order
-
-
-def reset_order_error(order):
-    """
-    Reset the error field of an order
-
-    Args:
-        order: The order to reset the error field of
-
-    Returns: The updated order
-
-    """
-    updated_order = copy.deepcopy(order)
-    updated_order["error"] = None
-    return updated_order
 
 
 class TerminateContext(InitialAWSContext):

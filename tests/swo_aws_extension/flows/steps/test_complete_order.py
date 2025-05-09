@@ -31,9 +31,7 @@ def next_step():
 
 def test_complete_order_success(mocker, client, context, next_step):
     step = CompleteOrderStep()
-    mock_get_template = mocker.patch(
-        "swo_aws_extension.flows.order.get_product_template_or_default"
-    )
+
     mock_complete_order = mocker.patch(
         "swo_aws_extension.flows.steps.complete_order.complete_order"
     )
@@ -42,7 +40,11 @@ def test_complete_order_success(mocker, client, context, next_step):
     )
     mocker.patch("swo_aws_extension.flows.steps.complete_order.logger")
 
-    mock_get_template.return_value = "template"
+    template_data = {"id": "TPL-964-112", "name": OrderCompletedTemplateEnum.NEW_ACCOUNT_WITH_PLS}
+    mock_get_template = mocker.patch(
+        "swo_aws_extension.flows.order.get_product_template_or_default",
+        return_value=template_data,
+    )
     mock_complete_order.return_value = context.order
 
     step(client, context, next_step)
@@ -56,7 +58,7 @@ def test_complete_order_success(mocker, client, context, next_step):
 
     expected_parameters = context.order["parameters"]
     mock_complete_order.assert_called_once_with(
-        client, context.order_id, template="template", parameters=expected_parameters
+        client, context.order_id, template=template_data, parameters=expected_parameters
     )
     mock_send_email.assert_called_once_with(client, context.order, context.buyer)
     next_step.assert_called_once_with(client, context)
