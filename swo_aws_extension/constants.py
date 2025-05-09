@@ -246,4 +246,4 @@ class OrderQueryingTemplateEnum(StrEnum):
     TRANSFER_AWAITING_INVITATIONS = "Querying - awaiting invitations acceptance"
 
 
-ORDER_DEFAULT_TEMPLATE = OrderProcessingTemplateEnum.TRANSFER_WITH_ORG_TICKET_CREATED
+ORDER_DEFAULT_PROCESSING_TEMPLATE = "Order processing"
