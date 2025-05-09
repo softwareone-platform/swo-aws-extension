@@ -53,8 +53,8 @@ class SetupContext(Step):
         if context.template_name != ORDER_DEFAULT_TEMPLATE:
             logger.info(
                 f"{context.order_id} - Skip - Setup template: Template is not default. "
-                f"Current template: {context.template_name}, "
-                f"expected template: {ORDER_DEFAULT_TEMPLATE}"
+                f"Current template: `{context.template_name}`, "
+                f"expected template: `{ORDER_DEFAULT_TEMPLATE}`"
             )
             return
 

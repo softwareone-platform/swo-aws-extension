@@ -82,6 +82,12 @@ def test_create_transfer_request_ticket_with_organization_step_creates_ticket(
         "swo_aws_extension.flows.steps.service_crm_steps.update_order",
     )
 
+    template = {"id": "TPL-964-112", "name": "template-name"}
+    mocker.patch(
+        "swo_aws_extension.flows.order.get_product_template_or_default",
+        return_value=template,
+    )
+
     step = CreateTransferRequestTicketWithOrganizationStep()
     step(mpt_client_mock, context, next_step_mock)
 
