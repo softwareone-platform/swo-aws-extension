@@ -20,6 +20,7 @@ class OrderParametersEnum(StrEnum):
     TRANSFER_TYPE = "transferType"
     CONTACT = "contact"
     MASTER_PAYER_ID = "masterPayerId"
+    CRM_TERMINATION_TICKET_ID = "crmTerminationTicketId"
 
 
 class ChangeOrderParametersEnum(StrEnum):
@@ -34,7 +35,6 @@ class FulfillmentParametersEnum(StrEnum):
     ACCOUNT_NAME = "accountName"
     CRM_ONBOARD_TICKET_ID = "crmOnboardTicketId"
     CRM_KEEPER_TICKET_ID = "crmKeeperTicketId"
-    CRM_TERMINATION_TICKET_ID = "crmTerminationTicketId"
     CRM_CCP_TICKET_ID = "crmCCPTicketId"
     CRM_TRANSFER_ORGANIZATION_TICKET_ID = "crmTransferOrganizationTicketId"
     CCP_ENGAGEMENT_ID = "ccpEngagementId"
@@ -416,9 +416,9 @@ def get_crm_termination_ticket_id(order):
     Returns:
         str: The CRM ticket ID provided by client or None if it isn't set.
     """
-    param = get_fulfillment_parameter(
+    param = get_ordering_parameter(
         order,
-        FulfillmentParametersEnum.CRM_TERMINATION_TICKET_ID,
+        OrderParametersEnum.CRM_TERMINATION_TICKET_ID,
     )
     return param.get("value", None)
 
@@ -435,9 +435,9 @@ def set_crm_termination_ticket_id(order, crm_ticket_id):
         dict: The order updated.
     """
     updated_order = copy.deepcopy(order)
-    param = get_fulfillment_parameter(
+    param = get_ordering_parameter(
         updated_order,
-        FulfillmentParametersEnum.CRM_TERMINATION_TICKET_ID,
+        OrderParametersEnum.CRM_TERMINATION_TICKET_ID,
     )
     param["value"] = crm_ticket_id
     return updated_order
