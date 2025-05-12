@@ -23,10 +23,10 @@ from swo_aws_extension.flows.steps import (
     SendInvitationLinksStep,
     SetupAgreementIdInAccountTagsStep,
     SetupChangeContext,
-    SetupContext,
     SetupContextPurchaseTransferWithOrganizationStep,
     SetupContextPurchaseTransferWithoutOrganizationStep,
     SetupPurchaseContext,
+    SetupTerminateContextStep,
     SynchronizeAgreementSubscriptionsStep,
     ValidatePurchaseTransferWithoutOrganizationStep,
 )
@@ -99,7 +99,7 @@ change_order = Pipeline(
 )
 
 terminate = Pipeline(
-    SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    SetupTerminateContextStep(config, SWO_EXTENSION_MANAGEMENT_ROLE),
     CreateTerminationServiceRequestStep(),
     AwaitTerminationServiceRequestStep(),
     CompleteTerminationOrderStep(),

@@ -1,4 +1,6 @@
+import logging
 from dataclasses import dataclass
+from json import JSONDecodeError
 from urllib.parse import urljoin
 
 from requests import Session
@@ -11,6 +13,8 @@ from swo_aws_extension.constants import (
     CRM_SERVICE_TYPE,
     CRM_SUB_SERVICE,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ServiceCRMException(Exception):
@@ -100,7 +104,14 @@ class CRMServiceClient(Session):
             headers=self._prepare_headers(order_id),
         )
         response.raise_for_status()
-        return response.json()
+        try:
+            return response.json()
+        except JSONDecodeError:
+            logger.error(
+                f"JSONDecodeError - Malformed response from ServiceNow CRM during service"
+                f" request. Status code: {response.status_code} - {response.content}"
+            )
+            raise
 
     def get_service_requests(self, order_id, service_request_id: str):
         response = self.get(
