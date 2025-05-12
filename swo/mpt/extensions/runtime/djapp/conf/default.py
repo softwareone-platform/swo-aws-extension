@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+import json
 import os
 from pathlib import Path
 
@@ -206,7 +207,6 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 MPT_API_BASE_URL = os.getenv("MPT_API_BASE_URL", "http://localhost:8000")
 MPT_API_TOKEN = os.getenv("MPT_API_TOKEN", "change-me!")
-MPT_API_TOKEN_OPERATIONS = os.getenv("MPT_API_TOKEN_OPERATIONS", "change-me!")
 MPT_PRODUCTS_IDS = os.getenv("MPT_PRODUCTS_IDS", "PRD-1111-1111")
 MPT_PORTAL_BASE_URL = os.getenv("MPT_PORTAL_BASE_URL", "https://portal.s1.show")
 MPT_KEY_VAULT_NAME = os.getenv("MPT_KEY_VAULT_NAME", "change-me!")
@@ -222,4 +222,8 @@ EXTENSION_CONFIG = {
 MPT_SETUP_CONTEXTS_FUNC = os.getenv(
     "MPT_SETUP_CONTEXTS_FUNC",
     "mpt_extension_sdk.runtime.events.utils.setup_contexts",
+)
+
+MPT_NOTIFY_CATEGORIES = json.loads(
+    os.getenv("MPT_NOTIFY_CATEGORIES", '{"ORDERS": "NTC-0000-0006"}')
 )
