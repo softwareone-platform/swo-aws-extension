@@ -14,7 +14,7 @@ from swo_ccp_client.client import CCPClient
 def test_get_ccp_access_token(ccp_client, config, mock_key_vault_secret_value):
     with patch("swo_ccp_client.client.get_openid_token") as mock_get_token:
         mock_get_token.return_value = {"access_token": "test_access_token"}
-        token = ccp_client.get_ccp_access_token()
+        token = ccp_client.get_ccp_access_token("oauth_scope")
         assert token == "test_access_token"
         mock_get_token.assert_called_once_with(
             endpoint=config.ccp_oauth_url,
@@ -25,7 +25,7 @@ def test_get_ccp_access_token(ccp_client, config, mock_key_vault_secret_value):
 
 
 def test_get_ccp_access_token_with_no_secret(mocker, ccp_client_no_secret, config):
-    token = ccp_client_no_secret.get_ccp_access_token()
+    token = ccp_client_no_secret.get_ccp_access_token("scope")
     assert token is None
 
 
@@ -39,7 +39,7 @@ def test_get_ccp_access_token_with_no_access_token(
     with patch("swo_ccp_client.client.get_openid_token") as mock_get_token:
         mock_get_token.return_value = {}
         mocked_send_error = mocker.patch("swo_ccp_client.client.send_error")
-        token = ccp_client.get_ccp_access_token()
+        token = ccp_client.get_ccp_access_token("oauth_scope")
         assert token is None
         mock_get_token.assert_called_once_with(
             endpoint=config.ccp_oauth_url,

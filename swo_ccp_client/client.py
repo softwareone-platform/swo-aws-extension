@@ -27,7 +27,7 @@ class CCPClient(Session):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.access_token = self.get_ccp_access_token()
+        self.access_token = self.get_ccp_access_token(self.config.ccp_oauth_scope)
         retries = Retry(
             total=5,
             backoff_factor=0.1,
@@ -47,7 +47,7 @@ class CCPClient(Session):
         base_url = self.config.ccp_api_base_url
         self.base_url = f"{base_url}/" if base_url[-1] != "/" else base_url
 
-    def get_ccp_access_token(self):
+    def get_ccp_access_token(self, scope):
         client_secret = self.get_secret_from_key_vault()
         if not client_secret:
             return None
@@ -55,7 +55,7 @@ class CCPClient(Session):
             endpoint=self.config.ccp_oauth_url,
             client_id=self.config.ccp_client_id,
             client_secret=client_secret,
-            scope=self.config.ccp_oauth_scope,
+            scope=scope,
         )
         access_token = response.get("access_token", None)
         if not access_token:
@@ -112,7 +112,7 @@ class CCPClient(Session):
 
         :return: The new secret if successful, None otherwise.
         """
-        token = self.get_ccp_access_token()
+        token = self.get_ccp_access_token(self.config.ccp_oauth_credentials_scope)
         if not token:
             return None
         logger.info("Access token retrieved")

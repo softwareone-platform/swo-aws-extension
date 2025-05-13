@@ -61,6 +61,13 @@ class Config:
         return settings.EXTENSION_CONFIG["CCP_OAUTH_SCOPE"]
 
     @property
+    def ccp_oauth_credentials_scope(self) -> str:
+        """
+        Get the scope for the CCP OAuth.
+        """
+        return settings.EXTENSION_CONFIG["CCP_OAUTH_CREDENTIALS_SCOPE"]
+
+    @property
     def minimum_mpa_threshold(self) -> int:
         """
         Get the minimum MPA threshold.
