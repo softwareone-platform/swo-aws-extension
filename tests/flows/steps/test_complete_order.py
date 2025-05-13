@@ -1,5 +1,3 @@
-import copy
-
 import pytest
 from mpt_extension_sdk.flows.context import (
     ORDER_TYPE_CHANGE,
@@ -16,7 +14,6 @@ from swo_aws_extension.constants import (
     TransferTypesEnum,
 )
 from swo_aws_extension.flows.order import (
-    MPT_ORDER_STATUS_COMPLETED,
     ChangeContext,
     InitialAWSContext,
 )
@@ -25,10 +22,16 @@ from swo_aws_extension.flows.steps import (
     CompleteOrderStep,
     CompletePurchaseOrderStep,
 )
+from swo_aws_extension.flows.template import TemplateNameManager
 
 
 def test_complete_order(
-    mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
+    mocker,
+    order_factory,
+    config,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    mock_switch_order_status_to_complete,
 ):
     order = order_factory(fulfillment_parameters=fulfillment_parameters_factory(phase=""))
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -37,49 +40,24 @@ def test_complete_order(
     context = InitialAWSContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
-    template_data = {"id": "TPL-964-112", "name": OrderCompletedTemplateEnum.NEW_ACCOUNT_WITH_PLS}
-    mocked_get_product_template_or_default = mocker.patch(
-        "swo_aws_extension.flows.order.get_product_template_or_default",
-        return_value=template_data,
-    )
-
-    def dummy_complete_order(
-        _client,
-        _order_id,
-        template,
-        parameters,
-    ):
-        new_order = copy.deepcopy(order)
-        new_order["template"] = template
-        new_order["parameters"] = parameters
-        return new_order
-
-    mocked_complete_order = mocker.patch(
-        "swo_aws_extension.flows.steps.complete_order.complete_order",
-        side_effect=dummy_complete_order,
-    )
 
     complete_order = CompleteOrderStep()
     complete_order(mpt_client_mock, context, next_step_mock)
 
-    mocked_get_product_template_or_default.assert_called_once_with(
+    mock_switch_order_status_to_complete.assert_called_once_with(
         mpt_client_mock,
-        "PRD-1111-1111",
-        "Completed",
         OrderCompletedTemplateEnum.NEW_ACCOUNT_WITH_PLS,
     )
-    mocked_complete_order.assert_called_once_with(
-        mpt_client_mock,
-        context.order_id,
-        parameters=context.order["parameters"],
-        template=template_data,
-    )
-
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
 
 
 def test_complete_purchase_order_phase(
-    mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
+    mocker,
+    order_factory,
+    config,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    mock_switch_order_status_to_complete,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED)
@@ -90,30 +68,12 @@ def test_complete_purchase_order_phase(
     context = InitialAWSContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
-    template_data = {"id": "TPL-964-112", "name": "template-name"}
-
-    def update_template_side_effect(client, status, template):
-        context.order["template"] = template_data
-
-    context.update_template = mocker.Mock(side_effect=update_template_side_effect)
-    mocked_complete_order = mocker.patch(
-        "swo_aws_extension.flows.steps.complete_order.complete_order",
-        return_value=order,
-    )
-
     complete_order = CompletePurchaseOrderStep()
     complete_order(mpt_client_mock, context, next_step_mock)
 
-    context.update_template.assert_called_once_with(
+    mock_switch_order_status_to_complete.assert_called_once_with(
         mpt_client_mock,
-        "Completed",
         OrderCompletedTemplateEnum.NEW_ACCOUNT_WITH_PLS,
-    )
-    mocked_complete_order.assert_called_once_with(
-        mpt_client_mock,
-        context.order_id,
-        template=template_data,
-        parameters=context.order["parameters"],
     )
 
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
@@ -203,7 +163,7 @@ def test_completed_template_by_order(
     order_factory,
     order_parameters_factory,
 ):
-    order_new_account = order_factory(
+    order = order_factory(
         order_type=order_type,
         order_parameters=order_parameters_factory(
             account_type=account_type,
@@ -211,12 +171,17 @@ def test_completed_template_by_order(
             transfer_type=transfer_type,
         ),
     )
-    step = CompleteOrderStep()
-    assert step.get_template_name(InitialAWSContext(order=order_new_account)) == expected_template
+    context = InitialAWSContext.from_order_data(order)
+    assert TemplateNameManager.complete(context) == expected_template
 
 
 def test_complete_change_order(
-    mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
+    mocker,
+    order_factory,
+    config,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    mock_switch_order_status_to_complete,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=""),
@@ -229,35 +194,10 @@ def test_complete_change_order(
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
-    template = {"id": "TPL-964-112", "name": OrderCompletedTemplateEnum.CHANGE}
-    mocker.patch(
-        "swo_aws_extension.flows.order.get_product_template_or_default",
-        return_value=template,
-    )
-
-    mocked_get_product_template_or_default = mocker.patch(
-        "swo_aws_extension.flows.order.get_product_template_or_default",
-        return_value={"id": "TPL-964-112"},
-    )
-    mocked_complete_order = mocker.patch(
-        "swo_aws_extension.flows.steps.complete_order.complete_order",
-        return_value=order,
-    )
-
     complete_order = CompleteChangeOrderStep()
     complete_order(mpt_client_mock, context, next_step_mock)
-
-    mocked_get_product_template_or_default.assert_called_once_with(
-        mpt_client_mock,
-        "PRD-1111-1111",
-        MPT_ORDER_STATUS_COMPLETED,
-        OrderCompletedTemplateEnum.CHANGE,
-    )
-    mocked_complete_order.assert_called_once_with(
-        mpt_client_mock,
-        context.order_id,
-        template={"id": "TPL-964-112"},
-        parameters=context.order["parameters"],
+    mock_switch_order_status_to_complete.assert_called_once_with(
+        mpt_client_mock, OrderCompletedTemplateEnum.CHANGE
     )
 
     next_step_mock.assert_called_once_with(mpt_client_mock, context)

@@ -26,7 +26,6 @@ from swo_aws_extension.constants import (
 )
 from swo_aws_extension.crm_service_client.config import get_service_client
 from swo_aws_extension.flows.order import (
-    MPT_ORDER_STATUS_PROCESSING,
     InitialAWSContext,
     PurchaseContext,
 )
@@ -223,16 +222,9 @@ class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
             f"with id={crm_ticket_id}"
         )
         context.order = set_crm_transfer_organization_ticket_id(context.order, crm_ticket_id)
-        context.update_template(
+        context.update_processing_template(
             client,
-            MPT_ORDER_STATUS_PROCESSING,
             OrderProcessingTemplateEnum.TRANSFER_WITH_ORG_TICKET_CREATED,
-        )
-        update_order(
-            client,
-            context.order_id,
-            parameters=context.order["parameters"],
-            template=context.template,
         )
         logger.info(
             f"{context.order_id} - Action - Created transfer service request ticket with "

@@ -8,18 +8,16 @@ from swo_aws_extension.constants import (
     TRANSFER_ACCOUNT_INVITATION_FOR_GENERIC_STATE,
     TRANSFER_ACCOUNT_INVITATION_NOTE,
     AwsHandshakeStateEnum,
+    OrderProcessingTemplateEnum,
     OrderQueryingTemplateEnum,
     PhasesEnum,
     StateMessageError,
 )
 from swo_aws_extension.flows.error import ERR_AWAITING_INVITATION_RESPONSE
 from swo_aws_extension.flows.order import (
-    MPT_ORDER_STATUS_PROCESSING,
     MPT_ORDER_STATUS_QUERYING,
     PurchaseContext,
-    switch_order_to_query,
 )
-from swo_aws_extension.flows.template import TemplateNameManager
 from swo_aws_extension.parameters import (
     OrderParametersEnum,
     get_phase,
@@ -239,11 +237,12 @@ class AwaitInvitationLinksStep(Step):
         :param context: The purchase context.
         :param next_step: The next step in the pipeline.
         """
-        if get_phase(context.order) != PhasesEnum.CHECK_INVITATION_LINK:
+        phase = get_phase(context.order)
+        if phase != PhasesEnum.CHECK_INVITATION_LINK:
             logger.info(
                 f"{context.order_id} - Skip - Reason: Expecting phase in"
                 f" {PhasesEnum.CHECK_INVITATION_LINK}, current "
-                f"phase={get_phase(context.order)}"
+                f"phase={phase}"
             )
             next_step(client, context)
             return
@@ -271,23 +270,13 @@ class AwaitInvitationLinksStep(Step):
                 context.order, ignore=parameter_ids_with_errors
             )
             if context.order_status != MPT_ORDER_STATUS_QUERYING:
-                switch_order_to_query(
-                    client,
-                    context.order,
-                    context.buyer,
-                    template_name=OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS,
+                context.switch_order_status_to_query(
+                    client, OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS
                 )
             else:
-                context.update_template(
+                context.update_processing_template(
                     client,
-                    MPT_ORDER_STATUS_QUERYING,
                     OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS,
-                )
-                update_order(
-                    client,
-                    context.order_id,
-                    parameters=context.order["parameters"],
-                    template=context.template,
                 )
             logger.info(
                 f"{context.order_id} - Querying - Awaiting account invitations to be accepted: "
@@ -296,13 +285,10 @@ class AwaitInvitationLinksStep(Step):
             return
 
         context.order = set_phase(context.order, PhasesEnum.CREATE_SUBSCRIPTIONS)
-        template_name = TemplateNameManager.processing(context)
-        context.update_template(client, MPT_ORDER_STATUS_PROCESSING, template_name)
-        context.order = update_order(
-            client,
-            context.order_id,
-            parameters=context.order["parameters"],
-            template=context.template,
-        )
+        template_name = OrderProcessingTemplateEnum.TRANSFER_WITH_ORG_TICKET_CREATED
+        if context.order_status == MPT_ORDER_STATUS_QUERYING:
+            context.switch_order_status_to_process(client, template_name)
+        else:
+            context.update_processing_template(client, template_name)
         logger.info(f"{context.order_id} - Success - Invitation links completed.")
         next_step(client, context)

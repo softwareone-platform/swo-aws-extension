@@ -3,7 +3,13 @@ import logging
 from dataclasses import dataclass
 
 from mpt_extension_sdk.flows.context import Context as BaseContext
-from mpt_extension_sdk.mpt_http.mpt import get_product_template_or_default, query_order
+from mpt_extension_sdk.mpt_http.mpt import (
+    complete_order,
+    get_product_template_or_default,
+    query_order,
+    update_order,
+)
+from mpt_extension_sdk.mpt_http.wrap_http_error import wrap_mpt_http_error
 from pyairtable.orm import Model
 
 from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
@@ -40,40 +46,37 @@ def set_template(order, template):
     return updated_order
 
 
-def switch_order_to_query(client, order, buyer, template_name=None):
+class OrderStatusChangeException(RuntimeError):
     """
-    Switches the status of an MPT order to 'query' and resetting due date and
-    initiating a query order process.
+    Exception raised when the order status cannot be changed.
+    """
 
+    def __init__(self, target_status, current_status):
+        message = (
+            f"Order is already in `{current_status}` status. "
+            f"Unable to switch and order to `{target_status}` "
+            f"when it is in `{current_status}` status."
+        )
+        super().__init__(message)
+
+
+@wrap_mpt_http_error
+def process_order(client, order_id, **kwargs):
+    """
+    Update the order status to PROCESS
     Args:
-        client (MPTClient): An instance of the Marketplace platform client.
-        order (dict): The MPT order to be switched to 'query' status.
-        buyer (dict): The buyer of the order.
-        template_name: The name of the template to use, if None -> use default
+        client (MPTClient): The MPT client instance.
+        order_id (str): The ID of the order to process.
+        **kwargs: Additional parameters to pass to the order processing.
 
-    Returns:
-        dict: The updated order.
+    TODO: Move to SDK in v5
     """
-    template = get_product_template_or_default(
-        client,
-        order["product"]["id"],
-        MPT_ORDER_STATUS_QUERYING,
-        name=template_name,
+    response = client.post(
+        f"/commerce/orders/{order_id}/process",
+        json=kwargs,
     )
-    kwargs = {
-        "parameters": order["parameters"],
-        "template": template,
-    }
-    if order.get("error"):
-        kwargs["error"] = order["error"]
-
-    order = query_order(
-        client,
-        order["id"],
-        **kwargs,
-    )
-    send_email_notification(client, order, buyer)
-    return order
+    response.raise_for_status()
+    return response.json()
 
 
 def reset_order_error(order):
@@ -161,7 +164,7 @@ class InitialAWSContext(BaseContext):
     def template(self):
         return self.order.get("template")
 
-    def update_template(self, client, status, template_name):
+    def _update_template(self, client, status, template_name):
         """
         Update the template name of the order
         """
@@ -182,6 +185,102 @@ class InitialAWSContext(BaseContext):
         self.order = set_template(self.order, template)
         logger.info(f"{self.order_id} - Action - Updated template to {template_name}")
         return self.order["template"]
+
+    def update_processing_template(self, client, template_name):
+        """
+        Update the order parameters and template from a template name
+
+        Requires the order to be in processing status and the parameter to be a processing template
+
+        Args:
+            client (MPTClient): An instance of the Marketplace platform client.
+            template_name (str): The name of the template to use.
+
+        """
+        if self.order_status != MPT_ORDER_STATUS_PROCESSING:
+            raise RuntimeError(
+                "Order is not in processing status. "
+                f"Unable to set a processing template with an order in status={self.order_status}."
+            )
+
+        self._update_template(client, MPT_ORDER_STATUS_PROCESSING, template_name)
+        self.order = update_order(
+            client, self.order_id, parameters=self.order["parameters"], template=self.template
+        )
+        send_email_notification(client, self.order, self.buyer)
+
+    def switch_order_status_to_process(self, client, template_name=None):
+        """
+        Switch the order status to PROCESS, change the template and update the order
+
+        Args:
+            client (MPTClient): An instance of the Marketplace platform client.
+            template_name (str): The name of the template to use.
+        """
+        if self.order_status == MPT_ORDER_STATUS_PROCESSING:
+            raise OrderStatusChangeException(
+                current_status=self.order_status, target_status=MPT_ORDER_STATUS_PROCESSING
+            )
+
+        kwargs = {}
+        self._update_template(client, MPT_ORDER_STATUS_PROCESSING, template_name)
+        kwargs["template"] = self.template
+        kwargs["parameters"] = self.order["parameters"]
+
+        self.order = process_order(client, self.order_id, **kwargs)
+        send_email_notification(client, self.order, self.buyer)
+        logger.info(f"{self.order_id} - Action - Set order to processing")
+        return self.order
+
+    def switch_order_status_to_query(self, client, template_name=None):
+        """
+        Switches the status of an MPT order to 'query' and resetting due date and
+        initiating a query order process.
+
+        Args:
+            client (MPTClient): An instance of the Marketplace platform client.
+            order (dict): The MPT order to be switched to 'query' status.
+            buyer (dict): The buyer of the order.
+            template_name: The name of the template to use, if None -> use default
+
+        Returns:
+            dict: The updated order.
+        """
+
+        if self.order_status == MPT_ORDER_STATUS_QUERYING:
+            raise OrderStatusChangeException(
+                current_status=self.order_status, target_status=MPT_ORDER_STATUS_QUERYING
+            )
+
+        self._update_template(client, MPT_ORDER_STATUS_QUERYING, template_name)
+        kwargs = {
+            "parameters": self.order["parameters"],
+            "template": self.template,
+        }
+        if self.order.get("error"):
+            kwargs["error"] = self.order["error"]
+
+        self.order = query_order(
+            client,
+            self.order_id,
+            **kwargs,
+        )
+        send_email_notification(client, self.order, self.buyer)
+
+    def switch_order_status_to_complete(self, client, template_name=None):
+        if self.order_status == MPT_ORDER_STATUS_COMPLETED:
+            raise OrderStatusChangeException(
+                current_status=self.order_status, target_status=MPT_ORDER_STATUS_COMPLETED
+            )
+        kwargs = {}
+        self._update_template(client, MPT_ORDER_STATUS_COMPLETED, template_name)
+        kwargs["template"] = self.template
+        kwargs["parameters"] = self.order["parameters"]
+
+        self.order = complete_order(client, self.order_id, **kwargs)
+        send_email_notification(client, self.order, self.buyer)
+        logger.info(f"{self.order_id} - Action - Set order to completed")
+        return self.order
 
 
 @dataclass

@@ -145,6 +145,7 @@ def test_fulfill_terminate_account_flow(
     data_aws_account_factory,
     service_request_ticket_factory,
     service_client,
+    mock_switch_order_status_to_complete,
 ):
     _, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.close_account.return_value = {}
@@ -167,10 +168,6 @@ def test_fulfill_terminate_account_flow(
     mocker.patch(
         "swo_aws_extension.flows.order.get_product_template_or_default",
         return_value="template",
-    )
-    complete_order_mock = mocker.patch(
-        "swo_aws_extension.flows.steps.complete_order.complete_order",
-        return_value=order_close_account,
     )
     template = {"id": "TPL-964-112", "name": "template-name"}
     mocker.patch(
@@ -207,10 +204,10 @@ def test_fulfill_terminate_account_flow(
     service_client.get_service_requests.return_value = service_request_ticket_factory(
         ticket_id="1234-5678", state=CRM_TICKET_RESOLVED_STATE
     )
-    complete_order_mock.assert_not_called()
+    mock_switch_order_status_to_complete.assert_not_called()
     # Next run of the pipeline should finish the order
     fulfill_order(mpt_client, context)
-    complete_order_mock.assert_called_once()
+    mock_switch_order_status_to_complete.assert_called_once()
 
 
 @pytest.fixture()

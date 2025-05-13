@@ -2,7 +2,11 @@ import pytest
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from requests import Response
 
-from swo_aws_extension.constants import CRM_TICKET_RESOLVED_STATE, TransferTypesEnum
+from swo_aws_extension.constants import (
+    CRM_TICKET_RESOLVED_STATE,
+    OrderProcessingTemplateEnum,
+    TransferTypesEnum,
+)
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.service_crm_steps import (
     AwaitTransferRequestTicketWithOrganizationStep,
@@ -67,6 +71,7 @@ def test_create_transfer_request_ticket_with_organization_step_creates_ticket(
     mocker,
     order_transfer_with_organization,
     service_client,
+    mock_update_processing_template,
 ):
     context = PurchaseContext.from_order_data(order_transfer_with_organization)
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -78,9 +83,6 @@ def test_create_transfer_request_ticket_with_organization_step_creates_ticket(
     mpt_client_mock.get = mocker.Mock(return_value=template_response)
 
     service_client.create_service_request.return_value = {"id": "CS0004721"}
-    update_order_mock = mocker.patch(
-        "swo_aws_extension.flows.steps.service_crm_steps.update_order",
-    )
 
     template = {"id": "TPL-964-112", "name": "template-name"}
     mocker.patch(
@@ -92,7 +94,9 @@ def test_create_transfer_request_ticket_with_organization_step_creates_ticket(
     step(mpt_client_mock, context, next_step_mock)
 
     service_client.create_service_request.assert_called_once()
-    update_order_mock.assert_called_once()
+    mock_update_processing_template.assert_called_once_with(
+        mpt_client_mock, OrderProcessingTemplateEnum.TRANSFER_WITH_ORG_TICKET_CREATED
+    )
     assert get_crm_transfer_organization_ticket_id(context.order) == "CS0004721"
     next_step_mock.assert_called_once()
 

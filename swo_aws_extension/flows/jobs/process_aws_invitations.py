@@ -4,7 +4,6 @@ import requests
 from django.conf import settings
 from mpt_extension_sdk.core.utils import setup_client
 from mpt_extension_sdk.flows.pipeline import Pipeline, Step
-from mpt_extension_sdk.mpt_http.wrap_http_error import wrap_mpt_http_error
 
 from swo_aws_extension.constants import SWO_EXTENSION_MANAGEMENT_ROLE, AccountTypesEnum, PhasesEnum
 from swo_aws_extension.flows.order import PurchaseContext
@@ -28,22 +27,6 @@ class CheckInvitationLinksStep(Step):
                 f" got '{get_phase(context.order)}'"
             )
             return
-        next_step(client, context)
-
-
-class SetupOrderProcessingStep(Step):
-    @wrap_mpt_http_error
-    def process_order(self, client, order_id, **kwargs):
-        response = client.post(
-            f"/commerce/orders/{order_id}/process",
-            json=kwargs,
-        )
-        response.raise_for_status()
-        return response.json()
-
-    def __call__(self, client, context: PurchaseContext, next_step):
-        self.order = self.process_order(client, context.order_id)
-        logger.info(f"{context.order_id} - Action - Set order to processing")
         next_step(client, context)
 
 
@@ -102,7 +85,6 @@ class AWSInvitationsProcessor:
             ),
             SendInvitationLinksStep(),
             AwaitInvitationLinksStep(),
-            SetupOrderProcessingStep(),
         )
 
     def is_processable(self, context: PurchaseContext) -> bool:

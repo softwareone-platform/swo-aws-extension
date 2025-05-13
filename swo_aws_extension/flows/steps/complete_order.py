@@ -1,12 +1,10 @@
 import logging
 
 from mpt_extension_sdk.flows.pipeline import Step
-from mpt_extension_sdk.mpt_http.mpt import complete_order
 
 from swo_aws_extension.constants import PhasesEnum
-from swo_aws_extension.flows.order import MPT_ORDER_STATUS_COMPLETED, InitialAWSContext
+from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.template import TemplateNameManager
-from swo_aws_extension.notifications import send_email_notification
 from swo_aws_extension.parameters import get_phase, set_account_request_id
 
 logger = logging.getLogger(__name__)
@@ -17,19 +15,9 @@ class CompleteOrderStep(Step):
         self._complete_order(client, context)
         next_step(client, context)
 
-    def get_template_name(self, context: InitialAWSContext):
-        return TemplateNameManager.complete(context)
-
     def _complete_order(self, client, context: InitialAWSContext):
-        template_name = self.get_template_name(context)
-        context.update_template(client, MPT_ORDER_STATUS_COMPLETED, template_name)
-        context.order = complete_order(
-            client,
-            context.order_id,
-            template=context.template,
-            parameters=context.order["parameters"],
-        )
-        send_email_notification(client, context.order, context.buyer)
+        template_name = TemplateNameManager.complete(context)
+        context.switch_order_status_to_complete(client, template_name)
         logger.info(f"{context.order_id} - Completed - order has been completed successfully")
 
 

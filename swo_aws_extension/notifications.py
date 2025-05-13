@@ -172,30 +172,33 @@ def send_email_notification(client, order, buyer):
     email_notification_enabled = bool(
         settings.EXTENSION_CONFIG.get("EMAIL_NOTIFICATIONS_ENABLED", False)
     )
+    order_id = order.get("id")
 
-    if email_notification_enabled:
-        recipient = get_notifications_recipient(order, buyer)
-        if not recipient:
-            logger.warning(
-                f"Cannot send email notifications for order {order['id']}: no recipient found"
-            )
-            return
+    if not email_notification_enabled:
+        logger.info(f"{order_id} - Skip - Email notification is disabled")
+        return
 
-        context = {
-            "order": order,
-            "activation_template": md2html(get_rendered_template(client, order["id"])),
-            "api_base_url": settings.MPT_API_BASE_URL,
-            "portal_base_url": settings.MPT_PORTAL_BASE_URL,
-        }
-        subject = f"Order status update {order['id']} for {order['buyer']['name']}"
-        if order["status"] == "Querying":
-            subject = f"This order need your attention {order['id']} for {order['buyer']['name']}"
-        send_email(
-            [recipient],
-            subject,
-            "email",
-            context,
-        )
+    recipient = get_notifications_recipient(order, buyer)
+    if not recipient:
+        logger.warning(f"Cannot send email notifications for order {order_id}: no recipient found")
+        return
+
+    context = {
+        "order": order,
+        "activation_template": md2html(get_rendered_template(client, order["id"])),
+        "api_base_url": settings.MPT_API_BASE_URL,
+        "portal_base_url": settings.MPT_PORTAL_BASE_URL,
+    }
+    subject = f"Order status update {order_id} for {order['buyer']['name']}"
+    if order["status"] == "Querying":
+        subject = f"This order need your attention {order_id} for {order['buyer']['name']}"
+    send_email(
+        [recipient],
+        subject,
+        "email",
+        context,
+    )
+    logger.info(f"{order_id} - Action - Email sent to {recipient} - {subject}")
 
 
 @functools.cache
