@@ -199,3 +199,10 @@ class SetupContextPurchaseTransferWithoutOrganizationStep(SetupContext):
             context.airtable_mpa = get_mpa_account(context.mpa_account)
         logger.info(f"{context.order_id} - Next - SetupPurchaseContext completed successfully")
         next_step(client, context)
+
+
+class SetupTerminateContextStep(SetupContext):
+    def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
+        self.init_template(client, context)
+        logger.info(f"{context.order_id} - Next - SetupTerminateContextStep completed successfully")
+        next_step(client, context)

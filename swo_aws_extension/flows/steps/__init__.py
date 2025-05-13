@@ -42,6 +42,7 @@ from swo_aws_extension.flows.steps.setup_context import (
     SetupContextPurchaseTransferWithOrganizationStep,
     SetupContextPurchaseTransferWithoutOrganizationStep,
     SetupPurchaseContext,
+    SetupTerminateContextStep,
 )
 from swo_aws_extension.flows.steps.validate import ValidatePurchaseTransferWithoutOrganizationStep
 
@@ -66,6 +67,7 @@ __all__ = [
     "SetupPurchaseContext",
     "SetupContextPurchaseTransferWithOrganizationStep",
     "SetupContextPurchaseTransferWithoutOrganizationStep",
+    "SetupTerminateContextStep",
     "AssignMPA",
     "CCPOnboard",
     "AssignTransferMPAStep",
