@@ -13,7 +13,6 @@ from swo_aws_extension.flows.error import (
 from swo_aws_extension.flows.order import (
     MPT_ORDER_STATUS_QUERYING,
     PurchaseContext,
-    switch_order_to_query,
 )
 from swo_aws_extension.parameters import (
     MAX_ACCOUNT_TRANSFER,
@@ -113,7 +112,7 @@ class ValidatePurchaseTransferWithoutOrganizationStep(Step):
 
     def order_to_querying(self, client, context):
         if context.order_status != MPT_ORDER_STATUS_QUERYING:
-            switch_order_to_query(client, context.order, context.buyer)
+            context.switch_order_status_to_query(client)
         else:
             update_order(
                 client,

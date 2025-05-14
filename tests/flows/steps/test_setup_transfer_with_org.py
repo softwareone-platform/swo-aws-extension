@@ -83,7 +83,12 @@ def test_transfer_with_org_step_with_mpa(
 
 
 def test_setup_querying(
-    mocker, config, order_factory, fulfillment_parameters_factory, order_parameters_factory
+    mocker,
+    config,
+    order_factory,
+    fulfillment_parameters_factory,
+    order_parameters_factory,
+    mock_switch_order_status_to_query,
 ):
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
@@ -101,14 +106,10 @@ def test_setup_querying(
     def return_order(client, order, buyer):
         return order
 
-    switch_order_to_query_mock = mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.switch_order_to_query",
-        side_effect=return_order,
-    )
     step = SetupContextPurchaseTransferWithOrganizationStep(config, "role_name")
     context = PurchaseContext.from_order_data(order)
     step(mpt_client_mock, context, next_step_mock)
-    switch_order_to_query_mock.assert_called_once()
+    mock_switch_order_status_to_query.assert_called_once()
     next_step_mock.assert_not_called()
 
 

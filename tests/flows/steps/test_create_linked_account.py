@@ -146,6 +146,7 @@ def test_create_linked_account_phase_check_linked_account_email_already_exist(
     fulfillment_parameters_factory,
     order_parameters_factory,
     account_creation_status_factory,
+    mock_switch_order_status_to_query,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
@@ -161,27 +162,13 @@ def test_create_linked_account_phase_check_linked_account_email_already_exist(
     )
     next_step_mock = mocker.Mock()
 
-    mocked_get_product_template_or_default = mocker.patch(
-        "swo_aws_extension.flows.order.get_product_template_or_default",
-        return_value={"id": "TPL-964-112"},
-    )
-    mocked_query_order = mocker.patch("swo_aws_extension.flows.order.query_order")
-
     create_linked_account = CreateInitialLinkedAccountStep()
 
     create_linked_account(mpt_client_mock, context, next_step_mock)
 
-    mocked_get_product_template_or_default.assert_called_once_with(
+    mock_switch_order_status_to_query.assert_called_once_with(
         mpt_client_mock,
-        "PRD-1111-1111",
-        "Querying",
-        name=OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE,
-    )
-    mocked_query_order.assert_called_once_with(
-        mpt_client_mock,
-        context.order_id,
-        parameters=context.order["parameters"],
-        template={"id": "TPL-964-112"},
+        OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE,
     )
     assert context.order["parameters"]["ordering"][0]["error"] == ERR_EMAIL_ALREADY_EXIST.to_dict()
 
@@ -223,6 +210,7 @@ def test_create_linked_account_phase_empty_parameters(
     aws_client_factory,
     fulfillment_parameters_factory,
     order_parameters_factory,
+    mock_switch_order_status_to_query,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT),
@@ -234,28 +222,13 @@ def test_create_linked_account_phase_empty_parameters(
     context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
-    mocked_get_product_template_or_default = mocker.patch(
-        "swo_aws_extension.flows.order.get_product_template_or_default",
-        return_value={"id": "TPL-964-112"},
-    )
-    mocked_query_order = mocker.patch("swo_aws_extension.flows.order.query_order")
+
     create_linked_account = CreateInitialLinkedAccountStep()
 
     create_linked_account(mpt_client_mock, context, next_step_mock)
 
     next_step_mock.assert_not_called()
-    mocked_get_product_template_or_default.assert_called_once_with(
-        mpt_client_mock,
-        "PRD-1111-1111",
-        "Querying",
-        name=None,
-    )
-    mocked_query_order.assert_called_once_with(
-        mpt_client_mock,
-        context.order["id"],
-        parameters=context.order["parameters"],
-        template={"id": "TPL-964-112"},
-    )
+    mock_switch_order_status_to_query.assert_called_once_with(mpt_client_mock)
     assert context.order["parameters"]["ordering"][0]["error"] == ERR_EMAIL_EMPTY.to_dict()
     assert context.order["parameters"]["ordering"][1]["error"] == ERR_ACCOUNT_NAME_EMPTY.to_dict()
 
@@ -407,6 +380,8 @@ def test_add_linked_account_phase_check_linked_account_email_already_exist(
     fulfillment_parameters_factory,
     order_parameters_factory,
     account_creation_status_factory,
+    mock_switch_order_status_to_complete,
+    mock_switch_order_status_to_query,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
@@ -423,27 +398,13 @@ def test_add_linked_account_phase_check_linked_account_email_already_exist(
 
     next_step_mock = mocker.Mock()
 
-    mocked_get_product_template_or_default = mocker.patch(
-        "swo_aws_extension.flows.order.get_product_template_or_default",
-        return_value={"id": "TPL-964-112"},
-    )
-    mocked_query_order = mocker.patch("swo_aws_extension.flows.order.query_order")
-
     create_linked_account = AddLinkedAccountStep()
 
     create_linked_account(mpt_client_mock, context, next_step_mock)
 
-    mocked_get_product_template_or_default.assert_called_once_with(
+    mock_switch_order_status_to_query.assert_called_once_with(
         mpt_client_mock,
-        "PRD-1111-1111",
-        "Querying",
-        name=OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE,
-    )
-    mocked_query_order.assert_called_once_with(
-        mpt_client_mock,
-        context.order_id,
-        parameters=context.order["parameters"],
-        template={"id": "TPL-964-112"},
+        OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE,
     )
     assert context.order["parameters"]["ordering"][9]["error"] == ERR_EMAIL_ALREADY_EXIST.to_dict()
 
@@ -455,6 +416,7 @@ def test_add_linked_account_phase_empty_parameters(
     aws_client_factory,
     fulfillment_parameters_factory,
     order_parameters_factory,
+    mock_switch_order_status_to_query,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT),
@@ -466,27 +428,10 @@ def test_add_linked_account_phase_empty_parameters(
     context = ChangeContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
-    mocked_get_product_template_or_default = mocker.patch(
-        "swo_aws_extension.flows.order.get_product_template_or_default",
-        return_value={"id": "TPL-964-112"},
-    )
-    mocked_query_order = mocker.patch("swo_aws_extension.flows.order.query_order")
     create_linked_account = AddLinkedAccountStep()
-
     create_linked_account(mpt_client_mock, context, next_step_mock)
-
     next_step_mock.assert_not_called()
-    mocked_get_product_template_or_default.assert_called_once_with(
-        mpt_client_mock,
-        "PRD-1111-1111",
-        "Querying",
-        name=None,
-    )
-    mocked_query_order.assert_called_once_with(
-        mpt_client_mock,
-        context.order["id"],
-        parameters=context.order["parameters"],
-        template={"id": "TPL-964-112"},
-    )
+
+    mock_switch_order_status_to_query.assert_called_once_with(mpt_client_mock)
     assert context.order["parameters"]["ordering"][9]["error"] == ERR_EMAIL_EMPTY.to_dict()
     assert context.order["parameters"]["ordering"][10]["error"] == ERR_ACCOUNT_NAME_EMPTY.to_dict()

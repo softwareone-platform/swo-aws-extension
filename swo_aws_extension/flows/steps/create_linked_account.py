@@ -11,10 +11,8 @@ from swo_aws_extension.flows.error import (
     ERR_EMAIL_EMPTY,
 )
 from swo_aws_extension.flows.order import (
-    MPT_ORDER_STATUS_PROCESSING,
     ChangeContext,
     PurchaseContext,
-    switch_order_to_query,
 )
 from swo_aws_extension.flows.template import TemplateNameManager
 from swo_aws_extension.parameters import (
@@ -64,11 +62,8 @@ def manage_create_linked_account_error(client, context, param_account_name, para
         ignore_params = list_ordering_parameters_with_errors(context.order)
         ignore_params.append(param_account_name)
         context.order = set_ordering_parameters_to_readonly(context.order, ignore=ignore_params)
-        switch_order_to_query(
-            client,
-            context.order,
-            context.buyer,
-            template_name=OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE,
+        context.switch_order_status_to_query(
+            client, OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE
         )
         logger.info(
             f"{context.order_id} - Querying - Order switched to query to provide a valid email"
@@ -154,7 +149,7 @@ class CreateInitialLinkedAccountStep(Step):
             context.order = set_ordering_parameters_to_readonly(
                 context.order, ignore=parameter_ids_with_errors
             )
-            switch_order_to_query(client, context.order, context.buyer)
+            context.switch_order_status_to_query(client)
             logger.info(
                 f"{context.order_id} - Querying - Order switched to query. Invalid email or "
                 f"account name"
@@ -181,13 +176,7 @@ class AddLinkedAccountStep(Step):
             if context.account_creation_status.status == "SUCCEEDED":
                 # If we set the template to querying, we need to set it back to processing
                 template_name = TemplateNameManager.processing(context)
-                context.update_template(client, MPT_ORDER_STATUS_PROCESSING, template_name)
-                update_order(
-                    client,
-                    context.order_id,
-                    parameters=context.order["parameters"],
-                    template=context.template,
-                )
+                context.update_processing_template(client, template_name)
                 logger.info(
                     f"{context.order_id} - Completed - AWS linked account created successfully"
                 )
@@ -217,7 +206,7 @@ class AddLinkedAccountStep(Step):
             context.order = set_ordering_parameters_to_readonly(
                 context.order, ignore=parameter_ids_with_errors
             )
-            switch_order_to_query(client, context.order, context.buyer)
+            context.switch_order_status_to_query(client)
             logger.info(f"{context.order_id} - Querying - Order switched to query")
             return
 

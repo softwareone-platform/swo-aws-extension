@@ -20,7 +20,6 @@ from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.order import (
     PurchaseContext,
-    switch_order_to_query,
 )
 from swo_aws_extension.flows.validation.purchase import is_split_billing_mpa_id_valid
 from swo_aws_extension.notifications import Button, send_error
@@ -191,7 +190,7 @@ class AssignSplitBillingMPA(Step):
             context.order = set_ordering_parameters_to_readonly(
                 context.order, ignore=parameter_ids_with_errors
             )
-            switch_order_to_query(client, context.order, context.buyer)
+            context.switch_order_status_to_query(client)
             logger.error(f"{context.order_id} - Querying - MPA Invalid. Order switched to query")
             return
 

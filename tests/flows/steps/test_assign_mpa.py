@@ -327,6 +327,7 @@ def test_assign_mpa_split_billing_invalid_mpa(
     agreement_factory,
     order_parameters_factory,
     mpa_pool_factory,
+    mock_switch_order_status_to_query,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA),
@@ -343,9 +344,7 @@ def test_assign_mpa_split_billing_invalid_mpa(
     next_step_mock = mocker.Mock()
 
     mocked_update_order = mocker.patch("swo_aws_extension.flows.steps.assign_mpa.update_order")
-    mocked_switch_order = mocker.patch(
-        "swo_aws_extension.flows.steps.assign_mpa.switch_order_to_query"
-    )
+
     mocker.patch(
         "swo_aws_extension.flows.steps.assign_mpa.is_split_billing_mpa_id_valid",
         return_value=False,
@@ -360,7 +359,7 @@ def test_assign_mpa_split_billing_invalid_mpa(
     mock_client.get_caller_identity.assert_not_called()
     next_step_mock.assert_not_called()
     mocked_update_order.assert_not_called()
-    mocked_switch_order.assert_called_once()
+    mock_switch_order_status_to_query.assert_called_once()
 
 
 def test_assign_mpa_empty_country(

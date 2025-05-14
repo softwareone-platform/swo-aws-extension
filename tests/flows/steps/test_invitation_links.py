@@ -1,5 +1,6 @@
 from swo_aws_extension.aws.errors import AWSError
-from swo_aws_extension.constants import AwsHandshakeStateEnum, PhasesEnum
+from swo_aws_extension.constants import AwsHandshakeStateEnum, OrderQueryingTemplateEnum, PhasesEnum
+from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps import SendInvitationLinksStep
 from swo_aws_extension.flows.steps.invitation_links import (
     AwaitInvitationLinksStep,
@@ -323,6 +324,8 @@ def test_await_invitation_link_step_await_accepted(
     fulfillment_parameters_factory,
     aws_client_factory,
     handshake_data_factory,
+    mock_switch_order_status_to_query,
+    mock_update_processing_template,
 ):
     aws_client, mock_aws = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_aws.list_handshakes_for_organization.return_value = {
@@ -339,22 +342,23 @@ def test_await_invitation_link_step_await_accepted(
         ),
     )
 
-    mock_switch_order_to_query = mocker.patch(
-        "swo_aws_extension.flows.steps.invitation_links.switch_order_to_query",
+    mocker.patch(
+        "swo_aws_extension.flows.order.PurchaseContext.get_account_ids",
+        return_value=["111111111111", "222222222222"],
     )
-
-    context = mocker.MagicMock()
+    context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
-    context.order = order
-    context.order_id = "test-order-id"
-    context.get_account_ids.return_value = ["111111111111", "222222222222"]
     next_step = mocker.MagicMock()
+    client = mocker.MagicMock()
     step_instance = AwaitInvitationLinksStep()
     step_instance(
-        client=mocker.MagicMock(),
+        client=client,
         context=context,
         next_step=next_step,
     )
-    mock_switch_order_to_query.assert_called_once()
+    mock_switch_order_status_to_query.assert_called_once_with(
+        client, OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS
+    )
+    mock_update_processing_template.assert_not_called()
     assert get_phase(context.order) == PhasesEnum.CHECK_INVITATION_LINK
     next_step.assert_not_called()

@@ -579,8 +579,7 @@ def order_factory(
     lines_factory,
     buyer_factory,
     seller,
-    status="Processing",
-    deployment_id="",
+    template_factory,
 ):
     """
     Marketplace platform order for tests.
@@ -594,9 +593,9 @@ def order_factory(
         lines=None,
         subscriptions=None,
         external_ids=None,
-        status=status,
+        status=None,
         template=None,
-        deployment_id=deployment_id,
+        deployment_id="",
         agreement=None,
         buyer=None,
     ):
@@ -608,7 +607,6 @@ def order_factory(
             if fulfillment_parameters is None
             else fulfillment_parameters
         )
-
         lines = lines_factory(deployment_id=deployment_id) if lines is None else lines
         subscriptions = [] if subscriptions is None else subscriptions
         agreement = (
@@ -627,7 +625,7 @@ def order_factory(
                 "id": "AUT-1234-4567",
             },
             "type": order_type,
-            "status": status,
+            "status": status or "Processing",
             "clientReferenceNumber": None,
             "notes": "First order to try",
             "lines": lines,
@@ -650,8 +648,8 @@ def order_factory(
         }
         if external_ids:
             order["externalIds"] = external_ids
-        if template:
-            order["template"] = template
+
+        order["template"] = template or template_factory()
         return order
 
     return _order
@@ -1723,3 +1721,96 @@ def product_items(lines_factory):
         }
         for sku in AWS_ITEMS_SKUS
     ]
+
+
+@pytest.fixture()
+def mock_switch_order_status_to_complete(mocker):
+    return mocker.patch(
+        "swo_aws_extension.flows.order.InitialAWSContext.switch_order_status_to_complete"
+    )
+
+
+@pytest.fixture()
+def mock_switch_order_status_to_query(mocker):
+    return mocker.patch(
+        "swo_aws_extension.flows.order.InitialAWSContext.switch_order_status_to_query"
+    )
+
+
+@pytest.fixture()
+def mock_switch_order_status_to_process(mocker):
+    return mocker.patch(
+        "swo_aws_extension.flows.order.InitialAWSContext.switch_order_status_to_process"
+    )
+
+
+@pytest.fixture()
+def mock_update_processing_template(mocker):
+    return mocker.patch(
+        "swo_aws_extension.flows.order.InitialAWSContext.update_processing_template"
+    )
+
+
+@pytest.fixture()
+def template_factory():
+    sample_content = (
+        "# Sample Template\n\nUse this input box to define your message "
+        "against a given order or request type. Think about how you message "
+        "can be succinct but informative, think about the tone you would like "
+        "to use and the information that’s key for the consumer of such "
+        "information in the given context.\n\n## Formatting\n\nMarkdown allows "
+        "you to control various aspects of formatting such as:\n\n* Bullets and"
+        " numbering\n* Italics and Bold\n* Titles\n* Link embedding\n\n"
+        ""
+        "## Images or Videos\n\nYou can embed images or videos to these templates "
+        "to share richer visual information by inserting the image or video URL."
+        ""
+        "\n\n## Template Variables\n\nUse the template variables to identify"
+        " parameters you wish to embed in this template so for every recipient "
+        "of this message the parameter will be used in the given context."
+    )
+
+    def _template(
+        name=None,
+        id=None,
+        content=None,
+        type=None,
+        default=False,
+        product=None,
+    ):
+        return {
+            "id": id or "TPL-1975-5250-0018",
+            "name": name or "New Linked account",
+            "content": content or sample_content,
+            "type": type or "OrderCompleted",
+            "default": default,
+            "product": product
+            or {
+                "id": "PRD-1975-5250",
+                "name": "Amazon Web Services",
+                "externalIds": {},
+                "icon": "/v1/catalog/products/PRD-1975-5250/icon",
+                "status": "Published",
+            },
+            "audit": {
+                "created": {
+                    "at": "2025-05-08T16:52:07.136Z",
+                    "by": {"id": "USR-2037-8556", "name": "Sandra Tejerina"},
+                }
+            },
+        }
+
+    return _template
+
+
+@pytest.fixture()
+def update_order_side_effect_factory():
+    def _factory(base_order):
+        def update_order_side_effect(_client, _order_id, **kwargs):
+            new_order = copy.deepcopy(base_order)
+            new_order.update(kwargs)
+            return new_order
+
+        return update_order_side_effect
+
+    return _factory

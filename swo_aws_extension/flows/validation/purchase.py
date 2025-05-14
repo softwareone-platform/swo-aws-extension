@@ -19,12 +19,10 @@ from swo_aws_extension.flows.error import (
     ERR_TRANSFER_TYPE,
 )
 from swo_aws_extension.flows.order import (
-    MPT_ORDER_STATUS_PROCESSING,
     PurchaseContext,
     reset_order_error,
 )
 from swo_aws_extension.flows.steps.validate import is_list_of_aws_accounts
-from swo_aws_extension.flows.template import TemplateNameManager
 from swo_aws_extension.parameters import (
     OrderParametersEnum,
     get_account_email,
@@ -321,12 +319,6 @@ class InitializeItemStep(Step):
         next_step(client, context)
 
 
-class SetupProcessingTemplateStep(Step):
-    def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
-        template_name = TemplateNameManager.processing(context)
-        context.update_template(client, MPT_ORDER_STATUS_PROCESSING, template_name)
-
-
 def validate_purchase_order(client, context):
     context.order = reset_order_error(context.order)
     context.order = reset_ordering_parameters_error(context.order)
@@ -340,7 +332,6 @@ def validate_purchase_order(client, context):
         ValidatePurchaseTransferWithOrganizationStep(),
         ValidateSplitBillingStep(),
         InitializeItemStep(),
-        SetupProcessingTemplateStep(),
     )
     pipeline.run(client, context)
     return not context.validation_succeeded, context.order

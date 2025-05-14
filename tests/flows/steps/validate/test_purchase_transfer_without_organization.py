@@ -62,7 +62,9 @@ def test_is_not_transfer_without_organization(mocker, order_factory, order_param
     )
 
 
-def test_invalid_account_ids(mocker, order_factory, order_parameters_factory):
+def test_invalid_account_ids(
+    mocker, order_factory, order_parameters_factory, mock_switch_order_status_to_query
+):
     order = order_factory(
         order_parameters=order_parameters_factory(
             transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
@@ -72,16 +74,18 @@ def test_invalid_account_ids(mocker, order_factory, order_parameters_factory):
     )
     context = PurchaseContext.from_order_data(order)
     mocker.patch("swo_aws_extension.flows.steps.validate.set_ordering_parameter_error")
-    mock_to_query = mocker.patch("swo_aws_extension.flows.steps.validate.switch_order_to_query")
+
     step = ValidatePurchaseTransferWithoutOrganizationStep()
     next_step = mocker.Mock()
     client = mocker.Mock()
     step(client, context, next_step)
-    mock_to_query.assert_called_once()
+    mock_switch_order_status_to_query.assert_called_once_with(client)
     next_step.assert_not_called()
 
 
-def test_no_account_ids(mocker, order_factory, order_parameters_factory):
+def test_no_account_ids(
+    mocker, order_factory, order_parameters_factory, mock_switch_order_status_to_query
+):
     order = order_factory(
         order_parameters=order_parameters_factory(
             transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
@@ -91,16 +95,18 @@ def test_no_account_ids(mocker, order_factory, order_parameters_factory):
     )
     context = PurchaseContext.from_order_data(order)
     mocker.patch("swo_aws_extension.flows.steps.validate.set_ordering_parameter_error")
-    mock_to_query = mocker.patch("swo_aws_extension.flows.steps.validate.switch_order_to_query")
+
     step = ValidatePurchaseTransferWithoutOrganizationStep()
     next_step = mocker.Mock()
     client = mocker.Mock()
     step(client, context, next_step)
-    mock_to_query.assert_called_once()
+    mock_switch_order_status_to_query.assert_called_once_with(client)
     next_step.assert_not_called()
 
 
-def test_too_many_accounts(mocker, order_factory, order_parameters_factory):
+def test_too_many_accounts(
+    mocker, order_factory, order_parameters_factory, mock_switch_order_status_to_query
+):
     logger_mock = mocker.patch("swo_aws_extension.flows.steps.validate.logger")
     accounts = [f"{i:012}" for i in range(1, 22)]
     order = order_factory(
@@ -114,12 +120,12 @@ def test_too_many_accounts(mocker, order_factory, order_parameters_factory):
     mocker.patch(
         "swo_aws_extension.flows.steps.validate.set_ordering_parameter_error", return_value=order
     )
-    mock_to_query = mocker.patch("swo_aws_extension.flows.steps.validate.switch_order_to_query")
+
     step = ValidatePurchaseTransferWithoutOrganizationStep()
     next_step = mocker.Mock()
     client = mocker.Mock()
     step(client, context, next_step)
-    mock_to_query.assert_called_once()
+    mock_switch_order_status_to_query.assert_called_once_with(client)
     next_step.assert_not_called()
     assert logger_mock.info.mock_calls[0] == mocker.call(
         "ORD-0792-5000-2253-4210 - Querying - Transfer without organization has too many accounts"

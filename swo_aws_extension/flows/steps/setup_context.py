@@ -12,11 +12,9 @@ from swo_aws_extension.constants import (
 )
 from swo_aws_extension.flows.error import ERR_TRANSFER_WITH_ORG_MISSING_MPA_ID
 from swo_aws_extension.flows.order import (
-    MPT_ORDER_STATUS_PROCESSING,
     MPT_ORDER_STATUS_QUERYING,
     InitialAWSContext,
     PurchaseContext,
-    switch_order_to_query,
 )
 from swo_aws_extension.flows.template import TemplateNameManager
 from swo_aws_extension.parameters import (
@@ -59,13 +57,7 @@ class SetupContext(Step):
             return
 
         template_name = TemplateNameManager.processing(context)
-
-        context.update_template(client, MPT_ORDER_STATUS_PROCESSING, template_name)
-        update_order(
-            client,
-            context.order_id,
-            template=context.template,
-        )
+        context.update_processing_template(client, template_name)
 
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
         self.init_template(client, context)
@@ -162,7 +154,7 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
                 context.order, ignore=parameter_ids_with_errors
             )
             if context.order_status != MPT_ORDER_STATUS_QUERYING:
-                context.order = switch_order_to_query(client, context.order, context.buyer)
+                context.switch_order_status_to_query(client)
             else:
                 context.order = update_order(client, context.order_id, parameters=context.order)
             logger.info(
