@@ -203,6 +203,8 @@ def test_assign_mpa_phase_not_mpa_account(
         "swo_aws_extension.airtable.models.get_pool_notification_model",
         return_value=mocked_pool_notification_model,
     )
+    mocker.patch("swo_aws_extension.flows.steps.assign_mpa.send_error")
+
     mocked_pool_notification_model.first.return_value = None
     assign_mpa = AssignMPA(config, "test_role_name")
     assign_mpa(mpt_client_mock, context, next_step_mock)
@@ -238,6 +240,8 @@ def test_assign_mpa_phase_not_mpa_account_notification_already_created(
         "swo_aws_extension.airtable.models.get_pool_notification_model",
         return_value=mocked_pool_notification_model,
     )
+    mocker.patch("swo_aws_extension.flows.steps.assign_mpa.send_error")
+
     mocked_pool_notification_model.first.return_value = pool_notification_factory()
     assign_mpa = AssignMPA(config, "test_role_name")
     assign_mpa(mpt_client_mock, context, next_step_mock)

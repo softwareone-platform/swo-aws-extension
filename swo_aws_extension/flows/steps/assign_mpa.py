@@ -1,4 +1,6 @@
+import functools
 import logging
+from datetime import datetime, timezone
 
 from mpt_extension_sdk.flows.pipeline import NextStep, Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
@@ -56,6 +58,12 @@ def setup_agreement_external_id(client, context, account_id):
     logger.info(f"Updating agreement {context.agreement["id"]} external id to {account_id}")
 
 
+@functools.cache
+def notify_no_available_mpa(order_id, seller_country, error, date):
+    title = f"{order_id} - No MPA available in the pool for country {seller_country}"
+    send_error(title, error)
+
+
 class AssignMPA(Step):
     def __init__(self, config, role_name):
         self._config = config
@@ -84,10 +92,18 @@ class AssignMPA(Step):
             return
 
         if not context.airtable_mpa:
-            logger.error(
+            error = (
                 f"{context.order_id} - Error - No MPA available in the pool for country"
                 f" {context.seller_country} with PLS enabled: {context.pls_enabled}"
             )
+            logger.error(error)
+            notify_no_available_mpa(
+                context.order_id,
+                context.seller_country,
+                error,
+                datetime.now(timezone.utc).strftime("%Y:%m:%d"),
+            )
+
             if not has_open_notification(context.seller_country, context.pls_enabled):
                 new_notification = {
                     "status": NotificationStatusEnum.NEW,
