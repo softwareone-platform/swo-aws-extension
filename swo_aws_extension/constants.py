@@ -225,9 +225,10 @@ class OrderCompletedTemplateEnum(StrEnum):
     TRANSFER_WITHOUT_ORG_WITHOUT_PLS = "Order completed existing tenant - no pls"
     NEW_ACCOUNT_WITH_PLS = "Order completed new tenant - pls"
     NEW_ACCOUNT_WITHOUT_PLS = "Order completed new tenant - no pls"
-    TERMINATION = "Termination order"
     SPLIT_BILLING = "split agreement - add linked account"
     CHANGE = "New Linked account"
+    TERMINATION_TERMINATE = "Termination order - Terminate"
+    TERMINATION_DELINK = "Termination order - de-link"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
