@@ -168,7 +168,7 @@ def get_subscription_by_external_id(mpt_client, subscription_external_id):  # pr
 
     Returns:
         dict: The first subscription that matches the external ID.
-    TODO: Move to SDK in v5
+    TODO: SDK candidate
     """
     response = mpt_client.get(
         f"/commerce/subscriptions?eq(externalIds.vendor,{subscription_external_id})"

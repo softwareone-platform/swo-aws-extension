@@ -1,5 +1,6 @@
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
+from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import OrderQueryingTemplateEnum, PhasesEnum
 from swo_aws_extension.flows.error import (
     ERR_ACCOUNT_NAME_EMPTY,
@@ -62,6 +63,46 @@ def test_create_linked_account_phase_create_linked_account(
         mpt_client_mock,
         context.order["id"],
         parameters=context.order["parameters"],
+    )
+
+
+def test_create_linked_account_phase_create_linked_account_fail(
+    mocker,
+    order_factory,
+    config,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    order_parameters_factory,
+    create_account_status,
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
+    )
+
+    mpt_client_mock = mocker.Mock(spec=MPTClient)
+    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.create_account.side_effect = AWSError("Error creating account XYZ")
+
+    context = PurchaseContext.from_order_data(order)
+    context.aws_client = aws_client
+    next_step_mock = mocker.Mock()
+
+    mocked_send_error = mocker.patch(
+        "swo_aws_extension.flows.steps.create_linked_account.send_error",
+    )
+
+    create_linked_account = CreateInitialLinkedAccountStep()
+
+    create_linked_account(mpt_client_mock, context, next_step_mock)
+
+    mock_client.create_account.assert_called_once_with(
+        AccountName="account_name",
+        Email="test@aws.com",
+        IamUserAccessToBilling="DENY",
+        RoleName="OrganizationAccountAccessRole",
+    )
+    mocked_send_error.assert_called_once_with(
+        "ORD-0792-5000-2253-4210 - Error creating linked account", "Error creating account XYZ"
     )
 
 

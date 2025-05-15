@@ -1,9 +1,12 @@
+import functools
 import logging
+from datetime import date
 
 from mpt_extension_sdk.flows.pipeline import Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
+from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import OrderQueryingTemplateEnum, PhasesEnum
 from swo_aws_extension.flows.error import (
     ERR_ACCOUNT_NAME_EMPTY,
@@ -15,6 +18,7 @@ from swo_aws_extension.flows.order import (
     PurchaseContext,
 )
 from swo_aws_extension.flows.template import TemplateNameManager
+from swo_aws_extension.notifications import send_error
 from swo_aws_extension.parameters import (
     ChangeOrderParametersEnum,
     OrderParametersEnum,
@@ -28,6 +32,12 @@ from swo_aws_extension.parameters import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@functools.cache
+def notify_error_creating_linked_account(order_id, error, _date):
+    title = f"{order_id} - Error creating linked account"
+    send_error(title, error)
 
 
 def manage_create_linked_account_error(client, context, param_account_name, param_account_email):
@@ -160,11 +170,20 @@ class CreateInitialLinkedAccountStep(Step):
             f"{context.order_id} - Intent - Creating initial linked account with: "
             f"email={context.root_account_email}, name={context.account_name}"
         )
-        linked_account = context.aws_client.create_linked_account(
-            context.root_account_email, context.account_name
-        )
-        context.order = set_account_request_id(context.order, linked_account.account_request_id)
-        update_order(client, context.order_id, parameters=context.order["parameters"])
+        try:
+            linked_account = context.aws_client.create_linked_account(
+                context.root_account_email, context.account_name
+            )
+            context.order = set_account_request_id(context.order, linked_account.account_request_id)
+            update_order(client, context.order_id, parameters=context.order["parameters"])
+        except AWSError as e:
+            logger.info(f"{context.order_id} - ActionError - Error creating Linked Account: {e}")
+            notify_error_creating_linked_account(
+                context.order_id,
+                str(e),
+                date.today().isoformat(),
+            )
+            logger.info(f"{context.order_id} - Stop - Unable to create linked account")
 
 
 class AddLinkedAccountStep(Step):
