@@ -9,13 +9,13 @@ from mpt_extension_sdk.mpt_http.mpt import (
     update_agreement_subscription,
 )
 from mpt_extension_sdk.mpt_http.utils import find_first
+from mpt_extension_sdk.mpt_http.wrap_http_error import wrap_mpt_http_error
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import (
     AWS_ITEMS_SKUS,
     MPT_DATE_TIME_FORMAT,
     SWO_EXTENSION_MANAGEMENT_ROLE,
-    TAG_AGREEMENT_ID,
     SubscriptionStatusEnum,
 )
 from swo_aws_extension.notifications import send_error
@@ -68,18 +68,18 @@ def synchronize_agreements(mpt_client, config, agreement_ids, dry_run, product_i
             continue
 
 
-def _get_active_accounts_by_agreement_id(aws_client, agreement_id):
+def _get_active_accounts(aws_client, agreement_id):
     """
-    Get active accounts by agreement ID.
+    Get active accounts.
     Args:
         aws_client: The AWS client.
         agreement_id: The agreement ID.
     Returns:
-        List of active accounts associated with the agreement ID.
+        List of active accounts
     """
 
     accounts = aws_client.list_accounts()
-    agreement_accounts = []
+    active_accounts = []
     for account in accounts:
         account_id = account["Id"]
         account_state = account["Status"]
@@ -88,32 +88,21 @@ def _get_active_accounts_by_agreement_id(aws_client, agreement_id):
                 f"{agreement_id} - Skipping - Import Account {account_id} as it is not active"
             )
             continue
-        tags = aws_client.get_tags_for_resource(account_id)
-        agreement_tag = find_first(
-            lambda tag: tag["Key"] == TAG_AGREEMENT_ID,
-            tags,
-        )
-        if not agreement_tag:
-            logger.error(
-                f"{agreement_id} - Skipping - Missing Account tag for account {account_id}"
-            )
-            send_error(
-                "Synchronize AWS agreement subscriptions - Missing Account tag",
-                f"{agreement_id} - Missing Linked Account 'agreement_id'"
-                f" tag for account {account_id}",
-            )
-            continue
-        if agreement_tag["Value"] != agreement_id:
-            logger.info(
-                f"{agreement_id} - Skipping - Account {account_id} is part of "
-                f"the agreement {agreement_tag["Value"]}"
-            )
-            continue
-        agreement_accounts.append(account)
-    return agreement_accounts
+
+        active_accounts.append(account)
+    return active_accounts
 
 
 def check_existing_subscription_items(mpt_client, items, subscription, agreement_id):
+    """
+    Check and update the items in an existing subscription.
+    Args:
+        mpt_client: The MPT client.
+        items: List of items to check.
+        subscription: The subscription to check.
+        agreement_id: The agreement ID.
+    """
+
     purchased_skus = [
         line["item"]["externalIds"]["vendor"] for line in subscription.get("lines", [])
     ]
@@ -152,17 +141,57 @@ def check_existing_subscription_items(mpt_client, items, subscription, agreement
         )
 
 
-def _synchronize_new_accounts(mpt_client, agreement, agreement_accounts, dry_run):
+def has_split_billing(mpt_client, external_id):
+    """
+    Check if there are multiple active agreements for the same external ID.
+    Args:
+        mpt_client: The MPT client.
+        external_id: The external ID to check.
+
+    Returns:
+        bool: True if there are multiple active agreements, False otherwise.
+    """
+    rql_query = (
+        f"and(in(status,(Active,Updating,Provisioning)),eq(externalIds.vendor,{external_id})"
+    )
+
+    return len(get_agreements_by_query(mpt_client, rql_query)) > 1
+
+
+@wrap_mpt_http_error
+def get_subscription_by_external_id(mpt_client, subscription_external_id):  # pragma: no cover
+    """
+    Get the first subscription for a specific external ID.
+    Args:
+        mpt_client: The MPT client.
+        subscription_external_id: The external ID of the subscription.
+
+    Returns:
+        dict: The first subscription that matches the external ID.
+    TODO: Move to SDK in v5
+    """
+    response = mpt_client.get(
+        f"/commerce/subscriptions?eq(externalIds.vendor,{subscription_external_id})"
+        f"&in(status,(Active,Updating))"
+        f"&select=agreement.id&limit=1"
+    )
+
+    response.raise_for_status()
+    subscriptions = response.json()
+    return subscriptions["data"][0] if subscriptions["data"] else None
+
+
+def _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run):
     """
     Synchronize new AWS linked accounts for a specific agreement.
     Args:
         mpt_client: The MPT client.
         agreement: The agreement to synchronize.
-        agreement_accounts: List of accounts associated with the agreement.
+        active_accounts: List of accounts associated with the agreement.
         dry_run: Whether to perform a dry run.
 
     """
-    for account in agreement_accounts:
+    for account in active_accounts:
         account_id = account["Id"]
         account_email = account["Email"]
         account_name = account["Name"]
@@ -175,6 +204,14 @@ def _synchronize_new_accounts(mpt_client, agreement, agreement_accounts, dry_run
             items = get_product_items_by_skus(
                 mpt_client, agreement.get("product").get("id"), AWS_ITEMS_SKUS
             )
+
+            if not items:
+                logger.error(
+                    f"{agreement.get("id")} - Failed to get product items with "
+                    f"skus {AWS_ITEMS_SKUS}"
+                )
+                continue
+
             if existing_subscription:
                 check_existing_subscription_items(
                     mpt_client, items, existing_subscription, agreement.get("id")
@@ -185,12 +222,29 @@ def _synchronize_new_accounts(mpt_client, agreement, agreement_accounts, dry_run
                 )
                 continue
 
-            if not items:
+            if has_split_billing(mpt_client, agreement.get("externalIds", {}).get("vendor")):
+                subscription_by_external_id = get_subscription_by_external_id(
+                    mpt_client, account_id
+                )
+                if subscription_by_external_id:
+                    logger.info(
+                        f"{agreement.get('id')} - Skipping - Account {account_id} already exists "
+                        f"for Subscription {subscription_by_external_id['id']} in agreement "
+                        f"{subscription_by_external_id['agreement']['id']}"
+                    )
+                    continue
                 logger.error(
-                    f"{agreement.get("id")} - Failed to get product items with "
-                    f"skus {AWS_ITEMS_SKUS}"
+                    f"{agreement.get("id")} - Error - {account_id} is not linked to any "
+                    f"agreement subscription and split billing has been detected"
+                )
+                send_error(
+                    "Synchronize AWS agreement subscriptions - New linked account detected",
+                    f"{agreement.get("id")} - Linked Account {account_id} is not linked to any "
+                    f"subscription and split billing has been detected. This account will not be "
+                    f"synchronized.",
                 )
                 continue
+
             now = datetime.now(timezone.utc)
             start_date = now.strftime(MPT_DATE_TIME_FORMAT)
             renewal_date = (now + relativedelta(months=1)).strftime(MPT_DATE_TIME_FORMAT)
@@ -222,14 +276,15 @@ def _synchronize_new_accounts(mpt_client, agreement, agreement_accounts, dry_run
             if dry_run:
                 logger.info(
                     f"{agreement.get("id")} - Subscription for {account_id} "
-                    f"({subscription["id"]}) to be created: {subscription}"
+                    f"({subscription["name"]}) to be created: {subscription}"
                 )
-            else:
-                subscription = create_agreement_subscription(mpt_client, subscription)
-                logger.info(
-                    f"{agreement.get("id")} - Subscription for {account_id} "
-                    f'({subscription["id"]}) created'
-                )
+                continue
+
+            subscription = create_agreement_subscription(mpt_client, subscription)
+            logger.info(
+                f"{agreement.get("id")} - Subscription for {account_id} "
+                f'({subscription["id"]}) created'
+            )
         except Exception as e:
             logger.error(f"{agreement.get("id")} - Failed to synchronize account {account_id}: {e}")
 
@@ -260,8 +315,8 @@ def sync_agreement_subscriptions(mpt_client, aws_client, agreement, dry_run=Fals
         logger.info(f"{agreement.get("id")} - Skipping - Has processing subscriptions")
         return
 
-    agreement_accounts = _get_active_accounts_by_agreement_id(aws_client, agreement.get("id"))
-    if not agreement_accounts:
+    active_accounts = _get_active_accounts(aws_client, agreement.get("id"))
+    if not active_accounts:
         logger.info(f"{agreement.get('id')} - Skipping - No active AWS Linked accounts")
         return
-    _synchronize_new_accounts(mpt_client, agreement, agreement_accounts, dry_run)
+    _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run)

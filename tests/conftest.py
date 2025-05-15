@@ -1140,6 +1140,7 @@ def subscription_factory(lines_factory):
         account_name="account_name",
         vendor_id="account_id",
         status="Active",
+        agreement_id="AGR-2119-4550-8674-5962",
         lines=None,
     ):
         if lines is None:
@@ -1151,6 +1152,11 @@ def subscription_factory(lines_factory):
             "status": status,
             "name": name,
             "autoRenew": True,
+            "agreement": {
+                "id": agreement_id,
+                "status": "Active",
+                "name": "Amazon Web Services",
+            },
             "parameters": {
                 "fulfillment": [
                     {"externalId": "accountEmail", "value": account_email},

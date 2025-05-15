@@ -71,6 +71,7 @@ def test_create_subscription_new_account(
     )
     del subscription["id"]
     del subscription["status"]
+    del subscription["agreement"]
     mocked_create_subscription.assert_called_once_with(
         mpt_client_mock, context.order_id, subscription
     )
@@ -208,6 +209,7 @@ def test_create_subscription_transfer_account(
     )
     del subscription["id"]
     del subscription["status"]
+    del subscription["agreement"]
     mocked_create_subscription.assert_called_once_with(
         mpt_client_mock, context.order_id, subscription
     )
@@ -310,6 +312,7 @@ def test_create_change_subscription(
     )
     del subscription["id"]
     del subscription["status"]
+    del subscription["agreement"]
     mocked_create_subscription.assert_called_once_with(
         mpt_client_mock, context.order_id, subscription
     )
