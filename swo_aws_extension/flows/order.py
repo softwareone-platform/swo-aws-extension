@@ -69,7 +69,7 @@ def process_order(client, order_id, **kwargs):
         order_id (str): The ID of the order to process.
         **kwargs: Additional parameters to pass to the order processing.
 
-    TODO: Move to SDK in v5
+    TODO: SDK candidate
     """
     response = client.post(
         f"/commerce/orders/{order_id}/process",
