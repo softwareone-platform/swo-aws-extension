@@ -4,9 +4,10 @@ from swo_aws_extension.constants import (
     AccountTypesEnum,
     OrderCompletedTemplateEnum,
     OrderProcessingTemplateEnum,
+    TerminationParameterChoices,
 )
 from swo_aws_extension.flows.order import InitialAWSContext
-from swo_aws_extension.parameters import get_account_type
+from swo_aws_extension.parameters import get_account_type, get_termination_type_parameter
 
 
 class TemplateNameManager:
@@ -20,7 +21,7 @@ class TemplateNameManager:
 
         if get_account_type(context.order) == AccountTypesEnum.EXISTING_ACCOUNT:
             if context.is_split_billing():
-                return OrderCompletedTemplateEnum.SPLIT_BILLING
+                return OrderProcessingTemplateEnum.SPLIT_BILLING
 
             if context.is_type_transfer_without_organization():
                 return OrderProcessingTemplateEnum.TRANSFER_WITHOUT_ORG
@@ -36,7 +37,12 @@ class TemplateNameManager:
             return OrderCompletedTemplateEnum.CHANGE
 
         if context.order_type == ORDER_TYPE_TERMINATION:
-            return OrderCompletedTemplateEnum.TERMINATION
+            if (
+                get_termination_type_parameter(context.order)
+                == TerminationParameterChoices.CLOSE_ACCOUNT
+            ):
+                return OrderCompletedTemplateEnum.TERMINATION_TERMINATE
+            return OrderCompletedTemplateEnum.TERMINATION_DELINK
 
         if get_account_type(context.order) == AccountTypesEnum.EXISTING_ACCOUNT:
             if context.is_split_billing():
