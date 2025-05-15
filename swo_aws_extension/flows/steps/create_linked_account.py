@@ -161,9 +161,7 @@ class CreateInitialLinkedAccountStep(Step):
             f"email={context.root_account_email}, name={context.account_name}"
         )
         linked_account = context.aws_client.create_linked_account(
-            context.root_account_email,
-            context.account_name,
-            context.agreement.get("id"),
+            context.root_account_email, context.account_name
         )
         context.order = set_account_request_id(context.order, linked_account.account_request_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])
@@ -215,9 +213,7 @@ class AddLinkedAccountStep(Step):
             f"email={context.root_account_email}, name={context.account_name}"
         )
         linked_account = context.aws_client.create_linked_account(
-            context.root_account_email,
-            context.account_name,
-            context.agreement.get("id"),
+            context.root_account_email, context.account_name
         )
         context.order = set_account_request_id(context.order, linked_account.account_request_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])

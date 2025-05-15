@@ -1,6 +1,6 @@
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
-from swo_aws_extension.constants import TAG_AGREEMENT_ID, OrderQueryingTemplateEnum, PhasesEnum
+from swo_aws_extension.constants import OrderQueryingTemplateEnum, PhasesEnum
 from swo_aws_extension.flows.error import (
     ERR_ACCOUNT_NAME_EMPTY,
     ERR_EMAIL_ALREADY_EXIST,
@@ -48,7 +48,6 @@ def test_create_linked_account_phase_create_linked_account(
         Email="test@aws.com",
         IamUserAccessToBilling="DENY",
         RoleName="OrganizationAccountAccessRole",
-        Tags=[{"Key": TAG_AGREEMENT_ID, "Value": context.agreement.get("id")}],
     )
 
     assert (
@@ -291,7 +290,6 @@ def test_add_linked_account_phase_create_linked_account(
         Email="test@aws.com",
         IamUserAccessToBilling="DENY",
         RoleName="OrganizationAccountAccessRole",
-        Tags=[{"Key": TAG_AGREEMENT_ID, "Value": context.agreement.get("id")}],
     )
 
     assert (
