@@ -119,11 +119,7 @@ class CreateSubscription(Step):
                 account_email,
                 account_name,
             )
-        next_phase = (
-            PhasesEnum.CREATE_SUBSCRIPTIONS
-            if context.is_split_billing()
-            else PhasesEnum.CCP_ONBOARD
-        )
+        next_phase = PhasesEnum.COMPLETED if context.is_split_billing() else PhasesEnum.CCP_ONBOARD
         context.order = set_phase(context.order, next_phase)
         update_order(client, context.order_id, parameters=context.order["parameters"])
 

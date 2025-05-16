@@ -102,6 +102,7 @@ def test_sync_agreement_accounts_without_processing_subscriptions(
     agreement_factory,
     aws_accounts_factory,
     product_items,
+    mpa_pool_factory,
 ):
     aws_client, mock_client = aws_client_factory(
         config, "test_account_id", SWO_EXTENSION_MANAGEMENT_ROLE
@@ -114,6 +115,10 @@ def test_sync_agreement_accounts_without_processing_subscriptions(
         return_value=product_items,
     )
     mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
+        return_value=mpa_pool_factory(),
+    )
+    mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.create_agreement_subscription",
         return_value={"id": "SUB-123-456"},
     )
@@ -122,10 +127,14 @@ def test_sync_agreement_accounts_without_processing_subscriptions(
 
 
 def test_sync_agreement_accounts_with_no_accounts(
-    mocker, mpt_client, aws_client_factory, config, agreement_factory
+    mocker, mpt_client, aws_client_factory, config, agreement_factory, mpa_pool_factory
 ):
     aws_client, mock_client = aws_client_factory(
         config, "test_account_id", SWO_EXTENSION_MANAGEMENT_ROLE
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
+        return_value=mpa_pool_factory(),
     )
     mock_client.list_accounts.return_value = {"Accounts": []}
     sync_agreement_subscriptions(mpt_client, aws_client, agreement_factory(), False)
@@ -140,6 +149,7 @@ def test_sync_agreement_accounts_with_dry_run(
     agreement_factory,
     aws_accounts_factory,
     product_items,
+    mpa_pool_factory,
 ):
     aws_client, mock_client = aws_client_factory(
         config, "test_account_id", SWO_EXTENSION_MANAGEMENT_ROLE
@@ -148,6 +158,10 @@ def test_sync_agreement_accounts_with_dry_run(
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_agreements_by_query",
         return_value=[mock_agreement],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
+        return_value=mpa_pool_factory(),
     )
     mock_client.list_accounts.return_value = aws_accounts_factory()
 
@@ -164,10 +178,20 @@ def test_sync_agreement_accounts_with_dry_run(
 
 
 def test_sync_agreement_accounts_with_inactive_account(
-    mocker, mpt_client, aws_client_factory, config, agreement_factory, aws_accounts_factory
+    mocker,
+    mpt_client,
+    aws_client_factory,
+    config,
+    agreement_factory,
+    aws_accounts_factory,
+    mpa_pool_factory,
 ):
     aws_client, mock_client = aws_client_factory(
         config, "test_account_id", SWO_EXTENSION_MANAGEMENT_ROLE
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
+        return_value=mpa_pool_factory(),
     )
     mock_agreement = agreement_factory()
     mock_client.list_accounts.return_value = aws_accounts_factory(status="SUSPENDED")
@@ -183,6 +207,7 @@ def test_sync_agreement_accounts_with_split_billing(
     agreement_factory,
     aws_accounts_factory,
     product_items,
+    mpa_pool_factory,
 ):
     aws_client, mock_client = aws_client_factory(
         config, "test_account_id", SWO_EXTENSION_MANAGEMENT_ROLE
@@ -196,6 +221,10 @@ def test_sync_agreement_accounts_with_split_billing(
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_product_items_by_skus",
         return_value=product_items,
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
+        return_value=mpa_pool_factory(),
     )
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.create_agreement_subscription",
@@ -224,6 +253,7 @@ def test_sync_agreement_accounts_with_split_billing_skip_subscriptions(
     aws_accounts_factory,
     product_items,
     subscription_factory,
+    mpa_pool_factory,
 ):
     aws_client, mock_client = aws_client_factory(
         config, "test_account_id", SWO_EXTENSION_MANAGEMENT_ROLE
@@ -235,6 +265,10 @@ def test_sync_agreement_accounts_with_split_billing_skip_subscriptions(
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_agreements_by_query",
         return_value=[mock_agreement, mock_agreement],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
+        return_value=mpa_pool_factory(),
     )
     mocked_get_subscription_by_external_id = mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_subscription_by_external_id",
@@ -269,6 +303,7 @@ def test_sync_agreement_accounts_subscription_already_exist(
     aws_accounts_factory,
     subscription_factory,
     product_items,
+    mpa_pool_factory,
 ):
     aws_client, mock_client = aws_client_factory(
         config, "test_account_id", SWO_EXTENSION_MANAGEMENT_ROLE
@@ -280,6 +315,10 @@ def test_sync_agreement_accounts_subscription_already_exist(
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_product_items_by_skus",
         return_value=product_items,
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
+        return_value=mpa_pool_factory(),
     )
 
     sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, True)
@@ -293,6 +332,7 @@ def test_sync_agreement_accounts_no_aws_item_found(
     config,
     agreement_factory,
     aws_accounts_factory,
+    mpa_pool_factory,
 ):
     aws_client, mock_client = aws_client_factory(
         config, "test_account_id", SWO_EXTENSION_MANAGEMENT_ROLE
@@ -302,6 +342,10 @@ def test_sync_agreement_accounts_no_aws_item_found(
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_product_items_by_skus",
         return_value=[],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
+        return_value=mpa_pool_factory(),
     )
 
     sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, True)
@@ -317,6 +361,7 @@ def test_sync_agreement_accounts_subscription_already_exist_add_items(
     aws_accounts_factory,
     subscription_factory,
     product_items,
+    mpa_pool_factory,
 ):
     aws_client, mock_client = aws_client_factory(
         config, "test_account_id", SWO_EXTENSION_MANAGEMENT_ROLE
@@ -332,6 +377,10 @@ def test_sync_agreement_accounts_subscription_already_exist_add_items(
     )
     mock_update_subscription = mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.update_agreement_subscription"
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
+        return_value=mpa_pool_factory(),
     )
 
     sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, True)
@@ -366,6 +415,7 @@ def test_sync_agreement_accounts_subscription_already_exist_delete_items(
     subscription_factory,
     product_items,
     lines_factory,
+    mpa_pool_factory,
 ):
     aws_client, mock_client = aws_client_factory(
         config, "test_account_id", SWO_EXTENSION_MANAGEMENT_ROLE
@@ -385,6 +435,10 @@ def test_sync_agreement_accounts_subscription_already_exist_delete_items(
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_product_items_by_skus",
         return_value=product_items,
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
+        return_value=mpa_pool_factory(),
     )
     mock_update_subscription = mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.update_agreement_subscription"
@@ -719,3 +773,48 @@ def test_synchronize_new_accounts_dates_test(
     )
 
     mock_create_agreement_subscription.assert_called_once_with(*expected_call)
+
+
+def test_sync_agreement_accounts_skip_management_account(
+    mocker,
+    mpt_client,
+    aws_client_factory,
+    config,
+    agreement_factory,
+    aws_accounts_factory,
+    mpa_pool_factory,
+    product_items,
+):
+    aws_client, mock_client = aws_client_factory(
+        config, "test_account_id", SWO_EXTENSION_MANAGEMENT_ROLE
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_product_items_by_skus",
+        return_value=product_items,
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
+        return_value=mpa_pool_factory(account_email="management.account@email.com"),
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.create_agreement_subscription",
+        return_value={"id": "SUB-123-456"},
+    )
+    mock_agreement = agreement_factory()
+    accounts = [
+        {
+            "Id": "account_id_1",
+            "Name": "Management Account",
+            "Email": "management.account@email.com",
+            "Status": "ACTIVE",
+        },
+        {
+            "Id": "account_id_2",
+            "Name": "Test Account 2",
+            "Email": "test@example.com",
+            "Status": "ACTIVE",
+        },
+    ]
+    mock_client.list_accounts.return_value = aws_accounts_factory(accounts=accounts)
+    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, False)
+    mock_client.list_accounts.assert_called_once()
