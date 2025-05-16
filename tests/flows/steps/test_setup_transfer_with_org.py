@@ -103,7 +103,7 @@ def test_setup_querying(
         ),
     )
 
-    def return_order(client, order, buyer):
+    def return_order(client, order):
         return order
 
     step = SetupContextPurchaseTransferWithOrganizationStep(config, "role_name")
