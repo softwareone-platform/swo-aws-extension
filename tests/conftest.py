@@ -1700,7 +1700,9 @@ def handshake_data_factory():
 
 @pytest.fixture()
 def aws_accounts_factory():
-    def _account(account_id="123456789012", status="ACTIVE"):
+    def _account(account_id="123456789012", status="ACTIVE", accounts=None):
+        if accounts:
+            return {"Accounts": accounts}
         return {
             "Accounts": [
                 {

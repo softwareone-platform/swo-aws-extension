@@ -11,6 +11,7 @@ from mpt_extension_sdk.mpt_http.mpt import (
 from mpt_extension_sdk.mpt_http.utils import find_first
 from mpt_extension_sdk.mpt_http.wrap_http_error import wrap_mpt_http_error
 
+from swo_aws_extension.airtable.models import get_mpa_account
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import (
     AWS_ITEMS_SKUS,
@@ -68,21 +69,26 @@ def synchronize_agreements(mpt_client, config, agreement_ids, dry_run, product_i
             continue
 
 
-def _get_active_accounts(aws_client, agreement_id):
+def _get_active_accounts(aws_client, agreement_id, mpa_account_id):
     """
     Get active accounts.
     Args:
         aws_client: The AWS client.
         agreement_id: The agreement ID.
+        mpa_account_id: The MPA account ID.
     Returns:
         List of active accounts
     """
 
     accounts = aws_client.list_accounts()
+    airtable_mpa = get_mpa_account(mpa_account_id)
     active_accounts = []
     for account in accounts:
         account_id = account["Id"]
         account_state = account["Status"]
+        # Management account will not be synchronized
+        if account["Email"] == airtable_mpa.account_email:
+            continue
         if account_state != "ACTIVE":
             logger.info(
                 f"{agreement_id} - Skipping - Import Account {account_id} as it is not active"
@@ -314,8 +320,8 @@ def sync_agreement_subscriptions(mpt_client, aws_client, agreement, dry_run=Fals
     if len(processing_subscriptions) > 0:
         logger.info(f"{agreement.get("id")} - Skipping - Has processing subscriptions")
         return
-
-    active_accounts = _get_active_accounts(aws_client, agreement.get("id"))
+    mpa_account_id = agreement.get("externalIds", {}).get("vendor")
+    active_accounts = _get_active_accounts(aws_client, agreement.get("id"), mpa_account_id)
     if not active_accounts:
         logger.info(f"{agreement.get('id')} - Skipping - No active AWS Linked accounts")
         return
