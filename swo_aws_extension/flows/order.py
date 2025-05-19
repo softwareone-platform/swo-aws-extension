@@ -14,7 +14,7 @@ from pyairtable.orm import Model
 
 from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
 from swo_aws_extension.constants import SupportTypesEnum, TransferTypesEnum
-from swo_aws_extension.notifications import send_mpt_notification
+from swo_aws_extension.notifications import MPTNotifier
 from swo_aws_extension.parameters import (
     ChangeOrderParametersEnum,
     OrderParametersEnum,
@@ -209,7 +209,7 @@ class InitialAWSContext(BaseContext):
         self.order = update_order(
             client, self.order_id, parameters=self.order["parameters"], template=self.template
         )
-        send_mpt_notification(client, self)
+        MPTNotifier(client).notify_re_order(self)
 
     def switch_order_status_to_process(self, client, template_name=None):
         """
@@ -230,7 +230,7 @@ class InitialAWSContext(BaseContext):
         kwargs["parameters"] = self.order["parameters"]
 
         self.order = process_order(client, self.order_id, **kwargs)
-        send_mpt_notification(client, self)
+        MPTNotifier(client).notify_re_order(self)
         logger.info(f"{self.order_id} - Action - Set order to processing")
         return self.order
 
@@ -267,7 +267,7 @@ class InitialAWSContext(BaseContext):
             self.order_id,
             **kwargs,
         )
-        send_mpt_notification(client, self)
+        MPTNotifier(client).notify_re_order(self)
 
     def switch_order_status_to_complete(self, client, template_name=None):
         if self.order_status == MPT_ORDER_STATUS_COMPLETED:
@@ -280,7 +280,7 @@ class InitialAWSContext(BaseContext):
         kwargs["parameters"] = self.order["parameters"]
 
         self.order = complete_order(client, self.order_id, **kwargs)
-        send_mpt_notification(client, self)
+        MPTNotifier(client).notify_re_order(self)
         logger.info(f"{self.order_id} - Action - Set order to completed")
         return self.order
 
