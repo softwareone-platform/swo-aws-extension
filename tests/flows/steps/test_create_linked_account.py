@@ -13,12 +13,13 @@ from swo_aws_extension.flows.steps.create_linked_account import (
     AddLinkedAccountStep,
     CreateInitialLinkedAccountStep,
 )
+from swo_aws_extension.notifications import MPTNotifier
 from swo_aws_extension.parameters import set_account_request_id, set_phase
 
 
 @pytest.fixture(autouse=True)
 def mocked_send_mpt_notification(mocker):
-    return mocker.patch("swo_aws_extension.flows.order.send_mpt_notification")
+    return mocker.patch.object(MPTNotifier, "notify_re_order", spec=True)
 
 
 def test_create_linked_account_phase_create_linked_account(
