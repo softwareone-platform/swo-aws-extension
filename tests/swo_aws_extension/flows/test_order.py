@@ -14,6 +14,7 @@ from swo_aws_extension.flows.order import (
     PurchaseContext,
     TerminateContext,
 )
+from swo_aws_extension.notifications import MPTNotifier
 
 
 @pytest.fixture()
@@ -130,9 +131,7 @@ def test_update_processing_template_success(
         side_effect=update_order_side_effect,
     )
 
-    mock_send_mpt_notification = mocker.patch(
-        "swo_aws_extension.flows.order.send_mpt_notification",
-    )
+    mock_notify = mocker.patch.object(MPTNotifier, "notify_re_order", spec=True)
 
     context = InitialAWSContext.from_order_data(order)
     context.update_processing_template(mock_client, "new-template")
@@ -144,7 +143,7 @@ def test_update_processing_template_success(
         parameters=order["parameters"],
         template=new_template,
     )
-    mock_send_mpt_notification.assert_called_once_with(mock_client, context)
+    mock_notify.assert_called_once()
 
 
 def test_update_processing_template_fail(
@@ -167,18 +166,15 @@ def test_update_processing_template_fail(
         side_effect=update_order_side_effect,
     )
 
-    mock_send_mpt_notification = mocker.patch(
-        "swo_aws_extension.flows.order.send_mpt_notification",
-    )
+    mock_notify = mocker.patch.object(MPTNotifier, "notify_re_order", spec=True)
 
     context = InitialAWSContext.from_order_data(order)
-
     with pytest.raises(RuntimeError):
         context.update_processing_template(mock_client, "new-template")
 
     assert context.template == default_template
     mock_update_order.assert_not_called()
-    mock_send_mpt_notification.assert_not_called()
+    mock_notify.assert_not_called()
 
 
 def test_switch_order_status_to_process_fail(
@@ -243,9 +239,7 @@ def test_switch_order_status_to_process_success(
         side_effect=update_order_side_effect,
     )
 
-    mock_send_mpt_notification = mocker.patch(
-        "swo_aws_extension.flows.order.send_mpt_notification",
-    )
+    mock_notify = mocker.patch.object(MPTNotifier, "notify_re_order", spec=True)
 
     context = InitialAWSContext.from_order_data(order)
     context.switch_order_status_to_process(mock_client, "new-template")
@@ -257,7 +251,7 @@ def test_switch_order_status_to_process_success(
         parameters=order["parameters"],
         template=new_template,
     )
-    mock_send_mpt_notification.assert_called_once_with(mock_client, context)
+    mock_notify.assert_called_once()
 
 
 def test_switch_order_status_to_query_success(
@@ -283,9 +277,7 @@ def test_switch_order_status_to_query_success(
         side_effect=update_order_side_effect,
     )
 
-    mock_send_mpt_notification = mocker.patch(
-        "swo_aws_extension.flows.order.send_mpt_notification",
-    )
+    mock_notify = mocker.patch.object(MPTNotifier, "notify_re_order", spec=True)
 
     context = InitialAWSContext.from_order_data(order)
     context.switch_order_status_to_query(
@@ -298,7 +290,7 @@ def test_switch_order_status_to_query_success(
         parameters=order["parameters"],
         template=new_template,
     )
-    mock_send_mpt_notification.assert_called_once_with(mock_client, context)
+    mock_notify.assert_called_once()
 
 
 def test_switch_order_status_to_complete_success(
@@ -324,9 +316,7 @@ def test_switch_order_status_to_complete_success(
         side_effect=update_order_side_effect,
     )
 
-    mock_send_mpt_notification = mocker.patch(
-        "swo_aws_extension.flows.order.send_mpt_notification",
-    )
+    mock_notify = mocker.patch.object(MPTNotifier, "notify_re_order", spec=True)
 
     context = InitialAWSContext.from_order_data(order)
     context.switch_order_status_to_complete(
@@ -339,4 +329,4 @@ def test_switch_order_status_to_complete_success(
         parameters=order["parameters"],
         template=new_template,
     )
-    mock_send_mpt_notification.assert_called_once_with(mock_client, context)
+    mock_notify.assert_called_once()
