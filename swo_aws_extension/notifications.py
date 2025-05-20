@@ -154,7 +154,15 @@ def get_notifications_recipient(order, buyer):
 
 
 def md2html(template):
-    return MarkdownIt("commonmark", {"breaks": True, "html": True}).render(template)
+    md = MarkdownIt("commonmark", {"breaks": True, "html": True})
+
+    def custom_h1_renderer(tokens, idx, options, env):
+        tokens[idx].attrSet("style", "line-height: 1.2em;")
+        return md.renderer.renderToken(tokens, idx, options, env)
+
+    md.renderer.rules["heading_open"] = custom_h1_renderer
+
+    return md.render(template)
 
 
 def send_email_notification(client, order, buyer):

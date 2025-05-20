@@ -8,6 +8,7 @@ from swo_aws_extension.notifications import (
     Button,
     FactsSection,
     dateformat,
+    md2html,
     notify_unhandled_exception_in_teams,
     send_email,
     send_email_notification,
@@ -269,3 +270,32 @@ def test_send_email_notification_no_email(
     send_email_notification(mpt_client, order, {})
     mock_send_email.assert_not_called()
     mock_get_rendered_template.assert_not_called()
+
+
+@pytest.fixture()
+def template_md():
+    return """
+# Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer pharetra dolor justo, in ornare
+urna condimentum vel. Sed finibus dictum purus quis volutpat. Suspendisse vulputate tellus ut orci
+efficitur maximus. Ut sit amet tempor diam. Mauris non molestie ex, eu hendrerit ligula. Curabitur
+fringilla sapien ultricies purus placerat rhoncus ut a ex. Mauris a imperdiet leo. Aenean nec
+ullamcorper dui, vel porttitor sem. In vel tortor nulla. Duis urna nisl, sollicitudin ut sagittis
+vel, imperdiet vitae lectus. Donec quis tellus eros. Aliquam sit amet ex id neque iaculis auctor
+sed vel risus.
+
+## This is a subheading
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer pharetra dolor justo, in ornare
+urna condimentum vel. Sed finibus dictum purus quis volutpat. Suspendisse vulputate tellus ut orci
+efficitur maximus. Ut sit amet tempor diam. Mauris non molestie ex, eu hendrerit ligula. Curabitur
+fringilla sapien ultricies purus placerat rhoncus ut a ex. Mauris a imperdiet leo. Aenean nec
+ullamcorper dui, vel porttitor sem. In vel tortor nulla. Duis urna nisl, sollicitudin ut sagittis
+vel, imperdiet vitae lectus. Donec quis tellus eros. Aliquam sit amet ex id neque iaculis auctor
+sed vel risus.
+"""
+
+
+def test_md2html(template_md):
+    rendered = md2html(template_md)
+    assert '<h1 style="line-height: 1.2em;">' in rendered
+    assert '<h2 style="line-height: 1.2em;">' in rendered
