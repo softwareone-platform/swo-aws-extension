@@ -18,7 +18,7 @@ from mpt_extension_sdk.mpt_http.mpt import (
 
 from swo_aws_extension.parameters import OrderParametersEnum, get_ordering_parameter
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from swo_aws_extension.flows.order import InitialAWSContext
 
 
