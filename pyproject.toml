@@ -79,7 +79,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.pytest.ini_options]
 testpaths = "tests"
 pythonpath = "."
-addopts = "--cov=swo_aws_extension --cov-report=term-missing --cov-report=html --cov-report=xml"
+addopts = "--cov=swo_aws_extension --cov=swo_ccp_client --cov=swo_crm_service_client --cov=swo_finops_client --cov-report=term-missing --cov-report=html --cov-report=xml"
 DJANGO_SETTINGS_MODULE = "tests.django.settings"
 log_cli = false
 filterwarnings = [

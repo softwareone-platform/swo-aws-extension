@@ -4,16 +4,13 @@ from freezegun import freeze_time
 from swo_aws_extension.constants import (
     AWS_ITEMS_SKUS,
     SWO_EXTENSION_MANAGEMENT_ROLE,
-    AccountTypesEnum,
-    SupportTypesEnum,
-    TerminationParameterChoices,
 )
 from swo_aws_extension.flows.jobs.synchronize_agreements import (
     _synchronize_new_accounts,
     sync_agreement_subscriptions,
     synchronize_agreements,
 )
-from swo_aws_extension.parameters import FulfillmentParametersEnum, OrderParametersEnum
+from swo_aws_extension.parameters import FulfillmentParametersEnum
 
 
 def test_synchronize_agreement_with_specific_ids(
@@ -114,10 +111,7 @@ def test_sync_agreement_accounts_without_processing_subscriptions(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_product_items_by_skus",
         return_value=product_items,
     )
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
-        return_value=mpa_pool_factory(),
-    )
+
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.create_agreement_subscription",
         return_value={"id": "SUB-123-456"},
@@ -132,10 +126,7 @@ def test_sync_agreement_accounts_with_no_accounts(
     aws_client, mock_client = aws_client_factory(
         config, "test_account_id", SWO_EXTENSION_MANAGEMENT_ROLE
     )
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
-        return_value=mpa_pool_factory(),
-    )
+
     mock_client.list_accounts.return_value = {"Accounts": []}
     sync_agreement_subscriptions(mpt_client, aws_client, agreement_factory(), False)
     mock_client.list_accounts.assert_called_once()
@@ -159,10 +150,7 @@ def test_sync_agreement_accounts_with_dry_run(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_agreements_by_query",
         return_value=[mock_agreement],
     )
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
-        return_value=mpa_pool_factory(),
-    )
+
     mock_client.list_accounts.return_value = aws_accounts_factory()
 
     mocker.patch(
@@ -189,10 +177,7 @@ def test_sync_agreement_accounts_with_inactive_account(
     aws_client, mock_client = aws_client_factory(
         config, "test_account_id", SWO_EXTENSION_MANAGEMENT_ROLE
     )
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
-        return_value=mpa_pool_factory(),
-    )
+
     mock_agreement = agreement_factory()
     mock_client.list_accounts.return_value = aws_accounts_factory(status="SUSPENDED")
     sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, False)
@@ -212,7 +197,7 @@ def test_sync_agreement_accounts_with_split_billing(
     aws_client, mock_client = aws_client_factory(
         config, "test_account_id", SWO_EXTENSION_MANAGEMENT_ROLE
     )
-    mock_agreement = agreement_factory(vendor_id="123456789012")
+    mock_agreement = agreement_factory(vendor_id="vendor_id")
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_agreements_by_query",
         return_value=[mock_agreement, mock_agreement],
@@ -222,10 +207,7 @@ def test_sync_agreement_accounts_with_split_billing(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_product_items_by_skus",
         return_value=product_items,
     )
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
-        return_value=mpa_pool_factory(),
-    )
+
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.create_agreement_subscription",
         return_value={"id": "SUB-123-456"},
@@ -259,20 +241,17 @@ def test_sync_agreement_accounts_with_split_billing_skip_subscriptions(
         config, "test_account_id", SWO_EXTENSION_MANAGEMENT_ROLE
     )
     mock_agreement = agreement_factory(
-        vendor_id="123456789012",
+        vendor_id="vendor_id",
         subscriptions=[subscription_factory()],
     )
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_agreements_by_query",
         return_value=[mock_agreement, mock_agreement],
     )
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
-        return_value=mpa_pool_factory(),
-    )
+
     mocked_get_subscription_by_external_id = mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_subscription_by_external_id",
-        return_value=subscription_factory(agreement_id="AGR-123-456", vendor_id="123456789012"),
+        return_value=subscription_factory(agreement_id="AGR-123-456", vendor_id="vendor_id"),
     )
     mock_client.list_accounts.return_value = aws_accounts_factory()
 
@@ -280,6 +259,7 @@ def test_sync_agreement_accounts_with_split_billing_skip_subscriptions(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_product_items_by_skus",
         return_value=product_items,
     )
+
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.create_agreement_subscription",
         return_value={"id": "SUB-123-456"},
@@ -316,10 +296,6 @@ def test_sync_agreement_accounts_subscription_already_exist(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_product_items_by_skus",
         return_value=product_items,
     )
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
-        return_value=mpa_pool_factory(),
-    )
 
     sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, True)
     mock_client.list_accounts.assert_called_once()
@@ -342,10 +318,6 @@ def test_sync_agreement_accounts_no_aws_item_found(
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_product_items_by_skus",
         return_value=[],
-    )
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
-        return_value=mpa_pool_factory(),
     )
 
     sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, True)
@@ -377,10 +349,6 @@ def test_sync_agreement_accounts_subscription_already_exist_add_items(
     )
     mock_update_subscription = mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.update_agreement_subscription"
-    )
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
-        return_value=mpa_pool_factory(),
     )
 
     sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, True)
@@ -436,10 +404,7 @@ def test_sync_agreement_accounts_subscription_already_exist_delete_items(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_product_items_by_skus",
         return_value=product_items,
     )
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
-        return_value=mpa_pool_factory(),
-    )
+
     mock_update_subscription = mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.update_agreement_subscription"
     )
@@ -487,7 +452,7 @@ def test_synchronize_agreement_with_specific_ids_exception(
 
 @freeze_time("2025-05-01 11:10:00")
 def test_synchronize_new_accounts_dates_test(
-    mocker, mpt_client, config, product_items, aws_client_factory, agreement_factory
+    mocker, mpt_client, config, product_items, aws_client_factory, agreement_factory, ffc_client
 ):
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_product_items_by_skus",
@@ -498,172 +463,13 @@ def test_synchronize_new_accounts_dates_test(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_agreements_by_query",
         return_value=[mock_agreement],
     )
-    mock_agreement = {
-        "audit": {
-            "created": {"at": "2023-12-14T18:02:16.9359", "by": {"id": "USR-0000-0001"}},
-            "updated": None,
-        },
-        "authorization": {"id": "AUT-1234-5678"},
-        "buyer": {
-            "address": {
-                "addressLine1": "3601 Lyon St",
-                "addressLine2": "",
-                "city": "San Jose",
-                "country": "US",
-                "postCode": "94123",
-                "state": "CA",
-            },
-            "contact": {
-                "email": "francesco.faraone@softwareone.com",
-                "firstName": "Cic",
-                "lastName": "Faraone",
-                "phone": {"number": "4082954078", "prefix": "+1"},
-            },
-            "externalIds": {
-                "accountExternalId": "US-999999",
-                "erpCompanyContact": "US-CON-111111",
-                "erpCustomer": "US-SCU-111111",
-            },
-            "href": "/accounts/buyers/BUY-3731-7971",
-            "icon": "/static/BUY-3731-7971/icon.png",
-            "id": "BUY-3731-7971",
-            "name": "A buyer",
-        },
-        "client": {
-            "href": "/accounts/sellers/ACC-9121-8944",
-            "icon": "/static/ACC-9121-8944/icon.png",
-            "id": "ACC-9121-8944",
-            "name": "Software LN",
-        },
-        "externalIds": {"vendor": ""},
-        "href": "/commerce/agreements/AGR-2119-4550-8674-5962",
-        "icon": None,
-        "id": "AGR-2119-4550-8674-5962",
-        "licensee": {"address": None, "name": "My beautiful licensee", "useBuyerAddress": False},
-        "lines": [],
-        "listing": {
-            "href": "/listing/LST-9401-9279",
-            "id": "LST-9401-9279",
-            "priceList": {
-                "currency": "USD",
-                "href": "/v1/price-lists/PRC-9457-4272-3691",
-                "id": "PRC-9457-4272-3691",
-            },
-        },
-        "name": "Product Name 1",
-        "parameters": {
-            "fulfillment": [
-                {
-                    "externalId": FulfillmentParametersEnum.PHASE,
-                    "id": "PAR-1234-5678",
-                    "name": "Phase",
-                    "type": "Dropdown",
-                    "value": "",
-                },
-                {
-                    "externalId": FulfillmentParametersEnum.ACCOUNT_REQUEST_ID,
-                    "id": "PAR-1234-5679",
-                    "name": "Account Request ID",
-                    "type": "SingleLineText",
-                    "value": "",
-                },
-                {
-                    "externalId": FulfillmentParametersEnum.CRM_ONBOARD_TICKET_ID,
-                    "id": "PAR-1234-5677",
-                    "name": "Service Now Ticket for Link Account",
-                    "type": "SingleLineText",
-                    "value": "",
-                },
-                {
-                    "externalId": FulfillmentParametersEnum.CCP_ENGAGEMENT_ID,
-                    "id": "PAR-1234-5679",
-                    "name": "CCP Engagement ID",
-                    "type": "SingleLineText",
-                    "value": "",
-                },
-            ],
-            "ordering": [
-                {
-                    "constraints": {"hidden": True, "readonly": False, "required": False},
-                    "externalId": OrderParametersEnum.ROOT_ACCOUNT_EMAIL,
-                    "id": "PAR-1234-5678",
-                    "name": "AWS account email",
-                    "type": "SingleLineText",
-                    "value": "test@aws.com",
-                },
-                {
-                    "constraints": {"hidden": True, "readonly": False, "required": False},
-                    "externalId": OrderParametersEnum.ACCOUNT_NAME,
-                    "id": "PAR-1234-5679",
-                    "name": "Account Name",
-                    "type": "SingleLineText",
-                    "value": "account_name",
-                },
-                {
-                    "constraints": {"hidden": True, "readonly": False, "required": False},
-                    "externalId": OrderParametersEnum.ACCOUNT_TYPE,
-                    "id": "PAR-1234-5680",
-                    "name": "Account type",
-                    "type": "choice",
-                    "value": AccountTypesEnum.NEW_ACCOUNT,
-                },
-                {
-                    "constraints": {"hidden": True, "readonly": False, "required": False},
-                    "externalId": OrderParametersEnum.ACCOUNT_ID,
-                    "id": "PAR-1234-5681",
-                    "name": "Account ID",
-                    "type": "SingleLineText",
-                    "value": "account_id",
-                },
-                {
-                    "externalId": OrderParametersEnum.TERMINATION,
-                    "id": "PAR-1234-5678",
-                    "name": "Account Termination Type",
-                    "type": "Choice",
-                    "value": TerminationParameterChoices.CLOSE_ACCOUNT,
-                },
-                {
-                    "externalId": OrderParametersEnum.SUPPORT_TYPE,
-                    "id": "PAR-1234-5679",
-                    "name": "Support Type",
-                    "type": "Choice",
-                    "value": SupportTypesEnum.PARTNER_LED_SUPPORT,
-                },
-                {
-                    "externalId": OrderParametersEnum.TRANSFER_TYPE,
-                    "id": "PAR-1234-5680",
-                    "name": "Transfer Type",
-                    "type": "Choice",
-                    "value": None,
-                },
-                {
-                    "externalId": OrderParametersEnum.MASTER_PAYER_ID,
-                    "id": "PAR-1234-5681",
-                    "name": "Master Payer ID",
-                    "type": "SingleLineText",
-                    "value": None,
-                },
-                {
-                    "externalId": OrderParametersEnum.CONTACT,
-                    "id": "PAR-1234-5681",
-                    "name": "Master Payer ID",
-                    "type": "Contact",
-                    "value": None,
-                },
-            ],
-        },
-        "product": {"id": "PRD-1111-1111"},
-        "seller": {
-            "address": {"country": "US"},
-            "href": "/accounts/sellers/SEL-9121-8944",
-            "icon": "/static/SEL-9121-8944/icon.png",
-            "id": "SEL-9121-8944",
-            "name": "SWO US",
-        },
-        "subscriptions": [
-            {"id": "SUB-1000-2000-3000", "item": {"id": "ITM-0000-0001-0001"}, "status": "Active"},
-            {"id": "SUB-1234-5678", "item": {"id": "ITM-0000-0001-0002"}, "status": "Terminated"},
-        ],
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_ffc_client",
+        return_value=ffc_client,
+    )
+    ffc_client.get_entitlement_by_datasource_id.return_value = {
+        "id": "entitlement_id",
+        "status": "new",
     }
     agreement_accounts = [
         {
@@ -775,6 +581,50 @@ def test_synchronize_new_accounts_dates_test(
     mock_create_agreement_subscription.assert_called_once_with(*expected_call)
 
 
+@freeze_time("2025-05-01 11:10:00")
+def test_synchronize_new_accounts_dry_run(
+    mocker, mpt_client, config, product_items, aws_client_factory, agreement_factory, ffc_client
+):
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_product_items_by_skus",
+        return_value=product_items,
+    )
+    mock_agreement = agreement_factory(vendor_id="123456789012")
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_agreements_by_query",
+        return_value=[mock_agreement],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_ffc_client",
+        return_value=ffc_client,
+    )
+    ffc_client.get_entitlement_by_datasource_id.return_value = {
+        "id": "entitlement_id",
+        "status": "new",
+    }
+    agreement_accounts = [
+        {
+            "Email": "test@example.com",
+            "Id": "123456789012",
+            "Name": "Test Account",
+            "Status": "ACTIVE",
+        }
+    ]
+
+    mock_create_agreement_subscription = mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.create_agreement_subscription"
+    )
+
+    _synchronize_new_accounts(
+        mpt_client,
+        mock_agreement,
+        agreement_accounts,
+        dry_run=True,
+    )
+
+    mock_create_agreement_subscription.assert_not_called()
+
+
 def test_sync_agreement_accounts_skip_management_account(
     mocker,
     mpt_client,
@@ -792,10 +642,7 @@ def test_sync_agreement_accounts_skip_management_account(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_product_items_by_skus",
         return_value=product_items,
     )
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.synchronize_agreements.get_mpa_account",
-        return_value=mpa_pool_factory(account_email="management.account@email.com"),
-    )
+
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.create_agreement_subscription",
         return_value={"id": "SUB-123-456"},
@@ -803,7 +650,7 @@ def test_sync_agreement_accounts_skip_management_account(
     mock_agreement = agreement_factory()
     accounts = [
         {
-            "Id": "account_id_1",
+            "Id": "Account Id",
             "Name": "Management Account",
             "Email": "management.account@email.com",
             "Status": "ACTIVE",

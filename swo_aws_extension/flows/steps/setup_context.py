@@ -77,7 +77,10 @@ class SetupPurchaseContext(SetupContext):
             context.account_creation_status = context.aws_client.get_linked_account_status(
                 account_request_id
             )
-            logger.info(f"{context.order_id} - Action - Setup setup_account_request_id in context")
+            logger.info(
+                f"{context.order_id} - Action - Setup setup_account_request_id in context:"
+                f" {context.account_creation_status}"
+            )
 
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
         self.init_template(client, context)
@@ -101,7 +104,10 @@ class SetupChangeContext(SetupContext):
             context.account_creation_status = context.aws_client.get_linked_account_status(
                 account_request_id
             )
-            logger.info(f"{context.order_id} - Action - Setup setup_account_request_id in context")
+            logger.info(
+                f"{context.order_id} - Action - Setup setup_account_request_id in context:"
+                f" {context.account_creation_status}"
+            )
 
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
         self.init_template(client, context)
@@ -196,5 +202,6 @@ class SetupContextPurchaseTransferWithoutOrganizationStep(SetupContext):
 class SetupTerminateContextStep(SetupContext):
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
         self.init_template(client, context)
+        self.setup_aws(context)
         logger.info(f"{context.order_id} - Next - SetupTerminateContextStep completed successfully")
         next_step(client, context)
