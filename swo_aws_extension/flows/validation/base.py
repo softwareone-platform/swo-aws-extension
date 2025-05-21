@@ -5,6 +5,7 @@ from swo_aws_extension.flows.error import (
     strip_trace_id,
 )
 from swo_aws_extension.flows.order import PurchaseContext
+from swo_aws_extension.flows.validation.change import validate_and_setup_change_order
 from swo_aws_extension.flows.validation.purchase import validate_purchase_order
 from swo_aws_extension.notifications import notify_unhandled_exception_in_teams
 
@@ -28,8 +29,11 @@ def validate_order(mpt_client, context):
         if context.is_purchase_order():
             purchase_context = PurchaseContext.from_context(context)
             has_errors, order = validate_purchase_order(mpt_client, purchase_context)
+
         elif context.is_change_order():
-            pass
+            logger.info(f"agreement={context.agreement}")
+            has_errors, order = validate_and_setup_change_order(mpt_client, context)
+            logger.info(f"order={order}")
         elif context.is_termination_order():
             pass
 
