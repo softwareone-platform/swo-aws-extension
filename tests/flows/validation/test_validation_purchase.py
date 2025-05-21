@@ -24,7 +24,7 @@ def test_validate_new_account_empty_values(
         )
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
+        "swo_aws_extension.flows.validation.steps.get_product_items_by_skus",
         return_value=product_items,
     )
     client = mocker.MagicMock()
@@ -55,7 +55,7 @@ def test_validate_new_account_with_values(
         )
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
+        "swo_aws_extension.flows.validation.steps.get_product_items_by_skus",
         return_value=product_items,
     )
     client = mocker.MagicMock()
@@ -86,7 +86,7 @@ def test_validate_selected_existing_account_empty_values(
         )
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
+        "swo_aws_extension.flows.validation.steps.get_product_items_by_skus",
         return_value=product_items,
     )
 
@@ -133,7 +133,7 @@ def test_validate_selected_transfer_with_org_empty_values(
         )
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
+        "swo_aws_extension.flows.validation.steps.get_product_items_by_skus",
         return_value=product_items,
     )
 
@@ -188,7 +188,7 @@ def test_validate_selected_transfer_with_org_with_values(
         )
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
+        "swo_aws_extension.flows.validation.steps.get_product_items_by_skus",
         return_value=product_items,
     )
     client = mocker.MagicMock()
@@ -241,7 +241,7 @@ def test_validate_selected_transfer_without_org_empty_values(
         )
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
+        "swo_aws_extension.flows.validation.steps.get_product_items_by_skus",
         return_value=product_items,
     )
     client = mocker.MagicMock()
@@ -295,7 +295,7 @@ def test_validate_selected_transfer_without_org_with_values(
         )
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
+        "swo_aws_extension.flows.validation.steps.get_product_items_by_skus",
         return_value=product_items,
     )
 
@@ -350,7 +350,7 @@ def test_validate_selected_transfer_without_org_with_invalid_values(
         )
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
+        "swo_aws_extension.flows.validation.steps.get_product_items_by_skus",
         return_value=product_items,
     )
 
@@ -408,7 +408,7 @@ def test_validate_selected_split_billing_empty_mpa_id(
         )
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
+        "swo_aws_extension.flows.validation.steps.get_product_items_by_skus",
         return_value=product_items,
     )
 
@@ -439,7 +439,7 @@ def test_validate_selected_split_billing_mpa_not_found_in_airtable(
         )
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
+        "swo_aws_extension.flows.validation.steps.get_product_items_by_skus",
         return_value=product_items,
     )
 
@@ -475,7 +475,7 @@ def test_validate_selected_split_billing_invalid_client(
         )
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
+        "swo_aws_extension.flows.validation.steps.get_product_items_by_skus",
         return_value=product_items,
     )
 
@@ -511,7 +511,7 @@ def test_validate_selected_split_billing_invalid_status(
         )
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
+        "swo_aws_extension.flows.validation.steps.get_product_items_by_skus",
         return_value=product_items,
     )
     mocker.patch(
@@ -547,7 +547,7 @@ def test_validate_selected_split_billing_pls_enabled(
     )
 
     mocker.patch(
-        "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
+        "swo_aws_extension.flows.validation.steps.get_product_items_by_skus",
         return_value=product_items,
     )
     mocker.patch(
@@ -591,7 +591,7 @@ def test_validate_no_items(mocker, order_factory, order_parameters_factory, mpa_
     )
 
     mocker.patch(
-        "swo_aws_extension.flows.validation.purchase.get_product_items_by_skus",
+        "swo_aws_extension.flows.validation.steps.get_product_items_by_skus",
         return_value=[],
     )
     mocker.patch(

@@ -31,9 +31,15 @@ def test_validate_purchase_order_exception(mocker, mpt_error_factory, order_fact
 
 def test_validation_change_order(mocker, mpt_client, order_factory):
     order = order_factory(order_type=ORDER_TYPE_CHANGE)
+    mock_validate_and_setup_change_order = mocker.patch(
+        "swo_aws_extension.flows.validation.base.validate_and_setup_change_order",
+        return_value=[False, order],
+    )
+
     context = InitialAWSContext.from_order_data(order)
     result = validate_order(mpt_client, context)
     assert result == order
+    mock_validate_and_setup_change_order.assert_called_once_with(mpt_client, context)
 
 
 def test_validation_termination_order(mocker, mpt_client, order_factory):
