@@ -85,9 +85,11 @@ def test_assign_mpa_phase_assign_mpa(
     fulfillment_parameters_factory,
     mpa_pool_factory,
     agreement_factory,
+    buyer,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA)
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA),
+        buyer=buyer,
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -124,6 +126,7 @@ def test_assign_mpa_phase_assign_mpa(
         context.order["id"],
         parameters=context.order["parameters"],
     )
+    assert context.airtable_mpa.scu == context.buyer.get("externalIds", {}).get("erpCustomer", "")
 
 
 def test_assign_mpa_phase_assign_mpa_credentials_error(

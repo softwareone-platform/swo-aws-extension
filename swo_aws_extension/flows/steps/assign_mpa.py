@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 def coppy_context_data_to_mpa_pool_model(context, airtable_mpa, status=None):
     if status is None:
         status = MPAStatusEnum.ASSIGNED
-    scu = context.buyer.get("externalId", {}).get("erpCustomer", "")
+    scu = context.buyer.get("externalIds", {}).get("erpCustomer", "")
     airtable_mpa.status = status
     airtable_mpa.agreement_id = context.agreement_id
     airtable_mpa.scu = scu
