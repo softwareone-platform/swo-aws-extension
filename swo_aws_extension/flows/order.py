@@ -103,6 +103,7 @@ class InitialAWSContext(BaseContext):
     agreement: dict | None = None
     seller: dict | None = None
     buyer: dict | None = None
+    subscriptions: list[dict] | None = None
 
     @property
     def mpa_account(self):
@@ -153,6 +154,7 @@ class InitialAWSContext(BaseContext):
             agreement=order.pop("agreement", {}),
             seller=order.pop("seller", {}),
             buyer=order.pop("buyer", {}),
+            subscriptions=order.get("subscriptions", []),
             order=order,
         )
 

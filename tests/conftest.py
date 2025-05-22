@@ -1822,3 +1822,34 @@ def update_order_side_effect_factory():
         return update_order_side_effect
 
     return _factory
+
+
+@pytest.fixture()
+def ffc_client_settings(extension_settings):
+    extension_settings.EXTENSION_CONFIG["FFC_OPERATIONS_API_BASE_URL"] = "https://local.local"
+    extension_settings.EXTENSION_CONFIG["FFC_SUB"] = "FKT-1234"
+    extension_settings.EXTENSION_CONFIG["FFC_OPERATIONS_SECRET"] = "1234"
+
+    return extension_settings
+
+
+@pytest.fixture()
+def mock_jwt_encoder(ffc_client_settings):
+    def wrapper(now):
+        return jwt.encode(
+            {
+                "sub": ffc_client_settings.EXTENSION_CONFIG["FFC_SUB"],
+                "exp": now + timedelta(minutes=5),
+                "nbf": now,
+                "iat": now,
+            },
+            ffc_client_settings.EXTENSION_CONFIG["FFC_OPERATIONS_SECRET"],
+            algorithm="HS256",
+        )
+
+    return wrapper
+
+
+@pytest.fixture()
+def ffc_client(mocker):
+    return mocker.Mock()

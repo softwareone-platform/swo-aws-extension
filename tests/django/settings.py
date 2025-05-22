@@ -189,5 +189,6 @@ EXTENSION_CONFIG = {
     "CCP_SCOPE": "ccp-scope",
     "MPT_KEY_VAULT_NAME": "mpt-key-vault",
     "CCP_KEY_VAULT_SECRET_NAME": "ccp-openid-token-secret-name",
+    "CCP_OAUTH_CREDENTIALS_SCOPE": "ccp-oauth-credentials-scope",
 }
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"

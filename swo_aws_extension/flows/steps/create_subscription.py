@@ -71,6 +71,7 @@ def add_subscription(client, context, account_id, account_email, account_name):
         "lines": [{"id": order_line["id"]} for order_line in context.order["lines"]],
     }
     subscription = create_subscription(client, context.order_id, subscription)
+    context.subscriptions.append(subscription)
     logger.info(
         f"{context.order_id} - Action -  subscription for {account_id} "
         f"({subscription["id"]}) created"
@@ -93,7 +94,7 @@ class CreateSubscription(Step):
         ):
             accounts = context.aws_client.list_accounts()
             account = find_first(
-                lambda acc: acc["Status"] == "ACTIVE",
+                lambda acc: acc["Status"] == "ACTIVE" and acc["Id"] != context.mpa_account,
                 accounts,
             )
             if not account:

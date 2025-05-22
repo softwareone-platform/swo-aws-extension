@@ -146,6 +146,7 @@ def test_fulfill_terminate_account_flow(
     service_request_ticket_factory,
     service_client,
     mock_switch_order_status_to_complete,
+    ffc_client,
 ):
     _, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.close_account.return_value = {}
@@ -164,7 +165,11 @@ def test_fulfill_terminate_account_flow(
     mocker.patch(
         "swo_aws_extension.flows.steps.service_crm_steps.update_order",
     )
-
+    mocker.patch("swo_aws_extension.flows.steps.finops.get_ffc_client", return_value=ffc_client)
+    ffc_client.get_entitlement_by_datasource_id.return_value = {
+        "id": "entitlement_id",
+        "status": "new",
+    }
     mocker.patch(
         "swo_aws_extension.flows.order.get_product_template_or_default",
         return_value="template",

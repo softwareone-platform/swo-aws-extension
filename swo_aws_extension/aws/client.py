@@ -206,7 +206,6 @@ class AWSClient:
             Email=email, AccountName=account_name, RoleName=role_name, IamUserAccessToBilling="DENY"
         )
         account_creation_status = AccountCreationStatus.from_boto3_response(response)
-        logger.info(f"Linked account created: {account_creation_status}")
         return account_creation_status
 
     @wrap_boto3_error
@@ -222,7 +221,6 @@ class AWSClient:
             CreateAccountRequestId=create_account_request_id
         )
         account_creation_status = AccountCreationStatus.from_boto3_response(response)
-        logger.info(f"Linked account request status: {account_creation_status}")
         return account_creation_status
 
     @wrap_boto3_error
