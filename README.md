@@ -1,12 +1,14 @@
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=softwareone-platform_swo-aws-extension&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=softwareone-platform_swo-aws-extension) 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=softwareone-platform_swo-aws-extension&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=softwareone-platform_swo-aws-extension)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=softwareone-platform_swo-aws-extension&metric=coverage)](https://sonarcloud.io/summary/new_code?id=softwareone-platform_swo-aws-extension)
 
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 # SoftwareONE AWS Marketplace Extension
+
 Extension integrates AWS Marketplace Extension with the SoftwareONE Marketplace
 
 # Run tests
+
 ```
 $ docker-compose build app_test
 $ docker-compose run --service-ports app_test
@@ -17,11 +19,13 @@ $ docker-compose run --service-ports app_test
 ## Create configuration files
 
 1. Create environment file
+
 ```
 $ cp .env.sample .env
 ```
 
 1. Setup parameters for `.env` file
+
 ```
 MPT_PRODUCTS_IDS=PRD-1111-1111
 MPT_PORTAL_BASE_URL=http://devmock:8000
@@ -40,13 +44,15 @@ EXT_AWS_REGION=us-east-1
 ```
 
 `MPT_PRODUCTS_IDS` should be a comma-separated list of the SWO Marketplace Product identifiers
-For each of the defined product id in the `MPT_PRODUCTS_IDS` list define `WEBHOOKS_SECRETS` json variables using product ID as key.
+For each of the defined product id in the `MPT_PRODUCTS_IDS` list define `WEBHOOKS_SECRETS` json variables using product
+ID as key.
 
 ```
 EXT_WEBHOOKS_SECRETS={"PRD-1111-1111": "<webhook-secret-for-product>"}
 ```
 
 Example of `.env` file
+
 ```
 MPT_PRODUCTS_IDS=PRD-1111-1111
 MPT_PORTAL_BASE_URL=http://devmock:8000
@@ -70,6 +76,7 @@ AZURE_TENANT_ID=tenant-id-guid
 AZURE_CLIENT_CERTIFICATE_PASSWORD=local-client-cert-pw
 AZURE_CLIENT_CERTIFICATE_PATH=xxxxxxx.PFX
 ```
+
 ```
 
 
@@ -77,8 +84,10 @@ AZURE_CLIENT_CERTIFICATE_PATH=xxxxxxx.PFX
 
 1. Build and run the extension
 ```
+
 $ docker-compose build app
 $ docker-compose run --service-ports app
+
 ```
 
 # Configuration
@@ -91,7 +100,6 @@ $ docker-compose run --service-ports app
 | `MPT_API_BASE_URL`              | http://localhost:8000 | https://portal.softwareone.com/mpt    | SoftwareONE Marketplace API URL                                                           |
 | `MPT_API_TOKEN`                 | -                     | eyJhbGciOiJSUzI1N...                  | SoftwareONE Marketplace API Token                                                         |
     
-    
 
 ## Azure AppInsights
 | Environment Variable                    | Default                     | Example                                                                                                                                                                                             | Description                                                                                                   |
@@ -101,15 +109,22 @@ $ docker-compose run --service-ports app
 | `LOGGING_ATTEMPT_GETTER`                | aws.utils.get_attempt_count | aws.utils.get_attempt_count                                                                                                                                                                         | Path to python function that retrieves order processing attempt to put it into the Azure Application Insights |
 
 ## Key Vault
-| Environment Variable                   | Default | Example | Description                                                          |
-|----------------------------------------|---------|---------|----------------------------------------------------------------------|
-| `MPT_KEY_VAULT_NAME` | -     | https://mpt-key-vault-name.vault.azure.net/      | Azure Key Vault name |
-| `EXT_CCP_KEY_VAULT_SECRET_NAME` | -     | ccp-key-vault-secret-name      | Azure Key Vault secret name where CCP token is stored |
-| `EXT_CCP_OAUTH_SCOPE` | -     | api://scope      | Scope for CCP token authentication API request for authorization to retrieve token from CCP |
-| `AZURE_CLIENT_ID` | -     | azure-client-id-guid      | Client ID for key vault |
-| `AZURE_TENANT_ID` | -     | azure-tenant-id-guid    | Tenant ID for key vault |
-| `AZURE_CLIENT_CERTIFICATE_PASSWORD` | -     | password      | Password for azure client certificate |
-| `AZURE_CLIENT_CERTIFICATE_PATH` | -     | /folder/abcdef.pfx      | Path and file path to azure client certificate |
+| Environment Variable                  | Default | Example                                     | Description                                                                                   |
+|---------------------------------------|---------|---------------------------------------------|-----------------------------------------------------------------------------------------------|
+| `MPT_KEY_VAULT_NAME`                  | -       | https://mpt-key-vault-name.vault.azure.net/ | Azure Key Vault name                                                                          |
+| `EXT_CCP_KEY_VAULT_SECRET_NAME`       | -       | ccp-key-vault-secret-name                   | Azure Key Vault secret name where CCP token is stored                                         |
+| `EXT_CCP_OAUTH_SCOPE`                 | -       | api://scope                                 | Scope for CCP token authentication API request for authorization to retrieve token from CCP   |
+| `AZURE_CLIENT_ID`                     | -       | azure-client-id-guid                        | Client ID for key vault                                                                       |
+| `AZURE_TENANT_ID`                     | -       | azure-tenant-id-guid                        | Tenant ID for key vault                                                                       |
+| `AZURE_CLIENT_CERTIFICATE_PASSWORD`   | -       | password                                    | Password for azure client certificate                                                         |
+| `AZURE_CLIENT_CERTIFICATE_PATH`       | -       | /folder/abcdef.pfx                          | Path and file path to azure client certificate                                                |
+
+## FinOps
+| Environment Variable              | Default  | Example                            | Description       |
+|-----------------------------------|----------|------------------------------------|-------------------|
+| `EXT_FFC_SUB`                     | -        | FTKN-1111-1111                     | FinOps subject    |
+| `EXT_FFC_OPERATIONS_API_BASE_URL` | -        | https://api.finops.s1.show/ops/v1/ | FinOps base URL   |
+| `EXT_FFC_OPERATIONS_SECRET`       | -        | supersecret                        | FinOps secret     |
 
 ## Other
 | Environment Variable                   | Default | Example | Description                                                          |

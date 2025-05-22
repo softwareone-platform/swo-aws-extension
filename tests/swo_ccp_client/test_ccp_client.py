@@ -13,17 +13,22 @@ from swo_aws_extension.constants import (
 from swo_ccp_client.client import CCPClient
 
 
-def test_get_ccp_access_token(ccp_client, config, mock_key_vault_secret_value):
-    with patch("swo_ccp_client.client.get_openid_token") as mock_get_token:
-        mock_get_token.return_value = {"access_token": "test_access_token"}
-        token = ccp_client.get_ccp_access_token("oauth_scope")
-        assert token == "test_access_token"
-        mock_get_token.assert_called_once_with(
-            endpoint=config.ccp_oauth_url,
-            client_id=config.ccp_client_id,
-            client_secret=mock_key_vault_secret_value,
-            scope=config.ccp_oauth_scope,
-        )
+@pytest.fixture()
+def mock_get_token(mocker, mock_token):
+    mock_get_token = mocker.patch("swo_ccp_client.client.get_openid_token")
+    mock_get_token.return_value = {"access_token": mock_token}
+    return mock_get_token
+
+
+def test_get_ccp_access_token(ccp_client, config, mock_key_vault_secret_value, mock_get_token):
+    token = ccp_client.get_ccp_access_token("oauth_scope")
+    assert token == "test-token"
+    mock_get_token.assert_called_once_with(
+        endpoint=config.ccp_oauth_url,
+        client_id=config.ccp_client_id,
+        client_secret=mock_key_vault_secret_value,
+        scope=config.ccp_oauth_scope,
+    )
 
 
 def test_get_ccp_access_token_with_no_secret(mocker, ccp_client_no_secret, config):
@@ -128,17 +133,32 @@ def test_get_secret_no_client_secret(
     mocked_send_error.assert_called_once()
 
 
-def test_get_secret_from_key_vault(
-    mocker,
-    ccp_client,
-    mock_key_vault_secret_value,
-):
+def test_get_secret_from_key_vault(mocker, mock_key_vault_secret_value, config, mock_get_token):
     mocker.patch(
         "mpt_extension_sdk.key_vault.base.KeyVault.get_secret",
         return_value=mock_key_vault_secret_value,
     )
+
+    ccp_client = CCPClient(config)
     secret = ccp_client.get_secret_from_key_vault()
     assert secret == mock_key_vault_secret_value
+
+
+def test_get_secret_from_key_vault_not_found(mocker, config, mock_get_token):
+    mock_get_secret = mocker.patch(
+        "mpt_extension_sdk.key_vault.base.KeyVault.get_secret",
+        return_value=None,
+    )
+
+    mock_send_error = mocker.patch("swo_ccp_client.client.send_error", return_value=None)
+
+    ccp_client = CCPClient(config)
+
+    secret = ccp_client.get_secret_from_key_vault()
+
+    assert secret is None
+    assert mock_get_secret.call_count == 2
+    assert mock_send_error.call_count == 2
 
 
 def test_save_secret_to_key_vault(
@@ -243,3 +263,94 @@ def test_keyvault_url_parsing(url, expected_value, mocker, settings):
     key_vault_name = client._parse_keyvault_name_from_url(url)
 
     assert key_vault_name == expected_value
+
+
+def test_refresh_secret_success(
+    mocker,
+    ccp_client,
+    mock_key_vault_secret_value,
+    mock_get_secret_response,
+    mock_token,
+    mock_get_token,
+):
+    mock_get_secret = mocker.patch.object(ccp_client, "get_secret")
+    mock_get_secret.return_value = mock_get_secret_response["clientSecret"]
+    mock_save_secret = mocker.patch.object(ccp_client, "save_secret_to_key_vault")
+    mock_save_secret.return_value = mock_key_vault_secret_value
+
+    result = ccp_client.refresh_secret()
+
+    assert result == mock_key_vault_secret_value
+    mock_get_token.assert_called_once_with(
+        endpoint=ccp_client.config.ccp_oauth_url,
+        client_id=ccp_client.config.ccp_client_id,
+        client_secret=mock_key_vault_secret_value,
+        scope=ccp_client.config.ccp_oauth_credentials_scope,
+    )
+    mock_get_secret.assert_called_once_with(mock_token)
+    mock_save_secret.assert_called_once_with(mock_get_secret_response["clientSecret"])
+
+
+def test_refresh_secret_no_access_token(
+    mocker, ccp_client, mock_key_vault_secret_value, config, mock_get_token
+):
+    mock_get_token.return_value = {}
+    mocked_send_error = mocker.patch("swo_ccp_client.client.send_error")
+
+    result = ccp_client.refresh_secret()
+
+    assert result is None
+    mock_get_token.assert_called_once_with(
+        endpoint=config.ccp_oauth_url,
+        client_id=config.ccp_client_id,
+        client_secret=mock_key_vault_secret_value,
+        scope=config.ccp_oauth_credentials_scope,
+    )
+    mocked_send_error.assert_called_once()
+
+
+def test_refresh_secret_no_secret(
+    mocker, ccp_client, mock_key_vault_secret_value, mock_token, config, mock_get_token
+):
+    mock_get_secret = mocker.patch.object(ccp_client, "get_secret")
+    mock_get_secret.return_value = None
+    mocker.patch("swo_ccp_client.client.send_error")
+
+    result = ccp_client.refresh_secret()
+
+    assert result is None
+    mock_get_token.assert_called_once_with(
+        endpoint=config.ccp_oauth_url,
+        client_id=config.ccp_client_id,
+        client_secret=mock_key_vault_secret_value,
+        scope=config.ccp_oauth_credentials_scope,
+    )
+    mock_get_secret.assert_called_once_with(mock_token)
+
+
+def test_refresh_secret_not_saved(
+    mocker,
+    ccp_client,
+    mock_key_vault_secret_value,
+    mock_get_secret_response,
+    mock_token,
+    config,
+    mock_get_token,
+):
+    mock_get_secret = mocker.patch.object(ccp_client, "get_secret")
+    mock_get_secret.return_value = mock_get_secret_response["clientSecret"]
+    mock_save_secret = mocker.patch.object(ccp_client, "save_secret_to_key_vault")
+    mock_save_secret.return_value = None
+    mocker.patch("swo_ccp_client.client.send_error")
+
+    result = ccp_client.refresh_secret()
+
+    assert result is None
+    mock_get_token.assert_called_once_with(
+        endpoint=config.ccp_oauth_url,
+        client_id=config.ccp_client_id,
+        client_secret=mock_key_vault_secret_value,
+        scope=config.ccp_oauth_credentials_scope,
+    )
+    mock_get_secret.assert_called_once_with(mock_token)
+    mock_save_secret.assert_called_once_with(mock_get_secret_response["clientSecret"])

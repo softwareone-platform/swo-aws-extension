@@ -11,7 +11,6 @@ from mpt_extension_sdk.mpt_http.mpt import (
 from mpt_extension_sdk.mpt_http.utils import find_first
 from mpt_extension_sdk.mpt_http.wrap_http_error import wrap_mpt_http_error
 
-from swo_aws_extension.airtable.models import get_mpa_account
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import (
     AWS_ITEMS_SKUS,
@@ -19,8 +18,10 @@ from swo_aws_extension.constants import (
     SWO_EXTENSION_MANAGEMENT_ROLE,
     SubscriptionStatusEnum,
 )
+from swo_aws_extension.flows.steps.finops import create_finops_entitlement
 from swo_aws_extension.notifications import send_error
 from swo_aws_extension.parameters import FulfillmentParametersEnum
+from swo_finops_client.client import get_ffc_client
 
 logger = logging.getLogger(__name__)
 
@@ -81,17 +82,14 @@ def _get_active_accounts(aws_client, agreement_id, mpa_account_id):
     """
 
     accounts = aws_client.list_accounts()
-    airtable_mpa = get_mpa_account(mpa_account_id)
     active_accounts = []
     for account in accounts:
-        account_id = account["Id"]
-        account_state = account["Status"]
         # Management account will not be synchronized
-        if account["Email"] == airtable_mpa.account_email:
+        if account["Id"] == mpa_account_id:
             continue
-        if account_state != "ACTIVE":
+        if account["Status"] != "ACTIVE":
             logger.info(
-                f"{agreement_id} - Skipping - Import Account {account_id} as it is not active"
+                f"{agreement_id} - Skipping - Import Account {account["Id"]} as it is not active"
             )
             continue
 
@@ -290,6 +288,10 @@ def _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run):
             logger.info(
                 f"{agreement.get("id")} - Subscription for {account_id} "
                 f'({subscription["id"]}) created'
+            )
+            ffc_client = get_ffc_client()
+            create_finops_entitlement(
+                ffc_client, account_id, agreement["buyer"]["id"], agreement["id"]
             )
         except Exception as e:
             logger.error(f"{agreement.get("id")} - Failed to synchronize account {account_id}: {e}")

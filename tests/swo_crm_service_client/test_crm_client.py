@@ -1,3 +1,5 @@
+from json import JSONDecodeError
+
 import pytest
 from requests import PreparedRequest
 from requests.models import Response
@@ -140,3 +142,32 @@ def test_client_headers(crm_client, service_request, mocker):
     }
     assert create_service_request.headers == csr_expected_headers
     assert create_service_request.url == "http://example.com/ticketing/ServiceRequests"
+
+
+def test_create_service_request_json_decode_error(crm_client, service_request, mocker):
+    mock_response = mocker.Mock(spec=Response)
+    mock_response.status_code = 200
+    mock_response.content = b"invalid json"
+    mock_response.json.side_effect = JSONDecodeError("Expecting value", "invalid json", 0)
+    mock_post = mocker.patch.object(crm_client, "post", return_value=mock_response)
+
+    order_id = "ORD-0000-0000"
+    with pytest.raises(JSONDecodeError):
+        crm_client.create_service_request(order_id, service_request)
+
+    expected_json = {
+        "additionalInfo": "additionalInfo",
+        "externalUserEmail": "user@example.com",
+        "externalUsername": "username",
+        "globalacademicExtUserId": "globalacademicExtUserId",
+        "requester": "requester",
+        "serviceType": "serviceType",
+        "subService": "subService",
+        "summary": "summary",
+        "title": "title",
+    }
+    mock_post.assert_called_once_with(
+        url="/ticketing/ServiceRequests",
+        json=expected_json,
+        headers={"x-correlation-id": order_id},
+    )

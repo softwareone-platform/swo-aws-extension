@@ -19,6 +19,11 @@ from swo_aws_extension.flows.steps.create_subscription import (
     CreateSubscription,
     SynchronizeAgreementSubscriptionsStep,
 )
+from swo_aws_extension.flows.steps.finops import (
+    CreateFinOpsEntitlementStep,
+    CreateFinOpsMPAEntitlementStep,
+    DeleteFinOpsEntitlementsStep,
+)
 from swo_aws_extension.flows.steps.invitation_links import (
     AwaitInvitationLinksStep,
     SendInvitationLinksStep,
@@ -74,4 +79,7 @@ __all__ = [
     "AddLinkedAccountStep",
     "CreateChangeSubscriptionStep",
     "AssignSplitBillingMPA",
+    "DeleteFinOpsEntitlementsStep",
+    "CreateFinOpsEntitlementStep",
+    "CreateFinOpsMPAEntitlementStep",
 ]

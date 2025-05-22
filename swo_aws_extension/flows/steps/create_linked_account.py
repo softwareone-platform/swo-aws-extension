@@ -174,6 +174,8 @@ class CreateInitialLinkedAccountStep(Step):
             linked_account = context.aws_client.create_linked_account(
                 context.root_account_email, context.account_name
             )
+            logger.info(f"{context.order_id} - Action - Linked account created: {linked_account}")
+
             context.order = set_account_request_id(context.order, linked_account.account_request_id)
             update_order(client, context.order_id, parameters=context.order["parameters"])
         except AWSError as e:
@@ -234,5 +236,6 @@ class AddLinkedAccountStep(Step):
         linked_account = context.aws_client.create_linked_account(
             context.root_account_email, context.account_name
         )
+        logger.info(f"{context.order_id} - Action - Linked account created: {linked_account}")
         context.order = set_account_request_id(context.order, linked_account.account_request_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])
