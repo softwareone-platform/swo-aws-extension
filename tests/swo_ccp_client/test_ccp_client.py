@@ -1,8 +1,10 @@
 from unittest.mock import patch
 
+import pytest
 from requests import Request
 from requests.models import Response
 
+from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import (
     ACCESS_TOKEN_NOT_FOUND_IN_RESPONSE,
     FAILED_TO_GET_SECRET,
@@ -221,3 +223,23 @@ def test_request(mocker):
     mocker.patch("swo_ccp_client.client.CCPClient.get_ccp_access_token", return_value="auth-token")
     client.get_onboard_status("123")
     request_mock.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("url", "expected_value"),
+    [
+        ("https://test.vault.azure.net/secrets/test-secret", "test"),
+        ("https://test.vault.azure.net", "test"),
+        ("https://test.vault.azure.net/", "test"),
+        ("https://test.vault.azure.net/secrets/", "test"),
+        ("test", "test"),
+    ],
+)
+def test_keyvault_url_parsing(url, expected_value, mocker, settings):
+    mocker.patch("swo_ccp_client.client.CCPClient.get_ccp_access_token", return_value="auth-token")
+    config = Config()
+    client = CCPClient(config)
+
+    key_vault_name = client._parse_keyvault_name_from_url(url)
+
+    assert key_vault_name == expected_value
