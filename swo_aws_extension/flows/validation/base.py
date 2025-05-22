@@ -31,9 +31,7 @@ def validate_order(mpt_client, context):
             has_errors, order = validate_purchase_order(mpt_client, purchase_context)
 
         elif context.is_change_order():
-            logger.info(f"agreement={context.agreement}")
             has_errors, order = validate_and_setup_change_order(mpt_client, context)
-            logger.info(f"order={order}")
         elif context.is_termination_order():
             pass
 
