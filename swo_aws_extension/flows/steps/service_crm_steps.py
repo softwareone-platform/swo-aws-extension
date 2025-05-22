@@ -338,6 +338,7 @@ class CreateOnboardTicketStep(CreateServiceRequestStep):
             additional_info=additional_info,
             title=title,
             summary=summary,
+            service_type="MarketPlaceAutomation",
         )
 
     @staticmethod

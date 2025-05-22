@@ -8,6 +8,7 @@ from requests.adapters import HTTPAdapter, Retry
 
 from swo_aws_extension.constants import (
     CRM_EXTERNAL_EMAIL,
+    CRM_EXTERNAL_USERNAME,
     CRM_GLOBAL_EXT_USER_ID,
     CRM_REQUESTER,
     CRM_SERVICE_TYPE,
@@ -24,7 +25,7 @@ class ServiceCRMException(Exception):
 @dataclass
 class ServiceRequest:
     external_user_email: str = CRM_EXTERNAL_EMAIL
-    external_username: str = CRM_EXTERNAL_EMAIL
+    external_username: str = CRM_EXTERNAL_USERNAME
     requester: str = CRM_REQUESTER
     sub_service: str = CRM_SUB_SERVICE
     global_academic_ext_user_id: str = CRM_GLOBAL_EXT_USER_ID
