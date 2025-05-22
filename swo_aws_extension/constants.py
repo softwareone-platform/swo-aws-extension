@@ -22,7 +22,8 @@ AWS_ITEMS_SKUS = [
     AWS_SAVING_PLANS_RECURRING_FEE_SKU,
 ]
 TAG_AGREEMENT_ID = "agreement_id"
-CRM_EXTERNAL_EMAIL = "no-reply@platform.softwareone.com"
+CRM_EXTERNAL_EMAIL = "marketplace@softwareone.com"
+CRM_EXTERNAL_USERNAME = "mpt@marketplace.com"
 CRM_SERVICE_TYPE = "MarketPlaceServiceActivation"
 CRM_GLOBAL_EXT_USER_ID = "globalacademicExtUserId"
 CRM_REQUESTER = "Supplier.Portal"
