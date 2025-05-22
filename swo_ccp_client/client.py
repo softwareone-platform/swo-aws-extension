@@ -1,5 +1,5 @@
 import logging
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 from django.conf import settings
@@ -126,6 +126,16 @@ class CCPClient(Session):
         logger.info("Refreshed secret stored in key vault")
         return saved_secret
 
+    def _parse_keyvault_name_from_url(self, key_vault_url):
+        """
+        Parses the key vault URL to extract the name.
+
+        :param key_vault_url: The key vault URL.
+        :return: The name of the key vault.
+        """
+        hostname = urlparse(key_vault_url).hostname or key_vault_url
+        return hostname.split(".")[0]
+
     def get_secret(self, token):
         """
         Retrieves the OpenID secret from the key vault.
@@ -134,7 +144,9 @@ class CCPClient(Session):
         :return: The secret if successful, None otherwise.
         """
         client_id = self.config.ccp_client_id
-        key_vault_name = settings.MPT_KEY_VAULT_NAME
+        key_vault_url = settings.MPT_KEY_VAULT_NAME
+        key_vault_name = self._parse_keyvault_name_from_url(key_vault_url)
+
         secret_name = self.config.ccp_key_vault_secret_name
         api_url = self.base_url
         api_url = f"{api_url}process/lighthouse/ad/retrieve/secret/{client_id}?api-version=v1"
@@ -160,13 +172,14 @@ class CCPClient(Session):
 
         :return: The secret if successful, None otherwise.
         """
-        key_vault = KeyVault(settings.MPT_KEY_VAULT_NAME)
+        key_vault_name = self._parse_keyvault_name_from_url(settings.MPT_KEY_VAULT_NAME)
+        key_vault = KeyVault(key_vault_name)
         secret_name = self.config.ccp_key_vault_secret_name
         secret = key_vault.get_secret(secret_name)
         if not secret:
             error = (
                 f"{CCP_SECRET_NOT_FOUND_IN_KEY_VAULT}: "
-                f"{settings.MPT_KEY_VAULT_NAME} and secret name: {secret_name}."
+                f"{key_vault_name} and secret name: {secret_name}."
             )
             logger.error(error)
             send_error(
@@ -184,8 +197,8 @@ class CCPClient(Session):
         :param secret: The secret to save.
         :return: The saved secret if successful, None otherwise.
         """
-        key_vault = KeyVault(settings.MPT_KEY_VAULT_NAME)
-        key_vault_name = settings.MPT_KEY_VAULT_NAME
+        key_vault_name = self._parse_keyvault_name_from_url(settings.MPT_KEY_VAULT_NAME)
+        key_vault = KeyVault(key_vault_name)
         saved_secret = key_vault.set_secret(self.config.ccp_key_vault_secret_name, secret)
         if not saved_secret:
             error = (

@@ -62,7 +62,7 @@ EXT_CCP_CLIENT_ID=CCP Client ID
 EXT_AWS_OPENID_SCOPE=urn://dev.aws.services.softwareone.com/.default
 EXT_CCP_OAUTH_URL=https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token
 EXT_AWS_REGION=us-east-1
-MPT_KEY_VAULT_NAME=MPT-key-vault-name
+MPT_KEY_VAULT_NAME=https://mpt-key-vault-name.vault.azure.net/
 EXT_CCP_KEY_VAULT_SECRET_NAME=ccp-key-vault-secret-name
 EXT_CCP_OAUTH_SCOPE=api://scope
 AZURE_CLIENT_ID=client-id-guid
@@ -103,7 +103,7 @@ $ docker-compose run --service-ports app
 ## Key Vault
 | Environment Variable                   | Default | Example | Description                                                          |
 |----------------------------------------|---------|---------|----------------------------------------------------------------------|
-| `MPT_KEY_VAULT_NAME` | -     | key-vault-name      | Azure Key Vault name |
+| `MPT_KEY_VAULT_NAME` | -     | https://mpt-key-vault-name.vault.azure.net/      | Azure Key Vault name |
 | `EXT_CCP_KEY_VAULT_SECRET_NAME` | -     | ccp-key-vault-secret-name      | Azure Key Vault secret name where CCP token is stored |
 | `EXT_CCP_OAUTH_SCOPE` | -     | api://scope      | Scope for CCP token authentication API request for authorization to retrieve token from CCP |
 | `AZURE_CLIENT_ID` | -     | azure-client-id-guid      | Client ID for key vault |
