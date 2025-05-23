@@ -1,3 +1,4 @@
+import pytest
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.aws.errors import AWSError
@@ -13,6 +14,11 @@ from swo_aws_extension.flows.steps.create_linked_account import (
     CreateInitialLinkedAccountStep,
 )
 from swo_aws_extension.parameters import set_account_request_id, set_phase
+
+
+@pytest.fixture(autouse=True)
+def mocked_send_mpt_notification(mocker):
+    return mocker.patch("swo_aws_extension.flows.order.send_mpt_notification")
 
 
 def test_create_linked_account_phase_create_linked_account(

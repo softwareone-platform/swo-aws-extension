@@ -3,15 +3,24 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-import boto3
 import pymsteams
 from django.conf import settings
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from markdown_it import MarkdownIt
-from mpt_extension_sdk.mpt_http.mpt import get_rendered_template
+from mpt_extension_sdk.mpt_http.base import MPTClient
+from mpt_extension_sdk.mpt_http.mpt import (
+    NotifyCategories,
+    get_rendered_template,
+    notify,
+)
 
 from swo_aws_extension.parameters import OrderParametersEnum, get_ordering_parameter
+
+if TYPE_CHECKING:  # pragma: no cover
+    from swo_aws_extension.flows.order import InitialAWSContext
+
 
 logger = logging.getLogger(__name__)
 
@@ -116,34 +125,44 @@ def send_exception(
     )
 
 
-def send_email(recipient, subject, template_name, context):
+# TODO: Consider implementing this as a class to encapsulate notification related functionality
+#  also make NotifyCategories a function parameter to increase flexibility and avoid hardcoding
+def mpt_notify(
+    mpt_client: MPTClient,
+    account_id: str,
+    buyer_id: str,
+    subject: str,
+    template_name: str,
+    context: dict,
+) -> None:
+    """
+    Sends a notification through the MPT API using a specified template and context.
+
+    Raises:
+    Exception
+        Logs the exception if there is an issue during the notification process,
+        including the category, subject, and the rendered message.
+    """
     template = env.get_template(f"{template_name}.html")
-    rendered_email = template.render(context)
+    rendered_template = template.render(context)
 
-    access_key, secret_key = settings.EXTENSION_CONFIG["AWS_SES_CREDENTIALS"].split(":")
-
-    client = boto3.client(
-        "ses",
-        aws_access_key_id=access_key,
-        aws_secret_access_key=secret_key,
-        region_name=settings.EXTENSION_CONFIG["AWS_SES_REGION"],
-    )
     try:
-        client.send_email(
-            Source=settings.EXTENSION_CONFIG["EMAIL_NOTIFICATIONS_SENDER"],
-            Destination={
-                "ToAddresses": recipient,
-            },
-            Message={
-                "Subject": {"Data": subject, "Charset": "UTF-8"},
-                "Body": {
-                    "Html": {"Data": rendered_email, "Charset": "UTF-8"},
-                },
-            },
+        notify(
+            mpt_client,
+            NotifyCategories.ORDERS.value,
+            account_id,
+            buyer_id,
+            subject,
+            rendered_template,
         )
     except Exception:
         logger.exception(
-            f"Cannot send notification email with subject '{subject}' to: {recipient}",
+            f"Cannot send MPT API notification:"
+            f" Category: '{NotifyCategories.ORDERS.value}',"
+            f" Account ID: '{account_id}',"
+            f" Buyer ID: '{buyer_id}',"
+            f" Subject: '{subject}',"
+            f" Message: '{rendered_template}'"
         )
 
 
@@ -165,48 +184,30 @@ def md2html(template):
     return md.render(template)
 
 
-def send_email_notification(client, order, buyer):
+def send_mpt_notification(client: MPTClient, order_context: type["InitialAWSContext"]) -> None:
     """
-    Send a notification email to the customer according to the
+    Send an MPT notification to the customer according to the
     current order status.
-    It embeds the current order template into the email body.
-
-    Args:
-        client (MPTClient): The client used to consume the
-        MPT API.
-        order (dict): The order for which the notification should be sent.
-        buyer (dict): The buyer of the order.
+    It embeds the current order template into the body.
     """
-    email_notification_enabled = bool(
-        settings.EXTENSION_CONFIG.get("EMAIL_NOTIFICATIONS_ENABLED", False)
-    )
-    order_id = order.get("id")
-
-    if not email_notification_enabled:
-        logger.info(f"{order_id} - Skip - Email notification is disabled")
-        return
-
-    recipient = get_notifications_recipient(order, buyer)
-    if not recipient:
-        logger.warning(f"Cannot send email notifications for order {order_id}: no recipient found")
-        return
-
-    context = {
-        "order": order,
-        "activation_template": md2html(get_rendered_template(client, order["id"])),
+    template_context = {
+        "order": order_context.order,
+        "activation_template": md2html(get_rendered_template(client, order_context.order_id)),
         "api_base_url": settings.MPT_API_BASE_URL,
         "portal_base_url": settings.MPT_PORTAL_BASE_URL,
     }
-    subject = f"Order status update {order_id} for {order['buyer']['name']}"
-    if order["status"] == "Querying":
-        subject = f"This order need your attention {order_id} for {order['buyer']['name']}"
-    send_email(
-        [recipient],
+    buyer_name = order_context.buyer["name"]
+    subject = f"Order status update {order_context.order_id} " f"for {buyer_name}"
+    if order_context.order_status == "Querying":
+        subject = f"This order need your attention {order_context.order_id} " f"for {buyer_name}"
+    mpt_notify(
+        client,
+        order_context.agreement["client"]["id"],
+        order_context.buyer["id"],
         subject,
-        "email",
-        context,
+        "notification",
+        template_context,
     )
-    logger.info(f"{order_id} - Action - Email sent to {recipient} - {subject}")
 
 
 @functools.cache

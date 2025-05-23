@@ -34,9 +34,6 @@ MPT_API_TOKEN=<vendor-api-token>
 MPT_ORDERS_API_POLLING_INTERVAL_SECS=120
 EXT_WEBHOOKS_SECRETS={"PRD-1111-1111": "<super-jwt-secret>"}
 EXT_MSTEAMS_WEBHOOK_URL=https://whatever.webhook.office.com/webhookb2/<...>
-EXT_AWS_SES_CREDENTIALS=<access-key>:<secret-key>
-EXT_EMAIL_NOTIFICATIONS_SENDER=no-reply@domain.com
-EXT_EMAIL_NOTIFICATIONS_ENABLED=1
 EXT_CCP_CLIENT_ID=123456789
 EXT_AWS_OPENID_SCOPE=urn://dev.aws.services.softwareone.com/.default
 EXT_CCP_OAUTH_URL=https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token
@@ -61,9 +58,6 @@ MPT_API_TOKEN=<vendor-api-token>
 MPT_ORDERS_API_POLLING_INTERVAL_SECS=120
 EXT_WEBHOOKS_SECRETS={"PRD-1111-1111": "<super-jwt-secret>"}
 EXT_MSTEAMS_WEBHOOK_URL=https://whatever.webhook.office.com/webhookb2/<...>
-EXT_AWS_SES_CREDENTIALS=<access-key>:<secret-key>
-EXT_EMAIL_NOTIFICATIONS_SENDER=no-reply@domain.com
-EXT_EMAIL_NOTIFICATIONS_ENABLED=1
 EXT_CCP_CLIENT_ID=CCP Client ID
 EXT_AWS_OPENID_SCOPE=urn://dev.aws.services.softwareone.com/.default
 EXT_CCP_OAUTH_URL=https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token
@@ -99,6 +93,7 @@ $ docker-compose run --service-ports app
 | `MPT_PRODUCTS_IDS`              | PRD-1111-1111         | PRD-1234-1234,PRD-4321-4321           | Comma-separated list of SoftwareONE Marketplace Product ID                                |
 | `MPT_API_BASE_URL`              | http://localhost:8000 | https://portal.softwareone.com/mpt    | SoftwareONE Marketplace API URL                                                           |
 | `MPT_API_TOKEN`                 | -                     | eyJhbGciOiJSUzI1N...                  | SoftwareONE Marketplace API Token                                                         |
+| `MPT_NOTIFY_CATEGORIES`         | -                     | {"ORDERS": "NTC-XXXX-XXXX"}           | SoftwareONE Marketplace Notification Categories                                           |
     
 
 ## Azure AppInsights

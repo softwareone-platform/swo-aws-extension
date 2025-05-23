@@ -1031,11 +1031,9 @@ def mock_settings_product_ids():
 @pytest.fixture()
 def mock_ext_expected_environment_values(
     mock_env_webhook_secret,
-    mock_email_notification_sender,
 ):
     return {
         "WEBHOOKS_SECRETS": json.loads(mock_env_webhook_secret),
-        "EMAIL_NOTIFICATION_SENDER": mock_email_notification_sender,
     }
 
 
@@ -1052,18 +1050,11 @@ def mock_json_ext_variables():
 
 
 @pytest.fixture()
-def mock_email_notification_sender():
-    return "email_sender"
-
-
-@pytest.fixture()
 def mock_valid_env_values(
     mock_env_webhook_secret,
-    mock_email_notification_sender,
 ):
     return {
         "EXT_WEBHOOKS_SECRETS": mock_env_webhook_secret,
-        "EXT_EMAIL_NOTIFICATION_SENDER": mock_email_notification_sender,
     }
 
 
