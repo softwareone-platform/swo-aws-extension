@@ -232,7 +232,7 @@ def test_send_mpt_notification(
     )
     context = InitialAWSContext.from_order_data(
         order_factory(
-            order_parameters=order_parameters_factory(contact={"email": "spam@example.com"}),
+            order_parameters=order_parameters_factory(),
             buyer=buyer,
             status=MPT_ORDER_STATUS_QUERYING,
         )

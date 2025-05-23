@@ -16,8 +16,6 @@ from mpt_extension_sdk.mpt_http.mpt import (
     notify,
 )
 
-from swo_aws_extension.parameters import OrderParametersEnum, get_ordering_parameter
-
 if TYPE_CHECKING:  # pragma: no cover
     from swo_aws_extension.flows.order import InitialAWSContext
 
@@ -174,12 +172,6 @@ def mpt_notify(
         )
 
 
-def get_notifications_recipient(order, buyer):
-    return (get_ordering_parameter(order, OrderParametersEnum.CONTACT).get("value", {}) or {}).get(
-        "email"
-    ) or (buyer.get("contact", {}) or {}).get("email")
-
-
 def md2html(template):
     md = MarkdownIt("commonmark", {"breaks": True, "html": True})
 
@@ -205,9 +197,9 @@ def send_mpt_notification(client: MPTClient, order_context: type["InitialAWSCont
         "portal_base_url": settings.MPT_PORTAL_BASE_URL,
     }
     buyer_name = order_context.buyer["name"]
-    subject = f"Order status update {order_context.order_id} " f"for {buyer_name}"
+    subject = f"Order status update {order_context.order_id} for {buyer_name}"
     if order_context.order_status == "Querying":
-        subject = f"This order need your attention {order_context.order_id} " f"for {buyer_name}"
+        subject = f"This order need your attention {order_context.order_id} for {buyer_name}"
     mpt_notify(
         client,
         order_context.agreement["client"]["id"],

@@ -353,7 +353,7 @@ class TerminateContext(InitialAWSContext):
         """
         return [
             s.get("externalIds", {}).get("vendor")
-            for s in self.order.get("subscriptions", [])
+            for s in self.subscriptions
             if s.get("status") == "Terminating"
         ]
 
