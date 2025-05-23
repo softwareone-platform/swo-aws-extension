@@ -155,6 +155,14 @@ def mpt_notify(
             subject,
             rendered_template,
         )
+        logger.debug(
+            f"Sent MPT API notification:"
+            f" Category: '{NotifyCategories.ORDERS.value}',"
+            f" Account ID: '{account_id}',"
+            f" Buyer ID: '{buyer_id}',"
+            f" Subject: '{subject}',"
+            f" Message: '{rendered_template}'"
+        )
     except Exception:
         logger.exception(
             f"Cannot send MPT API notification:"
