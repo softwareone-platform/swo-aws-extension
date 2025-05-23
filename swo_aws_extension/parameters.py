@@ -18,7 +18,6 @@ class OrderParametersEnum(StrEnum):
     ACCOUNT_ID = "orderAccountId"
     SUPPORT_TYPE = "supportType"
     TRANSFER_TYPE = "transferType"
-    CONTACT = "contact"
     MASTER_PAYER_ID = "masterPayerId"
     CRM_TERMINATION_TICKET_ID = "crmTerminationTicketId"
 

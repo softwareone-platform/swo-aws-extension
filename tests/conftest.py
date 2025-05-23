@@ -67,7 +67,6 @@ def order_parameters_factory(constraints):
         support_type=SupportTypesEnum.PARTNER_LED_SUPPORT,
         transfer_type=None,
         master_payer_id=None,
-        contact=None,
         change_order_email=ACCOUNT_EMAIL,
         change_order_name="account_name",
         crm_termination_ticket_id="",
@@ -132,13 +131,6 @@ def order_parameters_factory(constraints):
                 "externalId": OrderParametersEnum.MASTER_PAYER_ID,
                 "type": "SingleLineText",
                 "value": master_payer_id,
-            },
-            {
-                "id": "PAR-1234-5681",
-                "name": "Master Payer ID",
-                "externalId": OrderParametersEnum.CONTACT,
-                "type": "Contact",
-                "value": contact,
             },
             {
                 "id": "PAR-1234-5655",

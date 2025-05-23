@@ -451,7 +451,7 @@ def test_add_linked_account_phase_check_linked_account_email_already_exist(
         mpt_client_mock,
         OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE,
     )
-    assert context.order["parameters"]["ordering"][9]["error"] == ERR_EMAIL_ALREADY_EXIST.to_dict()
+    assert context.order["parameters"]["ordering"][8]["error"] == ERR_EMAIL_ALREADY_EXIST.to_dict()
 
 
 def test_add_linked_account_phase_empty_parameters(
@@ -478,5 +478,5 @@ def test_add_linked_account_phase_empty_parameters(
     next_step_mock.assert_not_called()
 
     mock_switch_order_status_to_query.assert_called_once_with(mpt_client_mock)
-    assert context.order["parameters"]["ordering"][9]["error"] == ERR_EMAIL_EMPTY.to_dict()
-    assert context.order["parameters"]["ordering"][10]["error"] == ERR_ACCOUNT_NAME_EMPTY.to_dict()
+    assert context.order["parameters"]["ordering"][8]["error"] == ERR_EMAIL_EMPTY.to_dict()
+    assert context.order["parameters"]["ordering"][9]["error"] == ERR_ACCOUNT_NAME_EMPTY.to_dict()

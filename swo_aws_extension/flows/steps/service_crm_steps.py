@@ -29,7 +29,6 @@ from swo_aws_extension.flows.order import (
     InitialAWSContext,
     PurchaseContext,
 )
-from swo_aws_extension.notifications import get_notifications_recipient
 from swo_aws_extension.parameters import (
     get_crm_ccp_ticket_id,
     get_crm_keeper_ticket_id,
@@ -193,7 +192,7 @@ class AwaitTerminationServiceRequestStep(AwaitCRMTicketStatusStep):
 class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
     @staticmethod
     def build_service_request(context: PurchaseContext):
-        email_address = get_notifications_recipient(context.order, context.buyer)
+        email_address = context.buyer.get("contact", {}).get("email")
         master_payer_id = get_master_payer_id(context.order)
         if not master_payer_id:
             raise ValueError(
