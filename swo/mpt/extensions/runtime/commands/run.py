@@ -3,7 +3,9 @@ from swo.mpt.extensions.runtime.master import Master
 
 
 @click.command()
-@click.argument("component", default="all", type=click.Choice(["all", "api", "consumer"]), metavar="[COMPONENT]")
+@click.argument(
+    "component", default="all", type=click.Choice(["all", "api", "consumer"]), metavar="[COMPONENT]"
+)
 @click.option("--color/--no-color", default=True)
 @click.option("--debug", is_flag=True, default=False)
 @click.option("--reload", is_flag=True, default=False)
@@ -18,8 +20,12 @@ def run(component, color, debug, reload, debug_py):
         * consumer - run only Event Consumer thread
     """
 
+    # Import module reading environment to die fast if required environment variables are not set
+    import swo.mpt.extensions.runtime.djapp.conf.default
+
     if debug_py:
         import debugpy
+
         host, port = debug_py.split(":")
         debugpy.listen((host, int(port)))
 

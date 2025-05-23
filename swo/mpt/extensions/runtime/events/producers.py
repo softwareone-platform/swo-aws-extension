@@ -46,9 +46,9 @@ class EventProducer(ABC):
 
 
 class OrderEventProducer(EventProducer):
-    def __init__(self, dispatcher):
+    def __init__(self, client, dispatcher):
         super().__init__(dispatcher)
-        self.client = setup_client()
+        self.client = client
         self.setup_contexts = import_string(settings.MPT_SETUP_CONTEXTS_FUNC)
 
     def produce_events(self):

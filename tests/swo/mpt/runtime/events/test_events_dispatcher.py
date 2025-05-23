@@ -7,8 +7,8 @@ from mpt_extension_sdk.core.events.dataclasses import Event
 from swo.mpt.extensions.runtime.events.dispatcher import Dispatcher
 
 
-def test_dispatcher():
-    dispatcher = Dispatcher()
+def test_dispatcher(mpt_client):
+    dispatcher = Dispatcher(mpt_client)
     assert dispatcher is not None
     assert isinstance(dispatcher.client, MPTClient)
     assert isinstance(dispatcher.executor, ThreadPoolExecutor)
@@ -18,8 +18,8 @@ def test_dispatcher():
     assert isinstance(dispatcher.processor, threading.Thread)
 
 
-def test_dispatcher_running():
-    dispatcher = Dispatcher()
+def test_dispatcher_running(mpt_client):
+    dispatcher = Dispatcher(mpt_client)
     dispatcher.start()
     is_running = dispatcher.running
     dispatcher.stop()
@@ -27,8 +27,8 @@ def test_dispatcher_running():
     assert is_running
 
 
-def test_dispatcher_stop():
-    dispatcher = Dispatcher()
+def test_dispatcher_stop(mpt_client):
+    dispatcher = Dispatcher(mpt_client)
     dispatcher.start()
     dispatcher.stop()
     is_running = dispatcher.running
@@ -36,17 +36,17 @@ def test_dispatcher_stop():
     assert not is_running
 
 
-def test_dispatcher_dispatch_event():
+def test_dispatcher_dispatch_event(mpt_client):
     test_event = Event("evt-id", "orders", {"id": "ORD-1111-1111-1111"})
-    dispatcher = Dispatcher()
+    dispatcher = Dispatcher(mpt_client)
     dispatcher.start()
     dispatcher.dispatch_event(test_event)
     dispatcher.stop()
     dispatcher.executor.shutdown()
 
 
-def test_dispatcher_process_events(mocker):
-    dispatcher = Dispatcher()
+def test_dispatcher_process_events(mocker, mpt_client):
+    dispatcher = Dispatcher(mpt_client)
 
     def mocked_done_callback(futures, key, future):
         dispatcher.stop()

@@ -129,18 +129,14 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # OpenTelemetry configuration
 SERVICE_NAME = os.getenv("SERVICE_NAME", "Swo.Extensions.SwoDefaultExtensions")
-APPLICATIONINSIGHTS_CONNECTION_STRING = os.getenv(
-    "APPLICATIONINSIGHTS_CONNECTION_STRING", ""
-)
+APPLICATIONINSIGHTS_CONNECTION_STRING = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "")
 USE_APPLICATIONINSIGHTS = APPLICATIONINSIGHTS_CONNECTION_STRING != ""
 
 
 if USE_APPLICATIONINSIGHTS:
     logger_provider = LoggerProvider()
     set_logger_provider(logger_provider)
-    exporter = AzureMonitorLogExporter(
-        connection_string=APPLICATIONINSIGHTS_CONNECTION_STRING
-    )
+    exporter = AzureMonitorLogExporter(connection_string=APPLICATIONINSIGHTS_CONNECTION_STRING)
     logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
 
 LOGGING = {
@@ -205,15 +201,13 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # MPT settings
 
-MPT_API_BASE_URL = os.getenv("MPT_API_BASE_URL", "http://localhost:8000")
-MPT_API_TOKEN = os.getenv("MPT_API_TOKEN", "change-me!")
-MPT_PRODUCTS_IDS = os.getenv("MPT_PRODUCTS_IDS", "PRD-1111-1111")
-MPT_PORTAL_BASE_URL = os.getenv("MPT_PORTAL_BASE_URL", "https://portal.s1.show")
-MPT_KEY_VAULT_NAME = os.getenv("MPT_KEY_VAULT_NAME", "change-me!")
+MPT_API_BASE_URL = os.environ["MPT_API_BASE_URL"]
+MPT_API_TOKEN = os.environ["MPT_API_TOKEN"]
+MPT_PRODUCTS_IDS = os.environ["MPT_PRODUCTS_IDS"]
+MPT_PORTAL_BASE_URL = os.environ["MPT_PORTAL_BASE_URL"]
+MPT_KEY_VAULT_NAME = os.environ["MPT_KEY_VAULT_NAME"]
 
-MPT_ORDERS_API_POLLING_INTERVAL_SECS = int(
-    os.getenv("MPT_ORDERS_API_POLLING_INTERVAL_SECS", "120")
-)
+MPT_ORDERS_API_POLLING_INTERVAL_SECS = int(os.getenv("MPT_ORDERS_API_POLLING_INTERVAL_SECS", "120"))
 
 EXTENSION_CONFIG = {
     "DUE_DATE_DAYS": "30",
@@ -224,6 +218,4 @@ MPT_SETUP_CONTEXTS_FUNC = os.getenv(
     "mpt_extension_sdk.runtime.events.utils.setup_contexts",
 )
 
-MPT_NOTIFY_CATEGORIES = json.loads(
-    os.getenv("MPT_NOTIFY_CATEGORIES", '{"ORDERS": "NTC-0000-0006"}')
-)
+MPT_NOTIFY_CATEGORIES = json.loads(os.environ["MPT_NOTIFY_CATEGORIES"])

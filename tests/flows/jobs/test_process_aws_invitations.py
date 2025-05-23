@@ -20,19 +20,14 @@ from swo_aws_extension.flows.order import MPT_ORDER_STATUS_QUERYING, PurchaseCon
 
 
 @pytest.fixture()
-def aws_invitation_processor_factory(mocker, config):
+def aws_invitation_processor_factory(mocker, mpt_client, config):
     def _aws_invitation_processor(query_orders=None):
-        mpt_client = mocker.MagicMock()
-        mocker.patch(
-            "swo_aws_extension.flows.jobs.process_aws_invitations.setup_client",
-            return_value=mpt_client,
-        )
         if query_orders is not None:
             mocker.patch(
                 "swo_aws_extension.flows.jobs.process_aws_invitations.AWSInvitationsProcessor.get_querying_orders",
                 return_value=query_orders,
             )
-        processor = AWSInvitationsProcessor(config)
+        processor = AWSInvitationsProcessor(mpt_client, config)
 
         return processor
 
