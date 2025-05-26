@@ -1,4 +1,5 @@
 import logging
+import time
 from dataclasses import dataclass
 from json import JSONDecodeError
 from urllib.parse import urljoin
@@ -14,6 +15,8 @@ from swo_aws_extension.constants import (
     CRM_SERVICE_TYPE,
     CRM_SUB_SERVICE,
 )
+from swo_aws_extension.crm_service_client.config import CRMConfig
+from swo_aws_extension.openid import get_openid_token
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +52,13 @@ class ServiceRequest:
 
 
 class CRMServiceClient(Session):
-    def __init__(self, base_url, api_token, api_version="3.0.0"):
+    def __init__(self, config, api_version="3.0.0"):
         super().__init__()
-        self.api_token = api_token
+        self.config = config
         self.api_version = api_version
+        token = self.get_crm_token()
+        self.api_token = token["access_token"]
+        self.token_expiry = time.time() + token["expires_in"]
         retries = Retry(
             total=5,
             backoff_factor=0.1,
@@ -72,16 +78,42 @@ class CRMServiceClient(Session):
                 "x-api-version": self.api_version,
             },
         )
-        self.base_url = f"{base_url}/" if base_url[-1] != "/" else base_url
-        self.api_token = api_token
+        self.base_url = (
+            f"{self.config.base_url}/" if self.config.base_url[-1] != "/" else self.config.base_url
+        )
+
+    def is_token_expired(self):
+        """Check if the token is expired."""
+        if self.token_expiry is None:
+            return True
+        return time.time() >= (self.token_expiry - 60)
+
+    def refresh_token(self):
+        """Refresh the CRM token if it is expired."""
+        token = self.get_crm_token()
+        self.api_token = token["access_token"]
+        self.token_expiry = time.time() + token["expires_in"]
+
+        self.headers["Authorization"] = f"Bearer {self.api_token}"
+
+    def get_crm_token(self):
+        """Get a new CRM token"""
+        return get_openid_token(
+            endpoint=self.config.oauth_url,
+            client_id=self.config.client_id,
+            client_secret=self.config.client_secret,
+            scope=None,
+            audience=self.config.audience,
+        )
 
     def request(self, method, url, *args, **kwargs):
+        if self.is_token_expired():
+            self.refresh_token()
         url = self._join_url(url)
         return super().request(method, url, *args, **kwargs)
 
     def prepare_request(self, request, *args, **kwargs):
         request.url = self._join_url(request.url)
-
         return super().prepare_request(request, *args, **kwargs)
 
     def _join_url(self, url):
@@ -121,3 +153,16 @@ class CRMServiceClient(Session):
         )
         response.raise_for_status()
         return response.json()
+
+
+_CRM_CLIENT = None
+
+
+def get_service_client() -> CRMServiceClient:
+    config = CRMConfig()
+    global _CRM_CLIENT
+    if not _CRM_CLIENT:
+        _CRM_CLIENT = CRMServiceClient(
+            config=config,
+        )
+    return _CRM_CLIENT

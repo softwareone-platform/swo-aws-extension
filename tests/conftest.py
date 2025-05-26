@@ -1836,3 +1836,15 @@ def mock_jwt_encoder(ffc_client_settings):
 @pytest.fixture()
 def ffc_client(mocker):
     return mocker.Mock()
+
+
+@pytest.fixture()
+def mock_settings(settings):
+    settings.EXTENSION_CONFIG = {
+        "CRM_API_BASE_URL": "https://api.example.com",
+        "CRM_OAUTH_URL": "https://auth.example.com",
+        "CRM_CLIENT_ID": "client_id",
+        "CRM_CLIENT_SECRET": "client_secret",
+        "CRM_AUDIENCE": "audience",
+    }
+    return settings

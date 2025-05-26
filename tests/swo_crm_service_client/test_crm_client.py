@@ -4,7 +4,8 @@ import pytest
 from requests import PreparedRequest
 from requests.models import Response
 
-from swo_crm_service_client.client import CRMServiceClient, ServiceRequest
+from swo_aws_extension.crm_service_client.config import CRMConfig
+from swo_crm_service_client.client import CRMServiceClient, ServiceRequest, get_service_client
 
 
 @pytest.fixture()
@@ -23,8 +24,15 @@ def service_request():
 
 
 @pytest.fixture()
-def crm_client():
-    return CRMServiceClient(base_url="http://example.com", api_token="test_token")
+def crm_client(mocker, mock_settings):
+    openid_response = {"access_token": "test_token", "expires_in": 3600}
+    mock_get_openid_token = mocker.patch(
+        "swo_crm_service_client.client.get_openid_token",
+        return_value=openid_response,
+    )
+    mock_get_openid_token.return_value = openid_response
+    config = CRMConfig()
+    return CRMServiceClient(config)
 
 
 def test_to_api_dict(service_request):
@@ -141,7 +149,7 @@ def test_client_headers(crm_client, service_request, mocker):
         "Content-Type": "application/json",
     }
     assert create_service_request.headers == csr_expected_headers
-    assert create_service_request.url == "http://example.com/ticketing/ServiceRequests"
+    assert create_service_request.url == "https://api.example.com/ticketing/ServiceRequests"
 
 
 def test_create_service_request_json_decode_error(crm_client, service_request, mocker):
@@ -171,3 +179,71 @@ def test_create_service_request_json_decode_error(crm_client, service_request, m
         json=expected_json,
         headers={"x-correlation-id": order_id},
     )
+
+
+def test_get_service_client(crm_client, mocker, mock_settings):
+    mocker.patch(
+        "swo_crm_service_client.client.get_service_client",
+        return_value="test_token",
+    )
+    client = get_service_client()
+    assert client.base_url == "https://api.example.com/"
+    assert client.api_token == "test_token"
+    another_client = get_service_client()
+    assert client == another_client
+
+
+def test_client_token_expired(crm_client, service_request, mocker):
+    crm_client.token_expiry = 0
+    mock_response = mocker.Mock(spec=Response)
+    mock_response.json.return_value = {"id": "12345"}
+    mock_response.status_code = 200
+    mocker.patch.object(crm_client, "send", return_value=mock_response)
+
+    order_id = "ORD-0000-0000"
+    response = crm_client.create_service_request(order_id, service_request)
+    assert response == {"id": "12345"}
+
+    create_service_request: PreparedRequest = crm_client.send.call_args[0][0]
+    csr_expected_headers = {
+        "User-Agent": "swo-extensions/1.0",
+        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+        "Authorization": "Bearer test_token",
+        "x-api-version": "3.0.0",
+        "x-correlation-id": "ORD-0000-0000",
+        "Content-Length": "287",
+        "Content-Type": "application/json",
+    }
+    assert create_service_request.headers == csr_expected_headers
+    assert create_service_request.url == "https://api.example.com/ticketing/ServiceRequests"
+    assert crm_client.token_expiry != 0
+
+
+def test_client_token_expired_none(crm_client, service_request, mocker):
+    crm_client.token_expiry = None
+    mock_response = mocker.Mock(spec=Response)
+    mock_response.json.return_value = {"id": "12345"}
+    mock_response.status_code = 200
+    mocker.patch.object(crm_client, "send", return_value=mock_response)
+
+    order_id = "ORD-0000-0000"
+    response = crm_client.create_service_request(order_id, service_request)
+    assert response == {"id": "12345"}
+
+    create_service_request: PreparedRequest = crm_client.send.call_args[0][0]
+    csr_expected_headers = {
+        "User-Agent": "swo-extensions/1.0",
+        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+        "Authorization": "Bearer test_token",
+        "x-api-version": "3.0.0",
+        "x-correlation-id": "ORD-0000-0000",
+        "Content-Length": "287",
+        "Content-Type": "application/json",
+    }
+    assert create_service_request.headers == csr_expected_headers
+    assert create_service_request.url == "https://api.example.com/ticketing/ServiceRequests"
+    assert crm_client.token_expiry is not None

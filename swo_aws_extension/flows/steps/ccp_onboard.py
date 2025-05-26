@@ -13,7 +13,6 @@ from swo_aws_extension.constants import (
     CCPOnboardStatusEnum,
     PhasesEnum,
 )
-from swo_aws_extension.crm_service_client import get_service_client
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.notifications import send_error
 from swo_aws_extension.parameters import (
@@ -25,6 +24,7 @@ from swo_aws_extension.parameters import (
 )
 from swo_ccp_client.client import CCPClient
 from swo_crm_service_client import ServiceRequest
+from swo_crm_service_client.client import get_service_client
 
 logger = logging.getLogger(__name__)
 
