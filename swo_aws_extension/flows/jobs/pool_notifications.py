@@ -21,8 +21,8 @@ from swo_aws_extension.constants import (
     CRM_TICKET_RESOLVED_STATE,
     SupportTypesEnum,
 )
-from swo_aws_extension.crm_service_client import get_service_client
 from swo_crm_service_client import ServiceRequest
+from swo_crm_service_client.client import get_service_client
 
 logger = logging.getLogger(__name__)
 

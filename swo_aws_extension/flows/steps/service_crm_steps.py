@@ -24,7 +24,6 @@ from swo_aws_extension.constants import (
     CRM_TRANSFER_WITH_ORGANIZATION_TITLE,
     OrderProcessingTemplateEnum,
 )
-from swo_aws_extension.crm_service_client.config import get_service_client
 from swo_aws_extension.flows.order import (
     InitialAWSContext,
     PurchaseContext,
@@ -42,6 +41,7 @@ from swo_aws_extension.parameters import (
     set_crm_transfer_organization_ticket_id,
 )
 from swo_crm_service_client import ServiceRequest
+from swo_crm_service_client.client import get_service_client
 
 logger = logging.getLogger(__name__)
 
