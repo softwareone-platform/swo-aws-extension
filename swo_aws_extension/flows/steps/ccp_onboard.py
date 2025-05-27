@@ -149,9 +149,12 @@ class CCPOnboard(Step):
             onboard_status=onboard_status,
         )
         service_request = ServiceRequest(
-            additional_info=CRM_CCP_TICKET_ADDITIONAL_INFO, summary=summary, title=title
+            additional_info=CRM_CCP_TICKET_ADDITIONAL_INFO,
+            summary=summary,
+            title=title,
+            service_type="MarketPlaceAutomation",
         )
-        ticket = crm_client.create_service_request(None, service_request)
+        ticket = crm_client.create_service_request(context.order_id, service_request)
         context.order = set_crm_ccp_ticket_id(context.order, ticket.get("id", ""))
         logger.info(
             f"Service request ticket created with id: {ticket.get('id', '')}. Continue purchase"
