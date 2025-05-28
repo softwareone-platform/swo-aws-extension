@@ -62,7 +62,7 @@ def synchronize_agreements(mpt_client, config, agreement_ids, dry_run, product_i
             aws_client = AWSClient(config, mpa_account, SWO_EXTENSION_MANAGEMENT_ROLE)
             sync_agreement_subscriptions(mpt_client, aws_client, agreement, dry_run)
         except Exception as e:
-            logger.error(f"{agreement.get('id')} - Failed to synchronize agreement: {e}")
+            logger.exception(f"{agreement.get('id')} - Failed to synchronize agreement: {e}")
             send_error(
                 "Synchronize AWS agreement subscriptions",
                 f"Failed to synchronize agreement {agreement.get('id')}: {e}",
