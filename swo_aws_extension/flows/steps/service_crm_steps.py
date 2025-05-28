@@ -333,12 +333,7 @@ class CreateOnboardTicketStep(CreateServiceRequestStep):
                 order_id=context.order_id,
                 master_payer_id=context.mpa_account,
             )
-        return ServiceRequest(
-            additional_info=additional_info,
-            title=title,
-            summary=summary,
-            service_type="MarketPlaceAutomation",
-        )
+        return ServiceRequest(additional_info=additional_info, title=title, summary=summary)
 
     @staticmethod
     def save_ticket(client, context, crm_ticket_id):

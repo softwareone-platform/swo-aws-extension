@@ -1,11 +1,17 @@
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from requests import HTTPError, JSONDecodeError
 
-from swo_aws_extension.constants import CCPOnboardStatusEnum, PhasesEnum
+from swo_aws_extension.constants import (
+    CRM_CCP_TICKET_ADDITIONAL_INFO,
+    CRM_CCP_TICKET_SUMMARY,
+    CRM_CCP_TICKET_TITLE,
+    CCPOnboardStatusEnum,
+    PhasesEnum,
+)
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps import CCPOnboard
 from swo_aws_extension.parameters import set_ccp_engagement_id, set_phase
-from swo_crm_service_client import CRMServiceClient
+from swo_crm_service_client import CRMServiceClient, ServiceRequest
 
 
 def test_onboard_ccp_customer(
@@ -126,6 +132,19 @@ def test_check_onboard_ccp_status_fail(
     ccp_onboard(mpt_client_mock, context, next_step_mock)
     assert mocked_onboard_status.call_count == 1
     assert service_client.create_service_request.call_count == 1
+    title = CRM_CCP_TICKET_TITLE.format(ccp_engagement_id="123123")
+    summary = CRM_CCP_TICKET_SUMMARY.format(
+        ccp_engagement_id="123123",
+        order_id=order["id"],
+        onboard_status=onboard_customer_status_factory(CCPOnboardStatusEnum.FAILED),
+    )
+    service_request = ServiceRequest(
+        additional_info=CRM_CCP_TICKET_ADDITIONAL_INFO,
+        summary=summary,
+        title=title,
+        service_type="MarketPlaceAutomation",
+    )
+    service_client.create_service_request.assert_called_once_with(order["id"], service_request)
     assert mocked_send_error.call_count == 1
     next_step_mock.assert_called_once()
 
