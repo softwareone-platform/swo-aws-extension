@@ -665,3 +665,30 @@ def test_sync_agreement_accounts_skip_management_account(
     mock_client.list_accounts.return_value = aws_accounts_factory(accounts=accounts)
     sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, False)
     mock_client.list_accounts.assert_called_once()
+
+
+def test_synchronize_agreements_exception(
+    mocker,
+    mpt_client,
+    config,
+    agreement_factory,
+):
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.sync_agreement_subscriptions",
+        side_effect=Exception("Test exception"),
+    )
+    mock_agreement = agreement_factory(vendor_id="123456789012")
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_agreements_by_query",
+        return_value=[mock_agreement],
+    )
+    exception_logger = mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.logger.exception",
+    )
+    send_error = mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.send_error",
+    )
+    agreement_ids = [mock_agreement["id"]]
+    synchronize_agreements(mpt_client, config, agreement_ids, False, "PROD-123-456")
+    exception_logger.assert_called_once()
+    send_error.assert_called_once()
