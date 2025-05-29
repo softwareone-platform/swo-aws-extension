@@ -46,6 +46,7 @@ from swo_aws_extension.flows.steps.setup_context import (
     SetupPurchaseContext,
     SetupTerminateContextStep,
 )
+from swo_aws_extension.flows.steps.setup_parameters import SetParametersVisibleStep
 from swo_aws_extension.flows.steps.validate import ValidatePurchaseTransferWithoutOrganizationStep
 
 __all__ = [
@@ -82,4 +83,5 @@ __all__ = [
     "DeleteFinOpsEntitlementsStep",
     "CreateFinOpsEntitlementStep",
     "CreateFinOpsMPAEntitlementStep",
+    "SetParametersVisibleStep",
 ]
