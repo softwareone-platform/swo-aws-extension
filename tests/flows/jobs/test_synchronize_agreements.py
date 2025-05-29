@@ -665,3 +665,32 @@ def test_sync_agreement_accounts_skip_management_account(
     mock_client.list_accounts.return_value = aws_accounts_factory(accounts=accounts)
     sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, False)
     mock_client.list_accounts.assert_called_once()
+
+
+def test_synchronize_agreements_exception(
+    mocker,
+    caplog,
+    mpt_client,
+    config,
+    agreement_factory,
+):
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.sync_agreement_subscriptions",
+        side_effect=Exception("Test exception"),
+    )
+    mock_agreement = agreement_factory(vendor_id="123456789012")
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.get_agreements_by_query",
+        return_value=[mock_agreement],
+    )
+
+    send_error = mocker.patch(
+        "swo_aws_extension.flows.jobs.synchronize_agreements.send_error",
+    )
+    mocker.patch("swo_aws_extension.flows.jobs.synchronize_agreements.AWSClient")
+    caplog.set_level("ERROR", logger="swo_aws_extension.flows.jobs.synchronize_agreements")
+    agreement_ids = [mock_agreement["id"]]
+    synchronize_agreements(mpt_client, config, agreement_ids, False, "PROD-123-456")
+    assert "Traceback (most recent call last):" in caplog.text
+    assert "Exception: Test exception" in caplog.text
+    send_error.assert_called_once()
