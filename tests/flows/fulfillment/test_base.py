@@ -147,6 +147,7 @@ def test_fulfill_terminate_account_flow(
     service_client,
     mock_switch_order_status_to_complete,
     ffc_client,
+    update_order_side_effect_factory,
 ):
     _, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.close_account.return_value = {}
@@ -162,6 +163,7 @@ def test_fulfill_terminate_account_flow(
         "swo_aws_extension.flows.steps.service_crm_steps.get_service_client",
         return_value=service_client,
     )
+
     mocker.patch(
         "swo_aws_extension.flows.steps.service_crm_steps.update_order",
     )
@@ -178,6 +180,10 @@ def test_fulfill_terminate_account_flow(
     mocker.patch(
         "swo_aws_extension.flows.order.get_product_template_or_default",
         return_value=template,
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_parameters.update_order",
+        side_effect=update_order_side_effect_factory(context.order),
     )
 
     # Creates tickets and awaits completion
