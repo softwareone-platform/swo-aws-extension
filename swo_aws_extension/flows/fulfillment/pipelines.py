@@ -24,6 +24,7 @@ from swo_aws_extension.flows.steps import (
     DeleteFinOpsEntitlementsStep,
     MPAPreConfiguration,
     SendInvitationLinksStep,
+    SetParametersVisibleStep,
     SetupChangeContext,
     SetupContextPurchaseTransferWithOrganizationStep,
     SetupContextPurchaseTransferWithoutOrganizationStep,
@@ -52,6 +53,7 @@ purchase = Pipeline(
     CreateFinOpsEntitlementStep(),
     CreateUpdateKeeperTicketStep(),
     CreateOnboardTicketStep(),
+    SetParametersVisibleStep(),
     CompletePurchaseOrderStep(),
 )
 
@@ -61,6 +63,7 @@ purchase_split_billing = Pipeline(
     CreateInitialLinkedAccountStep(),
     CreateSubscription(),
     CreateFinOpsEntitlementStep(),
+    SetParametersVisibleStep(),
     CompletePurchaseOrderStep(),
 )
 
@@ -76,6 +79,7 @@ purchase_transfer_with_organization = Pipeline(
     CreateFinOpsMPAEntitlementStep(),
     CreateFinOpsEntitlementStep(),
     CreateOnboardTicketStep(),
+    SetParametersVisibleStep(),
     CompletePurchaseOrderStep(),
     SynchronizeAgreementSubscriptionsStep(),
 )
@@ -93,6 +97,7 @@ purchase_transfer_without_organization = Pipeline(
     CreateFinOpsEntitlementStep(),
     CreateUpdateKeeperTicketStep(),
     CreateOnboardTicketStep(),
+    SetParametersVisibleStep(),
     CompletePurchaseOrderStep(),
     SynchronizeAgreementSubscriptionsStep(),
 )
@@ -102,6 +107,7 @@ change_order = Pipeline(
     AddLinkedAccountStep(),
     CreateChangeSubscriptionStep(),
     CreateFinOpsEntitlementStep(),
+    SetParametersVisibleStep(),
     CompleteChangeOrderStep(),
     SynchronizeAgreementSubscriptionsStep(),
 )
@@ -111,5 +117,6 @@ terminate = Pipeline(
     CreateTerminationServiceRequestStep(),
     AwaitTerminationServiceRequestStep(),
     DeleteFinOpsEntitlementsStep(),
+    SetParametersVisibleStep(),
     CompleteTerminationOrderStep(),
 )
