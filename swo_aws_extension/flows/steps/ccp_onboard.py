@@ -68,11 +68,16 @@ class CCPOnboard(Step):
             next_step: Function to call for the next step in the pipeline.
 
         """
-        logger.info("Checking CCP onboarding status")
+        logger.info(
+            f"{context.order_id} - Action - Checking CCP onboarding status for "
+            f"ccp_engagement_id={context.ccp_engagement_id}"
+        )
+
         onboard_status = ccp_client.get_onboard_status(context.ccp_engagement_id)
         logger.info(f"CCP Onboarding status: {onboard_status}")
+
         if onboard_status["engagementState"] == CCPOnboardStatusEnum.RUNNING:
-            logger.info("- Stop - CCP Onboarding is still in progress.")
+            logger.info(f"{context.order_id} - Stop - CCP Onboarding is still in progress.")
             return
         if onboard_status["engagementState"] == CCPOnboardStatusEnum.SUCCEEDED:
             context.order = set_phase(context.order, PhasesEnum.COMPLETED)
@@ -80,11 +85,11 @@ class CCPOnboard(Step):
                 mpt_client, context.order_id, parameters=context.order["parameters"]
             )
 
-            logger.info("- Next - CCP Onboarding completed successfully.")
+            logger.info(f"{context.order_id} - Next - CCP Onboarding completed successfully.")
             next_step(mpt_client, context)
             return
         logger.info(
-            f"CCP Onboarding is in status {onboard_status['engagementState']}."
+            f"{context.order_id} - CCP Onboarding is in status {onboard_status['engagementState']}."
             f" Notify the failure and continue"
         )
         self._notify_ccp_onboard_failure(context, onboard_status)
