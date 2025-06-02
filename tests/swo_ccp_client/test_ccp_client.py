@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+import requests.exceptions
 from requests import Request
 from requests.models import Response
 
@@ -239,10 +240,35 @@ def test_request(mocker):
     client = CCPClient(config)
 
     response = mocker.Mock(spec=Response)
+    response.status_code = 200
+    response.json.return_value = {"key": "value"}
     request_mock = mocker.patch("swo_ccp_client.client.Session.request", return_value=response)
     mocker.patch("swo_ccp_client.client.CCPClient.get_ccp_access_token", return_value="auth-token")
     client.get_onboard_status("123")
     request_mock.assert_called_once()
+
+
+def test_request_fail(mocker):
+    mocker.patch(
+        "swo_ccp_client.client.CCPClient.get_ccp_access_token",
+        return_value="auth-token",
+        spec=True
+    )
+    config = mocker.Mock()
+    config.ccp_api_base_url = "https://localhost"
+    client = CCPClient(config)
+
+    response = mocker.Mock(spec=Response, )
+    response.url = (
+        "https://localhost/services/aws-essentials/customer/engagement/123?api-version=v2"
+    )
+    response.status_code = 200
+    response.json.return_value = {"statusCode": 404, "message": "Not Found"}
+    mocker.patch("swo_ccp_client.client.Session.request", return_value=response, spec=True)
+    with pytest.raises(requests.exceptions.HTTPError) as exc_info:
+        client.get_onboard_status("123")
+    assert "404" in str(exc_info.value)
+    assert "Not Found" in str(exc_info.value)
 
 
 @pytest.mark.parametrize(

@@ -4,7 +4,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 from django.conf import settings
 from mpt_extension_sdk.key_vault.base import KeyVault
-from requests import Session
+from requests import HTTPError, Session
 from requests.adapters import HTTPAdapter, Retry
 
 from swo_aws_extension.constants import (
@@ -93,6 +93,21 @@ class CCPClient(Session):
         response.raise_for_status()
         return response.json()
 
+    def _raise_for_status(self, response):
+        """
+        Raise an HTTPError if the response status code indicates an error.
+        Response has always 200 status code, but the body may contain a different status code.
+        This method checks the body for the status code and raises an error if it is 404 or 500.
+        """
+        response.raise_for_status()
+        data = response.json()
+        status_code = data.get("statusCode")
+        if status_code in [404, 500]:
+            http_error_msg = (
+                f"{status_code} Client Error: {data.get("message")} for url: {response.url}"
+            )
+            raise HTTPError(http_error_msg, response=response)
+
     def get_onboard_status(self, ccp_engagement_id):
         """
         Get the status of the onboarding process.
@@ -104,6 +119,7 @@ class CCPClient(Session):
         response = self.get(
             url=f"services/aws-essentials/customer/engagement/{ccp_engagement_id}?api-version=v2"
         )
+        self._raise_for_status(response)
         return response.json()
 
     def refresh_secret(self):
