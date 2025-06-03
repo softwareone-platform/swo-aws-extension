@@ -22,8 +22,8 @@ from swo_aws_extension.parameters import (
     get_account_request_id,
     get_phase,
     list_ordering_parameters_with_errors,
+    prepare_parameters_for_querying,
     set_ordering_parameter_error,
-    set_ordering_parameters_to_readonly,
     set_phase,
 )
 
@@ -156,7 +156,7 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
                 ERR_TRANSFER_WITH_ORG_MISSING_MPA_ID.to_dict(),
             )
             parameter_ids_with_errors = list_ordering_parameters_with_errors(context.order)
-            context.order = set_ordering_parameters_to_readonly(
+            context.order = prepare_parameters_for_querying(
                 context.order, ignore=parameter_ids_with_errors
             )
             if context.order_status != MPT_ORDER_STATUS_QUERYING:

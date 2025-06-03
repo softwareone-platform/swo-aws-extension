@@ -27,8 +27,8 @@ from swo_aws_extension.parameters import (
     get_master_payer_id,
     get_phase,
     list_ordering_parameters_with_errors,
+    prepare_parameters_for_querying,
     set_mpa_email,
-    set_ordering_parameters_to_readonly,
     set_phase,
 )
 
@@ -187,7 +187,7 @@ class AssignSplitBillingMPA(Step):
         context.airtable_mpa = get_mpa_account(get_master_payer_id(context.order))
         if not is_split_billing_mpa_id_valid(context):
             parameter_ids_with_errors = list_ordering_parameters_with_errors(context.order)
-            context.order = set_ordering_parameters_to_readonly(
+            context.order = prepare_parameters_for_querying(
                 context.order, ignore=parameter_ids_with_errors
             )
             context.switch_order_status_to_query(client)

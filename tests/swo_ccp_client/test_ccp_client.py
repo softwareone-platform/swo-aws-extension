@@ -250,15 +250,13 @@ def test_request(mocker):
 
 def test_request_fail(mocker):
     mocker.patch(
-        "swo_ccp_client.client.CCPClient.get_ccp_access_token",
-        return_value="auth-token",
-        spec=True
+        "swo_ccp_client.client.CCPClient.get_ccp_access_token", return_value="auth-token", spec=True
     )
     config = mocker.Mock()
     config.ccp_api_base_url = "https://localhost"
     client = CCPClient(config)
 
-    response = mocker.Mock(spec=Response, )
+    response = mocker.Mock(spec=Response)
     response.url = (
         "https://localhost/services/aws-essentials/customer/engagement/123?api-version=v2"
     )
