@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class SetParametersVisibleStep(Step):
-    def set_hidden_paramter(self, parameter, hidden=False):
+    def set_hidden_paramter(self, parameter, hidden=False, readonly=True, required=False):
         """
         Update the visibility of the parameter to read-only.
 
@@ -26,6 +26,8 @@ class SetParametersVisibleStep(Step):
         if "constraints" not in new_parameter:
             new_parameter["constraints"] = {}
         new_parameter["constraints"]["hidden"] = hidden
+        new_parameter["constraints"]["readonly"] = readonly
+        new_parameter["constraints"]["required"] = required
         return new_parameter
 
     def process_parameters(self, parameters):
