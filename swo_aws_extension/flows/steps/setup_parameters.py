@@ -20,6 +20,7 @@ class SetParametersVisibleStep(Step):
 
         Args:
             parameter (dict): The parameter to update.
+            hidden (bool): Whether to hide the parameter or not.
         """
         new_parameter = deepcopy(parameter)
         if "constraints" not in new_parameter:
@@ -38,17 +39,23 @@ class SetParametersVisibleStep(Step):
                 np = self.set_hidden_paramter(p, hidden=True)
                 new_parameters.append(np)
                 continue
-            np = self.set_hidden_paramter(p)
+            np = self.set_hidden_paramter(p, hidden=False)
             new_parameters.append(np)
         return new_parameters
 
     def setup_order_parameters(self, client, context):
-        ordering = context.order.get("parameters", {}).get("ordering", [])
+        ordering = context.order.get("parameters", {}).get(PARAM_PHASE_ORDERING, [])
         context.order["parameters"][PARAM_PHASE_ORDERING] = self.process_parameters(ordering)
+
+        logger.info(
+            f"Parameters before update: {context.order['parameters'][PARAM_PHASE_ORDERING]}"
+        )
 
         context.order = update_order(
             client, context.order_id, paramaters=context.order["parameters"]
         )
+
+        logger.info(f"Parameters after update: {context.order['parameters'][PARAM_PHASE_ORDERING]}")
 
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
         self.setup_order_parameters(client, context)

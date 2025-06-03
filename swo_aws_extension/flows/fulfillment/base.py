@@ -1,7 +1,6 @@
 import logging
 import traceback
 
-from swo_aws_extension.airtable.models import get_available_mpa_from_pool
 from swo_aws_extension.constants import TransferTypesEnum
 from swo_aws_extension.flows.error import strip_trace_id
 from swo_aws_extension.flows.fulfillment.pipelines import (
@@ -113,12 +112,12 @@ def setup_contexts(mpt_client, orders):
         ]
     }
     pls_mpa_pool_map = {}
-    if purchase_orders_pls_status_map:
-        mpa_pool = get_available_mpa_from_pool()
-        pls_mpa_pool_map = {
-            f"{country}_{pls}": get_mpa_by_country_and_pls(mpa_pool, country, pls)
-            for country, pls in set(purchase_orders_pls_status_map.values())
-        }
+    # if purchase_orders_pls_status_map:
+    #     mpa_pool = get_available_mpa_from_pool()
+    #     pls_mpa_pool_map = {
+    #         f"{country}_{pls}": get_mpa_by_country_and_pls(mpa_pool, country, pls)
+    #         for country, pls in set(purchase_orders_pls_status_map.values())
+    #     }
 
     contexts = []
 

@@ -34,6 +34,7 @@ from swo_aws_extension.flows.steps import (
     ValidatePurchaseTransferWithoutOrganizationStep,
 )
 from swo_aws_extension.flows.steps.ccp_onboard import CCPOnboard
+from swo_aws_extension.flows.steps.create_subscription import CreateDummySubscriptionStep
 from swo_aws_extension.flows.steps.register_transfered_mpa_airtable import (
     RegisterTransferredMPAToAirtableStep,
 )
@@ -43,16 +44,17 @@ config = Config()
 
 
 purchase = Pipeline(
-    SetupPurchaseContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
-    AssignMPA(config, SWO_EXTENSION_MANAGEMENT_ROLE),
-    MPAPreConfiguration(),
-    CreateInitialLinkedAccountStep(),
-    CreateSubscription(),
-    CCPOnboard(config),
-    CreateFinOpsMPAEntitlementStep(),
-    CreateFinOpsEntitlementStep(),
-    CreateUpdateKeeperTicketStep(),
-    CreateOnboardTicketStep(),
+    # SetupPurchaseContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    # AssignMPA(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    # MPAPreConfiguration(),
+    # CreateInitialLinkedAccountStep(),
+    # CreateSubscription(),
+    # CCPOnboard(config),
+    # CreateFinOpsMPAEntitlementStep(),
+    # CreateFinOpsEntitlementStep(),
+    # CreateUpdateKeeperTicketStep(),
+    # CreateOnboardTicketStep(),
+    CreateDummySubscriptionStep(),
     SetParametersVisibleStep(),
     CompletePurchaseOrderStep(),
 )

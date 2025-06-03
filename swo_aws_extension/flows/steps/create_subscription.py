@@ -132,6 +132,21 @@ class CreateSubscription(Step):
         next_step(client, context)
 
 
+class CreateDummySubscriptionStep(CreateSubscription):
+    def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+        add_subscription(
+            client,
+            context,
+            "dummy-account-id",
+            "dummy@example.com",
+            "dymmy-account-name",
+        )
+        next_phase = PhasesEnum.COMPLETED
+        context.order = set_phase(context.order, next_phase)
+        update_order(client, context.order_id, parameters=context.order["parameters"])
+        next_step(client, context)
+
+
 class SynchronizeAgreementSubscriptionsStep(CreateSubscription):
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         logger.info(f"{context.order_id} - Start - Synchronize agreement subscriptions")
