@@ -24,9 +24,9 @@ from swo_aws_extension.parameters import (
     OrderParametersEnum,
     get_phase,
     list_ordering_parameters_with_errors,
+    prepare_parameters_for_querying,
     set_account_request_id,
     set_ordering_parameter_error,
-    set_ordering_parameters_to_readonly,
     set_phase,
     update_ordering_parameter_constraints,
 )
@@ -71,7 +71,7 @@ def manage_create_linked_account_error(client, context, param_account_name, para
         context.order = set_account_request_id(context.order, "")
         ignore_params = list_ordering_parameters_with_errors(context.order)
         ignore_params.append(param_account_name)
-        context.order = set_ordering_parameters_to_readonly(context.order, ignore=ignore_params)
+        context.order = prepare_parameters_for_querying(context.order, ignore=ignore_params)
         context.switch_order_status_to_query(
             client, OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE
         )
@@ -156,7 +156,7 @@ class CreateInitialLinkedAccountStep(Step):
         if has_error:
             context.order = order
             parameter_ids_with_errors = list_ordering_parameters_with_errors(context.order)
-            context.order = set_ordering_parameters_to_readonly(
+            context.order = prepare_parameters_for_querying(
                 context.order, ignore=parameter_ids_with_errors
             )
             context.switch_order_status_to_query(client)
@@ -222,7 +222,7 @@ class AddLinkedAccountStep(Step):
         if has_error:
             context.order = order
             parameter_ids_with_errors = list_ordering_parameters_with_errors(context.order)
-            context.order = set_ordering_parameters_to_readonly(
+            context.order = prepare_parameters_for_querying(
                 context.order, ignore=parameter_ids_with_errors
             )
             context.switch_order_status_to_query(client)

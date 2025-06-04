@@ -650,27 +650,35 @@ def list_ordering_parameters_with_errors(order) -> list[str]:
     ]
 
 
-def set_ordering_parameters_to_readonly(order, ignore: list[str], hide_param=True):
+def prepare_parameters_for_querying(order, ignore: list[str]):
     """
-    Set the readonly constraint on all ordering parameters except the ones in ignore list
+    Hide all ordering parameters that are empty except the ones in ignore list.
     Args:
         order (dict): The order that contains the parameter.
-        ignore (list): List of parameter external IDs to not set as readonly.
-
-    Returns:
-        dict: The order updated.
+        ignore (list): List of parameter external IDs to edit.
     """
+
     updated_order = copy.deepcopy(order)
 
     for param in updated_order["parameters"][PARAM_PHASE_ORDERING]:
-        if param.get("externalId") in ignore:
-            continue
         if "constraints" not in param or not param["constraints"]:
             param["constraints"] = {}
-        param["constraints"]["readonly"] = True
-        if hide_param:
-            param["constraints"]["hidden"] = True
 
+        if param.get("externalId") in ignore:
+            param["constraints"]["hidden"] = False
+            param["constraints"]["readonly"] = False
+            continue
+        if param.get("error"):
+            param["constraints"]["hidden"] = False
+            param["constraints"]["readonly"] = False
+            continue
+        if param.get("value"):
+            param["constraints"]["hidden"] = False
+            param["constraints"]["readonly"] = True
+            continue
+
+        param["constraints"]["hidden"] = True
+        param["constraints"]["readonly"] = True
     return updated_order
 
 
