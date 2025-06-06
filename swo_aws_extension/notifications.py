@@ -123,53 +123,85 @@ def send_exception(
     )
 
 
-# TODO: Consider implementing this as a class to encapsulate notification related functionality
-#  also make NotifyCategories a function parameter to increase flexibility and avoid hardcoding
-def mpt_notify(
-    mpt_client: MPTClient,
-    account_id: str,
-    buyer_id: str,
-    subject: str,
-    template_name: str,
-    context: dict,
-) -> None:
-    """
-    Sends a notification through the MPT API using a specified template and context.
+@dataclass
+class MPTNotifier:  # TODO: Consider moving some of the functionality to SDK
+    mpt_client: MPTClient
 
-    Raises:
-    Exception
-        Logs the exception if there is an issue during the notification process,
-        including the category, subject, and the rendered message.
-    """
-    template = env.get_template(f"{template_name}.html")
-    rendered_template = template.render(context)
+    def notify_re_order(self, order_context: type["InitialAWSContext"]) -> None:
+        """
+        Send an MPT notification to the customer according to the
+        current order status.
+        It embeds the current order template into the body.
+        """
+        template_context = {
+            "order": order_context.order,
+            "activation_template": md2html(
+                get_rendered_template(self.mpt_client, order_context.order_id)
+            ),
+            "api_base_url": settings.MPT_API_BASE_URL,
+            "portal_base_url": settings.MPT_PORTAL_BASE_URL,
+        }
+        buyer_name = order_context.buyer["name"]
+        subject = f"Order status update {order_context.order_id} " f"for {buyer_name}"
+        if order_context.order_status == "Querying":
+            subject = (
+                f"This order need your attention {order_context.order_id} " f"for {buyer_name}"
+            )
 
-    try:
-        notify(
-            mpt_client,
+        template = env.get_template("notification.html")
+        rendered_template = template.render(template_context)
+
+        self._notify(
             NotifyCategories.ORDERS.value,
-            account_id,
-            buyer_id,
+            order_context.agreement["client"]["id"],
+            order_context.buyer["id"],
             subject,
             rendered_template,
         )
-        logger.debug(
-            f"Sent MPT API notification:"
-            f" Category: '{NotifyCategories.ORDERS.value}',"
-            f" Account ID: '{account_id}',"
-            f" Buyer ID: '{buyer_id}',"
-            f" Subject: '{subject}',"
-            f" Message: '{rendered_template}'"
-        )
-    except Exception:
-        logger.exception(
-            f"Cannot send MPT API notification:"
-            f" Category: '{NotifyCategories.ORDERS.value}',"
-            f" Account ID: '{account_id}',"
-            f" Buyer ID: '{buyer_id}',"
-            f" Subject: '{subject}',"
-            f" Message: '{rendered_template}'"
-        )
+
+    def _notify(
+        self,
+        notify_category: str,
+        account_id: str,
+        buyer_id: str,
+        subject: str,
+        rendered_template: str,
+    ) -> None:
+        """
+        Sends a notification through the MPT API using a specified template and context.
+
+        Raises:
+        Exception
+            Logs the exception if there is an issue during the notification process,
+            including the category, subject, and the rendered message.
+        """
+
+        try:
+            notify(
+                self.mpt_client,
+                notify_category,
+                account_id,
+                buyer_id,
+                subject,
+                rendered_template,
+            )
+            logger.debug(
+                f"Sent MPT API notification:"
+                f" Category: '{NotifyCategories.ORDERS.value}',"
+                f" Account ID: '{account_id}',"
+                f" Buyer ID: '{buyer_id}',"
+                f" Subject: '{subject}',"
+                f" Message: '{rendered_template}'"
+            )
+        except Exception:
+            logger.exception(
+                f"Cannot send MPT API notification:"
+                f" Category: '{notify_category}',"
+                f" Account ID: '{account_id}',"
+                f" Buyer ID: '{buyer_id}',"
+                f" Subject: '{subject}',"
+                f" Message: '{rendered_template}'"
+            )
 
 
 def md2html(template):
@@ -182,32 +214,6 @@ def md2html(template):
     md.renderer.rules["heading_open"] = custom_h1_renderer
 
     return md.render(template)
-
-
-def send_mpt_notification(client: MPTClient, order_context: type["InitialAWSContext"]) -> None:
-    """
-    Send an MPT notification to the customer according to the
-    current order status.
-    It embeds the current order template into the body.
-    """
-    template_context = {
-        "order": order_context.order,
-        "activation_template": md2html(get_rendered_template(client, order_context.order_id)),
-        "api_base_url": settings.MPT_API_BASE_URL,
-        "portal_base_url": settings.MPT_PORTAL_BASE_URL,
-    }
-    buyer_name = order_context.buyer["name"]
-    subject = f"Order status update {order_context.order_id} for {buyer_name}"
-    if order_context.order_status == "Querying":
-        subject = f"This order need your attention {order_context.order_id} for {buyer_name}"
-    mpt_notify(
-        client,
-        order_context.agreement["client"]["id"],
-        order_context.buyer["id"],
-        subject,
-        "notification",
-        template_context,
-    )
 
 
 @functools.cache

@@ -24,7 +24,7 @@ def done_callback(futures, key, future):
 
 
 class Dispatcher:
-    def __init__(self):
+    def __init__(self, client):
         group = "swo.mpt.ext"
         name = "app_config"
         self.registry: EventsRegistry = get_events_registry(group=group, name=name)
@@ -33,7 +33,7 @@ class Dispatcher:
         self.executor = ThreadPoolExecutor()
         self.running_event = threading.Event()
         self.processor = threading.Thread(target=self.process_events)
-        self.client = setup_client()
+        self.client = client
 
     def start(self):
         self.running_event.set()
