@@ -2,7 +2,6 @@ import logging
 
 import requests
 from django.conf import settings
-from mpt_extension_sdk.core.utils import setup_client
 from mpt_extension_sdk.flows.pipeline import Pipeline, Step
 
 from swo_aws_extension.constants import SWO_EXTENSION_MANAGEMENT_ROLE, AccountTypesEnum, PhasesEnum
@@ -31,8 +30,8 @@ class CheckInvitationLinksStep(Step):
 
 
 class AWSInvitationsProcessor:
-    def __init__(self, config):
-        self.client = setup_client()
+    def __init__(self, client, config):
+        self.client = client
         self.config = config
 
     def get_querying_orders(self):
