@@ -26,6 +26,7 @@ from swo_aws_extension.constants import (
     SupportTypesEnum,
     TerminationParameterChoices,
 )
+from swo_aws_extension.notifications import MPTNotifier
 from swo_aws_extension.parameters import (
     ChangeOrderParametersEnum,
     FulfillmentParametersEnum,
@@ -1805,6 +1806,25 @@ def update_order_side_effect_factory():
         return update_order_side_effect
 
     return _factory
+
+
+@pytest.fixture()
+def mpt_notifier(mpt_client):
+    return MPTNotifier(mpt_client)
+
+
+@pytest.fixture()
+def mock_get_rendered_template(mocker):
+    mocked_template = mocker.MagicMock()
+    mocked_template.render.return_value = "rendered-template"
+    mocked_jinja_env = mocker.MagicMock()
+    mocked_jinja_env.get_template.return_value = mocked_template
+    mocker.patch("swo_aws_extension.notifications.env", mocked_jinja_env)
+    mock_get_rendered_template = mocker.patch(
+        "swo_aws_extension.notifications.get_rendered_template",
+        return_value="rendered-template",
+    )
+    return mock_get_rendered_template
 
 
 @pytest.fixture()

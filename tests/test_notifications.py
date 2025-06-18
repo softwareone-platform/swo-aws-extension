@@ -2,7 +2,6 @@ import logging
 
 import pymsteams
 import pytest
-from mpt_extension_sdk.mpt_http.mpt import NotifyCategories
 
 from swo_aws_extension.flows.order import MPT_ORDER_STATUS_QUERYING, InitialAWSContext
 from swo_aws_extension.notifications import (
@@ -10,11 +9,9 @@ from swo_aws_extension.notifications import (
     FactsSection,
     dateformat,
     md2html,
-    mpt_notify,
     notify_unhandled_exception_in_teams,
     send_error,
     send_exception,
-    send_mpt_notification,
     send_notification,
     send_warning,
 )
@@ -139,65 +136,6 @@ def test_send_others(mocker, function, color, icon):
     )
 
 
-def test_mpt_notify(mocker, mpt_client):
-    """Test that mpt_notify sends a notification through MPT API."""
-    mocked_template = mocker.MagicMock()
-    mocked_template.render.return_value = "rendered-template"
-    mocked_jinja_env = mocker.MagicMock()
-    mocked_jinja_env.get_template.return_value = mocked_template
-    mocker.patch("swo_aws_extension.notifications.env", mocked_jinja_env)
-
-    mock_notify = mocker.patch("swo_aws_extension.notifications.notify", autospec=True)
-    mpt_notify(
-        mpt_client, "account_id", "buyer_id", "email-subject", "template_name", {"test": "context"}
-    )
-
-    mocked_jinja_env.get_template.assert_called_once_with("template_name.html")
-    mocked_template.render.assert_called_once_with({"test": "context"})
-    mock_notify.assert_called_once_with(
-        mpt_client,
-        NotifyCategories.ORDERS.value,
-        "account_id",
-        "buyer_id",
-        "email-subject",
-        "rendered-template",
-    )
-
-
-def test_mpt_notify_exception(mocker, mpt_client, caplog):
-    """Test that errors during MPT API notification are properly logged with
-    notification details."""
-    mocked_template = mocker.MagicMock()
-    mocked_template.render.return_value = "rendered-template"
-    mocked_jinja_env = mocker.MagicMock()
-    mocked_jinja_env.get_template.return_value = mocked_template
-    mocker.patch("swo_aws_extension.notifications.env", mocked_jinja_env)
-    mocker.patch(
-        "swo_aws_extension.notifications.notify",
-        autospec=True,
-        side_effect=Exception("error"),
-    )
-
-    with caplog.at_level(logging.ERROR):
-        mpt_notify(
-            mpt_client,
-            "account_id",
-            "buyer_id",
-            "email-subject",
-            "template_name",
-            {"test": "context"},
-        )
-
-    assert (
-        "Cannot send MPT API notification:"
-        f" Category: '{NotifyCategories.ORDERS.value}',"
-        " Account ID: 'account_id',"
-        " Buyer ID: 'buyer_id',"
-        " Subject: 'email-subject',"
-        " Message: 'rendered-template'"
-    ) in caplog.text
-
-
 def test_dateformat():
     assert dateformat("2024-05-16T10:54:42.831Z") == "16 May 2024"
     assert dateformat("") == ""
@@ -221,14 +159,52 @@ def test_notify_unhandled_exception_in_teams(mocker):
 
 
 def test_send_mpt_notification(
-    mocker, mpt_client, order_factory, order_parameters_factory, settings, buyer
+    mocker,
+    mpt_client,
+    mpt_notifier,
+    mock_get_rendered_template,
+    order_factory,
+    order_parameters_factory,
+    buyer,
 ):
     """Test that MPT notification is sent correctly expected subject for order in
     querying status."""
-    mock_mpt_notify = mocker.patch("swo_aws_extension.notifications.mpt_notify", spec=True)
-    mock_get_rendered_template = mocker.patch(
-        "swo_aws_extension.notifications.get_rendered_template",
-        return_value="rendered-template",
+    mock_notify = mocker.patch("swo_aws_extension.notifications.notify", spec=True)
+    context = InitialAWSContext.from_order_data(
+        order_factory(
+            order_parameters=order_parameters_factory(),
+            buyer=buyer,
+            status=MPT_ORDER_STATUS_QUERYING,
+        )
+    )
+
+    mpt_notifier.notify_re_order(context)
+
+    mock_notify.assert_called_once_with(
+        mpt_client,
+        "NTC-0000-0006",
+        "ACC-9121-8944",
+        "BUY-3731-7971",
+        "This order need your attention ORD-0792-5000-2253-4210 for A buyer",
+        "rendered-template",
+    )
+    mock_get_rendered_template.assert_called_once()
+
+
+def test_send_mpt_notification_exception(
+    mocker,
+    mpt_client,
+    mpt_notifier,
+    mock_get_rendered_template,
+    order_factory,
+    order_parameters_factory,
+    buyer,
+    caplog,
+):
+    mocker.patch(
+        "swo_aws_extension.notifications.notify",
+        autospec=True,
+        side_effect=Exception("error"),
     )
     context = InitialAWSContext.from_order_data(
         order_factory(
@@ -237,20 +213,19 @@ def test_send_mpt_notification(
             status=MPT_ORDER_STATUS_QUERYING,
         )
     )
-    send_mpt_notification(mpt_client, context)
-    mock_mpt_notify.assert_called_once_with(
-        mpt_client,
-        "ACC-9121-8944",
-        "BUY-3731-7971",
-        "This order need your attention ORD-0792-5000-2253-4210 for A buyer",
-        "notification",
-        {
-            "activation_template": "<p>rendered-template</p>\n",
-            "api_base_url": "https://localhost",
-            "order": context.order,
-            "portal_base_url": "https://portal.s1.local",
-        },
-    )
+
+    with caplog.at_level(logging.ERROR):
+        mpt_notifier.notify_re_order(context)
+
+        assert (
+            "Cannot send MPT API notification:"
+            " Category: 'NTC-0000-0006',"
+            " Account ID: 'ACC-9121-8944',"
+            " Buyer ID: 'BUY-3731-7971',"
+            " Subject: 'This order need your attention ORD-0792-5000-2253-4210 for A buyer',"
+            " Message: 'rendered-template'"
+        ) in caplog.text
+
     mock_get_rendered_template.assert_called_once()
 
 
