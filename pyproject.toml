@@ -44,10 +44,12 @@ dev = [
     "pytest-mock==3.12.*",
     "pytest-randomly==3.15.*",
     "pytest-xdist==3.5.*",
+    "requests-mock==1.12.*",
     "responses==0.24.*",
     "ruff==0.3.*",
     "types-openpyxl==3.1.*",
     "types-requests==2.31.*",
+
 ]
 sdk = [
     "django-ninja==1.1.*",
@@ -89,7 +91,7 @@ build-backend = "hatchling.build"
 [tool.pytest.ini_options]
 testpaths = "tests"
 pythonpath = "."
-addopts = "--cov=swo_aws_extension --cov=swo_ccp_client --cov=swo_crm_service_client --cov=swo_finops_client --cov-report=term-missing --cov-report=html --cov-report=xml"
+addopts = "--cov=. --cov-report=term-missing --cov-report=html --cov-report=xml"
 DJANGO_SETTINGS_MODULE = "tests.django.settings"
 log_cli = false
 filterwarnings = [
@@ -100,6 +102,10 @@ filterwarnings = [
 [tool.coverage.run]
 branch = true
 relative_files = true
+omit=[
+    "swo/**",
+    "tests/**"
+]
 
 [tool.ruff]
 extend-exclude = [".vscode", ".devcontainer", "swo"]
