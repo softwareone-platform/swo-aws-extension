@@ -1,6 +1,5 @@
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import boto3
 import botocore.exceptions
@@ -22,8 +21,8 @@ class AccountCreationStatus:
     account_request_id: str
     status: str
     account_name: str
-    failure_reason: Optional[str] = None
-    account_id: Optional[str] = None
+    failure_reason: str | None = None
+    account_id: str | None = None
 
     @classmethod
     def from_boto3_response(cls, response):

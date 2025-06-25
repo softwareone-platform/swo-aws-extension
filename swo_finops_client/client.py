@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from functools import wraps
 from urllib.parse import urljoin
 from uuid import uuid4
@@ -138,7 +138,7 @@ class FinOpsClient:
 
     def _get_auth_token(self):
         if not self._jwt or self._is_token_expired():
-            now = datetime.now(tz=timezone.utc)
+            now = datetime.now(tz=UTC)
             self._jwt = jwt.encode(
                 {
                     "sub": self._sub,

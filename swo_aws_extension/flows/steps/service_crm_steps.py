@@ -1,5 +1,5 @@
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 from mpt_extension_sdk.flows.pipeline import NextStep, Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
