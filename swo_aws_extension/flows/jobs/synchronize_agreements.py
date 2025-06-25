@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from dateutil.relativedelta import relativedelta
 from mpt_extension_sdk.mpt_http.mpt import (
@@ -249,7 +249,7 @@ def _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run):
                 )
                 continue
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             start_date = now.strftime(MPT_DATE_TIME_FORMAT)
             renewal_date = (now + relativedelta(months=1)).strftime(MPT_DATE_TIME_FORMAT)
 

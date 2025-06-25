@@ -121,7 +121,7 @@ select = [
     "I", # isort
     "B", # flake8-bugbear
     "C4", # flake8-comprehensions
-    #"UP", # pyupgrade,
+    "UP", # pyupgrade,
     "PT", # flake8-pytest-style
     "T10", # flake8-pytest-style
 ]

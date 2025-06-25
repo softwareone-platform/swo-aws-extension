@@ -1,6 +1,6 @@
 import functools
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from mpt_extension_sdk.flows.pipeline import NextStep, Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
@@ -100,7 +100,7 @@ class AssignMPA(Step):
                 context.order_id,
                 context.seller_country,
                 error,
-                datetime.now(timezone.utc).strftime("%Y:%m:%d"),
+                datetime.now(UTC).strftime("%Y:%m:%d"),
             )
 
             if not has_open_notification(context.seller_country, context.pls_enabled):

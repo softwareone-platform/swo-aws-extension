@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 import pytest
@@ -29,7 +29,7 @@ def test_create_entitlement(mocker, mock_jwt_encoder, ffc_client_settings):
         return_value="uuid-1",
     )
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     token = mock_jwt_encoder(now)
 
     responses.post(
@@ -73,7 +73,7 @@ def test_create_entitlement_with_default_name(mocker, mock_jwt_encoder, ffc_clie
         return_value="uuid-1",
     )
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     token = mock_jwt_encoder(now)
 
     responses.post(
@@ -116,7 +116,7 @@ def test_delete_entitlement(mocker, mock_jwt_encoder, ffc_client_settings):
         return_value="uuid-1",
     )
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     token = mock_jwt_encoder(now)
 
     responses.delete(
@@ -146,7 +146,7 @@ def test_terminate_entitlement(mocker, mock_jwt_encoder, ffc_client_settings):
         return_value="uuid-1",
     )
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     token = mock_jwt_encoder(now)
 
     responses.post(
@@ -179,7 +179,7 @@ def test_get_entitlement_by_datasource_id(mocker, mock_jwt_encoder, ffc_client_s
         return_value="uuid-1",
     )
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     token = mock_jwt_encoder(now)
 
     responses.get(
@@ -212,7 +212,7 @@ def test_get_entitlement_by_datasource_id_not_found(mocker, mock_jwt_encoder, ff
         return_value="uuid-1",
     )
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     token = mock_jwt_encoder(now)
 
     responses.get(
@@ -245,7 +245,7 @@ def test_http_error_handling(mocker, mock_jwt_encoder, ffc_client_settings):
         return_value="uuid-1",
     )
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     token = mock_jwt_encoder(now)
 
     responses.get(
@@ -280,7 +280,7 @@ def test_not_found_error_handling(mocker, mock_jwt_encoder, ffc_client_settings)
         return_value="uuid-1",
     )
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     token = mock_jwt_encoder(now)
 
     responses.get(
@@ -315,7 +315,7 @@ def test_token_expired_handling(mocker, mock_jwt_encoder, ffc_client_settings):
         return_value="uuid-1",
     )
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     initial_token = mock_jwt_encoder(now)
     new_token = mock_jwt_encoder(now)
 
