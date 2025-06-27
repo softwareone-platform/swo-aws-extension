@@ -8,6 +8,9 @@ class Config:
         """
         Get the contents of a file.
         """
+        if not os.path.isabs(file_path):
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+            file_path = os.path.abspath(os.path.join(project_root, file_path))
         if not os.path.exists(file_path):
             raise FileNotFoundError(file_path)
         with open(file_path, encoding="utf-8") as file:
