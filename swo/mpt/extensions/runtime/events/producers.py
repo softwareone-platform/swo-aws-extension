@@ -63,7 +63,6 @@ class OrderEventProducer(EventProducer):
                     self.dispatcher.dispatch_event(Event(context.order_id, "orders", context))
 
     def get_processing_orders(self):
-        products = ",".join(settings.MPT_PRODUCTS_IDS)
         orders = []
         rql_query = RQLQuery().agreement.product.id.in_(settings.MPT_PRODUCTS_IDS) and RQLQuery(
             status="processing"
