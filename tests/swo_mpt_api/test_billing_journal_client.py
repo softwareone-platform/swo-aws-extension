@@ -36,6 +36,8 @@ def test_query_journals(mpt_client, journal_data):
         "$meta": {
             "pagination": {
                 "total": 1,
+                "limit": 10,
+                "offset": 0,
             }
         },
         "data": [journal_data],
@@ -43,7 +45,7 @@ def test_query_journals(mpt_client, journal_data):
     responses.get("https://localhost/v1/billing/journals", json=response_data)
     api = MPTAPIClient(mpt_client)
     journals = api.billing.journal.query("")
-    assert journals == response_data
+    assert journals.all() == [journal_data]
 
 
 @responses.activate

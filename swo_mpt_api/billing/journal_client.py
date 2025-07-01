@@ -4,6 +4,7 @@ from typing import IO, Annotated
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from requests import Response
 
+from swo_mpt_api.collection import Collection
 from swo_mpt_api.models.hints import Journal, JournalAttachment, JournalCharge
 
 
@@ -12,10 +13,9 @@ class AttachmentsClient:
         self._client = client
         self.journal_id = journal_id
 
-    def list(self) -> list[JournalAttachment]:
-        response = self._client.get(f"/billing/journals/{self.journal_id}/attachments")
-        response.raise_for_status()
-        return response.json()
+    def list(self) -> Collection[JournalAttachment]:
+        url = f"/billing/journals/{self.journal_id}/attachments?"
+        return Collection(self._client, url)
 
     def upload(self, attachment: IO) -> JournalAttachment:
         response = self._client.post(
@@ -44,11 +44,9 @@ class ChargesClient:
         self._client = client
         self.journal_id = journal_id
 
-    def list(self) -> list[JournalCharge]:
-        url = f"/billing/journals/{self.journal_id}/charges"
-        response = self._client.get(url)
-        response.raise_for_status()
-        return response.json()
+    def list(self) -> Collection[JournalCharge]:
+        url = f"/billing/journals/{self.journal_id}/charges?"
+        return Collection(self._client, url)
 
     def download(self) -> Response:
         """
@@ -76,11 +74,9 @@ class JournalClient:
         response.raise_for_status()
         return response.json()
 
-    def query(self, query: Annotated[str, "Query in RQL format"]) -> list[Journal]:
+    def query(self, query: Annotated[str, "Query in RQL format"]) -> Collection[Journal]:
         url = f"/billing/journals?{query}"
-        response = self._client.get(url)
-        response.raise_for_status()
-        return response.json()
+        return Collection(self._client, url)
 
     def update(self, journal_id, journal: Journal) -> Journal:
         response = self._client.put(f"/billing/journals/{journal_id}", json=journal)

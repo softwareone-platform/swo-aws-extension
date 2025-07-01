@@ -7,11 +7,21 @@ def test_list_charges(requests_mock, mpt_client):
         {"id": "charge-1", "amount": 100},
         {"id": "charge-2", "amount": 200},
     ]
+    response_mock = {
+        "$meta": {
+            "pagination": {
+                "total": 2,
+                "limit": 10,
+                "offset": 0,
+            }
+        },
+        "data": charges_data,
+    }
     requests_mock.get(
-        f"https://localhost/v1/billing/journals/{journal_id}/charges", json=charges_data
+        f"https://localhost/v1/billing/journals/{journal_id}/charges", json=response_mock
     )
     api = MPTAPIClient(mpt_client)
-    result = api.billing.journal.charges(journal_id).list()
+    result = api.billing.journal.charges(journal_id).list().all()
     assert result == charges_data
 
 
