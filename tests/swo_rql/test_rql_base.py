@@ -13,6 +13,13 @@ def test_create():
     assert q.negated is False
 
 
+def test_create_with_field():
+    q = RQLQuery("field")
+    q.eq("value")
+    assert q.op == RQLQuery.EXPR
+    assert str(q) == "eq(field,value)"
+
+
 def test_create_single_kwarg():
     q = RQLQuery(id="ID")
     assert q.op == RQLQuery.EXPR
@@ -327,3 +334,10 @@ def test_hash():
     s.add(r)
 
     assert len(s) == 1
+
+
+def test_empty():
+    assert RQLQuery("value").empty() == RQLQuery("value").empty(True)
+    assert str(RQLQuery("value").empty()) == "eq(value,empty())"
+    assert str(RQLQuery("value").not_empty()) == "ne(value,empty())"
+    assert RQLQuery("value").empty(False) == RQLQuery("value").not_empty()

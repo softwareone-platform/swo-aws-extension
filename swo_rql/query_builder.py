@@ -82,6 +82,10 @@ class RQLQuery:
     rql = R().field.eq('value') & R().field2.anyof(('v1', 'v2')) & r.field3.empty(True)
     ```
 
+    ```py3
+    rql = R("field").eq("value")
+    ```
+
     The R object support the bitwise operators `&`, `|` and `~`.
 
     Nested fields can be expressed using dot notation:
@@ -101,13 +105,17 @@ class RQLQuery:
     OR = "or"
     EXPR = "expr"
 
-    def __init__(self, *, _op=EXPR, _children=None, _negated=False, _expr=None, **kwargs):
+    def __init__(
+        self, _field=None, *, _op=EXPR, _children=None, _negated=False, _expr=None, **kwargs
+    ):
         self.op = _op
         self.children = _children or []
         self.negated = _negated
         self.expr = _expr
         self._path = []
         self._field = None
+        if _field:
+            self.n(_field)
         if len(kwargs) == 1:
             self.op = self.EXPR
             self.expr = parse_kwargs(kwargs)[0]
@@ -258,14 +266,22 @@ class RQLQuery:
         """
         return self._bool("null", value)
 
-    def empty(self, value: list[str]):
+    def empty(self, value: bool = True):
         """
         Apply the `empty` operator to the field this `R` object refers to.
 
-        Args:
-            value (list[str]): The value to which compare the field.
+        Usage: `R().field.empty()
+
+        For not empty: `R().field.empty(False)` or `R().field.not_empty()`
         """
         return self._bool("empty", value)
+
+    def not_empty(self):
+        """
+        Apply the `not_empty` operator to the field this `R` object refers to.
+        """
+        query = self._bool("empty", False)
+        return query
 
     def like(self, value: list[str]):
         """
