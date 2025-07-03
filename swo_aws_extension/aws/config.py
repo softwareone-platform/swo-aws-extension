@@ -4,10 +4,20 @@ from django.conf import settings
 
 
 class Config:
+    def _patch_path(self, file_path):
+        """
+        Fixes relative paths to be from the project root.
+        """
+        if not os.path.isabs(file_path):
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+            file_path = os.path.abspath(os.path.join(project_root, file_path))
+        return file_path
+
     def get_file_contents(self, file_path: str) -> str:
         """
         Get the contents of a file.
         """
+        file_path = self._patch_path(file_path)
         if not os.path.exists(file_path):
             raise FileNotFoundError(file_path)
         with open(file_path, encoding="utf-8") as file:
