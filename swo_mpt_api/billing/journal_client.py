@@ -4,6 +4,7 @@ from typing import IO, Annotated
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from requests import Response
 
+from swo_mpt_api.httpquery import HttpQuery
 from swo_mpt_api.models.hints import Journal, JournalAttachment, JournalCharge
 
 
@@ -12,10 +13,9 @@ class AttachmentsClient:
         self._client = client
         self.journal_id = journal_id
 
-    def list(self) -> list[JournalAttachment]:
-        response = self._client.get(f"/billing/journals/{self.journal_id}/attachments")
-        response.raise_for_status()
-        return response.json()
+    def query(self, rql=None) -> HttpQuery[JournalAttachment]:
+        url = f"/billing/journals/{self.journal_id}/attachments"
+        return HttpQuery(self._client, url, rql)
 
     def upload(self, attachment: IO) -> JournalAttachment:
         response = self._client.post(
@@ -38,17 +38,21 @@ class AttachmentsClient:
         response.raise_for_status()
         return response
 
+    def all(self):
+        return self.query().all()
+
 
 class ChargesClient:
     def __init__(self, client: MPTClient, journal_id: str):
         self._client = client
         self.journal_id = journal_id
 
-    def list(self) -> list[JournalCharge]:
+    def query(self, rql=None) -> HttpQuery[JournalCharge]:
         url = f"/billing/journals/{self.journal_id}/charges"
-        response = self._client.get(url)
-        response.raise_for_status()
-        return response.json()
+        return HttpQuery(self._client, url, rql)
+
+    def all(self):
+        return self.query().all()
 
     def download(self) -> Response:
         """
@@ -76,11 +80,14 @@ class JournalClient:
         response.raise_for_status()
         return response.json()
 
-    def query(self, query: Annotated[str, "Query in RQL format"]) -> list[Journal]:
-        url = f"/billing/journals?{query}"
-        response = self._client.get(url)
-        response.raise_for_status()
-        return response.json()
+    def query(
+        self, query: Annotated[str | None, "Query in RQL format"] = None
+    ) -> HttpQuery[Journal]:
+        url = "/billing/journals"
+        return HttpQuery(self._client, url, query)
+
+    def all(self) -> list[Journal]:
+        return self.query().all()
 
     def update(self, journal_id, journal: Journal) -> Journal:
         response = self._client.put(f"/billing/journals/{journal_id}", json=journal)
