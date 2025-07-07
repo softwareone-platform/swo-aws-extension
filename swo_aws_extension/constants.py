@@ -1,3 +1,5 @@
+import json
+import os
 from enum import StrEnum
 
 MPT_DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:00Z"
@@ -252,4 +254,8 @@ ORDER_DEFAULT_PROCESSING_TEMPLATE = "Order processing"
 COMMAND_INVALID_BILLING_DATE = (
     "Invalid billing date. The billing date must be in the past. "
     "You can't generate the billing of the current month until the 5th."
+)
+
+MPT_NOTIFY_CATEGORIES = json.loads(
+    os.getenv("MPT_NOTIFY_CATEGORIES", '{"ORDERS": "NTC-0000-0006"}')
 )

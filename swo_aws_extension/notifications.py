@@ -3,7 +3,6 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
 from typing import TYPE_CHECKING
 
 import pymsteams
@@ -16,7 +15,7 @@ from mpt_extension_sdk.mpt_http.mpt import (
     notify,
 )
 
-NotifyCategories = Enum("NotifyCategories", settings.MPT_NOTIFY_CATEGORIES)
+from swo_aws_extension.constants import MPT_NOTIFY_CATEGORIES
 
 if TYPE_CHECKING:  # pragma: no cover
     from swo_aws_extension.flows.order import InitialAWSContext
@@ -152,7 +151,7 @@ class MPTNotifier:  # TODO: Consider moving some of the functionality to SDK
         rendered_template = template.render(template_context)
 
         self._notify(
-            NotifyCategories.ORDERS.value,
+            MPT_NOTIFY_CATEGORIES["ORDERS"],
             order_context.agreement["client"]["id"],
             order_context.buyer["id"],
             subject,
@@ -187,7 +186,7 @@ class MPTNotifier:  # TODO: Consider moving some of the functionality to SDK
             )
             logger.debug(
                 f"Sent MPT API notification:"
-                f" Category: '{NotifyCategories.ORDERS.value}',"
+                f" Category: '{MPT_NOTIFY_CATEGORIES['ORDERS']}',"
                 f" Account ID: '{account_id}',"
                 f" Buyer ID: '{buyer_id}',"
                 f" Subject: '{subject}',"

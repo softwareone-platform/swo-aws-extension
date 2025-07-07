@@ -10,7 +10,6 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
-import json
 import os
 from pathlib import Path
 
@@ -39,7 +38,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "swo.mpt.extensions.runtime.djapp.apps.DjAppConfig",
+    "mpt_extension_sdk.runtime.djapp.apps.DjAppConfig",
     "swo_aws_extension.apps.ExtensionConfig",
 ]
 
@@ -54,7 +53,7 @@ MIDDLEWARE = [
     "mpt_extension_sdk.runtime.djapp.middleware.MPTClientMiddleware",
 ]
 
-ROOT_URLCONF = "swo.mpt.extensions.runtime.djapp.conf.urls"
+ROOT_URLCONF = "mpt_extension_sdk.runtime.djapp.conf.urls"
 
 TEMPLATES = [
     {
@@ -145,7 +144,7 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
-        "swo.mpt.extensions.runtime": {
+        "mpt_extension_sdk.runtime": {
             "handlers": ["console"],
             "level": "DEBUG",
             "propagate": False,
@@ -172,9 +171,6 @@ MPT_PRODUCTS_IDS = ["PRD-1111-1111"]
 MPT_ORDERS_API_POLLING_INTERVAL_SECS = 30
 MPT_PORTAL_BASE_URL = "https://portal.s1.local"
 MPT_KEY_VAULT_NAME = os.getenv("MPT_KEY_VAULT_NAME", "change-me!")
-MPT_NOTIFY_CATEGORIES = json.loads(
-    os.getenv("MPT_NOTIFY_CATEGORIES", '{"ORDERS": "NTC-0000-0006"}')
-)
 
 
 EXTENSION_CONFIG = {

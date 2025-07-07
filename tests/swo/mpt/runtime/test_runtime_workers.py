@@ -1,5 +1,5 @@
 from django.core.wsgi import get_wsgi_application
-from swo.mpt.extensions.runtime.workers import (
+from mpt_extension_sdk.runtime.workers import (
     ExtensionWebApplication,
     start_event_consumer,
     start_gunicorn,

@@ -23,9 +23,6 @@ dependencies = [
     "types-openpyxl==3.1.*",
 ]
 
-[project.scripts]
-swoext = "swo.mpt.extensions.runtime.swoext:main"
-
 [project.entry-points."swo.mpt.ext"]
 app_config = "swo_aws_extension.apps:ExtensionConfig"
 
