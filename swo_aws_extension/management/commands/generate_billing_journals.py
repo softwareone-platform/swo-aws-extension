@@ -1,8 +1,10 @@
-from datetime import datetime, timedelta
+import re
+from datetime import datetime
 
 from django.core.management.base import BaseCommand
 
 from swo_aws_extension.aws.config import Config
+from swo_aws_extension.constants import COMMAND_INVALID_BILLING_DATE
 
 config = Config()
 
@@ -14,9 +16,8 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         # Calculate last month's date
         today = datetime.now()
-        last_month = today.replace(day=1) - timedelta(days=1)
-        default_year = last_month.year
-        default_month = last_month.month
+        default_year = today.year
+        default_month = today.month
 
         parser.add_argument(
             "--year",
@@ -30,6 +31,14 @@ class Command(BaseCommand):
             default=default_month,
             help=f"Month for billing (1-12, default: {default_month})",
         )
+        mutex_group = parser.add_mutually_exclusive_group()
+        mutex_group.add_argument(
+            "--authorizations",
+            nargs="*",
+            metavar="AUTHORIZATION",
+            default=[],
+            help="list of specific authorizations to synchronize separated by space",
+        )
 
     def info(self, message):
         self.stdout.write(message, ending="\n")
@@ -37,17 +46,54 @@ class Command(BaseCommand):
     def error(self, message):
         self.stderr.write(self.style.ERROR(message), ending="\n")
 
+    def raise_for_invalid_date(self, year, month):
+        if year < 2025:
+            raise ValueError(f"Year must be 2025 or higher, got {year}")
+
+        if month < 1 or month > 12:
+            raise ValueError(f"Invalid month. Month must be between 1 and 12. Got {month} instead.")
+
+        invoice_date = datetime(year, month, 5, 0, 0, 0, 0)
+        current_date = datetime.now()
+        is_valid_billing_date = current_date < invoice_date
+        if is_valid_billing_date:
+            raise ValueError(COMMAND_INVALID_BILLING_DATE)
+
+    def raise_for_invalid_authorizations(self, authorization):
+        pattern = r"^AUT-(?:\d+-)*\d+$"
+        failed_authorizations = []
+        for a in authorization:
+            if re.match(pattern, a) is None:
+                failed_authorizations.append(a)
+        if failed_authorizations:
+            raise ValueError(f"Invalid authorizations id: {", ".join(failed_authorizations)}")
+
     def handle(self, *args, **options):
         year = options["year"]
         month = options["month"]
-
-        if year < 2000:
-            self.error(f"Year must be 2000 or higher, got {year}")
+        try:
+            self.raise_for_invalid_date(year, month)
+        except ValueError as e:
+            self.error(str(e))
             return
 
-        if month < 1 or month > 12:
-            self.error(f"Month must be between 1 and 12, got {month}")
+        authorizations: list[str] = options["authorizations"]
+        try:
+            self.raise_for_invalid_authorizations(authorizations)
+        except ValueError as e:
+            self.error(str(e))
             return
 
-        self.info(f"Running {self.name} for {year}-{month:02d}")
-        self.info(f"Dummy command {self.name} for genereting journals")
+        self.info(
+            f"Running {self.name} for {year}-{month:02d} "
+            f"for authorizations {" ".join(authorizations)}"
+        )
+        self.info(f"Dummy process {self.name} for genereting journals")
+        self.process(year, month, authorizations)
+        self.info(
+            f"Completed {self.name} for {year}-{month:02d} "
+            f"for authorizations {" ".join(authorizations)}"
+        )
+
+    def process(self, year, month, authorizations):
+        self.info("...")
