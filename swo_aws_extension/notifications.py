@@ -11,10 +11,11 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from markdown_it import MarkdownIt
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import (
-    NotifyCategories,
     get_rendered_template,
     notify,
 )
+
+from swo_aws_extension.constants import MPT_NOTIFY_CATEGORIES
 
 if TYPE_CHECKING:  # pragma: no cover
     from swo_aws_extension.flows.order import InitialAWSContext
@@ -152,7 +153,7 @@ class MPTNotifier:  # TODO: Consider moving some of the functionality to SDK
         rendered_template = template.render(template_context)
 
         self._notify(
-            NotifyCategories.ORDERS.value,
+            MPT_NOTIFY_CATEGORIES["ORDERS"],
             order_context.agreement["client"]["id"],
             order_context.buyer["id"],
             subject,
@@ -187,7 +188,7 @@ class MPTNotifier:  # TODO: Consider moving some of the functionality to SDK
             )
             logger.debug(
                 f"Sent MPT API notification:"
-                f" Category: '{NotifyCategories.ORDERS.value}',"
+                f" Category: '{MPT_NOTIFY_CATEGORIES['ORDERS']}',"
                 f" Account ID: '{account_id}',"
                 f" Buyer ID: '{buyer_id}',"
                 f" Subject: '{subject}',"

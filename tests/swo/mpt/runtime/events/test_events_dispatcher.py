@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.core.events.dataclasses import Event
-from swo.mpt.extensions.runtime.events.dispatcher import Dispatcher
+from mpt_extension_sdk.runtime.events.dispatcher import Dispatcher
 
 
 def test_dispatcher(mpt_client):
@@ -54,7 +54,7 @@ def test_dispatcher_process_events(mocker, mpt_client):
         return
 
     mocker.patch(
-        "swo.mpt.extensions.runtime.events.dispatcher.done_callback",
+        "mpt_extension_sdk.runtime.events.dispatcher.done_callback",
         mocked_done_callback,
     )
     mocker.patch("swo_aws_extension.extension.fulfill_order")

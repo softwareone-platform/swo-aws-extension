@@ -1,5 +1,5 @@
 from django.test import override_settings
-from swo.mpt.extensions.runtime.master import Master
+from mpt_extension_sdk.runtime.master import Master
 
 
 @override_settings(

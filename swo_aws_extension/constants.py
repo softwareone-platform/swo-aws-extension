@@ -1,3 +1,5 @@
+import json
+import os
 from enum import StrEnum
 
 MPT_DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:00Z"
@@ -249,3 +251,7 @@ class OrderQueryingTemplateEnum(StrEnum):
 
 
 ORDER_DEFAULT_PROCESSING_TEMPLATE = "Order processing"
+
+MPT_NOTIFY_CATEGORIES = json.loads(
+    os.getenv("MPT_NOTIFY_CATEGORIES", '{"ORDERS": "NTC-0000-0006"}')
+)

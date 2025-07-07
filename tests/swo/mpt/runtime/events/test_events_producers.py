@@ -1,7 +1,7 @@
 from urllib.parse import urljoin
 
-from swo.mpt.extensions.runtime.events.dispatcher import Dispatcher
-from swo.mpt.extensions.runtime.events.producers import (
+from mpt_extension_sdk.runtime.events.dispatcher import Dispatcher
+from mpt_extension_sdk.runtime.events.producers import (
     OrderEventProducer,
 )
 
