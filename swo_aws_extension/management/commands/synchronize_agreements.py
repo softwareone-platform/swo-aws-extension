@@ -1,14 +1,14 @@
 from django.conf import settings
-from django.core.management.base import BaseCommand
 
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.flows.jobs.synchronize_agreements import synchronize_agreements
+from swo_aws_extension.management.commands_helpers import StyledPrintCommand
 from swo_aws_extension.shared import mpt_client
 
 config = Config()
 
 
-class Command(BaseCommand):
+class Command(StyledPrintCommand):
     help = "Synchronize Agreements"
 
     def add_arguments(self, parser):
@@ -26,12 +26,6 @@ class Command(BaseCommand):
             default=False,
             help="Test synchronization without making changes",
         )
-
-    def success(self, message):
-        self.stdout.write(self.style.SUCCESS(message), ending="\n")
-
-    def info(self, message):
-        self.stdout.write(message, ending="\n")
 
     def handle(self, *args, **options):
         self.info("Start synchronizing agreements...")
