@@ -1208,6 +1208,83 @@ def data_aws_account_factory():
 
 
 @pytest.fixture()
+def data_aws_invoice_summary_factory():
+    def create_invoice_summary(
+        account_id="1234-1234-1234",
+        billing_period_month=4,
+        billing_period_year=2025,
+        total_amount="0.00",
+    ):
+        return {
+            "AccountId": account_id,
+            "InvoiceId": "EUINGB25-2163550",
+            "Entity": {"InvoicingEntity": "Amazon Web Services EMEA SARL"},
+            "BillingPeriod": {"Month": billing_period_month, "Year": billing_period_year},
+            "InvoiceType": "INVOICE",
+            "BaseCurrencyAmount": {
+                "TotalAmount": total_amount,
+                "TotalAmountBeforeTax": "0.00",
+                "CurrencyCode": "USD",
+            },
+            "TaxCurrencyAmount": {
+                "TotalAmount": "0.00",
+                "TotalAmountBeforeTax": "0.00",
+                "CurrencyCode": "GBP",
+                "CurrencyExchangeDetails": {
+                    "SourceCurrencyCode": "USD",
+                    "TargetCurrencyCode": "GBP",
+                    "Rate": "0.74897",
+                },
+            },
+            "PaymentCurrencyAmount": {
+                "TotalAmount": "0.00",
+                "TotalAmountBeforeTax": "0.00",
+                "CurrencyCode": "USD",
+            },
+        }
+
+    return create_invoice_summary
+
+
+@pytest.fixture()
+def data_aws_cost_and_usage_factory():
+    def create_usage_report(
+        account_id="1234-1234-1234",
+    ):
+        return {
+            "GroupDefinitions": [
+                {"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"},
+                {"Type": "DIMENSION", "Key": "INVOICING_ENTITY"},
+            ],
+            "ResultsByTime": [
+                {
+                    "TimePeriod": {"Start": "2025-06-01", "End": "2025-07-01"},
+                    "Total": {},
+                    "Groups": [
+                        {
+                            "Keys": [account_id, "Amazon Web Services, Inc."],
+                            "Metrics": {
+                                "UnblendedCost": {"Amount": "31.6706587062", "Unit": "USD"}
+                            },
+                        },
+                        {
+                            "Keys": ["123456789012", "Amazon AWS Services Brasil Ltda."],
+                            "Metrics": {"UnblendedCost": {"Amount": "0.1471776427", "Unit": "USD"}},
+                        },
+                    ],
+                    "Estimated": False,
+                }
+            ],
+            "DimensionValueAttributes": [
+                {"Value": account_id, "Attributes": {"description": "test"}},
+                {"Value": "123456789012", "Attributes": {"description": "aws-mpt-0006-0002"}},
+            ],
+        }
+
+    return create_usage_report
+
+
+@pytest.fixture()
 def order_close_account(
     order_factory,
     order_parameters_factory,
