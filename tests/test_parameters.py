@@ -33,9 +33,9 @@ def test_prepare_parameters_for_querying(order_factory, order_parameters_factory
     root_account_email_param = get_ordering_parameter(order, OrderParametersEnum.ROOT_ACCOUNT_EMAIL)
     assert root_account_email_param["error"] == ERR_EMAIL_ALREADY_EXIST.to_dict()
     assert root_account_email_param["constraints"] == {
-        'hidden': False,
-        'readonly': False,
-        'required': True
+        "hidden": False,
+        "readonly": False,
+        "required": True,
     }
 
     # Check hidden parameter is not hiding parameters with errors
