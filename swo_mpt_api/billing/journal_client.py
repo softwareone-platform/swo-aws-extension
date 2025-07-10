@@ -76,6 +76,15 @@ class JournalClient:
         return response.json()
 
     def create(self, journal: Journal) -> Journal:
+        """
+        Creates a new journal
+
+        Arguments:
+            journal: the journal to create
+
+        Returns:
+            The new journal
+        """
         response = self._client.post("/billing/journals", json=journal)
         response.raise_for_status()
         return response.json()
@@ -94,10 +103,36 @@ class JournalClient:
         response.raise_for_status()
         return response.json()
 
-    def upload(self, journal_id, journals_file: IO):
-        response = self._client.post(
-            f"/billing/journals/{journal_id}/upload", files={"file": journals_file}
-        )
+    def upload(self, journal_id, file: IO, filename: str | None = None) -> Journal:
+        """
+        Uploads a file associated with a specific journal.
+
+        This method is used to upload a file to a specified journal using the given journal
+        ID. The file is sent to the appropriate endpoint, which processes it as part of the
+        specified journal. You can provide an optional filename and file type. If not
+        provided, defaults for these values will be used.
+
+        Args:
+            journal_id: The unique identifier of the journal to which the file will be
+                uploaded.
+            file: A file-like object (supporting read operations) to be uploaded
+                containing the jsonl with journal data
+            filename: An optional string specifying the name of the file. Defaults to
+                the name attribute of the file object if not provided.
+
+        Returns:
+            The Journal object.
+
+        Raises:
+            HTTPError: If the upload request fails
+        """
+        filename = filename or file.name
+        file_type = "application/jsonl"
+        journals_file = {
+            "file": (filename, file, file_type),
+        }
+        url = f"/billing/journals/{journal_id}/upload"
+        response = self._client.post(url, files=journals_file)
         response.raise_for_status()
         return response.json()
 

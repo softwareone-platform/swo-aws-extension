@@ -1,15 +1,14 @@
 import re
 from datetime import datetime
 
-from django.core.management.base import BaseCommand
-
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import COMMAND_INVALID_BILLING_DATE
+from swo_aws_extension.management.commands_helpers import StyledPrintCommand
 
 config = Config()
 
 
-class Command(BaseCommand):
+class Command(StyledPrintCommand):
     help = "Generate Journals for monthly billing"
     name = "generate_billing_journals"
 
