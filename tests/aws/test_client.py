@@ -120,19 +120,21 @@ def test_aws_client_list_invoice_summaries(
             "InvoiceSummaries": [data_aws_invoice_summary_factory()],
         },
     ]
-    month = 4
-    year = 2025
+    start_date = "2025-01-01"
+    end_date = "2025-02-01"
 
-    list_invoices = aws_client.list_invoice_summaries_by_account_id(account_id, month, year)
+    list_invoices = aws_client.list_invoice_summaries_by_account_id(
+        account_id, start_date, end_date
+    )
     assert len(list_invoices) == 2
     expected_calls = [
         call(
             Selector={"ResourceType": "ACCOUNT_ID", "Value": account_id},
-            Filter={"BillingPeriod": {"Month": month, "Year": year}},
+            Filter={"TimeInterval": {"StartDate": start_date, "EndDate": end_date}},
         ),
         call(
             Selector={"ResourceType": "ACCOUNT_ID", "Value": account_id},
-            Filter={"BillingPeriod": {"Month": month, "Year": year}},
+            Filter={"TimeInterval": {"StartDate": start_date, "EndDate": end_date}},
             NextToken="token0",
         ),
     ]

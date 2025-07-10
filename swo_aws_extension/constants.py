@@ -3,6 +3,7 @@ from enum import StrEnum
 MPT_DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:00Z"
 
 SWO_EXTENSION_MANAGEMENT_ROLE = "swo/mpt/SWOExtensionManagementRole"
+SWO_EXTENSION_BILLING_ROLE = "swo/mpt/SWOExtensionBillingRole"
 AWS_USAGE_SKU = "AWS Usage"
 AWS_MARKETPLACE_SKU = "AWS Marketplace"
 AWS_USAGE_INCENTIVATE_SKU = "AWS Usage incentivate"
@@ -28,6 +29,31 @@ CRM_SERVICE_TYPE = "MarketPlaceServiceActivation"
 CRM_GLOBAL_EXT_USER_ID = "globalacademicExtUserId"
 CRM_REQUESTER = "Supplier.Portal"
 CRM_SUB_SERVICE = "Service Activation"
+
+DATE_FORMAT = "%Y-%m-%d"
+INVOICE_ID = "invoice_id"
+TOTAL_AMOUNT = "total_amount"
+CURRENCY_CODE = "currency_code"
+INVOICE_ENTITY = "Entity"
+INVOICING_ENTITY = "InvoicingEntity"
+INVOICE_ID_KEY = "InvoiceId"
+BASE_CURRENCY_AMOUNT = "BaseCurrencyAmount"
+TOTAL_AMOUNT_KEY = "TotalAmount"
+CURRENCY_CODE_KEY = "CurrencyCode"
+MARKETPLACE = "marketplace"
+SERVICE_INVOICE_ENTITY = "service_invoice_entity"
+AWS_MARKETPLACE = "AWS Marketplace"
+TAX = "Tax"
+EXTERNAL_IDS = "externalIds"
+VENDOR = "vendor"
+AWS_KEY_MANAGEMENT_SERVICE = "AWS Key Management Service"
+UNBLENDED_COST = "UnblendedCost"
+AMOUNT = "Amount"
+ERROR = "Error"
+DRAFT = "Draft"
+VALIDATED = "Validated"
+JOURNAL_PENDING_STATUS = [ERROR, DRAFT, VALIDATED]
+STATUS = "status"
 
 
 class AccountTypesEnum(StrEnum):
@@ -202,6 +228,11 @@ class AwsHandshakeStateEnum(StrEnum):
     ACCEPTED = "ACCEPTED"
     DECLINED = "DECLINED"
     EXPIRED = "EXPIRED"
+
+
+class AgreementStatusEnum(StrEnum):
+    ACTIVE = "Active"
+    UPDATING = "Updating"
 
 
 class SubscriptionStatusEnum(StrEnum):

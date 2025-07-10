@@ -1,9 +1,15 @@
 import re
 from datetime import datetime
 
+from django.conf import settings
+
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import COMMAND_INVALID_BILLING_DATE
+from swo_aws_extension.flows.jobs.billing_journal import (
+    BillingJournalGenerator,
+)
 from swo_aws_extension.management.commands_helpers import StyledPrintCommand
+from swo_aws_extension.shared import mpt_client
 
 config = Config()
 
@@ -87,12 +93,16 @@ class Command(StyledPrintCommand):
             f"Running {self.name} for {year}-{month:02d} "
             f"for authorizations {" ".join(authorizations)}"
         )
-        self.info(f"Dummy process {self.name} for genereting journals")
+        self.info(f"Process {self.name} for generating journals")
         self.process(year, month, authorizations)
         self.info(
             f"Completed {self.name} for {year}-{month:02d} "
             f"for authorizations {" ".join(authorizations)}"
         )
 
-    def process(self, year, month, authorizations):
-        self.info("...")
+    @staticmethod
+    def process(year, month, authorizations):
+        generator = BillingJournalGenerator(
+            mpt_client, config, year, month, settings.MPT_PRODUCTS_IDS, authorizations
+        )
+        generator.generate_billing_journals()

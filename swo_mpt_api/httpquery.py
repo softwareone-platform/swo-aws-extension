@@ -55,9 +55,9 @@ class HttpQuery(Generic[T]):
         url = self._url
         query_parts = []
         if self._query:
-            query_parts.append(self._query)
+            query_parts.append(str(self._query))
         if query:
-            query_parts.append(query)
+            query_parts.append(str(query))
         if query_parts:
             full_query = "&".join(query_parts)
             response = self._client.get(f"{url}?{full_query}")

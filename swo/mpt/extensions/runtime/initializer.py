@@ -2,6 +2,7 @@ import json
 import os
 
 import rich
+from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from rich.theme import Theme
 from swo.mpt.extensions.runtime.djapp.conf import extract_product_ids
 from mpt_extension_sdk.runtime.events.utils import instrument_logging
@@ -49,5 +50,7 @@ def initialize(options):
 
     if settings.USE_APPLICATIONINSIGHTS:
         instrument_logging()
+        # TODO: SDK candidate
+        BotocoreInstrumentor().instrument()
 
     django.setup()

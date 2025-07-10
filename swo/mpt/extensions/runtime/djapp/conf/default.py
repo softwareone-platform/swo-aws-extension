@@ -134,7 +134,6 @@ APPLICATIONINSIGHTS_CONNECTION_STRING = os.getenv(
 )
 USE_APPLICATIONINSIGHTS = APPLICATIONINSIGHTS_CONNECTION_STRING != ""
 
-
 if USE_APPLICATIONINSIGHTS:
     logger_provider = LoggerProvider()
     set_logger_provider(logger_provider)

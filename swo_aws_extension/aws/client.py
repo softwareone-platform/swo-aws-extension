@@ -417,13 +417,13 @@ class AWSClient:
         return self.account_aliases()[0] if self.account_aliases() else ""
 
     @wrap_boto3_error
-    def list_invoice_summaries_by_account_id(self, account_id, month, year):
+    def list_invoice_summaries_by_account_id(self, account_id, start_date, end_date):
         """
         List invoice summaries for the specified date range.
 
         :param account_id: The AWS account ID for which to list invoice summaries.
-        :param month: The month for which to list invoice summaries.
-        :param year: The year for which to list invoice summaries.
+        :param start_date: The start date in 'YYYY-MM-DD' format.
+        :param end_date: The end date in 'YYYY-MM-DD' format.
         :return: List(dict) A list of invoice summaries.
         """
 
@@ -431,7 +431,7 @@ class AWSClient:
 
         invoice_summaries = []
         selector = {"ResourceType": "ACCOUNT_ID", "Value": account_id}
-        billing_period_filter = {"BillingPeriod": {"Month": month, "Year": year}}
+        billing_period_filter = {"TimeInterval": {"StartDate": start_date, "EndDate": end_date}}
 
         response = invoicing_client.list_invoice_summaries(
             Selector=selector,

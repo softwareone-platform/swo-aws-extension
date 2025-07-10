@@ -40,7 +40,7 @@ class AWSInvitationsProcessor:
         orders = []
         orders_for_product_ids = RQLQuery().agreement.product.id.in_(settings.MPT_PRODUCTS_IDS)
         orders_in_querying = RQLQuery(status="Querying")
-        rql_query = orders_for_product_ids and orders_in_querying
+        rql_query = orders_for_product_ids & orders_in_querying
         url = (
             f"/commerce/orders?{rql_query}&select=audit,parameters,lines,subscriptions,"
             f"subscriptions.lines,agreement,buyer&order=audit.created.at"
