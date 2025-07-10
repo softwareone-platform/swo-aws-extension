@@ -3,6 +3,7 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from typing import TYPE_CHECKING
 
 import pymsteams
@@ -11,10 +12,11 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from markdown_it import MarkdownIt
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import (
-    NotifyCategories,
     get_rendered_template,
     notify,
 )
+
+NotifyCategories = Enum("NotifyCategories", settings.MPT_NOTIFY_CATEGORIES)
 
 if TYPE_CHECKING:  # pragma: no cover
     from swo_aws_extension.flows.order import InitialAWSContext
