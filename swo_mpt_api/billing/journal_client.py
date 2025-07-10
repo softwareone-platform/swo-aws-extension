@@ -1,3 +1,4 @@
+import json
 from functools import lru_cache
 from typing import IO, Annotated
 
@@ -17,10 +18,31 @@ class AttachmentsClient:
         url = f"/billing/journals/{self.journal_id}/attachments"
         return HttpQuery(self._client, url, rql)
 
-    def upload(self, attachment: IO) -> JournalAttachment:
-        response = self._client.post(
-            f"/billing/journals/{self.journal_id}/attachments", files={"file": attachment}
-        )
+    def upload(
+        self, file, mimetype:str, filename:str|None=None, attachment:JournalAttachment|None=None
+    ) -> JournalAttachment:
+        """
+        Uploads attachment files to the Journal
+
+        Parameters:
+            attachment: A file-like object (supporting read operations) to be uploaded.
+            filename: The name of the file to be uploaded.
+            mimetype: The MIME type of the file to be uploaded.
+            file: A file-like object (supporting read operations) to be uploaded.
+
+        Returns:
+            Dict: A dictionary containing the response data from the upload operation.
+
+        Raises:
+            HTTPError: If the upload request fails, an exception will be raised.
+        """
+
+        url = f"/billing/journals/{self.journal_id}/attachments"
+        filename = filename or file.name
+        attachment = attachment or JournalAttachment(name="", description="")
+
+        files = {"file": (filename, file, mimetype)}
+        response = self._client.post(url, data={"attachment": json.dumps(attachment)}, files=files)
         response.raise_for_status()
         return response.json()
 
