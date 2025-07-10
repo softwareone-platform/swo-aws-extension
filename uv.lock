@@ -873,13 +873,12 @@ wheels = [
 
 [[package]]
 name = "mpt-extension-sdk"
-version = "4.1.1"
+version = "5.2.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "azure-identity" },
     { name = "azure-keyvault-secrets" },
     { name = "azure-monitor-opentelemetry-exporter" },
-    { name = "boto3" },
     { name = "click" },
     { name = "debugpy" },
     { name = "django" },
@@ -905,9 +904,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/00/fd02495fa38e1d59746de54ab19cf43280a47e22eba520d829e02a6ce090/mpt_extension_sdk-4.1.1.tar.gz", hash = "sha256:3bef09f1aea1d4b28b05d182654dcc1ba038d93a46b2d6c5fec6628a94a34a6a", size = 22782, upload-time = "2025-05-09T15:02:41.651Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/17/3a244c6a74ecbcac83a6db1c7332e4dd9b567c631c8d02dccc76a57f9d4e/mpt_extension_sdk-5.2.4.tar.gz", hash = "sha256:893e2a8bf0503ca713ec31a36ef2cc8b163ee917aa084eb26fdf44d9a45435d7", size = 26552, upload-time = "2025-07-10T12:30:26.451Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f2/38/a33df15b3d2193e7b89f7ea88fe6d8d4ce60f5b038b37d45afcb7ecd0975/mpt_extension_sdk-4.1.1-py3-none-any.whl", hash = "sha256:574e8f0fdf603f1ef3c91782dcf800d97a61969b91ce449550f8ff996a1a08f4", size = 34064, upload-time = "2025-05-09T15:02:40.378Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/0e/193e46dc739b6ae8e4ec4952684bb6c67e15ef0214116704c1301a4cee76/mpt_extension_sdk-5.2.4-py3-none-any.whl", hash = "sha256:bab3a15823b44011208c6972c1f33792b2a7cbfea75673767e4cac8a941a8bca", size = 38108, upload-time = "2025-07-10T12:30:25.336Z" },
 ]
 
 [[package]]
@@ -1993,7 +1992,7 @@ requires-dist = [
     { name = "django", specifier = "==4.2.*" },
     { name = "jinja2", specifier = "==3.1.*" },
     { name = "markdown-it-py", specifier = "==3.0.*" },
-    { name = "mpt-extension-sdk", specifier = "==4.1.*" },
+    { name = "mpt-extension-sdk", specifier = ">=5.2.4" },
     { name = "openpyxl", specifier = "==3.1.*" },
     { name = "phonenumbers", specifier = "==8.13.*" },
     { name = "pyairtable", specifier = "==2.3.*" },
