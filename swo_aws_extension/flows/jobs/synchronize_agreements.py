@@ -43,13 +43,13 @@ def synchronize_agreements(mpt_client, config, agreement_ids, dry_run, product_i
     if agreement_ids:
         rql_filter = (
             RQLQuery(id__in=agreement_ids)
-            and RQLQuery(status="Active")
-            and RQLQuery(product__id__in=product_ids)
+            & RQLQuery(status="Active")
+            & RQLQuery(product__id__in=product_ids)
         )
         rql_query = f"{rql_filter}{select}"
 
     else:
-        rql_filter = RQLQuery(status="Active") and RQLQuery(product__id__in=product_ids)
+        rql_filter = RQLQuery(status="Active") & RQLQuery(product__id__in=product_ids)
         rql_query = f"{rql_filter}{select}"
 
     agreements = get_agreements_by_query(mpt_client, rql_query)

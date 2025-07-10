@@ -1,9 +1,13 @@
 import re
 from datetime import datetime
 
+from django.conf import settings
+
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import COMMAND_INVALID_BILLING_DATE
+from swo_aws_extension.flows.jobs.billing_journal import generate_billing_journals
 from swo_aws_extension.management.commands_helpers import StyledPrintCommand
+from swo_aws_extension.shared import mpt_client
 
 config = Config()
 
@@ -95,4 +99,6 @@ class Command(StyledPrintCommand):
         )
 
     def process(self, year, month, authorizations):
-        self.info("...")
+        generate_billing_journals(
+            mpt_client, config, year, month, settings.MPT_PRODUCTS_IDS, authorizations
+        )

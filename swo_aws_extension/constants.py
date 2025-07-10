@@ -3,6 +3,7 @@ from enum import StrEnum
 MPT_DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:00Z"
 
 SWO_EXTENSION_MANAGEMENT_ROLE = "swo/mpt/SWOExtensionManagementRole"
+SWO_EXTENSION_BILLING_ROLE = "swo/mpt/SWOExtensionBillingRole"
 AWS_USAGE_SKU = "AWS Usage"
 AWS_MARKETPLACE_SKU = "AWS Marketplace"
 AWS_USAGE_INCENTIVATE_SKU = "AWS Usage incentivate"

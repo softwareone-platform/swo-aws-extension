@@ -5,11 +5,11 @@ description = "Amazon Web Service extension for SWO Marketplace Platform"
 authors = [{ name = "SoftwareOne AG" }]
 requires-python = ">=3.12,<4"
 readme = "README.md"
-license = {text = "Apache-2.0 license"}
+license = { text = "Apache-2.0 license" }
 
 dependencies = [
     "azure-core>=1.33.0,<2",
-    "boto3==1.34.*",
+    "boto3==1.39.*",
     "django==4.2.*",
     "jinja2==3.1.*",
     "markdown-it-py==3.0.*",
@@ -49,7 +49,6 @@ dev = [
     "ruff==0.3.*",
     "types-openpyxl==3.1.*",
     "types-requests==2.31.*",
-
 ]
 sdk = [
     "django-ninja==1.1.*",
@@ -102,7 +101,7 @@ filterwarnings = [
 [tool.coverage.run]
 branch = true
 relative_files = true
-omit=[
+omit = [
     "swo/**",
     "tests/**"
 ]
