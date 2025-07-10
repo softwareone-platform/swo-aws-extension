@@ -132,7 +132,6 @@ SERVICE_NAME = os.getenv("SERVICE_NAME", "Swo.Extensions.SwoDefaultExtensions")
 APPLICATIONINSIGHTS_CONNECTION_STRING = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "")
 USE_APPLICATIONINSIGHTS = APPLICATIONINSIGHTS_CONNECTION_STRING != ""
 
-
 if USE_APPLICATIONINSIGHTS:
     logger_provider = LoggerProvider()
     set_logger_provider(logger_provider)
