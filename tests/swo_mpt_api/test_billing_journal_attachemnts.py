@@ -31,6 +31,7 @@ def test_upload_attachment(requests_mock, mpt_client, tmp_path):
     file_path = tmp_path / "test.pdf"
     file_path.write_bytes(file_content)
     response_data = {"id": "attachment-1", "filename": "test.pdf"}
+
     requests_mock.post(
         f"https://localhost/v1/billing/journals/{journal_id}/attachments",
         json=response_data,
@@ -38,7 +39,10 @@ def test_upload_attachment(requests_mock, mpt_client, tmp_path):
     )
     api = MPTAPIClient(mpt_client)
     with open(file_path, "rb") as f:
-        result = api.billing.journal.attachments(journal_id).upload(f)
+        files = {
+            "file": ("test.pdf", f, "application/pdf"),
+        }
+        result = api.billing.journal.attachments(journal_id).upload(files)
     assert result == response_data
 
 

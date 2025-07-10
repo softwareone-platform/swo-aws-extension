@@ -17,10 +17,24 @@ class AttachmentsClient:
         url = f"/billing/journals/{self.journal_id}/attachments"
         return HttpQuery(self._client, url, rql)
 
-    def upload(self, attachment: IO) -> JournalAttachment:
-        response = self._client.post(
-            f"/billing/journals/{self.journal_id}/attachments", files={"file": attachment}
-        )
+    def upload(
+        self, files
+    ) -> JournalAttachment:
+        """
+        Uploads attachment files to the Journal
+
+        Parameters:
+            files: A file-like object (supporting read operations) to be uploaded.
+
+        Returns:
+            Dict: A dictionary containing the response data from the upload operation.
+
+        Raises:
+            HTTPError: If the upload request fails, an exception will be raised.
+        """
+
+        url = f"/billing/journals/{self.journal_id}/attachments"
+        response = self._client.post(url, files=files)
         response.raise_for_status()
         return response.json()
 
