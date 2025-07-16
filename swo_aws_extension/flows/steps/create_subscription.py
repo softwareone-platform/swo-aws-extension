@@ -74,7 +74,7 @@ def add_subscription(client, context, account_id, account_email, account_name):
     context.subscriptions.append(subscription)
     logger.info(
         f"{context.order_id} - Action -  subscription for {account_id} "
-        f"({subscription["id"]}) created"
+        f"({subscription['id']}) created"
     )
 
 
@@ -99,8 +99,7 @@ class CreateSubscription(Step):
             )
             if not account:
                 logger.exception(
-                    f"{context.order_id} - Exception - "
-                    f"Unable to find an active account: {accounts}"
+                    f"{context.order_id} - Exception - Unable to find an active account: {accounts}"
                 )
                 return
             account_id = account["Id"]

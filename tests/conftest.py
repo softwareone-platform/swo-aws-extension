@@ -43,7 +43,7 @@ ACCOUNT_EMAIL = "test@aws.com"
 ACCOUNT_NAME = "Account Name"
 
 
-@pytest.fixture()
+@pytest.fixture
 def requests_mocker():
     """
     Allow mocking of http calls made with requests.
@@ -52,12 +52,12 @@ def requests_mocker():
         yield rsps
 
 
-@pytest.fixture()
+@pytest.fixture
 def constraints():
     return {"hidden": True, "readonly": False, "required": False}
 
 
-@pytest.fixture()
+@pytest.fixture
 def order_parameters_factory(constraints):
     def _order_parameters(
         account_email=ACCOUNT_EMAIL,
@@ -161,7 +161,7 @@ def order_parameters_factory(constraints):
     return _order_parameters
 
 
-@pytest.fixture()
+@pytest.fixture
 def fulfillment_parameters_factory():
     def _fulfillment_parameters(
         phase="",
@@ -235,7 +235,7 @@ def fulfillment_parameters_factory():
     return _fulfillment_parameters
 
 
-@pytest.fixture()
+@pytest.fixture
 def items_factory():
     def _items(
         item_id=1,
@@ -255,7 +255,7 @@ def items_factory():
     return _items
 
 
-@pytest.fixture()
+@pytest.fixture
 def pricelist_items_factory():
     def _items(
         item_id=1,
@@ -278,7 +278,7 @@ def pricelist_items_factory():
     return _items
 
 
-@pytest.fixture()
+@pytest.fixture
 def lines_factory(agreement, deployment_id: str = None):
     agreement_id = agreement["id"].split("-", 1)[1]
 
@@ -315,7 +315,7 @@ def lines_factory(agreement, deployment_id: str = None):
     return _items
 
 
-@pytest.fixture()
+@pytest.fixture
 def subscriptions_factory(lines_factory):
     def _subscriptions(
         subscription_id="SUB-1000-2000-3000",
@@ -346,7 +346,7 @@ def subscriptions_factory(lines_factory):
     return _subscriptions
 
 
-@pytest.fixture()
+@pytest.fixture
 def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_factory, seller):
     def _agreement(
         licensee_name="My beautiful licensee",
@@ -439,7 +439,7 @@ def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_fa
     return _agreement
 
 
-@pytest.fixture()
+@pytest.fixture
 def licensee(buyer):
     return {
         "id": "LCE-1111-2222-3333",
@@ -455,7 +455,7 @@ def licensee(buyer):
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def listing(buyer):
     return {
         "id": "LST-9401-9279",
@@ -476,7 +476,7 @@ def listing(buyer):
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def template():
     return {
         "id": "TPL-1234-1234-4321",
@@ -484,7 +484,7 @@ def template():
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def agreement(buyer, licensee, listing, seller):
     return {
         "id": "AGR-2119-4550-8674-5962",
@@ -552,7 +552,7 @@ def agreement(buyer, licensee, listing, seller):
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def buyer_factory():
     def _factory(id=None, name=None, email=None):
         return {
@@ -564,7 +564,7 @@ def buyer_factory():
     return _factory
 
 
-@pytest.fixture()
+@pytest.fixture
 def order_factory(
     agreement_factory,
     order_parameters_factory,
@@ -648,12 +648,12 @@ def order_factory(
     return _order
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_order(order_factory):
     return order_factory()
 
 
-@pytest.fixture()
+@pytest.fixture
 def buyer():
     return {
         "id": "BUY-3731-7971",
@@ -685,7 +685,7 @@ def buyer():
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def seller():
     return {
         "id": "SEL-9121-8944",
@@ -712,7 +712,7 @@ def seller():
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def webhook(settings):
     return {
         "id": "WH-123-123",
@@ -720,7 +720,7 @@ def webhook(settings):
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def mpt_client(settings):
     """
     Create an instance of the MPT client used by the extension.
@@ -731,7 +731,7 @@ def mpt_client(settings):
     return setup_client()
 
 
-@pytest.fixture()
+@pytest.fixture
 def mpt_error_factory():
     """
     Generate an error message returned by the Marketplace platform.
@@ -758,7 +758,7 @@ def mpt_error_factory():
     return _mpt_error
 
 
-@pytest.fixture()
+@pytest.fixture
 def airtable_error_factory():
     """
     Generate an error message returned by the Airtable API.
@@ -780,7 +780,7 @@ def airtable_error_factory():
     return _airtable_error
 
 
-@pytest.fixture()
+@pytest.fixture
 def mpt_list_response():
     def _wrap_response(objects_list):
         return {
@@ -790,7 +790,7 @@ def mpt_list_response():
     return _wrap_response
 
 
-@pytest.fixture()
+@pytest.fixture
 def jwt_token(settings):
     iat = nbf = int(datetime.now().timestamp())
     exp = nbf + 300
@@ -808,19 +808,19 @@ def jwt_token(settings):
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def config():
     return get_config()
 
 
-@pytest.fixture()
+@pytest.fixture
 def extension_settings(settings):
     current_extension_config = copy.copy(settings.EXTENSION_CONFIG)
     yield settings
     settings.EXTENSION_CONFIG = current_extension_config
 
 
-@pytest.fixture()
+@pytest.fixture
 def mocked_setup_master_signal_handler():
     signal_handler = signal.getsignal(signal.SIGINT)
 
@@ -831,7 +831,7 @@ def mocked_setup_master_signal_handler():
     signal.signal(signal.SIGINT, handler)
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_gradient_result():
     return [
         "#00C9CD",
@@ -847,7 +847,7 @@ def mock_gradient_result():
     ]
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_runtime_master_options():
     return {
         "color": True,
@@ -857,7 +857,7 @@ def mock_runtime_master_options():
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_swoext_commands():
     return (
         "swo.mpt.extensions.runtime.commands.run.run",
@@ -865,7 +865,7 @@ def mock_swoext_commands():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_dispatcher_event():
     return {
         "type": "event",
@@ -873,7 +873,7 @@ def mock_dispatcher_event():
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_workers_options():
     return {
         "color": False,
@@ -883,7 +883,7 @@ def mock_workers_options():
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_gunicorn_logging_config():
     return {
         "version": 1,
@@ -929,12 +929,12 @@ def mock_gunicorn_logging_config():
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_wrap_event():
     return Event("evt-id", "orders", {"id": "ORD-1111-1111-1111"})
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_meta_with_pagination_has_more_pages():
     return {
         META: {
@@ -947,7 +947,7 @@ def mock_meta_with_pagination_has_more_pages():
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_meta_with_pagination_has_no_more_pages():
     return {
         META: {
@@ -960,12 +960,12 @@ def mock_meta_with_pagination_has_no_more_pages():
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_logging_account_prefixes():
     return ("ACC", "BUY", "LCE", "MOD", "SEL", "USR", "AUSR", "UGR")
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_logging_catalog_prefixes():
     return (
         "PRD",
@@ -984,17 +984,17 @@ def mock_logging_catalog_prefixes():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_logging_commerce_prefixes():
     return ("AGR", "ORD", "SUB", "REQ")
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_logging_aux_prefixes():
     return ("FIL", "MSG")
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_logging_all_prefixes(
     mock_logging_account_prefixes,
     mock_logging_catalog_prefixes,
@@ -1009,19 +1009,19 @@ def mock_logging_all_prefixes(
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_highlights(mock_logging_all_prefixes):
     return _ReprHighlighter.highlights + [
         rf"(?P<mpt_id>(?:{'|'.join(mock_logging_all_prefixes)})(?:-\d{{4}})*)"
     ]
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_settings_product_ids():
     return ",".join(settings.MPT_PRODUCTS_IDS)
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_ext_expected_environment_values(
     mock_env_webhook_secret,
 ):
@@ -1030,19 +1030,19 @@ def mock_ext_expected_environment_values(
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_env_webhook_secret():
     return '{ "webhook_secret": "WEBHOOK_SECRET" }'
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_json_ext_variables():
     return {
         "EXT_WEBHOOKS_SECRETS",
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_valid_env_values(
     mock_env_webhook_secret,
 ):
@@ -1051,17 +1051,17 @@ def mock_valid_env_values(
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_worker_initialize(mocker):
     return mocker.patch("swo.mpt.extensions.runtime.workers.initialize")
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_worker_call_command(mocker):
     return mocker.patch("swo.mpt.extensions.runtime.workers.call_command")
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_get_order_for_producer(mock_order, order_factory):
     return {
         "data": [mock_order],
@@ -1075,7 +1075,7 @@ def mock_get_order_for_producer(mock_order, order_factory):
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def aws_client_factory(mocker, settings, requests_mocker):
     def _aws_client(config, mpa_account_id, role_name):
         requests_mocker.post(
@@ -1100,7 +1100,7 @@ def aws_client_factory(mocker, settings, requests_mocker):
     return _aws_client
 
 
-@pytest.fixture()
+@pytest.fixture
 def create_account_status(account_creation_status_factory):
     def _create_account(state="IN_PROGRESS", failure_reason="EMAIL_ALREADY_EXISTS"):
         return {
@@ -1116,7 +1116,7 @@ def create_account_status(account_creation_status_factory):
     return _create_account
 
 
-@pytest.fixture()
+@pytest.fixture
 def subscription_factory(lines_factory):
     def _subscription(
         name="Subscription for account_name (account_id)",
@@ -1154,7 +1154,7 @@ def subscription_factory(lines_factory):
     return _subscription
 
 
-@pytest.fixture()
+@pytest.fixture
 def account_creation_status_factory(lines_factory):
     def _account_creation_status(
         account_request_id="account_request_id",
@@ -1174,7 +1174,7 @@ def account_creation_status_factory(lines_factory):
     return _account_creation_status
 
 
-@pytest.fixture()
+@pytest.fixture
 def data_aws_account_factory():
     def create_aws_account(
         status="ACTIVE",
@@ -1208,7 +1208,7 @@ def data_aws_account_factory():
     return create_aws_account
 
 
-@pytest.fixture()
+@pytest.fixture
 def data_aws_invoice_summary_factory():
     def create_invoice_summary(
         account_id="1234-1234-1234",
@@ -1247,7 +1247,7 @@ def data_aws_invoice_summary_factory():
     return create_invoice_summary
 
 
-@pytest.fixture()
+@pytest.fixture
 def data_aws_cost_and_usage_factory():
     def create_usage_report(
         account_id="1234-1234-1234",
@@ -1285,7 +1285,7 @@ def data_aws_cost_and_usage_factory():
     return create_usage_report
 
 
-@pytest.fixture()
+@pytest.fixture
 def order_close_account(
     order_factory,
     order_parameters_factory,
@@ -1310,7 +1310,7 @@ def order_close_account(
     return order
 
 
-@pytest.fixture()
+@pytest.fixture
 def order_unlink_account(order_factory, order_parameters_factory, subscriptions_factory):
     order = order_factory(
         order_type=ORDER_TYPE_TERMINATION,
@@ -1327,7 +1327,7 @@ def order_unlink_account(order_factory, order_parameters_factory, subscriptions_
     return order
 
 
-@pytest.fixture()
+@pytest.fixture
 def order_terminate_without_type(order_factory, order_parameters_factory, subscriptions_factory):
     order = order_factory(
         order_type=ORDER_TYPE_TERMINATION,
@@ -1344,7 +1344,7 @@ def order_terminate_without_type(order_factory, order_parameters_factory, subscr
     return order
 
 
-@pytest.fixture()
+@pytest.fixture
 def order_terminate_with_invalid_terminate_type(
     order_factory, order_parameters_factory, subscriptions_factory
 ):
@@ -1363,7 +1363,7 @@ def order_terminate_with_invalid_terminate_type(
     return order
 
 
-@pytest.fixture()
+@pytest.fixture
 def service_request_ticket_factory():
     def create_service_request_ticket(
         ticket_id="CS0000001",
@@ -1399,7 +1399,7 @@ def service_request_ticket_factory():
     return create_service_request_ticket
 
 
-@pytest.fixture()
+@pytest.fixture
 def order_termination_close_account_multiple(order_close_account, subscriptions_factory):
     order_close_account["subscriptions"] = []
     order_close_account["subscriptions"].append(
@@ -1440,12 +1440,12 @@ def order_termination_close_account_multiple(order_close_account, subscriptions_
     return order_close_account
 
 
-@pytest.fixture()
+@pytest.fixture
 def base_info():
     return AirTableBaseInfo(api_key="api_key", base_id="base_id")
 
 
-@pytest.fixture()
+@pytest.fixture
 def mpa_pool_factory(mocker):
     def _mpa_pool(
         account_id="Account Id",
@@ -1476,7 +1476,7 @@ def mpa_pool_factory(mocker):
     return _mpa_pool
 
 
-@pytest.fixture()
+@pytest.fixture
 def pool_notification_factory(mocker):
     def _pool_notification(
         notification_id=1,
@@ -1501,7 +1501,7 @@ def pool_notification_factory(mocker):
     return _pool_notification
 
 
-@pytest.fixture()
+@pytest.fixture
 def service_client(mocker):
     service_client_mock = mocker.Mock(spec=CRMServiceClient)
     mocker.patch(
@@ -1511,7 +1511,7 @@ def service_client(mocker):
     return service_client_mock
 
 
-@pytest.fixture()
+@pytest.fixture
 def ccp_client(mocker, config, mock_key_vault_secret_value):
     mocker.patch(
         "swo_ccp_client.client.get_openid_token", return_value={"access_token": "test_access_token"}
@@ -1524,7 +1524,7 @@ def ccp_client(mocker, config, mock_key_vault_secret_value):
     return CCPClient(config)
 
 
-@pytest.fixture()
+@pytest.fixture
 def ccp_client_no_secret(mocker, config):
     mocker.patch(
         "swo_ccp_client.client.get_openid_token", return_value={"access_token": "test_access_token"}
@@ -1537,7 +1537,7 @@ def ccp_client_no_secret(mocker, config):
     return CCPClient(config)
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_onboard_customer_response():
     return [
         {
@@ -1555,7 +1555,7 @@ def mock_onboard_customer_response():
     ]
 
 
-@pytest.fixture()
+@pytest.fixture
 def onboard_customer_factory():
     def _onboard_customer(
         feature_pls="enabled",
@@ -1571,7 +1571,7 @@ def onboard_customer_factory():
     return _onboard_customer
 
 
-@pytest.fixture()
+@pytest.fixture
 def onboard_customer_status_factory():
     def _onboard_customer_status(
         engagement_state="Running",
@@ -1688,37 +1688,37 @@ def onboard_customer_status_factory():
     return _onboard_customer_status
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_key_vault_secret_value():
     return "secret-value"
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_mpt_key_vault_name():
     return "test-key-vault-name"
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_valid_access_token_response():
     return {"access_token": "access-token"}
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_oauth_post_url():
     return "https://example.com/oauth2/token"
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_get_secret_response(mock_key_vault_secret_value):
     return {"clientSecret": mock_key_vault_secret_value}
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_token():
     return "test-token"
 
 
-@pytest.fixture()
+@pytest.fixture
 def roots_factory():
     def _roots(
         policy_types=None,
@@ -1738,7 +1738,7 @@ def roots_factory():
     return _roots
 
 
-@pytest.fixture()
+@pytest.fixture
 def handshake_data_factory():
     def _factory(account_id, state):
         return {
@@ -1759,7 +1759,7 @@ def handshake_data_factory():
     return _factory
 
 
-@pytest.fixture()
+@pytest.fixture
 def aws_accounts_factory():
     def _account(account_id="123456789012", status="ACTIVE", accounts=None):
         if accounts:
@@ -1778,7 +1778,7 @@ def aws_accounts_factory():
     return _account
 
 
-@pytest.fixture()
+@pytest.fixture
 def product_items(lines_factory):
     return [
         {
@@ -1792,35 +1792,35 @@ def product_items(lines_factory):
     ]
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_switch_order_status_to_complete(mocker):
     return mocker.patch(
         "swo_aws_extension.flows.order.InitialAWSContext.switch_order_status_to_complete"
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_switch_order_status_to_query(mocker):
     return mocker.patch(
         "swo_aws_extension.flows.order.InitialAWSContext.switch_order_status_to_query"
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_switch_order_status_to_process(mocker):
     return mocker.patch(
         "swo_aws_extension.flows.order.InitialAWSContext.switch_order_status_to_process"
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_update_processing_template(mocker):
     return mocker.patch(
         "swo_aws_extension.flows.order.InitialAWSContext.update_processing_template"
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def template_factory():
     sample_content = (
         "# Sample Template\n\nUse this input box to define your message "
@@ -1872,7 +1872,7 @@ def template_factory():
     return _template
 
 
-@pytest.fixture()
+@pytest.fixture
 def update_order_side_effect_factory():
     def _factory(base_order):
         def update_order_side_effect(_client, _order_id, **kwargs):
@@ -1885,12 +1885,12 @@ def update_order_side_effect_factory():
     return _factory
 
 
-@pytest.fixture()
+@pytest.fixture
 def mpt_notifier(mpt_client):
     return MPTNotifier(mpt_client)
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_get_rendered_template(mocker):
     mocked_template = mocker.MagicMock()
     mocked_template.render.return_value = "rendered-template"
@@ -1904,7 +1904,7 @@ def mock_get_rendered_template(mocker):
     return mock_get_rendered_template
 
 
-@pytest.fixture()
+@pytest.fixture
 def ffc_client_settings(extension_settings):
     extension_settings.EXTENSION_CONFIG["FFC_OPERATIONS_API_BASE_URL"] = "https://local.local"
     extension_settings.EXTENSION_CONFIG["FFC_SUB"] = "FKT-1234"
@@ -1913,7 +1913,7 @@ def ffc_client_settings(extension_settings):
     return extension_settings
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_jwt_encoder(ffc_client_settings):
     def wrapper(now):
         return jwt.encode(
@@ -1930,12 +1930,12 @@ def mock_jwt_encoder(ffc_client_settings):
     return wrapper
 
 
-@pytest.fixture()
+@pytest.fixture
 def ffc_client(mocker):
     return mocker.Mock()
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_settings(settings):
     settings.EXTENSION_CONFIG = {
         "CRM_API_BASE_URL": "https://api.example.com",

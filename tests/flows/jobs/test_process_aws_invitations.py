@@ -19,7 +19,7 @@ from swo_aws_extension.flows.jobs.process_aws_invitations import (
 from swo_aws_extension.flows.order import MPT_ORDER_STATUS_QUERYING, PurchaseContext
 
 
-@pytest.fixture()
+@pytest.fixture
 def aws_invitation_processor_factory(mocker, mpt_client, config):
     def _aws_invitation_processor(query_orders=None):
         if query_orders is not None:
@@ -34,7 +34,7 @@ def aws_invitation_processor_factory(mocker, mpt_client, config):
     return _aws_invitation_processor
 
 
-@pytest.fixture()
+@pytest.fixture
 def aws_invitation_processor(aws_invitation_processor_factory, fulfillment_parameters_factory):
     return aws_invitation_processor_factory()
 

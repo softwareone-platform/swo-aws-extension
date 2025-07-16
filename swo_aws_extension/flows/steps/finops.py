@@ -24,7 +24,7 @@ def create_finops_entitlement(ffc_client, account_id, buyer_id, logger_header):
     entitlement = ffc_client.get_entitlement_by_datasource_id(account_id)
     if entitlement:
         logger.info(
-            f"{logger_header} - Skipping - Entitlement already exists ({entitlement["id"]}) "
+            f"{logger_header} - Skipping - Entitlement already exists ({entitlement['id']}) "
             f"for account id {account_id}"
         )
     else:

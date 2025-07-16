@@ -44,8 +44,7 @@ def fulfill_order(client, context):
             logger.info(f"Context type: {type(context)} {context}")
             if context.is_type_transfer_with_organization():
                 logger.info(
-                    f"{context.order_id} - Pipeline - Starting: "
-                    f"purchase transfer with organization"
+                    f"{context.order_id} - Pipeline - Starting: purchase transfer with organization"
                 )
                 purchase_transfer_with_organization.run(client, context)
                 return

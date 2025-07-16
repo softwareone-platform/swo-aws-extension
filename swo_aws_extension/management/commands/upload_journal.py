@@ -53,7 +53,7 @@ class Command(StyledPrintCommand):
             )
             self.info(
                 f"Creating journal for authorization "
-                f"{journal_data["authorization"]["id"]} with name `{journal_data["name"]}` ..."
+                f"{journal_data['authorization']['id']} with name `{journal_data['name']}` ..."
             )
             try:
                 journal = api.billing.journal.create(journal_data)
@@ -75,7 +75,7 @@ class Command(StyledPrintCommand):
             return
         self.info(
             f"Uploaded `{file.name}` to journal {journal_id}. "
-            f"Status: `{updated_journal["status"]}` "
-            f"Processing Total: `{updated_journal["processing"]["total"]}`"
+            f"Status: `{updated_journal['status']}` "
+            f"Processing Total: `{updated_journal['processing']['total']}`"
         )
         self.success(f"File upload {file.name} for authorization {journal_id} completed.")

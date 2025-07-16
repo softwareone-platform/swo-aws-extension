@@ -401,7 +401,7 @@ class AWSClient:
             lambda p: p.get("Type") == "SERVICE_CONTROL_POLICY", root.get("PolicyTypes", []), None
         )
         if policy and policy.get("Status", "") == "ENABLED":
-            logger.info(f"Policy Already Enabled for root {root["Id"]}. Skipping.")
+            logger.info(f"Policy Already Enabled for root {root['Id']}. Skipping.")
             return
 
         org_client.enable_policy_type(RootId=root["Id"], PolicyType="SERVICE_CONTROL_POLICY")

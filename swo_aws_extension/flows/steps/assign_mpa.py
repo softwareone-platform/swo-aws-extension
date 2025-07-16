@@ -54,7 +54,7 @@ def setup_agreement_external_id(client, context, account_id):
         context.agreement["id"],
         externalIds={"vendor": account_id},
     )
-    logger.info(f"Updating agreement {context.agreement["id"]} external id to {account_id}")
+    logger.info(f"Updating agreement {context.agreement['id']} external id to {account_id}")
 
 
 @functools.cache

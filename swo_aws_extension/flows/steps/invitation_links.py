@@ -90,7 +90,7 @@ class SendInvitationLinksStep(Step):
         ]
         if phase not in expected_phases:
             logger.info(
-                f"{context.order_id} - Skip - Order is not in {", ".join(expected_phases)} phase. "
+                f"{context.order_id} - Skip - Order is not in {', '.join(expected_phases)} phase. "
                 f"Current phase is {phase}"
             )
             next_step(client, context)
@@ -178,7 +178,7 @@ class SendInvitationLinksStep(Step):
                     f"{context.order_id} - Action cancelled - "
                     f"Unable to cancel handshake for {account_id}. Reason: "
                     f"Current state `{state}` is not cancelable. "
-                    f"Cancelable states are: {",".join(cancellable_states)}"
+                    f"Cancelable states are: {','.join(cancellable_states)}"
                 )
                 continue
             handshake_id = account_handshake_id[account_id]

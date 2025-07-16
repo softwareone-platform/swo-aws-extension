@@ -17,7 +17,7 @@ from swo_aws_extension.parameters import (
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def order_transfer_with_organization(
     order_factory,
     fulfillment_parameters_factory,
@@ -34,7 +34,7 @@ def order_transfer_with_organization(
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def order_transfer_with_organization_without_master_payer_id(
     order_factory,
     fulfillment_parameters_factory,
@@ -51,7 +51,7 @@ def order_transfer_with_organization_without_master_payer_id(
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def order_transfer_with_organization_and_ticket(
     order_factory,
     fulfillment_parameters_factory,

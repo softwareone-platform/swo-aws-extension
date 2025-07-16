@@ -14,12 +14,12 @@ from swo_aws_extension.flows.steps.service_crm_steps import (
 from swo_crm_service_client.client import CRMServiceClient, ServiceRequest
 
 
-@pytest.fixture()
+@pytest.fixture
 def crm_client():
     return Mock(spec=CRMServiceClient)
 
 
-@pytest.fixture()
+@pytest.fixture
 def service_request():
     return ServiceRequest(
         external_user_email="albert.sola@softwareone.com",
@@ -34,17 +34,17 @@ def service_request():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def service_request_factory(service_request):
     return Mock(return_value=service_request)
 
 
-@pytest.fixture()
+@pytest.fixture
 def crm_ticket_id_saver() -> Mock:
     return Mock(return_value=None)
 
 
-@pytest.fixture()
+@pytest.fixture
 def create_service_crm_ticket_step(
     mocker, crm_client, service_request_factory, crm_ticket_id_saver
 ):
@@ -60,12 +60,12 @@ def create_service_crm_ticket_step(
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def context():
     return create_autospec(TerminateContext, instance=True)
 
 
-@pytest.fixture()
+@pytest.fixture
 def next_step():
     return Mock(return_value=None)
 
@@ -136,17 +136,17 @@ def test_create_service_crm_ticket_does_meet_criteria(
     crm_ticket_id_saver.assert_called_once_with(client, context, "12345")
 
 
-@pytest.fixture()
+@pytest.fixture
 def crm_service_client():
     return Mock(spec=CRMServiceClient)
 
 
-@pytest.fixture()
+@pytest.fixture
 def get_ticket_id():
     return Mock()
 
 
-@pytest.fixture()
+@pytest.fixture
 def await_crm_ticket_status(mocker, crm_service_client, get_ticket_id):
     mocker.patch(
         "swo_aws_extension.flows.steps.service_crm_steps.get_service_client",

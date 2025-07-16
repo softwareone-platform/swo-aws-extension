@@ -13,7 +13,7 @@ from swo_aws_extension.flows.steps.finops import (
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def next_step():
     return Mock()
 

@@ -8,7 +8,7 @@ from swo_aws_extension.crm_service_client.config import CRMConfig
 from swo_crm_service_client.client import CRMServiceClient, ServiceRequest, get_service_client
 
 
-@pytest.fixture()
+@pytest.fixture
 def service_request():
     return ServiceRequest(
         external_user_email="user@example.com",
@@ -23,7 +23,7 @@ def service_request():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def crm_client(mocker, mock_settings):
     openid_response = {"access_token": "test_token", "expires_in": 3600}
     mock_get_openid_token = mocker.patch(
@@ -139,7 +139,7 @@ def test_client_headers(crm_client, service_request, mocker):
     create_service_request: PreparedRequest = crm_client.send.call_args[0][0]
     csr_expected_headers = {
         "User-Agent": "swo-extensions/1.0",
-        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept-Encoding": "gzip, deflate",
         "Accept": "*/*",
         "Connection": "keep-alive",
         "Authorization": "Bearer test_token",
@@ -207,7 +207,7 @@ def test_client_token_expired(crm_client, service_request, mocker):
     create_service_request: PreparedRequest = crm_client.send.call_args[0][0]
     csr_expected_headers = {
         "User-Agent": "swo-extensions/1.0",
-        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept-Encoding": "gzip, deflate",
         "Accept": "*/*",
         "Connection": "keep-alive",
         "Authorization": "Bearer test_token",
@@ -235,7 +235,7 @@ def test_client_token_expired_none(crm_client, service_request, mocker):
     create_service_request: PreparedRequest = crm_client.send.call_args[0][0]
     csr_expected_headers = {
         "User-Agent": "swo-extensions/1.0",
-        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept-Encoding": "gzip, deflate",
         "Accept": "*/*",
         "Connection": "keep-alive",
         "Authorization": "Bearer test_token",

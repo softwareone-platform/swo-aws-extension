@@ -17,7 +17,7 @@ from swo_aws_extension.flows.order import (
 from swo_aws_extension.notifications import MPTNotifier
 
 
-@pytest.fixture()
+@pytest.fixture
 def order_context(order):
     return PurchaseContext.from_order_data(order)
 

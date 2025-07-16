@@ -94,7 +94,7 @@ $ docker-compose run --service-ports app
 | `MPT_API_BASE_URL`              | http://localhost:8000 | https://portal.softwareone.com/mpt    | SoftwareONE Marketplace API URL                                                           |
 | `MPT_API_TOKEN`                 | -                     | eyJhbGciOiJSUzI1N...                  | SoftwareONE Marketplace API Token                                                         |
 | `MPT_NOTIFY_CATEGORIES`         | -                     | {"ORDERS": "NTC-XXXX-XXXX"}           | SoftwareONE Marketplace Notification Categories                                           |
-    
+
 
 ## Azure AppInsights
 | Environment Variable                    | Default                     | Example                                                                                                                                                                                             | Description                                                                                                   |

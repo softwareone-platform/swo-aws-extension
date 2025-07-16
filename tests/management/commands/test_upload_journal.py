@@ -6,7 +6,7 @@ from django.core.management import call_command
 from requests import HTTPError, Response
 
 
-@pytest.fixture()
+@pytest.fixture
 def journal_upload_response_data():
     return {
         "id": "BJO-0001-0005",
