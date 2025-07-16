@@ -14,7 +14,7 @@ from swo_aws_extension.constants import (
 from swo_ccp_client.client import CCPClient
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_get_token(mocker, mock_token):
     mock_get_token = mocker.patch("swo_ccp_client.client.get_openid_token")
     mock_get_token.return_value = {"access_token": mock_token}

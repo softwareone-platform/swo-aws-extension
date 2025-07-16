@@ -50,8 +50,7 @@ ERR_TRANSFER_WITHOUT_ORG_MISSING_ACCOUNT_ID = ValidationError(
 
 ERR_INVALID_ACCOUNTS_FORMAT = ValidationError(
     "AWS008",
-    "Invalid list of accounts ids. Introduce the 12 digits account numbers "
-    "separated by new line.",
+    "Invalid list of accounts ids. Introduce the 12 digits account numbers separated by new line.",
 )
 
 ERR_TRANSFER_TOO_MANY_ACCOUNTS = ValidationError(

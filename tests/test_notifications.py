@@ -229,7 +229,7 @@ def test_send_mpt_notification_exception(
     mock_get_rendered_template.assert_called_once()
 
 
-@pytest.fixture()
+@pytest.fixture
 def template_md():
     return """
 # Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer pharetra dolor justo, in ornare

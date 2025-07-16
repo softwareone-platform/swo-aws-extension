@@ -144,11 +144,9 @@ class MPTNotifier:  # TODO: Consider moving some of the functionality to SDK
             "portal_base_url": settings.MPT_PORTAL_BASE_URL,
         }
         buyer_name = order_context.buyer["name"]
-        subject = f"Order status update {order_context.order_id} " f"for {buyer_name}"
+        subject = f"Order status update {order_context.order_id} for {buyer_name}"
         if order_context.order_status == "Querying":
-            subject = (
-                f"This order need your attention {order_context.order_id} " f"for {buyer_name}"
-            )
+            subject = f"This order need your attention {order_context.order_id} for {buyer_name}"
 
         template = env.get_template("notification.html")
         rendered_template = template.render(template_context)

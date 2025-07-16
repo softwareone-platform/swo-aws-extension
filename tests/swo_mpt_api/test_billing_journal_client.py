@@ -5,7 +5,7 @@ from swo_mpt_api import MPTAPIClient
 from swo_mpt_api.models.hints import Journal
 
 
-@pytest.fixture()
+@pytest.fixture
 def journal_data():
     return Journal(
         name="Test Journal",

@@ -65,7 +65,7 @@ class Command(StyledPrintCommand):
             if re.match(pattern, a) is None:
                 failed_authorizations.append(a)
         if failed_authorizations:
-            raise ValueError(f"Invalid authorizations id: {", ".join(failed_authorizations)}")
+            raise ValueError(f"Invalid authorizations id: {', '.join(failed_authorizations)}")
 
     def handle(self, *args, **options):
         year = options["year"]
@@ -85,13 +85,13 @@ class Command(StyledPrintCommand):
 
         self.info(
             f"Running {self.name} for {year}-{month:02d} "
-            f"for authorizations {" ".join(authorizations)}"
+            f"for authorizations {' '.join(authorizations)}"
         )
         self.info(f"Dummy process {self.name} for genereting journals")
         self.process(year, month, authorizations)
         self.info(
             f"Completed {self.name} for {year}-{month:02d} "
-            f"for authorizations {" ".join(authorizations)}"
+            f"for authorizations {' '.join(authorizations)}"
         )
 
     def process(self, year, month, authorizations):

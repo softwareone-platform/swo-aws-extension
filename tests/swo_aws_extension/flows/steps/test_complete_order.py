@@ -9,7 +9,7 @@ from swo_aws_extension.flows.order import (
 from swo_aws_extension.flows.steps.complete_order import CompleteOrderStep
 
 
-@pytest.fixture()
+@pytest.fixture
 def context(order_factory, fulfillment_parameters_factory):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED)
@@ -18,12 +18,12 @@ def context(order_factory, fulfillment_parameters_factory):
     return order_context
 
 
-@pytest.fixture()
+@pytest.fixture
 def client():
     return mock.Mock()
 
 
-@pytest.fixture()
+@pytest.fixture
 def next_step():
     return mock.Mock()
 

@@ -215,7 +215,7 @@ def test_fulfill_terminate_account_flow(
     mock_switch_order_status_to_complete.assert_called_once()
 
 
-@pytest.fixture()
+@pytest.fixture
 def pipeline_mock_purchase_transfer_with_organization(mocker):
     mock = mocker.patch(
         "swo_aws_extension.flows.fulfillment.base.purchase_transfer_with_organization.run",
@@ -223,7 +223,7 @@ def pipeline_mock_purchase_transfer_with_organization(mocker):
     return mock
 
 
-@pytest.fixture()
+@pytest.fixture
 def pipeline_mock_purchase_transfer_without_organization(mocker):
     mock = mocker.patch(
         "swo_aws_extension.flows.fulfillment.base.purchase_transfer_without_organization.run",
@@ -231,7 +231,7 @@ def pipeline_mock_purchase_transfer_without_organization(mocker):
     return mock
 
 
-@pytest.fixture()
+@pytest.fixture
 def pipeline_mock_purchase_split_billing(mocker):
     mock = mocker.patch(
         "swo_aws_extension.flows.fulfillment.base.purchase_split_billing.run",
@@ -239,7 +239,7 @@ def pipeline_mock_purchase_split_billing(mocker):
     return mock
 
 
-@pytest.fixture()
+@pytest.fixture
 def pipeline_mock_change_order(mocker):
     mock = mocker.patch(
         "swo_aws_extension.flows.fulfillment.base.change_order.run",
@@ -247,7 +247,7 @@ def pipeline_mock_change_order(mocker):
     return mock
 
 
-@pytest.fixture()
+@pytest.fixture
 def pipeline_mock_purchase(mocker):
     mock = mocker.patch(
         "swo_aws_extension.flows.fulfillment.base.purchase.run",
@@ -255,7 +255,7 @@ def pipeline_mock_purchase(mocker):
     return mock
 
 
-@pytest.fixture()
+@pytest.fixture
 def pipeline_mock_terminate(mocker):
     mock = mocker.patch(
         "swo_aws_extension.flows.fulfillment.base.terminate.run",

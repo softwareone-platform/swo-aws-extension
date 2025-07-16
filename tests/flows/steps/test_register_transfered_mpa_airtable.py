@@ -7,7 +7,7 @@ from swo_aws_extension.flows.steps.register_transfered_mpa_airtable import (
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def organization_details_response_data():
     organization_details = {
         "MasterAccountArn": "arn:aws:organizations::111111111111:"
@@ -22,7 +22,7 @@ def organization_details_response_data():
     return {"Organization": organization_details}
 
 
-@pytest.fixture()
+@pytest.fixture
 def mpa_pool_model_mock(mocker, base_info):
     model = get_master_payer_account_pool_model(base_info)
     return model

@@ -368,7 +368,7 @@ class TerminateContext(InitialAWSContext):
     def __str__(self):
         return (
             super().__str__() + f" - Terminate - Terminating AWS Accounts: "
-            f"{", ".join(self.terminating_subscriptions_aws_account_ids)}"
+            f"{', '.join(self.terminating_subscriptions_aws_account_ids)}"
         )
 
 

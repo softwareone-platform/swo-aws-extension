@@ -125,7 +125,7 @@ class CCPOnboard(Step):
         response = ccp_client.onboard_customer(customer)
         engagement = list(filter(lambda x: "engagement" in x, response))[0]
 
-        logger.info(f"CCP Onboarding engagement: {engagement.get("id", "")}")
+        logger.info(f"CCP Onboarding engagement: {engagement.get('id', '')}")
 
         context.order = set_ccp_engagement_id(context.order, engagement.get("id", ""))
         context.order = update_order(

@@ -7,8 +7,8 @@ from typing import ParamSpec, TypeVar
 import botocore.exceptions
 from requests import HTTPError, JSONDecodeError, RequestException
 
-Param = ParamSpec("Param")
-RetType = TypeVar("RetType")
+P = ParamSpec("P")
+R = TypeVar("R")
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +39,9 @@ class AWSOpenIdError(AWSHttpError):
         return message
 
 
-def wrap_http_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]:
+def wrap_http_error(func: Callable[P, R]) -> Callable[P, R]:
     @wraps(func)
-    def _wrapper(*args: Param.args, **kwargs: Param.kwargs) -> RetType:
+    def _wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
             return func(*args, **kwargs)
         except HTTPError as e:
@@ -57,9 +57,9 @@ def wrap_http_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]:
     return _wrapper
 
 
-def wrap_boto3_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]:
+def wrap_boto3_error(func: Callable[P, R]) -> Callable[P, R]:
     @wraps(func)
-    def _wrapper(*args: Param.args, **kwargs: Param.kwargs) -> RetType:
+    def _wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
             return func(*args, **kwargs)
         except AWSError as e:

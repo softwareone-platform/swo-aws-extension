@@ -91,7 +91,7 @@ def _get_active_accounts(aws_client, agreement_id, mpa_account_id):
             continue
         if account["Status"] != "ACTIVE":
             logger.info(
-                f"{agreement_id} - Skipping - Import Account {account["Id"]} as it is not active"
+                f"{agreement_id} - Skipping - Import Account {account['Id']} as it is not active"
             )
             continue
 
@@ -213,7 +213,7 @@ def _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run):
 
             if not items:
                 logger.error(
-                    f"{agreement.get("id")} - Failed to get product items with "
+                    f"{agreement.get('id')} - Failed to get product items with "
                     f"skus {AWS_ITEMS_SKUS}"
                 )
                 continue
@@ -240,12 +240,12 @@ def _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run):
                     )
                     continue
                 logger.error(
-                    f"{agreement.get("id")} - Error - {account_id} is not linked to any "
+                    f"{agreement.get('id')} - Error - {account_id} is not linked to any "
                     f"agreement subscription and split billing has been detected"
                 )
                 send_error(
                     "Synchronize AWS agreement subscriptions - New linked account detected",
-                    f"{agreement.get("id")} - Linked Account {account_id} is not linked to any "
+                    f"{agreement.get('id')} - Linked Account {account_id} is not linked to any "
                     f"subscription and split billing has been detected. This account will not be "
                     f"synchronized.",
                 )
@@ -281,22 +281,22 @@ def _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run):
 
             if dry_run:
                 logger.info(
-                    f"{agreement.get("id")} - Subscription for {account_id} "
-                    f"({subscription["name"]}) to be created: {subscription}"
+                    f"{agreement.get('id')} - Subscription for {account_id} "
+                    f"({subscription['name']}) to be created: {subscription}"
                 )
                 continue
 
             subscription = create_agreement_subscription(mpt_client, subscription)
             logger.info(
-                f"{agreement.get("id")} - Subscription for {account_id} "
-                f'({subscription["id"]}) created'
+                f"{agreement.get('id')} - Subscription for {account_id} "
+                f"({subscription['id']}) created"
             )
             ffc_client = get_ffc_client()
             create_finops_entitlement(
                 ffc_client, account_id, agreement["buyer"]["id"], agreement["id"]
             )
         except Exception as e:
-            logger.error(f"{agreement.get("id")} - Failed to synchronize account {account_id}: {e}")
+            logger.error(f"{agreement.get('id')} - Failed to synchronize account {account_id}: {e}")
 
 
 def sync_agreement_subscriptions(mpt_client, aws_client, agreement, dry_run=False):
@@ -322,7 +322,7 @@ def sync_agreement_subscriptions(mpt_client, aws_client, agreement, dry_run=Fals
     )
 
     if len(processing_subscriptions) > 0:
-        logger.info(f"{agreement.get("id")} - Skipping - Has processing subscriptions")
+        logger.info(f"{agreement.get('id')} - Skipping - Has processing subscriptions")
         return
     mpa_account_id = agreement.get("externalIds", {}).get("vendor")
     active_accounts = _get_active_accounts(aws_client, agreement.get("id"), mpa_account_id)
