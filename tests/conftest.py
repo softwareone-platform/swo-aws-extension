@@ -9,8 +9,8 @@ import responses
 from django.conf import settings
 from mpt_extension_sdk.core.events.dataclasses import Event
 from mpt_extension_sdk.flows.context import ORDER_TYPE_TERMINATION
+from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 from rich.highlighter import ReprHighlighter as _ReprHighlighter
-from swo.mpt.extensions.runtime.djapp.conf import get_for_product
 
 from swo_aws_extension.airtable.models import (
     AirTableBaseInfo,
@@ -860,8 +860,8 @@ def mock_runtime_master_options():
 @pytest.fixture
 def mock_swoext_commands():
     return (
-        "swo.mpt.extensions.runtime.commands.run.run",
-        "swo.mpt.extensions.runtime.commands.django.django",
+        "mpt_extension_sdk.runtime.commands.run.run",
+        "mpt_extension_sdk.runtime.commands.django.django",
     )
 
 
@@ -1053,12 +1053,12 @@ def mock_valid_env_values(
 
 @pytest.fixture
 def mock_worker_initialize(mocker):
-    return mocker.patch("swo.mpt.extensions.runtime.workers.initialize")
+    return mocker.patch("mpt_extension_sdk.runtime.workers.initialize")
 
 
 @pytest.fixture
 def mock_worker_call_command(mocker):
-    return mocker.patch("swo.mpt.extensions.runtime.workers.call_command")
+    return mocker.patch("mpt_extension_sdk.runtime.workers.call_command")
 
 
 @pytest.fixture
