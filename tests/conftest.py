@@ -288,7 +288,7 @@ def lines_factory(agreement, deployment_id: str = None):
         name=AWESOME_PRODUCT,
         old_quantity=0,
         quantity=170,
-        external_vendor_id="65304578CA",
+        external_vendor_id=AWS_ITEMS_SKUS[0],
         unit_purchase_price=1234.55,
         deployment_id=deployment_id,
     ):
@@ -327,7 +327,10 @@ def subscriptions_factory(lines_factory):
         status="Terminating",
     ):
         start_date = start_date.isoformat() if start_date else datetime.now(UTC).isoformat()
-        lines = lines_factory() if lines is None else lines
+        if lines is None:
+            lines = []
+            for sku in AWS_ITEMS_SKUS:
+                lines.extend(lines_factory(external_vendor_id=sku, name=sku, quantity=1))
         return [
             {
                 "id": subscription_id,
@@ -1215,11 +1218,12 @@ def data_aws_invoice_summary_factory():
         billing_period_month=4,
         billing_period_year=2025,
         total_amount="0.00",
+        invoice_entity="Amazon Web Services EMEA SARL",
     ):
         return {
             "AccountId": account_id,
             "InvoiceId": "EUINGB25-2163550",
-            "Entity": {"InvoicingEntity": "Amazon Web Services EMEA SARL"},
+            "Entity": {"InvoicingEntity": invoice_entity},
             "BillingPeriod": {"Month": billing_period_month, "Year": billing_period_year},
             "InvoiceType": "INVOICE",
             "BaseCurrencyAmount": {
@@ -1945,3 +1949,79 @@ def mock_settings(settings):
         "CRM_AUDIENCE": "audience",
     }
     return settings
+
+
+@pytest.fixture
+def mock_marketplace_report_group_factory():
+    def _marketplace_report_group(
+        account_id="1234-1234-1234",
+        service_name="SUSE Linux Enterprise",
+    ):
+        return [
+            {
+                "Keys": [
+                    account_id,
+                    service_name,
+                ],
+                "Metrics": {"UnblendedCost": {"Amount": "718.461", "Unit": "USD"}},
+            },
+            {
+                "Keys": [account_id, "Tax"],
+                "Metrics": {"UnblendedCost": {"Amount": "0", "Unit": "USD"}},
+            },
+        ]
+
+    return _marketplace_report_group
+
+
+@pytest.fixture
+def mock_marketplace_report_factory(mock_marketplace_report_group_factory):
+    def _marketplace_report(groups=None):
+        groups = groups or mock_marketplace_report_group_factory()
+        return {
+            "GroupDefinitions": [
+                {"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"},
+                {"Type": "DIMENSION", "Key": "SERVICE"},
+            ],
+            "ResultsByTime": [
+                {
+                    "TimePeriod": {"Start": "2025-04-01", "End": "2025-05-01"},
+                    "Total": {},
+                    "Groups": groups,
+                    "Estimated": False,
+                }
+            ],
+        }
+
+    return _marketplace_report
+
+
+@pytest.fixture
+def mock_invoice_by_service_report_factory():
+    def _invoice_by_service_report(
+        service_name="SUSE Linux Enterprise", invoice_entity="Amazon Web Services EMEA SARL"
+    ):
+        return {
+            "GroupDefinitions": [
+                {"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"},
+                {"Type": "DIMENSION", "Key": "SERVICE"},
+            ],
+            "ResultsByTime": [
+                {
+                    "TimePeriod": {"Start": "2025-04-01", "End": "2025-05-01"},
+                    "Total": {},
+                    "Groups": [
+                        {
+                            "Keys": [
+                                service_name,
+                                invoice_entity,
+                            ],
+                            "Metrics": {"UnblendedCost": {"Amount": "718.461", "Unit": "USD"}},
+                        }
+                    ],
+                    "Estimated": False,
+                }
+            ],
+        }
+
+    return _invoice_by_service_report
