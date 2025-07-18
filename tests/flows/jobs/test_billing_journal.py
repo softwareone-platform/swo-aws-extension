@@ -4,9 +4,9 @@ from swo_rql import RQLQuery
 
 
 def test_generate_billing_journals_no_authorizations(
-    mocker, mpt_client, requests_mocker, mpt_error_factory, config, aws_client_factory
+    mocker, mpt_client, requests_mocker, mpt_error_factory, config, aws_client_factory, settings
 ):
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, settings)
     mocker_get_authorizations = mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
         return_value=None,
@@ -14,14 +14,14 @@ def test_generate_billing_journals_no_authorizations(
 
     generator.generate_billing_journals()
     mocker_get_authorizations.assert_called_once_with(
-        mpt_client, RQLQuery(product__id__in=["prod1"])
+        mpt_client, RQLQuery(product__id__in=settings.MPT_PRODUCTS_IDS)
     )
 
 
 def test_generate_billing_journals_create_journal_empty_agreements(
-    mocker, mpt_client, config, aws_client_factory
+    mocker, mpt_client, config, aws_client_factory, settings
 ):
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, settings)
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
@@ -42,9 +42,9 @@ def test_generate_billing_journals_create_journal_empty_agreements(
 
 
 def test_generate_billing_journals_authorization_with_no_agreements_create_new_journal(
-    mocker, mpt_client, config, aws_client_factory
+    mocker, mpt_client, config, aws_client_factory, settings
 ):
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, settings)
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
@@ -65,9 +65,9 @@ def test_generate_billing_journals_authorization_with_no_agreements_create_new_j
 
 
 def test_generate_billing_journals_authorization_no_mpa_found(
-    mocker, mpt_client, agreement_factory, config, aws_client_factory
+    mocker, mpt_client, agreement_factory, config, aws_client_factory, settings
 ):
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, settings)
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
@@ -97,8 +97,9 @@ def test_generate_billing_journals_authorization_not_active_subscription(
     data_aws_invoice_summary_factory,
     mock_invoice_by_service_report_factory,
     mock_marketplace_report_factory,
+    settings,
 ):
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, settings)
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
@@ -133,9 +134,15 @@ def test_generate_billing_journals_authorization_not_active_subscription(
 
 
 def test_generate_billing_journals_authorization_exception(
-    mocker, mpt_client, agreement_factory, subscriptions_factory, config, aws_client_factory
+    mocker,
+    mpt_client,
+    agreement_factory,
+    subscriptions_factory,
+    config,
+    aws_client_factory,
+    settings,
 ):
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, settings)
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
@@ -180,9 +187,12 @@ def test_generate_billing_journals_authorization_upload_file(
     config,
     aws_client_factory,
     mock_marketplace_report_group_factory,
+    mock_report_type_and_usage_report_group_factory,
+    mock_report_type_and_usage_report_factory,
+    settings,
 ):
     generator = BillingJournalGenerator(
-        mpt_client, config, 2024, 5, ["prod1"], authorizations=["AUTH-1"]
+        mpt_client, config, 2024, 5, settings, authorizations=["AUTH-1"]
     )
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
@@ -212,7 +222,9 @@ def test_generate_billing_journals_authorization_upload_file(
     aws_mock.get_cost_and_usage.side_effect = [
         mock_marketplace_report_factory(groups=groups),
         mock_invoice_by_service_report_factory(),
+        mock_report_type_and_usage_report_factory(),
         mock_invoice_by_service_report_factory(),
+        mock_report_type_and_usage_report_factory(),
     ]
     aws_mock.list_invoice_summaries.side_effect = [
         {
@@ -239,8 +251,9 @@ def test_generate_agreement_journal_lines_subscription_exception(
     data_aws_invoice_summary_factory,
     mock_marketplace_report_factory,
     mock_invoice_by_service_report_factory,
+    settings,
 ):
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, settings)
     agreement_data = agreement_factory(
         vendor_id="123456789012",
         subscriptions=subscriptions_factory(
@@ -258,6 +271,7 @@ def test_generate_agreement_journal_lines_subscription_exception(
     mock_sub_lines = mocker.patch.object(
         generator, "_generate_subscription_journal_lines", side_effect=Exception("sub error")
     )
+    mocker.patch.object(generator, "_generate_mpa_journal_lines", return_value=[])
     send_error = mocker.patch("swo_aws_extension.flows.jobs.billing_journal.send_error")
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
@@ -276,10 +290,11 @@ def test_generate_agreement_journal_lines_aws_client_error(
     subscriptions_factory,
     config,
     aws_client_factory,
+    settings,
 ):
     from swo_aws_extension.aws.errors import AWSError
 
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, settings)
     agreement_data = agreement_factory(
         vendor_id="123456789012",
         subscriptions=subscriptions_factory(
@@ -311,13 +326,9 @@ def test_generate_agreement_journal_lines_aws_client_error(
 
 
 def test_generate_subscription_journal_lines_exception(
-    mocker,
-    mpt_client,
-    agreement_factory,
-    subscriptions_factory,
-    config,
+    mocker, mpt_client, agreement_factory, subscriptions_factory, config, settings
 ):
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, settings)
     subscription = subscriptions_factory(
         vendor_id="1234-1234-1234", status=SubscriptionStatusEnum.ACTIVE
     )[0]
