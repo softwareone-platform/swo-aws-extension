@@ -21,6 +21,7 @@ from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
 from swo_aws_extension.aws.config import get_config
 from swo_aws_extension.constants import (
     AWS_ITEMS_SKUS,
+    SOLUTION_PROVIDER_PROGRAM_DISCOUNT,
     AccountTypesEnum,
     PhasesEnum,
     SupportTypesEnum,
@@ -40,6 +41,7 @@ CREATED_AT = "2023-12-14T18:02:16.9359"
 META = "$meta"
 ACCOUNT_EMAIL = "test@aws.com"
 ACCOUNT_NAME = "Account Name"
+SERVICE_NAME = "SUSE Linux Enterprise"
 
 
 @pytest.fixture()
@@ -1935,7 +1937,7 @@ def mock_settings(settings):
 def mock_marketplace_report_group_factory():
     def _marketplace_report_group(
         account_id="1234-1234-1234",
-        service_name="SUSE Linux Enterprise",
+        service_name=SERVICE_NAME,
     ):
         return [
             {
@@ -1979,7 +1981,7 @@ def mock_marketplace_report_factory(mock_marketplace_report_group_factory):
 @pytest.fixture
 def mock_invoice_by_service_report_factory():
     def _invoice_by_service_report(
-        service_name="SUSE Linux Enterprise", invoice_entity="Amazon Web Services EMEA SARL"
+        service_name=SERVICE_NAME, invoice_entity="Amazon Web Services EMEA SARL"
     ):
         return {
             "GroupDefinitions": [
@@ -2005,3 +2007,48 @@ def mock_invoice_by_service_report_factory():
         }
 
     return _invoice_by_service_report
+
+
+@pytest.fixture
+def mock_report_type_and_usage_report_group_factory():
+    def _report_type_and_usage_report_group(
+        record_type="Usage",
+        service_name=SERVICE_NAME,
+    ):
+        return [
+            {
+                "Keys": [
+                    record_type,
+                    service_name,
+                ],
+                "Metrics": {"UnblendedCost": {"Amount": "718.461", "Unit": "USD"}},
+            },
+            {
+                "Keys": [SOLUTION_PROVIDER_PROGRAM_DISCOUNT, service_name],
+                "Metrics": {"UnblendedCost": {"Amount": "0", "Unit": "USD"}},
+            },
+        ]
+
+    return _report_type_and_usage_report_group
+
+
+@pytest.fixture
+def mock_report_type_and_usage_report_factory(mock_report_type_and_usage_report_group_factory):
+    def _report_type_and_usage_report(groups=None):
+        groups = groups or mock_report_type_and_usage_report_group_factory()
+        return {
+            "GroupDefinitions": [
+                {"Type": "DIMENSION", "Key": "RECORD_TYPE"},
+                {"Type": "DIMENSION", "Key": "SERVICE"},
+            ],
+            "ResultsByTime": [
+                {
+                    "TimePeriod": {"Start": "2025-04-01", "End": "2025-05-01"},
+                    "Total": {},
+                    "Groups": groups,
+                    "Estimated": False,
+                }
+            ],
+        }
+
+    return _report_type_and_usage_report
