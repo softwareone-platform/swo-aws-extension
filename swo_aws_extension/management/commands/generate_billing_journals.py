@@ -103,6 +103,6 @@ class Command(StyledPrintCommand):
     @staticmethod
     def process(year, month, authorizations):
         generator = BillingJournalGenerator(
-            mpt_client, config, year, month, settings.MPT_PRODUCTS_IDS, authorizations
+            mpt_client, config, year, month, settings, authorizations
         )
         generator.generate_billing_journals()
