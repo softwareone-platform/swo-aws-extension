@@ -121,6 +121,14 @@ $ docker-compose run --service-ports app
 | `EXT_FFC_OPERATIONS_API_BASE_URL` | -        | https://api.finops.s1.show/ops/v1/ | FinOps base URL   |
 | `EXT_FFC_OPERATIONS_SECRET`       | -        | supersecret                        | FinOps secret     |
 
+## USAGE
+| Environment Variable                      | Default | Example | Description                               |
+|-------------------------------------------|---------|---------|-------------------------------------------|
+| `EXT_BILLING_DISCOUNT_BASE`               | 7       | 7       | Billing default discount for services     |
+| `EXT_BILLING_DISCOUNT_INCENTIVE`          | 12      | 12      | Billing discount for incentivate services |
+| `EXT_BILLING_DISCOUNT_SUPPORT_ENTERPRISE` | 35      | 35      | Billing discount for support enterprise   |
+| `EXT_BILLING_DISCOUNT_TOLERANCE_RATE`     | 1       | 1       | Billing provider discount tolerance rate  |
+
 ## Other
 | Environment Variable                   | Default | Example | Description                                                          |
 |----------------------------------------|---------|---------|----------------------------------------------------------------------|
