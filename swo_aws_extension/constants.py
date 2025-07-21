@@ -4,25 +4,6 @@ MPT_DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:00Z"
 
 SWO_EXTENSION_MANAGEMENT_ROLE = "swo/mpt/SWOExtensionManagementRole"
 SWO_EXTENSION_BILLING_ROLE = "swo/mpt/SWOExtensionBillingRole"
-AWS_USAGE_SKU = "AWS Usage"
-AWS_MARKETPLACE_SKU = "AWS Marketplace"
-AWS_USAGE_INCENTIVATE_SKU = "AWS Usage incentivate"
-AWS_OTHER_SERVICES_SKU = "AWS Other services"
-AWS_SUPPORT_ENTERPRISE_SKU = "AWS Support Enterprise"
-AWS_UPFROM_SKU = "Upfront"
-AWS_SUPPORT_SKU = "AWS Support"
-AWS_SAVING_PLANS_RECURRING_FEE_SKU = "Saving Plans Recurring Fee"
-AWS_ITEMS_SKUS = [
-    AWS_USAGE_SKU,
-    AWS_MARKETPLACE_SKU,
-    AWS_USAGE_INCENTIVATE_SKU,
-    AWS_OTHER_SERVICES_SKU,
-    AWS_SUPPORT_ENTERPRISE_SKU,
-    AWS_UPFROM_SKU,
-    AWS_SUPPORT_SKU,
-    AWS_SAVING_PLANS_RECURRING_FEE_SKU,
-]
-TAG_AGREEMENT_ID = "agreement_id"
 CRM_EXTERNAL_EMAIL = "marketplace@softwareone.com"
 CRM_EXTERNAL_USERNAME = "mpt@marketplace.com"
 CRM_SERVICE_TYPE = "MarketPlaceServiceActivation"
@@ -40,7 +21,9 @@ INVOICE_ID_KEY = "InvoiceId"
 BASE_CURRENCY_AMOUNT = "BaseCurrencyAmount"
 TOTAL_AMOUNT_KEY = "TotalAmount"
 CURRENCY_CODE_KEY = "CurrencyCode"
-MARKETPLACE = "marketplace"
+MARKETPLACE = "MARKETPLACE"
+USAGE = "USAGE"
+PROVIDER_DISCOUNT = "PROVIDER_DISCOUNT"
 SERVICE_INVOICE_ENTITY = "service_invoice_entity"
 AWS_MARKETPLACE = "AWS Marketplace"
 TAX = "Tax"
@@ -54,6 +37,25 @@ DRAFT = "Draft"
 VALIDATED = "Validated"
 JOURNAL_PENDING_STATUS = [ERROR, DRAFT, VALIDATED]
 STATUS = "status"
+SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE = "Savings Plans for AWS Compute usage"
+SOLUTION_PROVIDER_PROGRAM_DISCOUNT = "Solution Provider Program Discount"
+EXCLUDE_USAGE_SERVICES = [SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE]
+
+
+class ItemSkusEnum(StrEnum):
+    AWS_USAGE = "AWS Usage"
+    AWS_MARKETPLACE = "AWS Marketplace"
+    AWS_USAGE_INCENTIVATE = "AWS Usage incentivate"
+    AWS_OTHER_SERVICES = "AWS Other services"
+    AWS_SUPPORT_ENTERPRISE = "AWS Support Enterprise"
+    UPFRONT = "Upfront"
+    UPFRONT_INCENTIVATE = "Upfront incentivate"
+    AWS_SUPPORT = "AWS Support"
+    SAVING_PLANS_RECURRING_FEE = "Saving Plans Recurring Fee"
+    SAVING_PLANS_RECURRING_FEE_INCENTIVATE = "Saving Plans Recurring Fee incentivate"
+
+
+AWS_ITEMS_SKUS = [item.value for item in ItemSkusEnum]
 
 
 class AccountTypesEnum(StrEnum):

@@ -4,7 +4,8 @@ from django.conf import settings
 
 
 class Config:
-    def _patch_path(self, file_path):
+    @staticmethod
+    def _patch_path(file_path):
         """
         Fixes relative paths to be from the project root.
         """
@@ -83,6 +84,34 @@ class Config:
         Get the minimum MPA threshold.
         """
         return settings.EXTENSION_CONFIG["MINIMUM_MPA_THRESHOLD"]
+
+    @property
+    def billing_discount_base(self) -> int:
+        """
+        Get the base billing discount.
+        """
+        return int(settings.EXTENSION_CONFIG.get("BILLING_DISCOUNT_BASE", 7))
+
+    @property
+    def billing_discount_incentivate(self) -> int:
+        """
+        Get the billing discount for incentivate services.
+        """
+        return int(settings.EXTENSION_CONFIG.get("BILLING_DISCOUNT_INCENTIVATE", 12))
+
+    @property
+    def billing_discount_support_enterprise(self) -> int:
+        """
+        Get the billing discount for enterprise support.
+        """
+        return settings.EXTENSION_CONFIG.get("BILLING_DISCOUNT_SUPPORT_ENTERPRISE", 35)
+
+    @property
+    def billing_discount_tolerance_rate(self) -> int:
+        """
+        Get the billing discount for enterprise support.
+        """
+        return int(settings.EXTENSION_CONFIG.get("BILLING_DISCOUNT_TOLERANCE_RATE", 1))
 
 
 _CONFIG = None

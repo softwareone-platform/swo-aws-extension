@@ -180,6 +180,8 @@ def test_generate_billing_journals_authorization_upload_file(
     config,
     aws_client_factory,
     mock_marketplace_report_group_factory,
+    mock_report_type_and_usage_report_group_factory,
+    mock_report_type_and_usage_report_factory,
 ):
     generator = BillingJournalGenerator(
         mpt_client, config, 2024, 5, ["prod1"], authorizations=["AUTH-1"]
@@ -212,7 +214,9 @@ def test_generate_billing_journals_authorization_upload_file(
     aws_mock.get_cost_and_usage.side_effect = [
         mock_marketplace_report_factory(groups=groups),
         mock_invoice_by_service_report_factory(),
+        mock_report_type_and_usage_report_factory(),
         mock_invoice_by_service_report_factory(),
+        mock_report_type_and_usage_report_factory(),
     ]
     aws_mock.list_invoice_summaries.side_effect = [
         {
@@ -258,6 +262,7 @@ def test_generate_agreement_journal_lines_subscription_exception(
     mock_sub_lines = mocker.patch.object(
         generator, "_generate_subscription_journal_lines", side_effect=Exception("sub error")
     )
+    mocker.patch.object(generator, "_generate_mpa_journal_lines", return_value=[])
     send_error = mocker.patch("swo_aws_extension.flows.jobs.billing_journal.send_error")
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
