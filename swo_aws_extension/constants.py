@@ -11,35 +11,37 @@ CRM_GLOBAL_EXT_USER_ID = "globalacademicExtUserId"
 CRM_REQUESTER = "Supplier.Portal"
 CRM_SUB_SERVICE = "Service Activation"
 
-DATE_FORMAT = "%Y-%m-%d"
-INVOICE_ID = "invoice_id"
-TOTAL_AMOUNT = "total_amount"
-CURRENCY_CODE = "currency_code"
-INVOICE_ENTITY = "Entity"
-INVOICING_ENTITY = "InvoicingEntity"
-INVOICE_ID_KEY = "InvoiceId"
-BASE_CURRENCY_AMOUNT = "BaseCurrencyAmount"
-TOTAL_AMOUNT_KEY = "TotalAmount"
-CURRENCY_CODE_KEY = "CurrencyCode"
-MARKETPLACE = "MARKETPLACE"
-USAGE = "USAGE"
-PROVIDER_DISCOUNT = "PROVIDER_DISCOUNT"
-SERVICE_INVOICE_ENTITY = "service_invoice_entity"
+COST_EXPLORER_DATE_FORMAT = "%Y-%m-%d"
+
+SERVICE_INVOICE_ENTITY = "SERVICE_INVOICE_ENTITY"
 AWS_MARKETPLACE = "AWS Marketplace"
-TAX = "Tax"
-EXTERNAL_IDS = "externalIds"
-VENDOR = "vendor"
-AWS_KEY_MANAGEMENT_SERVICE = "AWS Key Management Service"
-UNBLENDED_COST = "UnblendedCost"
-AMOUNT = "Amount"
+
 ERROR = "Error"
 DRAFT = "Draft"
 VALIDATED = "Validated"
 JOURNAL_PENDING_STATUS = [ERROR, DRAFT, VALIDATED]
-STATUS = "status"
-SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE = "Savings Plans for AWS Compute usage"
-SOLUTION_PROVIDER_PROGRAM_DISCOUNT = "Solution Provider Program Discount"
-EXCLUDE_USAGE_SERVICES = [SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE]
+
+
+class UsageMetricTypeEnum(StrEnum):
+    MARKETPLACE = "MARKETPLACE"
+    USAGE = "USAGE"
+    PROVIDER_DISCOUNT = "PROVIDER_DISCOUNT"
+    SUPPORT = "SUPPORT"
+
+
+class AWSServiceEnum(StrEnum):
+    SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE = "Savings Plans for AWS Compute usage"
+    TAX = "Tax"
+    REFUND = "Refund"
+
+
+class AWSRecordTypeEnum(StrEnum):
+    USAGE = "Usage"
+    SOLUTION_PROVIDER_PROGRAM_DISCOUNT = "Solution Provider Program Discount"
+    SUPPORT = "Support"
+
+
+EXCLUDE_USAGE_SERVICES = [AWSServiceEnum.SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE]
 
 
 class ItemSkusEnum(StrEnum):
