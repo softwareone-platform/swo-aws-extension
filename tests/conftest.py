@@ -23,9 +23,16 @@ from swo_aws_extension.constants import (
     AWS_ITEMS_SKUS,
     AccountTypesEnum,
     AWSRecordTypeEnum,
+    AWSServiceEnum,
+    ItemSkusEnum,
     PhasesEnum,
     SupportTypesEnum,
     TerminationParameterChoices,
+    UsageMetricTypeEnum,
+)
+from swo_aws_extension.flows.jobs.billing_journal import (
+    BillingJournalGenerator,
+    get_journal_processors,
 )
 from swo_aws_extension.parameters import (
     ChangeOrderParametersEnum,
@@ -2054,3 +2061,139 @@ def mock_report_type_and_usage_report_factory(mock_report_type_and_usage_report_
         }
 
     return _report_type_and_usage_report
+
+
+def build_usage_metrics(generator, report_factory, group_factory, account_id):
+    group_params = [
+        {
+            "service_name": "Usage service",
+            "record_type": AWSRecordTypeEnum.USAGE,
+            "service_amount": "100",
+            "provider_discount_amount": "7",
+        },
+        {
+            "service_name": "Usage service incentivate",
+            "record_type": AWSRecordTypeEnum.USAGE,
+            "service_amount": "100",
+            "provider_discount_amount": "12",
+        },
+        {
+            "service_name": "Saving plan service",
+            "record_type": AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE,
+            "service_amount": "100",
+            "provider_discount_amount": "7",
+        },
+        {
+            "service_name": "Saving plan service incentivate",
+            "record_type": AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE,
+            "service_amount": "100",
+            "provider_discount_amount": "12",
+        },
+        {
+            "service_name": "Other AWS services",
+            "record_type": AWSRecordTypeEnum.USAGE,
+            "service_amount": "200",
+            "provider_discount_amount": "0",
+        },
+        {
+            "service_name": "free_aws-services",
+            "record_type": AWSRecordTypeEnum.USAGE,
+            "service_amount": "0",
+            "provider_discount_amount": "0",
+        },
+        {
+            "service_name": "Refund service business",
+            "record_type": AWSRecordTypeEnum.REFUND,
+            "service_amount": "7",
+            "provider_discount_amount": "0",
+        },
+        {
+            "service_name": "Refund service enterprise",
+            "record_type": AWSRecordTypeEnum.REFUND,
+            "service_amount": "35",
+            "provider_discount_amount": "0",
+        },
+        {
+            "service_name": "Support business",
+            "record_type": AWSRecordTypeEnum.SUPPORT,
+            "service_amount": "100",
+            "provider_discount_amount": "0",
+        },
+        {
+            "service_name": "Support Enterprise",
+            "record_type": AWSRecordTypeEnum.SUPPORT,
+            "service_amount": "100",
+            "provider_discount_amount": "0",
+        },
+        {
+            "service_name": AWSServiceEnum.TAX,
+            "record_type": AWSRecordTypeEnum.USAGE,
+            "service_amount": "100",
+            "provider_discount_amount": "0",
+        },
+    ]
+    all_groups = []
+    for params in group_params:
+        all_groups += group_factory(**params)
+    report = report_factory(groups=all_groups)["ResultsByTime"]
+    return {
+        UsageMetricTypeEnum.USAGE: generator._get_metrics_by_key(report, AWSRecordTypeEnum.USAGE),
+        UsageMetricTypeEnum.SAVING_PLANS: generator._get_metrics_by_key(
+            report, AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE
+        ),
+        UsageMetricTypeEnum.PROVIDER_DISCOUNT: generator._get_metrics_by_key(
+            report, AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT
+        ),
+        UsageMetricTypeEnum.REFUND: generator._get_metrics_by_key(report, AWSRecordTypeEnum.REFUND),
+        UsageMetricTypeEnum.SUPPORT: generator._get_metrics_by_key(
+            report, AWSRecordTypeEnum.SUPPORT
+        ),
+    }
+
+
+@pytest.fixture
+def mock_journal_args(
+    mpt_client,
+    config,
+    mock_report_type_and_usage_report_group_factory,
+    mock_report_type_and_usage_report_factory,
+    mock_marketplace_report_group_factory,
+    mock_marketplace_report_factory,
+):
+    account_id = "1234567890"
+    generator = BillingJournalGenerator(
+        mpt_client,
+        config,
+        2024,
+        5,
+        ["prod1"],
+        billing_journal_processor=get_journal_processors(config),
+        authorizations=["AUTH-1"],
+    )
+    account_metrics = build_usage_metrics(
+        generator,
+        mock_report_type_and_usage_report_factory,
+        mock_report_type_and_usage_report_group_factory,
+        account_id,
+    )
+
+    groups = mock_marketplace_report_group_factory(
+        account_id=account_id, service_name="Marketplace service"
+    )
+    report = mock_marketplace_report_factory(groups=groups)["ResultsByTime"]
+    account_metrics[UsageMetricTypeEnum.MARKETPLACE] = generator._get_metrics_by_key(
+        report, account_id
+    )
+
+    return {
+        "account_id": "acc1",
+        "item_external_id": ItemSkusEnum.AWS_MARKETPLACE,
+        "account_metrics": account_metrics,
+        "journal_details": {
+            "agreement_id": "agreement_id",
+            "mpa_id": "mpa_id",
+            "start_date": "2025-01-01",
+            "end_date": "2025-02-01",
+        },
+        "account_invoices": {"entity1": {"invoice_id": "inv1"}},
+    }

@@ -7,11 +7,14 @@ from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import COMMAND_INVALID_BILLING_DATE
 from swo_aws_extension.flows.jobs.billing_journal import (
     BillingJournalGenerator,
+    get_journal_processors,
 )
 from swo_aws_extension.management.commands_helpers import StyledPrintCommand
 from swo_aws_extension.shared import mpt_client
 
 config = Config()
+
+BILLING_JOURNAL_PROCESSORS = get_journal_processors(config)
 
 
 class Command(StyledPrintCommand):
@@ -103,6 +106,12 @@ class Command(StyledPrintCommand):
     @staticmethod
     def process(year, month, authorizations):
         generator = BillingJournalGenerator(
-            mpt_client, config, year, month, settings.MPT_PRODUCTS_IDS, authorizations
+            mpt_client,
+            config,
+            year,
+            month,
+            settings.MPT_PRODUCTS_IDS,
+            BILLING_JOURNAL_PROCESSORS,
+            authorizations,
         )
         generator.generate_billing_journals()
