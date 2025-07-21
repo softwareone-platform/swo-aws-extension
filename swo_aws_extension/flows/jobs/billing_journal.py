@@ -524,6 +524,9 @@ class BillingJournalGenerator:
         account_metrics[UsageMetricTypeEnum.SUPPORT] = self._get_metrics_by_key(
             record_type_and_service_cost, AWSRecordTypeEnum.SUPPORT
         )
+        account_metrics[UsageMetricTypeEnum.REFUND] = self._get_metrics_by_key(
+            record_type_and_service_cost, AWSRecordTypeEnum.REFUND
+        )
         account_metrics[UsageMetricTypeEnum.PROVIDER_DISCOUNT] = self._get_metrics_by_key(
             record_type_and_service_cost, AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT
         )
@@ -635,6 +638,35 @@ class BillingJournalGenerator:
                     target_discount=0,
                     skip_services=exclude_services,
                 )
+            case ItemSkusEnum.AWS_SUPPORT:
+                support_discount = self._get_support_discount(
+                    account_metrics.get(UsageMetricTypeEnum.SUPPORT, {}),
+                    account_metrics.get(UsageMetricTypeEnum.REFUND, {}),
+                )
+                if support_discount == self.config.billing_discount_base:
+                    journal_lines = self._get_usage_journal_lines(
+                        UsageMetricTypeEnum.SUPPORT,
+                        account_metrics,
+                        account_invoices,
+                        item_external_id,
+                        account_id,
+                        journal_details,
+                    )
+
+            case ItemSkusEnum.AWS_SUPPORT_ENTERPRISE:
+                support_discount = self._get_support_discount(
+                    account_metrics.get(UsageMetricTypeEnum.SUPPORT, {}),
+                    account_metrics.get(UsageMetricTypeEnum.REFUND, {}),
+                )
+                if support_discount == self.config.billing_discount_support_enterprise:
+                    journal_lines = self._get_usage_journal_lines(
+                        UsageMetricTypeEnum.SUPPORT,
+                        account_metrics,
+                        account_invoices,
+                        item_external_id,
+                        account_id,
+                        journal_details,
+                    )
         return journal_lines
 
     @staticmethod
@@ -846,3 +878,22 @@ class BillingJournalGenerator:
         if abs(discount - target_discount) > self.config.billing_discount_tolerance_rate:
             return False
         return True
+
+    @staticmethod
+    def _get_support_discount(support_metrics, refund_metrics):
+        """
+        Calculates the support discount based on the refund and support amounts from the
+        per record cost metric.
+        Args:
+            support_metrics (dict): Support metrics from the AWS report.
+            refund_metrics (dict): Refund metrics from the AWS report.
+        Returns:
+            int: Support discount percentage rounded to the nearest integer.
+        """
+        # TODO: pending to confirm with PDM how to manage if there are more than one support
+        # charges in the same billing period
+        support = next(iter(support_metrics.values()), 0)
+        refund = next(iter(refund_metrics.values()), 0)
+
+        support_discount = refund / support * 100 if refund != 0 else 0
+        return round(abs(support_discount))
