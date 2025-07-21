@@ -21,8 +21,8 @@ from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
 from swo_aws_extension.aws.config import get_config
 from swo_aws_extension.constants import (
     AWS_ITEMS_SKUS,
-    SOLUTION_PROVIDER_PROGRAM_DISCOUNT,
     AccountTypesEnum,
+    AWSRecordTypeEnum,
     PhasesEnum,
     SupportTypesEnum,
     TerminationParameterChoices,
@@ -2001,7 +2001,7 @@ def mock_marketplace_report_factory(mock_marketplace_report_group_factory):
 @pytest.fixture
 def mock_invoice_by_service_report_factory():
     def _invoice_by_service_report(
-        service_name=SERVICE_NAME, invoice_entity="Amazon Web Services EMEA SARL"
+        service_name="AWS service name", invoice_entity="Amazon Web Services EMEA SARL"
     ):
         return {
             "GroupDefinitions": [
@@ -2033,7 +2033,9 @@ def mock_invoice_by_service_report_factory():
 def mock_report_type_and_usage_report_group_factory():
     def _report_type_and_usage_report_group(
         record_type="Usage",
-        service_name=SERVICE_NAME,
+        service_name="AWS service name",
+        service_amount="718.461",
+        provider_discount_amount="50.29227",
     ):
         return [
             {
@@ -2041,11 +2043,11 @@ def mock_report_type_and_usage_report_group_factory():
                     record_type,
                     service_name,
                 ],
-                "Metrics": {"UnblendedCost": {"Amount": "718.461", "Unit": "USD"}},
+                "Metrics": {"UnblendedCost": {"Amount": service_amount, "Unit": "USD"}},
             },
             {
-                "Keys": [SOLUTION_PROVIDER_PROGRAM_DISCOUNT, service_name],
-                "Metrics": {"UnblendedCost": {"Amount": "0", "Unit": "USD"}},
+                "Keys": [AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT, service_name],
+                "Metrics": {"UnblendedCost": {"Amount": provider_discount_amount, "Unit": "USD"}},
             },
         ]
 
