@@ -22,35 +22,19 @@ from swo.mpt.extensions.runtime.tracer import dynamic_trace_span
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import (
-    AMOUNT,
     AWS_MARKETPLACE,
-    BASE_CURRENCY_AMOUNT,
-    CURRENCY_CODE,
-    CURRENCY_CODE_KEY,
-    DATE_FORMAT,
+    COST_EXPLORER_DATE_FORMAT,
     EXCLUDE_USAGE_SERVICES,
-    EXTERNAL_IDS,
-    INVOICE_ENTITY,
-    INVOICE_ID,
-    INVOICE_ID_KEY,
-    INVOICING_ENTITY,
     JOURNAL_PENDING_STATUS,
-    MARKETPLACE,
-    PROVIDER_DISCOUNT,
     SERVICE_INVOICE_ENTITY,
-    SOLUTION_PROVIDER_PROGRAM_DISCOUNT,
-    STATUS,
     SWO_EXTENSION_BILLING_ROLE,
     SYNCHRONIZATION_ERROR,
-    TAX,
-    TOTAL_AMOUNT,
-    TOTAL_AMOUNT_KEY,
-    UNBLENDED_COST,
-    USAGE,
-    VENDOR,
     AgreementStatusEnum,
+    AWSRecordTypeEnum,
+    AWSServiceEnum,
     ItemSkusEnum,
     SubscriptionStatusEnum,
+    UsageMetricTypeEnum,
 )
 from swo_aws_extension.notifications import send_error
 from swo_mpt_api import MPTAPIClient
@@ -77,6 +61,17 @@ def get_authorizations(mpt_client, rql_query, limit=10):  # pragma: no cover
         else "/catalog/authorizations?select=externalIds,product"
     )
     return _paginated(mpt_client, url, limit=limit)
+
+
+def get_report_amount(amount):
+    """
+    Converts a string amount to a float, handling both comma and dot as decimal separators.
+    Args:
+        amount (str): The amount as a string, potentially with commas or dots.
+    Returns:
+        float: The amount converted to a float.
+    """
+    return float(amount.replace(",", ".") if "," in amount else amount)
 
 
 class BillingJournalGenerator:
@@ -121,7 +116,9 @@ class BillingJournalGenerator:
         """
         start_date = date(year, month, 1)
         end_date = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
-        return start_date.strftime(DATE_FORMAT), end_date.strftime(DATE_FORMAT)
+        return start_date.strftime(COST_EXPLORER_DATE_FORMAT), end_date.strftime(
+            COST_EXPLORER_DATE_FORMAT
+        )
 
     def _obtain_journal_id(self, authorization_id):
         """
@@ -155,7 +152,7 @@ class BillingJournalGenerator:
                 "info", f"Found {len(journals)} journals for authorization {authorization_id}"
             )
             journal = find_first(
-                lambda j: j.get(STATUS) in JOURNAL_PENDING_STATUS,
+                lambda j: j.get("status") in JOURNAL_PENDING_STATUS,
                 journals,
                 None,
             )
@@ -211,7 +208,7 @@ class BillingJournalGenerator:
             list: List of journal line dictionaries.
         """
         agreement_journal_lines = []
-        mpa_account = agreement.get(EXTERNAL_IDS, {}).get(VENDOR, "")
+        mpa_account = agreement.get("externalIds", {}).get("vendor", "")
         self._log("info", f"Start generating journal lines for organization account: {mpa_account}")
 
         if not mpa_account:
@@ -243,7 +240,7 @@ class BillingJournalGenerator:
         for subscription in agreement.get("subscriptions", []):
             try:
                 with self._temp_context("subscription_id", subscription.get("id")):
-                    if subscription.get(STATUS) == SubscriptionStatusEnum.TERMINATED:
+                    if subscription.get("status") == SubscriptionStatusEnum.TERMINATED:
                         continue
                     if not first_active_subscription:
                         first_active_subscription = subscription
@@ -384,7 +381,7 @@ class BillingJournalGenerator:
             list: List of journal line dictionaries.
         """
         subscription_journal_lines = []
-        account_id = subscription.get(EXTERNAL_IDS, {}).get(VENDOR)
+        account_id = subscription.get("externalIds", {}).get("vendor")
         self._log("info", f"Processing subscription for account {account_id}:")
         account_metrics = self._get_account_metrics(aws_client, organization_reports, account_id)
         account_invoices = organization_invoices.get(account_id, {})
@@ -465,21 +462,21 @@ class BillingJournalGenerator:
         )
         invoices = {}
         for invoice_summary in invoice_summaries:
-            invoice_entity = invoice_summary.get(INVOICE_ENTITY, {}).get(INVOICING_ENTITY)
+            invoice_entity = invoice_summary.get("Entity", {}).get("InvoicingEntity")
             invoice_account_id = invoice_summary.get("AccountId")
-            invoice_id = invoice_summary.get(INVOICE_ID_KEY)
+            invoice_id = invoice_summary.get("InvoiceId")
             if invoice_account_id not in invoices:
                 invoices[invoice_account_id] = {}
             if invoice_entity in invoices[invoice_account_id]:
-                invoices[invoice_account_id][invoice_entity][INVOICE_ID] += invoice_id
+                invoices[invoice_account_id][invoice_entity]["invoice_id"] += invoice_id
             else:
                 invoices[invoice_account_id][invoice_entity] = {
-                    INVOICE_ID: invoice_summary.get(INVOICE_ID_KEY),
-                    TOTAL_AMOUNT: invoice_summary.get(BASE_CURRENCY_AMOUNT, {}).get(
-                        TOTAL_AMOUNT_KEY
+                    "invoice_id": invoice_summary.get("InvoiceId"),
+                    "total_amount": invoice_summary.get("BaseCurrencyAmount", {}).get(
+                        "TotalAmount"
                     ),
-                    CURRENCY_CODE: invoice_summary.get(BASE_CURRENCY_AMOUNT, {}).get(
-                        CURRENCY_CODE_KEY
+                    "currency_code": invoice_summary.get("BaseCurrencyAmount", {}).get(
+                        "CurrencyCode"
                     ),
                 }
         return invoices
@@ -494,7 +491,7 @@ class BillingJournalGenerator:
         Returns:
             dict: Organization usage reports.
         """
-        return {MARKETPLACE: self._get_marketplace_usage_report(aws_client)}
+        return {UsageMetricTypeEnum.MARKETPLACE: self._get_marketplace_usage_report(aws_client)}
 
     def _get_account_metrics(self, aws_client, organization_reports, account_id):
         """
@@ -521,9 +518,14 @@ class BillingJournalGenerator:
         record_type_and_service_cost = self._get_record_type_and_service_cost_by_account_report(
             aws_client, account_id
         )
-        account_metrics[USAGE] = self._get_metrics_by_key(record_type_and_service_cost, "Usage")
-        account_metrics[PROVIDER_DISCOUNT] = self._get_metrics_by_key(
-            record_type_and_service_cost, SOLUTION_PROVIDER_PROGRAM_DISCOUNT
+        account_metrics[UsageMetricTypeEnum.USAGE] = self._get_metrics_by_key(
+            record_type_and_service_cost, AWSRecordTypeEnum.USAGE
+        )
+        account_metrics[UsageMetricTypeEnum.SUPPORT] = self._get_metrics_by_key(
+            record_type_and_service_cost, AWSRecordTypeEnum.SUPPORT
+        )
+        account_metrics[UsageMetricTypeEnum.PROVIDER_DISCOUNT] = self._get_metrics_by_key(
+            record_type_and_service_cost, AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT
         )
         return account_metrics
 
@@ -542,9 +544,9 @@ class BillingJournalGenerator:
             list: List of journal line dictionaries.
         """
         lines = []
-        account_id = subscription.get(EXTERNAL_IDS, {}).get(VENDOR, "")
+        account_id = subscription.get("externalIds", {}).get("vendor", "")
         for line in subscription.get("lines", []):
-            item_external_id = line.get("item", {}).get(EXTERNAL_IDS, {}).get(VENDOR)
+            item_external_id = line.get("item", {}).get("externalIds", {}).get("vendor")
             lines.extend(
                 self._get_journal_lines_by_item(
                     account_id,
@@ -576,17 +578,17 @@ class BillingJournalGenerator:
         match item_external_id:
             case ItemSkusEnum.AWS_MARKETPLACE:
                 journal_lines = self._get_usage_journal_lines(
-                    MARKETPLACE,
+                    UsageMetricTypeEnum.MARKETPLACE,
                     account_metrics,
                     account_invoices,
                     item_external_id,
                     account_id,
                     journal_details,
-                    skip_services=[TAX],
+                    skip_services=[AWSServiceEnum.TAX],
                 )
             case ItemSkusEnum.AWS_USAGE:
                 journal_lines = self._get_usage_journal_lines(
-                    USAGE,
+                    UsageMetricTypeEnum.USAGE,
                     account_metrics,
                     account_invoices,
                     item_external_id,
@@ -598,7 +600,7 @@ class BillingJournalGenerator:
 
             case ItemSkusEnum.AWS_USAGE_INCENTIVATE:
                 journal_lines = self._get_usage_journal_lines(
-                    USAGE,
+                    UsageMetricTypeEnum.USAGE,
                     account_metrics,
                     account_invoices,
                     item_external_id,
@@ -606,6 +608,32 @@ class BillingJournalGenerator:
                     journal_details,
                     target_discount=self.config.billing_discount_incentivate,
                     skip_services=EXCLUDE_USAGE_SERVICES,
+                )
+            case ItemSkusEnum.AWS_OTHER_SERVICES:
+                exclude_services = []
+                exclude_services.extend(EXCLUDE_USAGE_SERVICES)
+                exclude_services.append(AWSServiceEnum.TAX)
+                exclude_services.append(AWSServiceEnum.REFUND)
+                marketplace_services = [
+                    key.split(",")[1] if "," in key else key
+                    for key in account_metrics.get(UsageMetricTypeEnum.MARKETPLACE, {}).keys()
+                ]
+                exclude_services.extend(marketplace_services)
+
+                support_services = [
+                    key.split(",")[1] if "," in key else key
+                    for key in account_metrics.get(UsageMetricTypeEnum.SUPPORT, {}).keys()
+                ]
+                exclude_services.extend(support_services)
+                journal_lines = self._get_usage_journal_lines(
+                    UsageMetricTypeEnum.USAGE,
+                    account_metrics,
+                    account_invoices,
+                    item_external_id,
+                    account_id,
+                    journal_details,
+                    target_discount=0,
+                    skip_services=exclude_services,
                 )
         return journal_lines
 
@@ -692,11 +720,15 @@ class BillingJournalGenerator:
             for group in groups:
                 if key not in group.get("Keys", []):
                     continue
+                amount = get_report_amount(
+                    group.get("Metrics", {}).get("UnblendedCost", {}).get("Amount", "0")
+                )
+
+                if amount == 0:
+                    continue
                 if group["Keys"][1] not in result:
                     result[group["Keys"][1]] = {}
-                amount = group.get("Metrics", {}).get(UNBLENDED_COST, {}).get(AMOUNT, "0")
-                amount = amount.replace(",", ".") if "," in amount else amount
-                result[group["Keys"][1]] = float(amount)
+                result[group["Keys"][1]] = amount
         return result
 
     def _generate_mpa_journal_lines(
@@ -770,18 +802,16 @@ class BillingJournalGenerator:
             service_name = sub_key.split(",")[1] if "," in sub_key else sub_key
             if service_name in skip_services:
                 continue
-
             # If target_discount is None, add all items (no discount calculation)
             if target_discount is not None:
-                partner_discount = account_metrics[PROVIDER_DISCOUNT].get(service_name, 0)
-                partner_amount = amount - abs(partner_discount)
-                discount = ((amount - partner_amount) / amount) * 100 if amount != 0 else 0
-
-                if abs(discount - target_discount) > self.config.billing_discount_tolerance_rate:
+                partner_discount = account_metrics[UsageMetricTypeEnum.PROVIDER_DISCOUNT].get(
+                    service_name, 0
+                )
+                if not self._is_service_discount_valid(amount, partner_discount, target_discount):
                     continue
 
             invoice_entity = account_metrics.get(SERVICE_INVOICE_ENTITY, {}).get(service_name, "")
-            invoice_id = account_invoices.get(invoice_entity, {}).get(INVOICE_ID, "")
+            invoice_id = account_invoices.get(invoice_entity, {}).get("invoice_id", "")
 
             journal_lines.append(
                 self._create_journal_line(
@@ -795,3 +825,24 @@ class BillingJournalGenerator:
                 )
             )
         return journal_lines
+
+    def _is_service_discount_valid(self, amount, discount, target_discount):
+        """
+        Validates if the service discount is within the acceptable range based on
+        the target discount.
+        Args:
+            amount (float): The total amount for the service.
+            discount (float): The discount provided by the partner.
+            target_discount (float): The target discount percentage to validate against.
+        Returns:
+            bool: True if the discount is valid, False otherwise.
+        """
+        partner_amount = amount - abs(discount)
+        discount = ((amount - partner_amount) / amount) * 100 if amount != 0 else 0
+
+        if target_discount == 0 and discount != 0:
+            return False
+
+        if abs(discount - target_discount) > self.config.billing_discount_tolerance_rate:
+            return False
+        return True
