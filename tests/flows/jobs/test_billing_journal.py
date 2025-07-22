@@ -440,3 +440,175 @@ def test_generate_billing_journals_authorization_other_services(
     generator.generate_billing_journals()
     mock_create.assert_not_called()
     upload_mock.assert_called_once()
+
+
+def test_generate_billing_journals_support_enterprise(
+    mocker,
+    mpt_client,
+    agreement_factory,
+    subscriptions_factory,
+    mock_marketplace_report_factory,
+    data_aws_invoice_summary_factory,
+    mock_invoice_by_service_report_factory,
+    config,
+    aws_client_factory,
+    mock_marketplace_report_group_factory,
+    mock_report_type_and_usage_report_group_factory,
+    mock_report_type_and_usage_report_factory,
+):
+    generator = BillingJournalGenerator(
+        mpt_client, config, 2024, 5, ["prod1"], authorizations=["AUTH-1"]
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
+        return_value=[{"id": "AUTH-1"}],
+    )
+    mock_journal_query = mocker.patch.object(generator.mpt_api_client.billing.journal, "query")
+    mock_journal_query.return_value.all.return_value = [{"id": "JOURNAL-1", "status": "Draft"}]
+    mock_create = mocker.patch.object(
+        generator.mpt_api_client.billing.journal, "create", return_value={"id": "JOURNAL-1"}
+    )
+    linked_account = "1234-1234-1234"
+    subscriptions = subscriptions_factory(
+        vendor_id=linked_account,
+        status=SubscriptionStatusEnum.ACTIVE,
+    )
+    mpa_account = "123456789012"
+    agreement_data = agreement_factory(vendor_id=mpa_account, subscriptions=subscriptions)
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
+        return_value=[agreement_data],
+    )
+    _, aws_mock = aws_client_factory(config, "aws_mpa", "aws_role")
+
+    groups = mock_marketplace_report_group_factory(
+        account_id=linked_account, service_name="AWS service name"
+    )
+    groups.extend(mock_marketplace_report_group_factory(account_id=mpa_account))
+    report_type_and_usage_report_group = mock_report_type_and_usage_report_group_factory(
+        service_amount="200",
+        provider_discount_amount="0",
+    )
+    report_type_and_usage_report_group.extend(
+        mock_report_type_and_usage_report_group_factory(
+            service_name="support entrerprise",
+            record_type="Support",
+            service_amount="100",
+            provider_discount_amount="0",
+        )
+    )
+    report_type_and_usage_report_group.extend(
+        mock_report_type_and_usage_report_group_factory(
+            service_name="refund",
+            record_type="Refund",
+            service_amount="35",
+            provider_discount_amount="0",
+        )
+    )
+
+    aws_mock.get_cost_and_usage.side_effect = [
+        mock_marketplace_report_factory(groups=groups),
+        mock_invoice_by_service_report_factory(),
+        mock_report_type_and_usage_report_factory(),
+        mock_invoice_by_service_report_factory(),
+        mock_report_type_and_usage_report_factory(groups=report_type_and_usage_report_group),
+    ]
+    aws_mock.list_invoice_summaries.side_effect = [
+        {
+            "InvoiceSummaries": [
+                data_aws_invoice_summary_factory(account_id=linked_account),
+                data_aws_invoice_summary_factory(account_id=mpa_account),
+            ],
+        },
+    ]
+    upload_mock = mocker.patch.object(generator.mpt_api_client.billing.journal, "upload")
+
+    generator.generate_billing_journals()
+    mock_create.assert_not_called()
+    upload_mock.assert_called_once()
+
+
+def test_generate_billing_journals_support_business(
+    mocker,
+    mpt_client,
+    agreement_factory,
+    subscriptions_factory,
+    mock_marketplace_report_factory,
+    data_aws_invoice_summary_factory,
+    mock_invoice_by_service_report_factory,
+    config,
+    aws_client_factory,
+    mock_marketplace_report_group_factory,
+    mock_report_type_and_usage_report_group_factory,
+    mock_report_type_and_usage_report_factory,
+):
+    generator = BillingJournalGenerator(
+        mpt_client, config, 2024, 5, ["prod1"], authorizations=["AUTH-1"]
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
+        return_value=[{"id": "AUTH-1"}],
+    )
+    mock_journal_query = mocker.patch.object(generator.mpt_api_client.billing.journal, "query")
+    mock_journal_query.return_value.all.return_value = [{"id": "JOURNAL-1", "status": "Draft"}]
+    mock_create = mocker.patch.object(
+        generator.mpt_api_client.billing.journal, "create", return_value={"id": "JOURNAL-1"}
+    )
+    linked_account = "1234-1234-1234"
+    subscriptions = subscriptions_factory(
+        vendor_id=linked_account,
+        status=SubscriptionStatusEnum.ACTIVE,
+    )
+    mpa_account = "123456789012"
+    agreement_data = agreement_factory(vendor_id=mpa_account, subscriptions=subscriptions)
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
+        return_value=[agreement_data],
+    )
+    _, aws_mock = aws_client_factory(config, "aws_mpa", "aws_role")
+
+    groups = mock_marketplace_report_group_factory(
+        account_id=linked_account, service_name="AWS service name"
+    )
+    groups.extend(mock_marketplace_report_group_factory(account_id=mpa_account))
+    report_type_and_usage_report_group = mock_report_type_and_usage_report_group_factory(
+        service_amount="200",
+        provider_discount_amount="0",
+    )
+    report_type_and_usage_report_group.extend(
+        mock_report_type_and_usage_report_group_factory(
+            service_name="support business",
+            record_type="Support",
+            service_amount="100",
+            provider_discount_amount="0",
+        )
+    )
+    report_type_and_usage_report_group.extend(
+        mock_report_type_and_usage_report_group_factory(
+            service_name="refund",
+            record_type="Refund",
+            service_amount="7",
+            provider_discount_amount="0",
+        )
+    )
+
+    aws_mock.get_cost_and_usage.side_effect = [
+        mock_marketplace_report_factory(groups=groups),
+        mock_invoice_by_service_report_factory(),
+        mock_report_type_and_usage_report_factory(),
+        mock_invoice_by_service_report_factory(),
+        mock_report_type_and_usage_report_factory(groups=report_type_and_usage_report_group),
+    ]
+    aws_mock.list_invoice_summaries.side_effect = [
+        {
+            "InvoiceSummaries": [
+                data_aws_invoice_summary_factory(account_id=linked_account),
+                data_aws_invoice_summary_factory(account_id=mpa_account),
+            ],
+        },
+    ]
+    upload_mock = mocker.patch.object(generator.mpt_api_client.billing.journal, "upload")
+
+    generator.generate_billing_journals()
+    mock_create.assert_not_called()
+    upload_mock.assert_called_once()
