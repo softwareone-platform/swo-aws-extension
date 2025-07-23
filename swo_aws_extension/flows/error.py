@@ -6,6 +6,18 @@ from swo_aws_extension.parameters import MAX_ACCOUNT_TRANSFER
 TRACE_ID_REGEX = re.compile(r"(\(00-[0-9a-f]{32}-[0-9a-f]{16}-01\))")
 
 
+class AWSBillingException(Exception):
+    def __init__(self, message: str, payload: dict) -> None:
+        super().__init__(message)
+        self.payload: dict = payload
+        self.service_name: str = payload["service_name"]
+        self.amount: float = payload["amount"]
+        self.message: str = message
+
+    def __str__(self) -> str:
+        return self.message
+
+
 def strip_trace_id(traceback):
     return TRACE_ID_REGEX.sub("(<omitted>)", traceback)
 

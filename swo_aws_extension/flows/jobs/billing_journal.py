@@ -9,7 +9,6 @@ Entry point: BillingJournalGenerator.generate_billing_journals()
 """
 
 import calendar
-import json
 import logging
 from contextlib import contextmanager
 from datetime import date
@@ -34,6 +33,17 @@ from swo_aws_extension.constants import (
     ItemSkusEnum,
     SubscriptionStatusEnum,
     UsageMetricTypeEnum,
+)
+from swo_aws_extension.flows.error import AWSBillingException
+from swo_aws_extension.models import (
+    Description,
+    ExternalIds,
+    JournalLine,
+    Period,
+    Price,
+    Search,
+    SearchItem,
+    SearchSubscription,
 )
 from swo_aws_extension.notifications import send_error
 from swo_mpt_api import MPTAPIClient
@@ -144,8 +154,18 @@ class GenerateItemJournalLines:
             int: Support discount percentage rounded to the nearest integer.
         """
 
-        # TODO: pending to confirm with PDM how to manage if there are more than one support
-        # charges in the same billing period
+        if len(support_metrics) > 1:
+            # if len(support_metrics) == 0:
+            error_message = (
+                f"Multiple support metrics found: {support_metrics} with refund {refund_metrics}. "
+            )
+            logger.error(error_message)
+            error_payload = {
+                "service_name": AWSServiceEnum.SUPPORT.value,
+                "amount": 0,
+            }
+            raise AWSBillingException(error_message, error_payload)
+
         support = next(iter(support_metrics.values()), 0)
         refund = next(iter(refund_metrics.values()), 0)
 
@@ -255,31 +275,37 @@ class GenerateItemJournalLines:
             Returns:
                 dict: Journal line dictionary.
         """
-        return {
-            "description": {
-                "value1": service_name,
-                "value2": f"{account_id}/{invoice_entity}",
-            },
-            "externalIds": {
-                "invoice": invoice_id,
-                "reference": journal_details["agreement_id"],
-                "vendor": journal_details["mpa_id"],
-            },
-            "period": {"start": journal_details["start_date"], "end": journal_details["end_date"]},
-            "price": {"PPx1": amount, "unitPP": amount},
-            "quantity": quantity,
-            "search": {
-                "item": {
-                    "criteria": "item.externalIds.vendor",
-                    "value": item_external_id,
-                },
-                "subscription": {
-                    "criteria": "subscription.externalIds.vendor",
-                    "value": account_id,
-                },
-            },
-            "segment": segment,
-        }
+        return JournalLine(
+            description=Description(
+                value1=service_name,
+                value2=f"{account_id}/{invoice_entity}",
+            ),
+            externalIds=ExternalIds(
+                invoice=invoice_id,
+                reference=journal_details["agreement_id"],
+                vendor=journal_details["mpa_id"],
+            ),
+            period=Period(
+                start=journal_details["start_date"],
+                end=journal_details["end_date"],
+            ),
+            price=Price(
+                PPx1=amount,
+                unitPP=amount,
+            ),
+            quantity=quantity,
+            search=Search(
+                item=SearchItem(
+                    criteria="item.externalIds.vendor",
+                    value=item_external_id,
+                ),
+                subscription=SearchSubscription(
+                    criteria="subscription.externalIds.vendor",
+                    value=account_id,
+                ),
+            ),
+            segment=segment,
+        )
 
 
 class GenerateMarketplaceJournalLines(GenerateItemJournalLines):
@@ -435,6 +461,7 @@ class BillingJournalGenerator:
         self.mpt_api_client = MPTAPIClient(mpt_client)
         self.logger_context = {}
         self.journal_line_processors = billing_journal_processor
+        self.journal_file_lines = []
 
     def _log(self, level, msg):
         log_func = getattr(logger, level, logger.info)
@@ -483,7 +510,7 @@ class BillingJournalGenerator:
             }
             self._log(
                 "info",
-                f"Creating new journal for authorization {authorization_id}: {journal_payload}",
+                f"Creating new journal for authorization {authorization_id}: {journal_payload['name']}",
             )
             journal = self.mpt_api_client.billing.journal.create(journal_payload)
         else:
@@ -543,16 +570,13 @@ class BillingJournalGenerator:
 
         Args:
             agreement (dict): Agreement object.
-        Returns:
-            list: List of journal line dictionaries.
         """
-        agreement_journal_lines = []
         mpa_account = agreement.get("externalIds", {}).get("vendor", "")
         self._log("info", f"Start generating journal lines for organization account: {mpa_account}")
 
         if not mpa_account:
             self._log("error", f"{agreement.get('id')} - Skipping - MPA not found")
-            return agreement_journal_lines
+            return
         try:
             aws_client = AWSClient(self.config, mpa_account, SWO_EXTENSION_BILLING_ROLE)
         except AWSError as ex:
@@ -561,7 +585,7 @@ class BillingJournalGenerator:
                 f"{agreement.get('id')} - Failed to create AWS client for MPA account"
                 f" {mpa_account}: {ex}",
             )
-            return agreement_journal_lines
+            return
         organization_invoices = self._get_organization_invoices(aws_client, mpa_account)
         self._log(
             "info",
@@ -583,15 +607,14 @@ class BillingJournalGenerator:
                         continue
                     if not first_active_subscription:
                         first_active_subscription = subscription
-                    agreement_journal_lines.extend(
-                        self._generate_subscription_journal_lines(
-                            subscription,
-                            aws_client,
-                            organization_reports,
-                            journal_details,
-                            organization_invoices,
-                        )
+                    self._generate_subscription_journal_lines(
+                        subscription,
+                        aws_client,
+                        organization_reports,
+                        journal_details,
+                        organization_invoices,
                     )
+
             except Exception as exc:
                 self._log(
                     "exception",
@@ -603,23 +626,18 @@ class BillingJournalGenerator:
                 )
 
         self._log("info", f"Generating usage lines for MPA account: {mpa_account}")
-        agreement_journal_lines.extend(
-            self._generate_mpa_journal_lines(
-                mpa_account,
-                first_active_subscription,
-                aws_client,
-                organization_reports,
-                organization_invoices,
-                journal_details,
-            )
+        self._generate_mpa_journal_lines(
+            mpa_account,
+            first_active_subscription,
+            aws_client,
+            organization_reports,
+            organization_invoices,
+            journal_details,
         )
         self._log(
             "info",
-            f"Generated {len(agreement_journal_lines)} journal lines for organization "
-            f"account: {mpa_account}",
+            f"Generated journal lines for organization account: {mpa_account}",
         )
-
-        return agreement_journal_lines
 
     @dynamic_trace_span(lambda *args: f"Authorization {args[1]['id']}")
     def _generate_authorization_journal(self, authorization):
@@ -632,7 +650,7 @@ class BillingJournalGenerator:
             None
         """
         self._log("info", f"Generating billing journals for {authorization['id']}")
-        journal_file_lines = []
+        self.journal_file_lines = []
         journal_id = self._obtain_journal_id(authorization["id"])
         self._log("info", f"Generating journal lines for journal ID: {journal_id}")
         agreements = self._get_authorization_agreements(authorization)
@@ -644,9 +662,11 @@ class BillingJournalGenerator:
         )
 
         for agreement in agreements:
+            if agreement.get("id") != "AGR-6411-4973-7786":
+                continue
             try:
                 with self._temp_context("agreement_id", agreement.get("id")):
-                    journal_file_lines.extend(self._generate_agreement_journal_lines(agreement))
+                    self._generate_agreement_journal_lines(agreement)
             except Exception as exc:
                 self._log(
                     "exception", f"{agreement.get('id')} - Failed to synchronize agreement: {exc}"
@@ -656,13 +676,14 @@ class BillingJournalGenerator:
                     f"Failed to generate billing journal for {agreement.get('id')}: {exc}",
                 )
 
-        if not journal_file_lines:
+        if not self.journal_file_lines:
             self._log("info", f"No journal lines generated for authorization {authorization['id']}")
             return
         self._log(
-            "info", f"Found {len(journal_file_lines)} journal lines for journal ID {journal_id}"
+            "info",
+            f"Found {len(self.journal_file_lines)} journal lines for journal ID {journal_id}",
         )
-        journal_file = "".join(json.dumps(entry) + "\n" for entry in journal_file_lines)
+        journal_file = "".join(entry.to_jsonl() for entry in self.journal_file_lines)
         final_file = BytesIO(journal_file.encode("utf-8"))
         self.mpt_api_client.billing.journal.upload(journal_id, final_file, "journal.jsonl")
         self._log("info", f"Uploaded journal file for journal ID {journal_id}")
@@ -716,24 +737,15 @@ class BillingJournalGenerator:
             organization_reports (dict): Organization usage reports.
             journal_details (dict): Journal metadata.
             organization_invoices (dict): Invoices for the organization.
-        Returns:
-            list: List of journal line dictionaries.
         """
-        subscription_journal_lines = []
         account_id = subscription.get("externalIds", {}).get("vendor")
         self._log("info", f"Processing subscription for account {account_id}:")
         account_metrics = self._get_account_metrics(aws_client, organization_reports, account_id)
         account_invoices = organization_invoices.get(account_id, {})
-        subscription_journal_lines.extend(
-            self._get_journal_lines_by_account(
-                subscription, account_metrics, journal_details, account_invoices
-            )
+        self._get_journal_lines_by_account(
+            subscription, account_metrics, journal_details, account_invoices
         )
-        self._log(
-            "info",
-            f"Generated {len(subscription_journal_lines)} journal lines for account {account_id}",
-        )
-        return subscription_journal_lines
+        self._log("info", f"Generated journal lines for account {account_id}")
 
     def _get_marketplace_usage_report(self, aws_client):
         """
@@ -890,23 +902,39 @@ class BillingJournalGenerator:
             account_metrics (dict): Account metrics.
             journal_details (dict): Journal metadata.
             account_invoices (dict): Invoices for the account.
-        Returns:
-            list: List of journal line dictionaries.
         """
-        lines = []
         account_id = subscription.get("externalIds", {}).get("vendor", "")
         for line in subscription.get("lines", []):
             item_external_id = line.get("item", {}).get("externalIds", {}).get("vendor")
-            processor = self.journal_line_processors.get(item_external_id)
-            if not processor:
-                self._log("error", f"No processor found for item externalId {item_external_id}")
-                continue
-            lines.extend(
-                processor.process(
-                    account_id, item_external_id, account_metrics, journal_details, account_invoices
+            try:
+                processor = self.journal_line_processors.get(item_external_id)
+                if not processor:
+                    self._log("error", f"No processor found for item externalId {item_external_id}")
+                    continue
+                self.journal_file_lines.extend(
+                    processor.process(
+                        account_id,
+                        item_external_id,
+                        account_metrics,
+                        journal_details,
+                        account_invoices,
+                    )
                 )
-            )
-        return lines
+            except AWSBillingException as ex:
+                self._log(
+                    "exception",
+                    f"Failed to process subscription line {line.get('id')}: {ex}",
+                )
+                error_line = self._manage_line_error(
+                    account_id,
+                    item_external_id,
+                    account_metrics,
+                    journal_details,
+                    account_invoices,
+                    ex,
+                )
+
+                self.journal_file_lines.append(error_line)
 
     @staticmethod
     def _get_invoice_entity_by_service(service_invoice_entity_report):
@@ -970,20 +998,84 @@ class BillingJournalGenerator:
             organization_reports (dict): Organization usage reports.
             organization_invoices (dict): Invoices for the organization.
             journal_details (dict): Journal metadata.
-        Returns:
-            list: List of journal line dictionaries for the MPA account.
         """
         if not first_active_subscription:
             self._log(
                 "info", f"No active subscriptions found to report MPA account {mpa_account} usage"
             )
-            return []
+            return
         account_metrics = self._get_account_metrics(aws_client, organization_reports, mpa_account)
         account_invoices = organization_invoices.get(mpa_account, {})
 
-        return self._get_journal_lines_by_account(
+        self._get_journal_lines_by_account(
             first_active_subscription,
             account_metrics,
             journal_details,
             account_invoices,
+        )
+
+    @staticmethod
+    def _manage_line_error(
+        account_id,
+        item_external_id,
+        account_metrics,
+        journal_details,
+        account_invoices,
+        ex,
+        quality=1,
+        segment="COM",
+    ):
+        """
+        Creates a journal line with error description for a specific account and item.
+        Args:
+            account_id (str): AWS account ID.
+            item_external_id (str): External item ID.
+            account_metrics (dict): Metrics for the account.
+            journal_details (dict): Journal metadata.
+            account_invoices (dict): Invoices for the account.
+            ex (AWSBillingException): Error message to include in the journal line.
+            quality (int, optional): Quality of the item. Defaults to 1.
+            segment (str, optional): Segment for the journal line. Defaults to "COM".
+        """
+        service_name = ex.service_name
+        invoice_id = ""
+        invoice_entity = ""
+        if service_name:
+            invoice_entity = account_metrics.get(
+                UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY.value, {}
+            ).get(service_name, "")
+            invoice_id = account_invoices.get(invoice_entity, {}).get("invoice_id", "")
+        amount = ex.amount
+        error_message = ex.message
+        return JournalLine(
+            description=Description(
+                value1=service_name,
+                value2=f"{account_id}/{invoice_entity}",
+            ),
+            externalIds=ExternalIds(
+                invoice=invoice_id,
+                reference=journal_details["agreement_id"],
+                vendor=journal_details["mpa_id"],
+            ),
+            period=Period(
+                start=journal_details["start_date"],
+                end=journal_details["end_date"],
+            ),
+            price=Price(
+                PPx1=amount,
+                unitPP=amount,
+            ),
+            quantity=quality,
+            search=Search(
+                item=SearchItem(
+                    criteria="item.externalIds.vendor",
+                    value=item_external_id,
+                ),
+                subscription=SearchSubscription(
+                    criteria="subscription.externalIds.vendor",
+                    value=account_id,
+                ),
+            ),
+            segment=segment,
+            error=error_message if error_message else None,
         )
