@@ -28,6 +28,7 @@ class UsageMetricTypeEnum(StrEnum):
     PROVIDER_DISCOUNT = "PROVIDER_DISCOUNT"
     SUPPORT = "SUPPORT"
     REFUND = "REFUND"
+    SAVING_PLANS = "SAVING_PLANS"
 
 
 class AWSServiceEnum(StrEnum):
@@ -42,6 +43,7 @@ class AWSRecordTypeEnum(StrEnum):
     SOLUTION_PROVIDER_PROGRAM_DISCOUNT = "Solution Provider Program Discount"
     SUPPORT = "Support"
     REFUND = "Refund"
+    SAVING_PLAN_RECURRING_FEE = "SavingsPlanRecurringFee"
 
 
 EXCLUDE_USAGE_SERVICES = [AWSServiceEnum.SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE]

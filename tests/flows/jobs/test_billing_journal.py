@@ -1,12 +1,33 @@
-from swo_aws_extension.constants import SubscriptionStatusEnum
-from swo_aws_extension.flows.jobs.billing_journal import BillingJournalGenerator
+import pytest
+
+from swo_aws_extension.constants import (
+    ItemSkusEnum,
+    SubscriptionStatusEnum,
+    UsageMetricTypeEnum,
+)
+from swo_aws_extension.flows.jobs.billing_journal import (
+    BillingJournalGenerator,
+    GenerateItemJournalLines,
+    GenerateJournalLines,
+    GenerateOtherServicesJournalLines,
+    GenerateSupportEnterpriseJournalLines,
+    GenerateSupportJournalLines,
+    get_journal_processors,
+)
 from swo_rql import RQLQuery
 
 
 def test_generate_billing_journals_no_authorizations(
     mocker, mpt_client, requests_mocker, mpt_error_factory, config, aws_client_factory
 ):
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(
+        mpt_client,
+        config,
+        2024,
+        5,
+        ["prod1"],
+        billing_journal_processor=get_journal_processors(config),
+    )
     mocker_get_authorizations = mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
         return_value=None,
@@ -21,7 +42,14 @@ def test_generate_billing_journals_no_authorizations(
 def test_generate_billing_journals_create_journal_empty_agreements(
     mocker, mpt_client, config, aws_client_factory
 ):
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(
+        mpt_client,
+        config,
+        2024,
+        5,
+        ["prod1"],
+        billing_journal_processor=get_journal_processors(config),
+    )
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
@@ -44,7 +72,14 @@ def test_generate_billing_journals_create_journal_empty_agreements(
 def test_generate_billing_journals_authorization_with_no_agreements_create_new_journal(
     mocker, mpt_client, config, aws_client_factory
 ):
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(
+        mpt_client,
+        config,
+        2024,
+        5,
+        ["prod1"],
+        billing_journal_processor=get_journal_processors(config),
+    )
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
@@ -67,7 +102,14 @@ def test_generate_billing_journals_authorization_with_no_agreements_create_new_j
 def test_generate_billing_journals_authorization_no_mpa_found(
     mocker, mpt_client, agreement_factory, config, aws_client_factory
 ):
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(
+        mpt_client,
+        config,
+        2024,
+        5,
+        ["prod1"],
+        billing_journal_processor=get_journal_processors(config),
+    )
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
@@ -98,7 +140,14 @@ def test_generate_billing_journals_authorization_not_active_subscription(
     mock_invoice_by_service_report_factory,
     mock_marketplace_report_factory,
 ):
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(
+        mpt_client,
+        config,
+        2024,
+        5,
+        ["prod1"],
+        billing_journal_processor=get_journal_processors(config),
+    )
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
@@ -135,7 +184,14 @@ def test_generate_billing_journals_authorization_not_active_subscription(
 def test_generate_billing_journals_authorization_exception(
     mocker, mpt_client, agreement_factory, subscriptions_factory, config, aws_client_factory
 ):
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(
+        mpt_client,
+        config,
+        2024,
+        5,
+        ["prod1"],
+        billing_journal_processor=get_journal_processors(config),
+    )
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
@@ -184,7 +240,13 @@ def test_generate_billing_journals_authorization_upload_file(
     mock_report_type_and_usage_report_factory,
 ):
     generator = BillingJournalGenerator(
-        mpt_client, config, 2024, 5, ["prod1"], authorizations=["AUTH-1"]
+        mpt_client,
+        config,
+        2024,
+        5,
+        ["prod1"],
+        billing_journal_processor=get_journal_processors(config),
+        authorizations=["AUTH-1"],
     )
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
@@ -244,7 +306,14 @@ def test_generate_agreement_journal_lines_subscription_exception(
     mock_marketplace_report_factory,
     mock_invoice_by_service_report_factory,
 ):
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(
+        mpt_client,
+        config,
+        2024,
+        5,
+        ["prod1"],
+        billing_journal_processor=get_journal_processors(config),
+    )
     agreement_data = agreement_factory(
         vendor_id="123456789012",
         subscriptions=subscriptions_factory(
@@ -284,7 +353,14 @@ def test_generate_agreement_journal_lines_aws_client_error(
 ):
     from swo_aws_extension.aws.errors import AWSError
 
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(
+        mpt_client,
+        config,
+        2024,
+        5,
+        ["prod1"],
+        billing_journal_processor=get_journal_processors(config),
+    )
     agreement_data = agreement_factory(
         vendor_id="123456789012",
         subscriptions=subscriptions_factory(
@@ -322,7 +398,14 @@ def test_generate_subscription_journal_lines_exception(
     subscriptions_factory,
     config,
 ):
-    generator = BillingJournalGenerator(mpt_client, config, 2024, 5, ["prod1"])
+    generator = BillingJournalGenerator(
+        mpt_client,
+        config,
+        2024,
+        5,
+        ["prod1"],
+        billing_journal_processor=get_journal_processors(config),
+    )
     subscription = subscriptions_factory(
         vendor_id="1234-1234-1234", status=SubscriptionStatusEnum.ACTIVE
     )[0]
@@ -356,259 +439,89 @@ def test_generate_subscription_journal_lines_exception(
     upload_mock.assert_not_called()
 
 
-def test_generate_billing_journals_authorization_other_services(
-    mocker,
-    mpt_client,
-    agreement_factory,
-    subscriptions_factory,
-    mock_marketplace_report_factory,
-    data_aws_invoice_summary_factory,
-    mock_invoice_by_service_report_factory,
-    config,
-    aws_client_factory,
-    mock_marketplace_report_group_factory,
-    mock_report_type_and_usage_report_group_factory,
-    mock_report_type_and_usage_report_factory,
-):
-    generator = BillingJournalGenerator(
-        mpt_client, config, 2024, 5, ["prod1"], authorizations=["AUTH-1"]
-    )
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
-        return_value=[{"id": "AUTH-1"}],
-    )
-    mock_journal_query = mocker.patch.object(generator.mpt_api_client.billing.journal, "query")
-    mock_journal_query.return_value.all.return_value = [{"id": "JOURNAL-1", "status": "Draft"}]
-    mock_create = mocker.patch.object(
-        generator.mpt_api_client.billing.journal, "create", return_value={"id": "JOURNAL-1"}
-    )
-    linked_account = "1234-1234-1234"
-    subscriptions = subscriptions_factory(
-        vendor_id=linked_account,
-        status=SubscriptionStatusEnum.ACTIVE,
-    )
-    mpa_account = "123456789012"
-    agreement_data = agreement_factory(vendor_id=mpa_account, subscriptions=subscriptions)
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
-        return_value=[agreement_data],
-    )
-    _, aws_mock = aws_client_factory(config, "aws_mpa", "aws_role")
-
-    groups = mock_marketplace_report_group_factory(
-        account_id=linked_account, service_name="AWS service name"
-    )
-    groups.extend(mock_marketplace_report_group_factory(account_id=mpa_account))
-    report_type_and_usage_report_group = mock_report_type_and_usage_report_group_factory(
-        service_amount="200",
-        provider_discount_amount="0",
-    )
-    report_type_and_usage_report_group.extend(
-        mock_report_type_and_usage_report_group_factory(
-            service_name="other_aws-services",
-            record_type="Usage",
-            service_amount="200",
-            provider_discount_amount="0",
-        )
-    )
-    report_type_and_usage_report_group.extend(
-        mock_report_type_and_usage_report_group_factory(
-            service_name="free_aws-services",
-            record_type="Usage",
-            service_amount="0",
-            provider_discount_amount="0",
-        )
-    )
-
-    aws_mock.get_cost_and_usage.side_effect = [
-        mock_marketplace_report_factory(groups=groups),
-        mock_invoice_by_service_report_factory(),
-        mock_report_type_and_usage_report_factory(),
-        mock_invoice_by_service_report_factory(),
-        mock_report_type_and_usage_report_factory(groups=report_type_and_usage_report_group),
-    ]
-    aws_mock.list_invoice_summaries.side_effect = [
-        {
-            "InvoiceSummaries": [
-                data_aws_invoice_summary_factory(account_id=linked_account),
-                data_aws_invoice_summary_factory(account_id=mpa_account),
-            ],
-        },
-    ]
-    upload_mock = mocker.patch.object(generator.mpt_api_client.billing.journal, "upload")
-
-    generator.generate_billing_journals()
-    mock_create.assert_not_called()
-    upload_mock.assert_called_once()
+def test_generate_item_journal_lines_process_not_implemented():
+    base = GenerateItemJournalLines("metric", 1, 0)
+    with pytest.raises(NotImplementedError):
+        base.process("account_id", "item_external_id", {}, {}, {})
 
 
-def test_generate_billing_journals_support_enterprise(
-    mocker,
-    mpt_client,
-    agreement_factory,
-    subscriptions_factory,
-    mock_marketplace_report_factory,
-    data_aws_invoice_summary_factory,
-    mock_invoice_by_service_report_factory,
-    config,
-    aws_client_factory,
-    mock_marketplace_report_group_factory,
-    mock_report_type_and_usage_report_group_factory,
-    mock_report_type_and_usage_report_factory,
-):
-    generator = BillingJournalGenerator(
-        mpt_client, config, 2024, 5, ["prod1"], authorizations=["AUTH-1"]
-    )
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
-        return_value=[{"id": "AUTH-1"}],
-    )
-    mock_journal_query = mocker.patch.object(generator.mpt_api_client.billing.journal, "query")
-    mock_journal_query.return_value.all.return_value = [{"id": "JOURNAL-1", "status": "Draft"}]
-    mock_create = mocker.patch.object(
-        generator.mpt_api_client.billing.journal, "create", return_value={"id": "JOURNAL-1"}
-    )
-    linked_account = "1234-1234-1234"
-    subscriptions = subscriptions_factory(
-        vendor_id=linked_account,
-        status=SubscriptionStatusEnum.ACTIVE,
-    )
-    mpa_account = "123456789012"
-    agreement_data = agreement_factory(vendor_id=mpa_account, subscriptions=subscriptions)
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
-        return_value=[agreement_data],
-    )
-    _, aws_mock = aws_client_factory(config, "aws_mpa", "aws_role")
-
-    groups = mock_marketplace_report_group_factory(
-        account_id=linked_account, service_name="AWS service name"
-    )
-    groups.extend(mock_marketplace_report_group_factory(account_id=mpa_account))
-    report_type_and_usage_report_group = mock_report_type_and_usage_report_group_factory(
-        service_amount="200",
-        provider_discount_amount="0",
-    )
-    report_type_and_usage_report_group.extend(
-        mock_report_type_and_usage_report_group_factory(
-            service_name="support entrerprise",
-            record_type="Support",
-            service_amount="100",
-            provider_discount_amount="0",
-        )
-    )
-    report_type_and_usage_report_group.extend(
-        mock_report_type_and_usage_report_group_factory(
-            service_name="refund",
-            record_type="Refund",
-            service_amount="35",
-            provider_discount_amount="0",
-        )
+def test_generate_marketplace_journal_lines_process(mock_journal_args):
+    proc = GenerateJournalLines(
+        UsageMetricTypeEnum.MARKETPLACE, billing_discount_tolerance_rate=1, discount=0
     )
 
-    aws_mock.get_cost_and_usage.side_effect = [
-        mock_marketplace_report_factory(groups=groups),
-        mock_invoice_by_service_report_factory(),
-        mock_report_type_and_usage_report_factory(),
-        mock_invoice_by_service_report_factory(),
-        mock_report_type_and_usage_report_factory(groups=report_type_and_usage_report_group),
-    ]
-    aws_mock.list_invoice_summaries.side_effect = [
-        {
-            "InvoiceSummaries": [
-                data_aws_invoice_summary_factory(account_id=linked_account),
-                data_aws_invoice_summary_factory(account_id=mpa_account),
-            ],
-        },
-    ]
-    upload_mock = mocker.patch.object(generator.mpt_api_client.billing.journal, "upload")
+    args = mock_journal_args
+    args["item_external_id"] = ItemSkusEnum.AWS_MARKETPLACE
 
-    generator.generate_billing_journals()
-    mock_create.assert_not_called()
-    upload_mock.assert_called_once()
+    result = proc.process(**args)
+
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert result[0]["description"]["value1"] == "Marketplace service"
 
 
-def test_generate_billing_journals_support_business(
-    mocker,
-    mpt_client,
-    agreement_factory,
-    subscriptions_factory,
-    mock_marketplace_report_factory,
-    data_aws_invoice_summary_factory,
-    mock_invoice_by_service_report_factory,
-    config,
-    aws_client_factory,
-    mock_marketplace_report_group_factory,
-    mock_report_type_and_usage_report_group_factory,
-    mock_report_type_and_usage_report_factory,
-):
-    generator = BillingJournalGenerator(
-        mpt_client, config, 2024, 5, ["prod1"], authorizations=["AUTH-1"]
+def test_generate_usage_journal_lines_process(mock_journal_args):
+    proc = GenerateJournalLines(
+        UsageMetricTypeEnum.USAGE, billing_discount_tolerance_rate=1, discount=7
     )
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
-        return_value=[{"id": "AUTH-1"}],
-    )
-    mock_journal_query = mocker.patch.object(generator.mpt_api_client.billing.journal, "query")
-    mock_journal_query.return_value.all.return_value = [{"id": "JOURNAL-1", "status": "Draft"}]
-    mock_create = mocker.patch.object(
-        generator.mpt_api_client.billing.journal, "create", return_value={"id": "JOURNAL-1"}
-    )
-    linked_account = "1234-1234-1234"
-    subscriptions = subscriptions_factory(
-        vendor_id=linked_account,
-        status=SubscriptionStatusEnum.ACTIVE,
-    )
-    mpa_account = "123456789012"
-    agreement_data = agreement_factory(vendor_id=mpa_account, subscriptions=subscriptions)
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
-        return_value=[agreement_data],
-    )
-    _, aws_mock = aws_client_factory(config, "aws_mpa", "aws_role")
+    args = mock_journal_args
+    args["item_external_id"] = ItemSkusEnum.AWS_USAGE
+    result = proc.process(**args)
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert result[0]["description"]["value1"] == "Usage service"
 
-    groups = mock_marketplace_report_group_factory(
-        account_id=linked_account, service_name="AWS service name"
-    )
-    groups.extend(mock_marketplace_report_group_factory(account_id=mpa_account))
-    report_type_and_usage_report_group = mock_report_type_and_usage_report_group_factory(
-        service_amount="200",
-        provider_discount_amount="0",
-    )
-    report_type_and_usage_report_group.extend(
-        mock_report_type_and_usage_report_group_factory(
-            service_name="support business",
-            record_type="Support",
-            service_amount="100",
-            provider_discount_amount="0",
-        )
-    )
-    report_type_and_usage_report_group.extend(
-        mock_report_type_and_usage_report_group_factory(
-            service_name="refund",
-            record_type="Refund",
-            service_amount="7",
-            provider_discount_amount="0",
-        )
-    )
 
-    aws_mock.get_cost_and_usage.side_effect = [
-        mock_marketplace_report_factory(groups=groups),
-        mock_invoice_by_service_report_factory(),
-        mock_report_type_and_usage_report_factory(),
-        mock_invoice_by_service_report_factory(),
-        mock_report_type_and_usage_report_factory(groups=report_type_and_usage_report_group),
-    ]
-    aws_mock.list_invoice_summaries.side_effect = [
-        {
-            "InvoiceSummaries": [
-                data_aws_invoice_summary_factory(account_id=linked_account),
-                data_aws_invoice_summary_factory(account_id=mpa_account),
-            ],
-        },
-    ]
-    upload_mock = mocker.patch.object(generator.mpt_api_client.billing.journal, "upload")
+def test_generate_usage_incentivate_journal_lines_process(mock_journal_args):
+    proc = GenerateJournalLines(
+        UsageMetricTypeEnum.USAGE, billing_discount_tolerance_rate=1, discount=12
+    )
+    args = mock_journal_args
+    args["item_external_id"] = ItemSkusEnum.AWS_USAGE
+    result = proc.process(**args)
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert result[0]["description"]["value1"] == "Usage service incentivate"
 
-    generator.generate_billing_journals()
-    mock_create.assert_not_called()
-    upload_mock.assert_called_once()
+
+def test_generate_other_services_journal_lines_process(mock_journal_args):
+    proc = GenerateOtherServicesJournalLines(
+        UsageMetricTypeEnum.USAGE, billing_discount_tolerance_rate=1, discount=0
+    )
+    args = mock_journal_args
+    args["item_external_id"] = ItemSkusEnum.AWS_OTHER_SERVICES
+
+    result = proc.process(**args)
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert result[0]["description"]["value1"] == "Other AWS services"
+
+
+def test_generate_support_journal_lines_process(mock_journal_args):
+    proc = GenerateSupportJournalLines(
+        UsageMetricTypeEnum.SUPPORT, billing_discount_tolerance_rate=1, discount=7
+    )
+    args = mock_journal_args
+    args["item_external_id"] = ItemSkusEnum.AWS_SUPPORT
+    args["account_metrics"][UsageMetricTypeEnum.SUPPORT] = {"AWS Support (Business)": 100}
+    args["account_metrics"][UsageMetricTypeEnum.REFUND] = {"refund": 7}
+
+    result = proc.process(**args)
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert result[0]["description"]["value1"] == "AWS Support (Business)"
+
+
+def test_generate_support_enterprise_journal_lines_process(mock_journal_args):
+    proc = GenerateSupportEnterpriseJournalLines(
+        UsageMetricTypeEnum.SUPPORT, billing_discount_tolerance_rate=1, discount=35
+    )
+    args = mock_journal_args
+    args["item_external_id"] = ItemSkusEnum.AWS_SUPPORT_ENTERPRISE
+    args["account_metrics"][UsageMetricTypeEnum.SUPPORT] = {"AWS Support (Enterprise)": 100}
+    args["account_metrics"][UsageMetricTypeEnum.REFUND] = {"refund": 35}
+
+    result = proc.process(**args)
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert result[0]["description"]["value1"] == "AWS Support (Enterprise)"
