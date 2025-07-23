@@ -26,7 +26,6 @@ from swo_aws_extension.constants import (
     COST_EXPLORER_DATE_FORMAT,
     EXCLUDE_USAGE_SERVICES,
     JOURNAL_PENDING_STATUS,
-    SERVICE_INVOICE_ENTITY,
     SWO_EXTENSION_BILLING_ROLE,
     SYNCHRONIZATION_ERROR,
     AgreementStatusEnum,
@@ -109,6 +108,12 @@ def get_journal_processors(config):
         ItemSkusEnum.SAVING_PLANS_RECURRING_FEE_INCENTIVATE: GenerateJournalLines(
             UsageMetricTypeEnum.SAVING_PLANS, tolerance, config.billing_discount_incentivate
         ),
+        ItemSkusEnum.UPFRONT: GenerateJournalLines(
+            UsageMetricTypeEnum.RECURRING, tolerance, config.billing_discount_base
+        ),
+        ItemSkusEnum.UPFRONT_INCENTIVATE: GenerateJournalLines(
+            UsageMetricTypeEnum.RECURRING, tolerance, config.billing_discount_incentivate
+        ),
     }
 
 
@@ -186,7 +191,9 @@ class GenerateItemJournalLines:
                 ).get(service_name, 0)
                 if not self._is_service_discount_valid(amount, partner_discount, target_discount):
                     continue
-            invoice_entity = account_metrics.get(SERVICE_INVOICE_ENTITY, {}).get(service_name, "")
+            invoice_entity = account_metrics.get(
+                UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY, {}
+            ).get(service_name, "")
             invoice_id = account_invoices.get(invoice_entity, {}).get("invoice_id", "")
             journal_lines.append(
                 self._create_journal_line(
@@ -844,8 +851,8 @@ class BillingJournalGenerator:
         service_invoice_entity = self._get_service_invoice_entity_by_account_id_report(
             aws_client, account_id
         )
-        account_metrics[SERVICE_INVOICE_ENTITY] = self._get_invoice_entity_by_service(
-            service_invoice_entity
+        account_metrics[UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY] = (
+            self._get_invoice_entity_by_service(service_invoice_entity)
         )
         record_type_and_service_cost = self._get_record_type_and_service_cost_by_account_report(
             aws_client, account_id
@@ -864,6 +871,9 @@ class BillingJournalGenerator:
         )
         account_metrics[UsageMetricTypeEnum.PROVIDER_DISCOUNT] = self._get_metrics_by_key(
             record_type_and_service_cost, AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT
+        )
+        account_metrics[UsageMetricTypeEnum.RECURRING] = self._get_metrics_by_key(
+            record_type_and_service_cost, AWSRecordTypeEnum.RECURRING
         )
         return account_metrics
 
