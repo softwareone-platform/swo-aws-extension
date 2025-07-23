@@ -24,7 +24,6 @@ from swo_aws_extension.constants import (
     AccountTypesEnum,
     AWSRecordTypeEnum,
     AWSServiceEnum,
-    ItemSkusEnum,
     PhasesEnum,
     SupportTypesEnum,
     TerminationParameterChoices,
@@ -48,7 +47,8 @@ CREATED_AT = "2023-12-14T18:02:16.9359"
 META = "$meta"
 ACCOUNT_EMAIL = "test@aws.com"
 ACCOUNT_NAME = "Account Name"
-SERVICE_NAME = "SUSE Linux Enterprise"
+SERVICE_NAME = "Marketplace service"
+INVOICE_ENTITY = "Amazon Web Services EMEA SARL"
 
 
 @pytest.fixture()
@@ -1226,7 +1226,7 @@ def data_aws_invoice_summary_factory():
         billing_period_month=4,
         billing_period_year=2025,
         total_amount="0.00",
-        invoice_entity="Amazon Web Services EMEA SARL",
+        invoice_entity=INVOICE_ENTITY,
     ):
         return {
             "AccountId": account_id,
@@ -1952,7 +1952,7 @@ def mock_marketplace_report_group_factory():
                     account_id,
                     service_name,
                 ],
-                "Metrics": {"UnblendedCost": {"Amount": "718.461", "Unit": "USD"}},
+                "Metrics": {"UnblendedCost": {"Amount": "100", "Unit": "USD"}},
             },
             {
                 "Keys": [account_id, "Tax"],
@@ -1986,28 +1986,37 @@ def mock_marketplace_report_factory(mock_marketplace_report_group_factory):
 
 
 @pytest.fixture
-def mock_invoice_by_service_report_factory():
-    def _invoice_by_service_report(
-        service_name="AWS service name", invoice_entity="Amazon Web Services EMEA SARL"
+def mock_invoice_by_service_report_group_factory():
+    def _invoice_by_service_report_group(
+        service_name="AWS service name", invoice_entity=INVOICE_ENTITY
     ):
+        return [
+            {
+                "Keys": [
+                    service_name,
+                    invoice_entity,
+                ],
+                "Metrics": {"UnblendedCost": {"Amount": "718.461", "Unit": "USD"}},
+            }
+        ]
+
+    return _invoice_by_service_report_group
+
+
+@pytest.fixture
+def mock_invoice_by_service_report_factory(mock_invoice_by_service_report_group_factory):
+    def _invoice_by_service_report(groups=None):
+        groups = groups or mock_invoice_by_service_report_group_factory()
         return {
             "GroupDefinitions": [
-                {"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"},
                 {"Type": "DIMENSION", "Key": "SERVICE"},
+                {"Type": "DIMENSION", "Key": "INVOICING_ENTITY"},
             ],
             "ResultsByTime": [
                 {
                     "TimePeriod": {"Start": "2025-04-01", "End": "2025-05-01"},
                     "Total": {},
-                    "Groups": [
-                        {
-                            "Keys": [
-                                service_name,
-                                invoice_entity,
-                            ],
-                            "Metrics": {"UnblendedCost": {"Amount": "718.461", "Unit": "USD"}},
-                        }
-                    ],
+                    "Groups": groups,
                     "Estimated": False,
                 }
             ],
@@ -2063,7 +2072,31 @@ def mock_report_type_and_usage_report_factory(mock_report_type_and_usage_report_
     return _report_type_and_usage_report
 
 
-def build_usage_metrics(generator, report_factory, group_factory, account_id):
+def build_usage_metrics(generator, report):
+    return {
+        UsageMetricTypeEnum.USAGE: generator._get_metrics_by_key(report, AWSRecordTypeEnum.USAGE),
+        UsageMetricTypeEnum.SAVING_PLANS: generator._get_metrics_by_key(
+            report, AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE
+        ),
+        UsageMetricTypeEnum.PROVIDER_DISCOUNT: generator._get_metrics_by_key(
+            report, AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT
+        ),
+        UsageMetricTypeEnum.REFUND: generator._get_metrics_by_key(report, AWSRecordTypeEnum.REFUND),
+        UsageMetricTypeEnum.SUPPORT: generator._get_metrics_by_key(
+            report, AWSRecordTypeEnum.SUPPORT
+        ),
+        UsageMetricTypeEnum.RECURRING: generator._get_metrics_by_key(
+            report, AWSRecordTypeEnum.RECURRING
+        ),
+    }
+
+
+def get_usage_data(
+    generator,
+    report_factory,
+    group_factory,
+    mock_invoice_by_service_report_group_factory,
+):
     group_params = [
         {
             "service_name": "Usage service",
@@ -2092,7 +2125,7 @@ def build_usage_metrics(generator, report_factory, group_factory, account_id):
         {
             "service_name": "Other AWS services",
             "record_type": AWSRecordTypeEnum.USAGE,
-            "service_amount": "200",
+            "service_amount": "100",
             "provider_discount_amount": "0",
         },
         {
@@ -2114,13 +2147,13 @@ def build_usage_metrics(generator, report_factory, group_factory, account_id):
             "provider_discount_amount": "0",
         },
         {
-            "service_name": "Support business",
+            "service_name": "AWS Support (Business)",
             "record_type": AWSRecordTypeEnum.SUPPORT,
             "service_amount": "100",
             "provider_discount_amount": "0",
         },
         {
-            "service_name": "Support Enterprise",
+            "service_name": "AWS Support (Enterprise)",
             "record_type": AWSRecordTypeEnum.SUPPORT,
             "service_amount": "100",
             "provider_discount_amount": "0",
@@ -2131,24 +2164,29 @@ def build_usage_metrics(generator, report_factory, group_factory, account_id):
             "service_amount": "100",
             "provider_discount_amount": "0",
         },
+        {
+            "service_name": "Upfront service",
+            "record_type": AWSRecordTypeEnum.RECURRING,
+            "service_amount": "100",
+            "provider_discount_amount": "7",
+        },
+        {
+            "service_name": "Upfront service incentivate",
+            "record_type": AWSRecordTypeEnum.RECURRING,
+            "service_amount": "100",
+            "provider_discount_amount": "12",
+        },
     ]
     all_groups = []
+    usage_invoice_groups = []
     for params in group_params:
         all_groups += group_factory(**params)
+        usage_invoice_groups.extend(
+            mock_invoice_by_service_report_group_factory(params["service_name"])
+        )
     report = report_factory(groups=all_groups)["ResultsByTime"]
-    return {
-        UsageMetricTypeEnum.USAGE: generator._get_metrics_by_key(report, AWSRecordTypeEnum.USAGE),
-        UsageMetricTypeEnum.SAVING_PLANS: generator._get_metrics_by_key(
-            report, AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE
-        ),
-        UsageMetricTypeEnum.PROVIDER_DISCOUNT: generator._get_metrics_by_key(
-            report, AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT
-        ),
-        UsageMetricTypeEnum.REFUND: generator._get_metrics_by_key(report, AWSRecordTypeEnum.REFUND),
-        UsageMetricTypeEnum.SUPPORT: generator._get_metrics_by_key(
-            report, AWSRecordTypeEnum.SUPPORT
-        ),
-    }
+    usage_metrics = build_usage_metrics(generator, report)
+    return usage_metrics, usage_invoice_groups
 
 
 @pytest.fixture
@@ -2159,41 +2197,83 @@ def mock_journal_args(
     mock_report_type_and_usage_report_factory,
     mock_marketplace_report_group_factory,
     mock_marketplace_report_factory,
+    mock_invoice_by_service_report_group_factory,
+    mock_invoice_by_service_report_factory,
 ):
-    account_id = "1234567890"
-    generator = BillingJournalGenerator(
-        mpt_client,
-        config,
-        2024,
-        5,
-        ["prod1"],
-        billing_journal_processor=get_journal_processors(config),
-        authorizations=["AUTH-1"],
-    )
-    account_metrics = build_usage_metrics(
-        generator,
-        mock_report_type_and_usage_report_factory,
-        mock_report_type_and_usage_report_group_factory,
-        account_id,
-    )
+    def _journal_args(item_external_id):
+        account_id = "1234567890"
+        generator = BillingJournalGenerator(
+            mpt_client,
+            config,
+            2024,
+            5,
+            ["prod1"],
+            billing_journal_processor=get_journal_processors(config),
+            authorizations=["AUTH-1"],
+        )
+        account_metrics, usage_invoice_report = get_usage_data(
+            generator,
+            mock_report_type_and_usage_report_factory,
+            mock_report_type_and_usage_report_group_factory,
+            mock_invoice_by_service_report_group_factory,
+        )
 
-    groups = mock_marketplace_report_group_factory(
-        account_id=account_id, service_name="Marketplace service"
-    )
-    report = mock_marketplace_report_factory(groups=groups)["ResultsByTime"]
-    account_metrics[UsageMetricTypeEnum.MARKETPLACE] = generator._get_metrics_by_key(
-        report, account_id
-    )
+        groups = mock_marketplace_report_group_factory(
+            account_id=account_id, service_name="Marketplace service"
+        )
+        report = mock_marketplace_report_factory(groups=groups)["ResultsByTime"]
+        account_metrics[UsageMetricTypeEnum.MARKETPLACE] = generator._get_metrics_by_key(
+            report, account_id
+        )
+        marketplace_invoice_report = mock_invoice_by_service_report_group_factory(SERVICE_NAME)
 
-    return {
-        "account_id": "acc1",
-        "item_external_id": ItemSkusEnum.AWS_MARKETPLACE,
-        "account_metrics": account_metrics,
-        "journal_details": {
-            "agreement_id": "agreement_id",
-            "mpa_id": "mpa_id",
-            "start_date": "2025-01-01",
-            "end_date": "2025-02-01",
-        },
-        "account_invoices": {"entity1": {"invoice_id": "inv1"}},
-    }
+        service_invoice_entity = mock_invoice_by_service_report_factory(
+            marketplace_invoice_report + usage_invoice_report
+        )["ResultsByTime"]
+
+        account_metrics[UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY] = (
+            generator._get_invoice_entity_by_service(service_invoice_entity)
+        )
+        return {
+            "account_id": account_id,
+            "item_external_id": item_external_id,
+            "account_metrics": account_metrics,
+            "journal_details": {
+                "agreement_id": "agreement_id",
+                "mpa_id": "mpa_id",
+                "start_date": "2025-01-01",
+                "end_date": "2025-02-01",
+            },
+            "account_invoices": {INVOICE_ENTITY: {"invoice_id": "EUINGB25-2163550"}},
+        }
+
+    return _journal_args
+
+
+@pytest.fixture
+def mock_journal_line_factory():
+    def _journal_line(
+        service_name="service name",
+        account_id="1234567890",
+        invoice_entity=INVOICE_ENTITY,
+        invoice_id="EUINGB25-2163550",
+        item_external_id="",
+    ):
+        value2 = f"{account_id}/{invoice_entity}"
+        return {
+            "description": {"value1": service_name, "value2": value2},
+            "externalIds": {"invoice": invoice_id, "reference": "agreement_id", "vendor": "mpa_id"},
+            "period": {"end": "2025-02-01", "start": "2025-01-01"},
+            "price": {"PPx1": 100.0, "unitPP": 100.0},
+            "quantity": 1,
+            "search": {
+                "item": {"criteria": "item.externalIds.vendor", "value": item_external_id},
+                "subscription": {
+                    "criteria": "subscription.externalIds.vendor",
+                    "value": account_id,
+                },
+            },
+            "segment": "COM",
+        }
+
+    return _journal_line
