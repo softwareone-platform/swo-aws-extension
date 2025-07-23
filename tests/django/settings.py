@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "swo.mpt.extensions.runtime.djapp.apps.DjAppConfig",
+    "mpt_extension_sdk.runtime.djapp.apps.DjAppConfig",
     "swo_aws_extension.apps.ExtensionConfig",
 ]
 
@@ -54,7 +54,7 @@ MIDDLEWARE = [
     "mpt_extension_sdk.runtime.djapp.middleware.MPTClientMiddleware",
 ]
 
-ROOT_URLCONF = "swo.mpt.extensions.runtime.djapp.conf.urls"
+ROOT_URLCONF = "mpt_extension_sdk.runtime.djapp.conf.urls"
 
 TEMPLATES = [
     {
@@ -145,7 +145,7 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
-        "swo.mpt.extensions.runtime": {
+        "swo.mpt": {
             "handlers": ["console"],
             "level": "DEBUG",
             "propagate": False,
@@ -178,7 +178,17 @@ MPT_NOTIFY_CATEGORIES = json.loads(
 
 
 EXTENSION_CONFIG = {
-    "WEBHOOKS_SECRETS": {"PRD-1111-1111": "that's my awesome test secret"},
+    "WEBHOOKS_SECRETS": {
+        "PRD-1111-1111": "test secret 1",
+        "PRD-1234-1234": "test secret 2",
+        "PRD-1975-5250": "test secret 3",
+        "PRD-1234-5678": "test secret 4",
+        "PRD-1": "test secret 5",
+        "PRD-2": "test secret 6",
+        "123": "test secret 7",
+        "456": "test secret 8",
+        "PRD-123-123-002": "test secret 9",
+    },
     "MAX_RETRY_ATTEMPS": "10",
     "DUE_DATE_DAYS": "30",
     "CCP_CLIENT_ID": "client_id",
@@ -196,3 +206,5 @@ EXTENSION_CONFIG = {
     "CCP_OAUTH_CREDENTIALS_SCOPE": "ccp-oauth-credentials-scope",
 }
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"
+
+INITIALIZER = os.getenv("MPT_INITIALIZER", "swo_aws_extension.initializer.initialize")
