@@ -1,37 +1,38 @@
-import json
 import os
 
+os.environ.setdefault("MPT_INITIALIZER", "swo_runtime.initializer.initialize")
 import rich
+from mpt_extension_sdk.constants import (
+    DEFAULT_APP_CONFIG_GROUP,
+    DEFAULT_APP_CONFIG_NAME,
+)
+from mpt_extension_sdk.runtime.djapp.conf import extract_product_ids
+from mpt_extension_sdk.runtime.events.utils import instrument_logging
+from mpt_extension_sdk.runtime.utils import get_extension_app_config_name, get_extension_variables
 from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 from rich.theme import Theme
-from swo.mpt.extensions.runtime.djapp.conf import extract_product_ids
-from mpt_extension_sdk.runtime.events.utils import instrument_logging
-from mpt_extension_sdk.runtime.utils import get_extension_app_config_name
-from mpt_extension_sdk.runtime.utils import get_extension_variables
 
+# Import env_setup to ensure Django settings are configured
+from . import env_setup  # noqa: F401
 
 JSON_EXT_VARIABLES = {
     "EXT_WEBHOOKS_SECRETS",
 }
 
 
-def initialize(options):
+def initialize(options, group=DEFAULT_APP_CONFIG_GROUP, name=DEFAULT_APP_CONFIG_NAME):
     rich.reconfigure(theme=Theme({"repr.mpt_id": "bold light_salmon3"}))
-
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "swo.mpt.extensions.runtime.djapp.conf.default")
     import django
     from django.conf import settings
 
     root_logging_handler = "rich" if options.get("color") else "console"
+
     if settings.USE_APPLICATIONINSIGHTS:
         logging_handlers = [root_logging_handler, "opentelemetry"]
     else:
         logging_handlers = [root_logging_handler]
 
     logging_level = "DEBUG" if options.get("debug") else "INFO"
-
-    group = "swo.mpt.ext"
-    name = "app_config"
 
     app_config_name = get_extension_app_config_name(group=group, name=name)
     app_root_module, _ = app_config_name.split(".", 1)
@@ -50,7 +51,6 @@ def initialize(options):
 
     if settings.USE_APPLICATIONINSIGHTS:
         instrument_logging()
-        # TODO: SDK candidate
         BotocoreInstrumentor().instrument()
 
     django.setup()

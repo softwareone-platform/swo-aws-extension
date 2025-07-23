@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "swo.mpt.extensions.runtime.djapp.apps.DjAppConfig",
+    "mpt_extension_sdk.runtime.djapp.apps.DjAppConfig",
     "swo_aws_extension.apps.ExtensionConfig",
 ]
 
@@ -54,7 +54,7 @@ MIDDLEWARE = [
     "mpt_extension_sdk.runtime.djapp.middleware.MPTClientMiddleware",
 ]
 
-ROOT_URLCONF = "swo.mpt.extensions.runtime.djapp.conf.urls"
+ROOT_URLCONF = "mpt_extension_sdk.runtime.djapp.conf.urls"
 
 TEMPLATES = [
     {
@@ -145,7 +145,7 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
-        "swo.mpt.extensions.runtime": {
+        "mpt_extension_sdk.runtime": {
             "handlers": ["console"],
             "level": "DEBUG",
             "propagate": False,
@@ -196,3 +196,5 @@ EXTENSION_CONFIG = {
     "CCP_OAUTH_CREDENTIALS_SCOPE": "ccp-oauth-credentials-scope",
 }
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"
+
+INITIALIZER = os.getenv("MPT_INITIALIZER", "swo_runtime.initializer.initialize")

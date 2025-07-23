@@ -7,10 +7,11 @@ import jwt
 import pytest
 import responses
 from django.conf import settings
+from django.test import override_settings
 from mpt_extension_sdk.core.events.dataclasses import Event
 from mpt_extension_sdk.flows.context import ORDER_TYPE_TERMINATION
+from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 from rich.highlighter import ReprHighlighter as _ReprHighlighter
-from swo.mpt.extensions.runtime.djapp.conf import get_for_product
 
 from swo_aws_extension.airtable.models import (
     AirTableBaseInfo,
@@ -43,6 +44,19 @@ META = "$meta"
 ACCOUNT_EMAIL = "test@aws.com"
 ACCOUNT_NAME = "Account Name"
 SERVICE_NAME = "SUSE Linux Enterprise"
+PARAM_COMPANY_NAME = "ACME Inc"
+AWESOME_PRODUCT = "Awesome product"
+CREATED_AT = "2023-12-14T18:02:16.9359"
+META = "$meta"
+ACCOUNT_EMAIL = "test@aws.com"
+ACCOUNT_NAME = "Account Name"
+SERVICE_NAME = "SUSE Linux Enterprise"
+
+
+@pytest.fixture(autouse=True)
+def force_test_settings():
+    with override_settings(DJANGO_SETTINGS_MODULE="tests.django.settings"):
+        yield
 
 
 @pytest.fixture
@@ -865,8 +879,8 @@ def mock_runtime_master_options():
 @pytest.fixture
 def mock_swoext_commands():
     return (
-        "swo.mpt.extensions.runtime.commands.run.run",
-        "swo.mpt.extensions.runtime.commands.django.django",
+        "mpt_extension_sdk.runtime.commands.run.run",
+        "mpt_extension_sdk.runtime.commands.django.django",
     )
 
 
@@ -1058,12 +1072,15 @@ def mock_valid_env_values(
 
 @pytest.fixture
 def mock_worker_initialize(mocker):
-    return mocker.patch("swo.mpt.extensions.runtime.workers.initialize")
+    def mock_initialize(options, group=None, name=None):
+        pass
+
+    return mocker.Mock(side_effect=mock_initialize)
 
 
 @pytest.fixture
 def mock_worker_call_command(mocker):
-    return mocker.patch("swo.mpt.extensions.runtime.workers.call_command")
+    return mocker.patch("mpt_extension_sdk.runtime.workers.call_command")
 
 
 @pytest.fixture
@@ -2074,3 +2091,11 @@ def mock_report_type_and_usage_report_factory(mock_report_type_and_usage_report_
         }
 
     return _report_type_and_usage_report
+
+
+@pytest.fixture
+def mock_app_insights_instrumentation_key():
+    return (
+        "InstrumentationKey=12345678-1234-1234-1234-123456789012;"
+        "IngestionEndpoint=https://test.applicationinsights.azure.com/"
+    )

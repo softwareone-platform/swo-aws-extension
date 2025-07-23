@@ -1,5 +1,5 @@
 from django.core.wsgi import get_wsgi_application
-from swo.mpt.extensions.runtime.workers import (
+from mpt_extension_sdk.runtime.workers import (
     ExtensionWebApplication,
     start_event_consumer,
     start_gunicorn,
@@ -41,7 +41,7 @@ def test_event_consumer(
     }
     mock_initialize = mock_worker_initialize
     mock_call_command = mock_worker_call_command
-    start_event_consumer(gunicorn_options)
+    start_event_consumer(mock_initialize, gunicorn_options)
     mock_initialize.assert_called_once()
     mock_call_command.assert_called_once()
 
@@ -57,6 +57,6 @@ def test_gunicorn(
         "bind": "localhost:8080",
         "logconfig_dict": mock_gunicorn_logging_config,
     }
-    start_gunicorn(gunicorn_options)
+    start_gunicorn(mock_initialize, gunicorn_options)
     mock_initialize.assert_called_once()
     mock_run.assert_called_once()

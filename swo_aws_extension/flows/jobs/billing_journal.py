@@ -17,7 +17,7 @@ from io import BytesIO
 
 from mpt_extension_sdk.mpt_http.mpt import _paginated, get_agreements_by_query
 from mpt_extension_sdk.mpt_http.utils import find_first
-from swo.mpt.extensions.runtime.tracer import dynamic_trace_span
+from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
