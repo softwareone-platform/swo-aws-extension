@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 def coppy_context_data_to_mpa_pool_model(context, airtable_mpa, status=None):
     if status is None:
-        status = MPAStatusEnum.ASSIGNED
+        status = MPAStatusEnum.ASSIGNED.value
     scu = context.buyer.get("externalIds", {}).get("erpCustomer", "")
     airtable_mpa.status = status
     airtable_mpa.agreement_id = context.agreement_id
@@ -73,13 +73,13 @@ class AssignMPA(Step):
         if phase and phase != PhasesEnum.ASSIGN_MPA:
             logger.info(
                 f"{context.order_id} - Next - Current phase is '{phase}', "
-                f"skipping as it is not '{PhasesEnum.ASSIGN_MPA}'"
+                f"skipping as it is not '{PhasesEnum.ASSIGN_MPA.value}'"
             )
             next_step(client, context)
             return
 
         if context.mpa_account:
-            context.order = set_phase(context.order, PhasesEnum.PRECONFIGURATION_MPA)
+            context.order = set_phase(context.order, PhasesEnum.PRECONFIGURATION_MPA.value)
             context.order = update_order(
                 client, context.order_id, parameters=context.order["parameters"]
             )
@@ -105,8 +105,8 @@ class AssignMPA(Step):
 
             if not has_open_notification(context.seller_country, context.pls_enabled):
                 new_notification = {
-                    "status": NotificationStatusEnum.NEW,
-                    "notification_type": NotificationTypeEnum.EMPTY,
+                    "status": NotificationStatusEnum.NEW.value,
+                    "notification_type": NotificationTypeEnum.EMPTY.value,
                     "pls_enabled": context.pls_enabled,
                     "country": context.seller_country,
                 }
@@ -134,7 +134,7 @@ class AssignMPA(Step):
             credentials_error = str(e)
 
         if not are_credentials_valid:
-            context.airtable_mpa.status = MPAStatusEnum.ERROR
+            context.airtable_mpa.status = MPAStatusEnum.ERROR.value
             context.airtable_mpa.error_description = str(credentials_error)
             context.airtable_mpa.save()
             mpa_view_link = get_mpa_view_link()
@@ -158,7 +158,7 @@ class AssignMPA(Step):
         context.order = set_mpa_email(context.order, context.airtable_mpa.account_email)
         setup_agreement_external_id(client, context, context.airtable_mpa.account_id)
 
-        context.order = set_phase(context.order, PhasesEnum.PRECONFIGURATION_MPA)
+        context.order = set_phase(context.order, PhasesEnum.PRECONFIGURATION_MPA.value)
         context.order = update_order(
             client, context.order_id, parameters=context.order["parameters"]
         )
@@ -179,7 +179,7 @@ class AssignSplitBillingMPA(Step):
         if phase and phase != PhasesEnum.ASSIGN_MPA:
             logger.info(
                 f"{context.order_id} - Next - Current phase is '{phase}', "
-                f"skipping as it is not '{PhasesEnum.ASSIGN_MPA}'"
+                f"skipping as it is not '{PhasesEnum.ASSIGN_MPA.value}'"
             )
             next_step(client, context)
             return
@@ -206,7 +206,7 @@ class AssignSplitBillingMPA(Step):
         context.order = set_mpa_email(context.order, context.airtable_mpa.account_email)
 
         setup_agreement_external_id(client, context, context.order_master_payer_id)
-        context.order = set_phase(context.order, PhasesEnum.CREATE_ACCOUNT)
+        context.order = set_phase(context.order, PhasesEnum.CREATE_ACCOUNT.value)
         context.order = update_order(
             client, context.order_id, parameters=context.order["parameters"]
         )
@@ -248,7 +248,7 @@ class AssignTransferMPAStep(Step):
         if get_phase(context.order) != PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION:
             logger.info(
                 f"{context.order_id} - Skipping - Current phase is '{get_phase(context.order)}',"
-                f" skipping as it is not '{PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION}'"
+                f" skipping as it is not '{PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION.value}'"
             )
             next_step(client, context)
             return
@@ -263,9 +263,10 @@ class AssignTransferMPAStep(Step):
             if not context.aws_client:
                 self.setup_aws(context)
             self.validate_mpa_credentials(context)
-            context.order = set_phase(context.order, PhasesEnum.PRECONFIGURATION_MPA)
+            context.order = set_phase(context.order, PhasesEnum.PRECONFIGURATION_MPA.value)
             logger.info(
-                f"{context.order_id} - Action - Update phase to {PhasesEnum.CREATE_SUBSCRIPTIONS}"
+                f"{context.order_id} - Action - Update phase to "
+                f"{PhasesEnum.CREATE_SUBSCRIPTIONS.value}"
             )
             update_order(client, context.order_id, parameters=context.order["parameters"])
             logger.info(

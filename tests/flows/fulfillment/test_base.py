@@ -276,8 +276,8 @@ def test_is_type_transfer_with_organization(
     order = order_factory(
         order_type=ORDER_TYPE_PURCHASE,
         order_parameters=order_parameters_factory(
-            account_type=AccountTypesEnum.EXISTING_ACCOUNT,
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            account_type=AccountTypesEnum.EXISTING_ACCOUNT.value,
+            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION.value,
         ),
     )
     fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
@@ -302,8 +302,8 @@ def test_is_type_transfer_without_organization(
     order = order_factory(
         order_type=ORDER_TYPE_PURCHASE,
         order_parameters=order_parameters_factory(
-            account_type=AccountTypesEnum.EXISTING_ACCOUNT,
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
+            account_type=AccountTypesEnum.EXISTING_ACCOUNT.value,
+            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value,
         ),
     )
     fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
@@ -329,8 +329,8 @@ def test_is_type_split_billing(
     order = order_factory(
         order_type=ORDER_TYPE_PURCHASE,
         order_parameters=order_parameters_factory(
-            account_type=AccountTypesEnum.EXISTING_ACCOUNT,
-            transfer_type=TransferTypesEnum.SPLIT_BILLING,
+            account_type=AccountTypesEnum.EXISTING_ACCOUNT.value,
+            transfer_type=TransferTypesEnum.SPLIT_BILLING.value,
         ),
     )
     fulfill_order(mocker.MagicMock(), InitialAWSContext(order=order))

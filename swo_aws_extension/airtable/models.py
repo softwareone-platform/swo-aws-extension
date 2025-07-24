@@ -132,7 +132,7 @@ def get_available_mpa_from_pool():
     """
     mpa_pool = get_master_payer_account_pool_model(AirTableBaseInfo.for_mpa_pool())
 
-    return mpa_pool.all(formula=EQUAL(FIELD("Status"), STR_VALUE(MPAStatusEnum.READY)))
+    return mpa_pool.all(formula=EQUAL(FIELD("Status"), STR_VALUE(MPAStatusEnum.READY.value)))
 
 
 def get_notifications_by_status(status):
@@ -162,7 +162,7 @@ def has_open_notification(country, pls_enabled):
     pending_notifications = pool_notification.first(
         formula=AND(
             FIELD(PLS_ENABLED) if pls_enabled else f"NOT({FIELD(PLS_ENABLED)})",
-            NOT_EQUAL(FIELD("Status"), STR_VALUE(NotificationStatusEnum.DONE)),
+            NOT_EQUAL(FIELD("Status"), STR_VALUE(NotificationStatusEnum.DONE.value)),
             EQUAL(FIELD("Country"), STR_VALUE(country)),
         )
     )
@@ -177,7 +177,7 @@ def get_open_notifications():
     """
     pool_notification = get_pool_notification_model(AirTableBaseInfo.for_mpa_pool())
     return pool_notification.all(
-        formula=NOT_EQUAL(FIELD("Status"), STR_VALUE(NotificationStatusEnum.DONE))
+        formula=NOT_EQUAL(FIELD("Status"), STR_VALUE(NotificationStatusEnum.DONE.value))
     )
 
 
