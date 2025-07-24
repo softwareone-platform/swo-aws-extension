@@ -187,7 +187,7 @@ def test_generate_billing_journals_authorization_not_active_subscription(
     )
     subscriptions = subscriptions_factory(
         vendor_id="1234-5678",
-        status=SubscriptionStatusEnum.TERMINATED,
+        status=SubscriptionStatusEnum.TERMINATED.value,
     )
     agreement_data = agreement_factory(vendor_id="123456789012", subscriptions=subscriptions)
     mocker.patch(
@@ -240,7 +240,7 @@ def test_generate_billing_journals_authorization_exception(
     )
     subscriptions = subscriptions_factory(
         vendor_id="1234-5678",
-        status=SubscriptionStatusEnum.ACTIVE,
+        status=SubscriptionStatusEnum.ACTIVE.value,
     )
     agreement_data = agreement_factory(vendor_id="123456789012", subscriptions=subscriptions)
     mocker.patch(
@@ -306,7 +306,7 @@ def test_generate_billing_journals_authorization_upload_file(
     linked_account = "1234-1234-1234"
     subscriptions = subscriptions_factory(
         vendor_id=linked_account,
-        status=SubscriptionStatusEnum.ACTIVE,
+        status=SubscriptionStatusEnum.ACTIVE.value,
     )
     mpa_account = "123456789012"
     agreement_data = agreement_factory(vendor_id=mpa_account, subscriptions=subscriptions)
@@ -365,7 +365,7 @@ def test_generate_agreement_journal_lines_subscription_exception(
     agreement_data = agreement_factory(
         vendor_id="123456789012",
         subscriptions=subscriptions_factory(
-            vendor_id="1234-1234-1234", status=SubscriptionStatusEnum.ACTIVE
+            vendor_id="1234-1234-1234", status=SubscriptionStatusEnum.ACTIVE.value
         ),
     )
     _, aws_mock = aws_client_factory(config, "aws_mpa", "aws_role")
@@ -411,7 +411,7 @@ def test_generate_agreement_journal_lines_aws_client_error(
     agreement_data = agreement_factory(
         vendor_id="123456789012",
         subscriptions=subscriptions_factory(
-            vendor_id="1234-1234-1234", status=SubscriptionStatusEnum.ACTIVE
+            vendor_id="1234-1234-1234", status=SubscriptionStatusEnum.ACTIVE.value
         ),
     )
     awsclient_patch = mocker.patch(
@@ -460,7 +460,7 @@ def test_generate_subscription_journal_lines_exception(
         billing_journal_processor=get_journal_processors(config),
     )
     subscription = subscriptions_factory(
-        vendor_id="1234-1234-1234", status=SubscriptionStatusEnum.ACTIVE
+        vendor_id="1234-1234-1234", status=SubscriptionStatusEnum.ACTIVE.value
     )[0]
     agreement_data = agreement_factory(
         vendor_id="123456789012",
@@ -512,7 +512,7 @@ def test_generate_item_journal_lines_process_not_implemented():
 
 def test_generate_marketplace_journal_lines_process(mock_journal_args, mock_journal_line_factory):
     proc = GenerateJournalLines(
-        UsageMetricTypeEnum.MARKETPLACE, billing_discount_tolerance_rate=1, discount=0
+        UsageMetricTypeEnum.MARKETPLACE.value, billing_discount_tolerance_rate=1, discount=0
     )
     external_id = ItemSkusEnum.AWS_MARKETPLACE.value
     args = mock_journal_args(external_id)
@@ -527,7 +527,7 @@ def test_generate_marketplace_journal_lines_process(mock_journal_args, mock_jour
 
 def test_generate_usage_journal_lines_process(mock_journal_args, mock_journal_line_factory):
     proc = GenerateJournalLines(
-        UsageMetricTypeEnum.USAGE, billing_discount_tolerance_rate=1, discount=7
+        UsageMetricTypeEnum.USAGE.value, billing_discount_tolerance_rate=1, discount=7
     )
     external_id = ItemSkusEnum.AWS_USAGE.value
     args = mock_journal_args(external_id)
@@ -543,7 +543,7 @@ def test_generate_usage_incentivate_journal_lines_process(
     mock_journal_args, mock_journal_line_factory
 ):
     proc = GenerateJournalLines(
-        UsageMetricTypeEnum.USAGE, billing_discount_tolerance_rate=1, discount=12
+        UsageMetricTypeEnum.USAGE.value, billing_discount_tolerance_rate=1, discount=12
     )
     external_id = ItemSkusEnum.AWS_USAGE_INCENTIVATE.value
     args = mock_journal_args(external_id)
@@ -559,7 +559,7 @@ def test_generate_other_services_journal_lines_process(
     mock_journal_args, mock_journal_line_factory
 ):
     proc = GenerateOtherServicesJournalLines(
-        UsageMetricTypeEnum.USAGE, billing_discount_tolerance_rate=1, discount=0
+        UsageMetricTypeEnum.USAGE.value, billing_discount_tolerance_rate=1, discount=0
     )
     external_id = ItemSkusEnum.AWS_OTHER_SERVICES.value
     args = mock_journal_args(external_id)
@@ -574,12 +574,12 @@ def test_generate_other_services_journal_lines_process(
 
 def test_generate_support_journal_lines_process(mock_journal_args, mock_journal_line_factory):
     proc = GenerateSupportJournalLines(
-        UsageMetricTypeEnum.SUPPORT, billing_discount_tolerance_rate=1, discount=7
+        UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=7
     )
     external_id = ItemSkusEnum.AWS_SUPPORT.value
     args = mock_journal_args(external_id)
-    args["account_metrics"][UsageMetricTypeEnum.SUPPORT] = {"AWS Support (Business)": 100.0}
-    args["account_metrics"][UsageMetricTypeEnum.REFUND] = {"refund": 7}
+    args["account_metrics"][UsageMetricTypeEnum.SUPPORT.value] = {"AWS Support (Business)": 100.0}
+    args["account_metrics"][UsageMetricTypeEnum.REFUND.value] = {"refund": 7}
 
     result = proc.process(**args)
     journal_line = mock_journal_line_factory(
@@ -593,12 +593,12 @@ def test_generate_support_enterprise_journal_lines_process(
     mock_journal_args, mock_journal_line_factory
 ):
     proc = GenerateSupportEnterpriseJournalLines(
-        UsageMetricTypeEnum.SUPPORT, billing_discount_tolerance_rate=1, discount=35
+        UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=35
     )
     item_external_id = ItemSkusEnum.AWS_SUPPORT_ENTERPRISE.value
     args = mock_journal_args(item_external_id)
-    args["account_metrics"][UsageMetricTypeEnum.SUPPORT] = {"AWS Support (Enterprise)": 100.0}
-    args["account_metrics"][UsageMetricTypeEnum.REFUND] = {"refund": 35}
+    args["account_metrics"][UsageMetricTypeEnum.SUPPORT.value] = {"AWS Support (Enterprise)": 100.0}
+    args["account_metrics"][UsageMetricTypeEnum.REFUND.value] = {"refund": 35}
 
     result = proc.process(**args)
     journal_line = mock_journal_line_factory(
@@ -610,7 +610,7 @@ def test_generate_support_enterprise_journal_lines_process(
 
 def test_generate_recurring_lines_process(mock_journal_args, mock_journal_line_factory):
     proc = GenerateJournalLines(
-        UsageMetricTypeEnum.RECURRING, billing_discount_tolerance_rate=1, discount=7
+        UsageMetricTypeEnum.RECURRING.value, billing_discount_tolerance_rate=1, discount=7
     )
     item_external_id = ItemSkusEnum.UPFRONT.value
     args = mock_journal_args(item_external_id)
@@ -626,7 +626,7 @@ def test_generate_recurring_incentivate_journal_lines_process(
     mock_journal_args, mock_journal_line_factory
 ):
     proc = GenerateJournalLines(
-        UsageMetricTypeEnum.RECURRING, billing_discount_tolerance_rate=1, discount=12
+        UsageMetricTypeEnum.RECURRING.value, billing_discount_tolerance_rate=1, discount=12
     )
     item_external_id = ItemSkusEnum.UPFRONT_INCENTIVATE.value
     args = mock_journal_args(item_external_id)
@@ -684,7 +684,7 @@ def test_generate_billing_journals_item_not_supported(
     linked_account = "1234-1234-1234"
     subscriptions = subscriptions_factory(
         vendor_id=linked_account,
-        status=SubscriptionStatusEnum.ACTIVE,
+        status=SubscriptionStatusEnum.ACTIVE.value,
         lines=lines_factory(external_vendor_id="invalid", name="invalid item"),
     )
     mpa_account = "123456789012"

@@ -118,14 +118,16 @@ class SendInvitationLinksStep(Step):
                 f"{context.order_id} - Stop - Failed to send organization invitation links."
             )
             return
-        context.order = set_phase(context.order, PhasesEnum.CHECK_INVITATION_LINK)
+        context.order = set_phase(context.order, PhasesEnum.CHECK_INVITATION_LINK.value)
         context.order = update_order(
             client,
             context.order_id,
             parameters=context.order["parameters"],
             template=context.template,
         )
-        logger.info(f"{context.order_id} - Phase - Updated to {PhasesEnum.CHECK_INVITATION_LINK}")
+        logger.info(
+            f"{context.order_id} - Phase - Updated to {PhasesEnum.CHECK_INVITATION_LINK.value}"
+        )
         logger.info(f"{context.order_id} - Next - Invitation links sent to all accounts.")
         next_step(client, context)
 
@@ -205,11 +207,11 @@ class AwaitInvitationLinksStep(Step):
         """
 
         message_map = {
-            AwsHandshakeStateEnum.REQUESTED: StateMessageError.REQUESTED,
-            AwsHandshakeStateEnum.OPEN: StateMessageError.OPEN,
-            AwsHandshakeStateEnum.CANCELED: StateMessageError.CANCELED,
-            AwsHandshakeStateEnum.DECLINED: StateMessageError.DECLINED,
-            AwsHandshakeStateEnum.EXPIRED: StateMessageError.EXPIRED,
+            AwsHandshakeStateEnum.REQUESTED.value: StateMessageError.REQUESTED,
+            AwsHandshakeStateEnum.OPEN.value: StateMessageError.OPEN,
+            AwsHandshakeStateEnum.CANCELED.value: StateMessageError.CANCELED,
+            AwsHandshakeStateEnum.DECLINED.value: StateMessageError.DECLINED,
+            AwsHandshakeStateEnum.EXPIRED.value: StateMessageError.EXPIRED,
         }
         message = []
         for account, state in account_state.items():
@@ -241,12 +243,12 @@ class AwaitInvitationLinksStep(Step):
         if phase != PhasesEnum.CHECK_INVITATION_LINK:
             logger.info(
                 f"{context.order_id} - Skip - Reason: Expecting phase in"
-                f" {PhasesEnum.CHECK_INVITATION_LINK}, current "
+                f" {PhasesEnum.CHECK_INVITATION_LINK.value}, current "
                 f"phase={phase}"
             )
             next_step(client, context)
             return
-        terminal_states = {AwsHandshakeStateEnum.ACCEPTED}
+        terminal_states = {AwsHandshakeStateEnum.ACCEPTED.value}
         handshakes = context.aws_client.list_handshakes_for_organization()
         account_state = map_handshakes_account_state(handshakes)
 
@@ -271,12 +273,12 @@ class AwaitInvitationLinksStep(Step):
             )
             if context.order_status != MPT_ORDER_STATUS_QUERYING:
                 context.switch_order_status_to_query(
-                    client, OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS
+                    client, OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS.value
                 )
             else:
                 context.update_processing_template(
                     client,
-                    OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS,
+                    OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS.value,
                 )
             logger.info(
                 f"{context.order_id} - Querying - Awaiting account invitations to be accepted: "
@@ -284,8 +286,8 @@ class AwaitInvitationLinksStep(Step):
             )
             return
 
-        context.order = set_phase(context.order, PhasesEnum.CREATE_SUBSCRIPTIONS)
-        template_name = OrderProcessingTemplateEnum.TRANSFER_WITH_ORG_TICKET_CREATED
+        context.order = set_phase(context.order, PhasesEnum.CREATE_SUBSCRIPTIONS.value)
+        template_name = OrderProcessingTemplateEnum.TRANSFER_WITH_ORG_TICKET_CREATED.value
         if context.order_status == MPT_ORDER_STATUS_QUERYING:
             context.switch_order_status_to_process(client, template_name)
         else:

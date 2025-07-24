@@ -70,10 +70,10 @@ def order_parameters_factory(constraints):
     def _order_parameters(
         account_email=ACCOUNT_EMAIL,
         account_name="account_name",
-        account_type=AccountTypesEnum.NEW_ACCOUNT,
+        account_type=AccountTypesEnum.NEW_ACCOUNT.value,
         account_id="account_id",
         termination_type=TerminationParameterChoices.CLOSE_ACCOUNT,
-        support_type=SupportTypesEnum.PARTNER_LED_SUPPORT,
+        support_type=SupportTypesEnum.PARTNER_LED_SUPPORT.value,
         transfer_type=None,
         master_payer_id=None,
         change_order_email=ACCOUNT_EMAIL,
@@ -84,7 +84,7 @@ def order_parameters_factory(constraints):
             {
                 "id": "PAR-1234-5678",
                 "name": "AWS account email",
-                "externalId": OrderParametersEnum.ROOT_ACCOUNT_EMAIL,
+                "externalId": OrderParametersEnum.ROOT_ACCOUNT_EMAIL.value,
                 "type": "SingleLineText",
                 "value": account_email,
                 "constraints": constraints,
@@ -92,7 +92,7 @@ def order_parameters_factory(constraints):
             {
                 "id": "PAR-1234-5679",
                 "name": ACCOUNT_NAME,
-                "externalId": OrderParametersEnum.ACCOUNT_NAME,
+                "externalId": OrderParametersEnum.ACCOUNT_NAME.value,
                 "type": "SingleLineText",
                 "value": account_name,
                 "constraints": constraints,
@@ -100,7 +100,7 @@ def order_parameters_factory(constraints):
             {
                 "id": "PAR-1234-5680",
                 "name": "Account type",
-                "externalId": OrderParametersEnum.ACCOUNT_TYPE,
+                "externalId": OrderParametersEnum.ACCOUNT_TYPE.value,
                 "type": "choice",
                 "value": account_type,
                 "constraints": constraints,
@@ -108,7 +108,7 @@ def order_parameters_factory(constraints):
             {
                 "id": "PAR-1234-5681",
                 "name": "Account ID",
-                "externalId": OrderParametersEnum.ACCOUNT_ID,
+                "externalId": OrderParametersEnum.ACCOUNT_ID.value,
                 "type": "SingleLineText",
                 "value": account_id,
                 "constraints": constraints,
@@ -116,35 +116,35 @@ def order_parameters_factory(constraints):
             {
                 "id": "PAR-1234-5678",
                 "name": "Account Termination Type",
-                "externalId": OrderParametersEnum.TERMINATION,
+                "externalId": OrderParametersEnum.TERMINATION.value,
                 "type": "Choice",
                 "value": termination_type,
             },
             {
                 "id": "PAR-1234-5679",
                 "name": "Support Type",
-                "externalId": OrderParametersEnum.SUPPORT_TYPE,
+                "externalId": OrderParametersEnum.SUPPORT_TYPE.value,
                 "type": "Choice",
                 "value": support_type,
             },
             {
                 "id": "PAR-1234-5680",
                 "name": "Transfer Type",
-                "externalId": OrderParametersEnum.TRANSFER_TYPE,
+                "externalId": OrderParametersEnum.TRANSFER_TYPE.value,
                 "type": "Choice",
                 "value": transfer_type,
             },
             {
                 "id": "PAR-1234-5681",
                 "name": "Master Payer ID",
-                "externalId": OrderParametersEnum.MASTER_PAYER_ID,
+                "externalId": OrderParametersEnum.MASTER_PAYER_ID.value,
                 "type": "SingleLineText",
                 "value": master_payer_id,
             },
             {
                 "id": "PAR-1234-5655",
                 "name": "AWS account email",
-                "externalId": ChangeOrderParametersEnum.ROOT_ACCOUNT_EMAIL,
+                "externalId": ChangeOrderParametersEnum.ROOT_ACCOUNT_EMAIL.value,
                 "type": "SingleLineText",
                 "value": change_order_email,
                 "constraints": constraints,
@@ -152,7 +152,7 @@ def order_parameters_factory(constraints):
             {
                 "id": "PAR-1234-5656",
                 "name": ACCOUNT_NAME,
-                "externalId": ChangeOrderParametersEnum.ACCOUNT_NAME,
+                "externalId": ChangeOrderParametersEnum.ACCOUNT_NAME.value,
                 "type": "SingleLineText",
                 "value": change_order_name,
                 "constraints": constraints,
@@ -160,7 +160,7 @@ def order_parameters_factory(constraints):
             {
                 "id": "PAR-1234-1678",
                 "name": "Service-Now Ticket Termination",
-                "externalId": OrderParametersEnum.CRM_TERMINATION_TICKET_ID,
+                "externalId": OrderParametersEnum.CRM_TERMINATION_TICKET_ID.value,
                 "type": "SingleLineText",
                 "value": crm_termination_ticket_id,
             },
@@ -185,56 +185,56 @@ def fulfillment_parameters_factory():
             {
                 "id": "PAR-1234-5678",
                 "name": "Phase",
-                "externalId": FulfillmentParametersEnum.PHASE,
+                "externalId": FulfillmentParametersEnum.PHASE.value,
                 "type": "Dropdown",
                 "value": phase,
             },
             {
                 "id": "PAR-1234-5679",
                 "name": "Account Request ID",
-                "externalId": FulfillmentParametersEnum.ACCOUNT_REQUEST_ID,
+                "externalId": FulfillmentParametersEnum.ACCOUNT_REQUEST_ID.value,
                 "type": "SingleLineText",
                 "value": account_request_id,
             },
             {
                 "id": "PAR-1234-1678",
                 "name": "Service-Now Ticket CCP",
-                "externalId": FulfillmentParametersEnum.CRM_CCP_TICKET_ID,
+                "externalId": FulfillmentParametersEnum.CRM_CCP_TICKET_ID.value,
                 "type": "SingleLineText",
                 "value": crm_ccp_ticket_id,
             },
             {
                 "id": "PAR-1234-1678",
                 "name": "Service-Now Ticket Keeper",
-                "externalId": FulfillmentParametersEnum.CRM_KEEPER_TICKET_ID,
+                "externalId": FulfillmentParametersEnum.CRM_KEEPER_TICKET_ID.value,
                 "type": "SingleLineText",
                 "value": crm_keeper_ticket_id,
             },
             {
                 "id": "PAR-1234-1678",
                 "name": "Service-Now Ticket Onboarding",
-                "externalId": FulfillmentParametersEnum.CRM_ONBOARD_TICKET_ID,
+                "externalId": FulfillmentParametersEnum.CRM_ONBOARD_TICKET_ID.value,
                 "type": "SingleLineText",
                 "value": crm_onboard_ticket_id,
             },
             {
                 "id": "PAR-1234-1678",
                 "name": "Service-Now Ticket Transfer Organization",
-                "externalId": FulfillmentParametersEnum.CRM_TRANSFER_ORGANIZATION_TICKET_ID,
+                "externalId": FulfillmentParametersEnum.CRM_TRANSFER_ORGANIZATION_TICKET_ID.value,
                 "type": "SingleLineText",
                 "value": crm_transfer_organization_ticket_id,
             },
             {
                 "id": "PAR-1234-5679",
                 "name": "CCP Engagement ID",
-                "externalId": FulfillmentParametersEnum.CCP_ENGAGEMENT_ID,
+                "externalId": FulfillmentParametersEnum.CCP_ENGAGEMENT_ID.value,
                 "type": "SingleLineText",
                 "value": ccp_engagement_id,
             },
             {
                 "id": "PAR-1234-5680",
                 "name": "CCP Engagement ID",
-                "externalId": FulfillmentParametersEnum.MPA_EMAIL,
+                "externalId": FulfillmentParametersEnum.MPA_EMAIL.value,
                 "type": "Email",
                 "value": mpa_email,
             },
@@ -1312,7 +1312,7 @@ def order_close_account(
             account_id="1234-5678",
             termination_type=TerminationParameterChoices.CLOSE_ACCOUNT,
         ),
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED),
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED.value),
         subscriptions=subscriptions_factory(
             vendor_id="1234-5678",
             status="Terminating",
@@ -1492,11 +1492,11 @@ def mpa_pool_factory(mocker):
 def pool_notification_factory(mocker):
     def _pool_notification(
         notification_id=1,
-        notification_type=NotificationTypeEnum.WARNING,
+        notification_type=NotificationTypeEnum.WARNING.value,
         pls_enabled=True,
         ticket_id="Ticket Id",
         ticket_state="New",
-        status=NotificationStatusEnum.PENDING,
+        status=NotificationStatusEnum.PENDING.value,
         country="US",
     ):
         pool_notification = mocker.MagicMock()
@@ -2042,7 +2042,7 @@ def mock_report_type_and_usage_report_group_factory():
                 "Metrics": {"UnblendedCost": {"Amount": service_amount, "Unit": "USD"}},
             },
             {
-                "Keys": [AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT, service_name],
+                "Keys": [AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT.value, service_name],
                 "Metrics": {"UnblendedCost": {"Amount": provider_discount_amount, "Unit": "USD"}},
             },
         ]
@@ -2074,19 +2074,23 @@ def mock_report_type_and_usage_report_factory(mock_report_type_and_usage_report_
 
 def build_usage_metrics(generator, report):
     return {
-        UsageMetricTypeEnum.USAGE: generator._get_metrics_by_key(report, AWSRecordTypeEnum.USAGE),
-        UsageMetricTypeEnum.SAVING_PLANS: generator._get_metrics_by_key(
-            report, AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE
+        UsageMetricTypeEnum.USAGE.value: generator._get_metrics_by_key(
+            report, AWSRecordTypeEnum.USAGE.value
         ),
-        UsageMetricTypeEnum.PROVIDER_DISCOUNT: generator._get_metrics_by_key(
-            report, AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT
+        UsageMetricTypeEnum.SAVING_PLANS.value: generator._get_metrics_by_key(
+            report, AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE.value
         ),
-        UsageMetricTypeEnum.REFUND: generator._get_metrics_by_key(report, AWSRecordTypeEnum.REFUND),
-        UsageMetricTypeEnum.SUPPORT: generator._get_metrics_by_key(
-            report, AWSRecordTypeEnum.SUPPORT
+        UsageMetricTypeEnum.PROVIDER_DISCOUNT.value: generator._get_metrics_by_key(
+            report, AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT.value
         ),
-        UsageMetricTypeEnum.RECURRING: generator._get_metrics_by_key(
-            report, AWSRecordTypeEnum.RECURRING
+        UsageMetricTypeEnum.REFUND.value: generator._get_metrics_by_key(
+            report, AWSRecordTypeEnum.REFUND.value
+        ),
+        UsageMetricTypeEnum.SUPPORT.value: generator._get_metrics_by_key(
+            report, AWSRecordTypeEnum.SUPPORT.value
+        ),
+        UsageMetricTypeEnum.RECURRING.value: generator._get_metrics_by_key(
+            report, AWSRecordTypeEnum.RECURRING.value
         ),
     }
 
@@ -2100,79 +2104,79 @@ def get_usage_data(
     group_params = [
         {
             "service_name": "Usage service",
-            "record_type": AWSRecordTypeEnum.USAGE,
+            "record_type": AWSRecordTypeEnum.USAGE.value,
             "service_amount": "100",
             "provider_discount_amount": "7",
         },
         {
             "service_name": "Usage service incentivate",
-            "record_type": AWSRecordTypeEnum.USAGE,
+            "record_type": AWSRecordTypeEnum.USAGE.value,
             "service_amount": "100",
             "provider_discount_amount": "12",
         },
         {
             "service_name": "Saving plan service",
-            "record_type": AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE,
+            "record_type": AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE.value,
             "service_amount": "100",
             "provider_discount_amount": "7",
         },
         {
             "service_name": "Saving plan service incentivate",
-            "record_type": AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE,
+            "record_type": AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE.value,
             "service_amount": "100",
             "provider_discount_amount": "12",
         },
         {
             "service_name": "Other AWS services",
-            "record_type": AWSRecordTypeEnum.USAGE,
+            "record_type": AWSRecordTypeEnum.USAGE.value,
             "service_amount": "100",
             "provider_discount_amount": "0",
         },
         {
             "service_name": "free_aws-services",
-            "record_type": AWSRecordTypeEnum.USAGE,
+            "record_type": AWSRecordTypeEnum.USAGE.value,
             "service_amount": "0",
             "provider_discount_amount": "0",
         },
         {
             "service_name": "Refund service business",
-            "record_type": AWSRecordTypeEnum.REFUND,
+            "record_type": AWSRecordTypeEnum.REFUND.value,
             "service_amount": "7",
             "provider_discount_amount": "0",
         },
         {
             "service_name": "Refund service enterprise",
-            "record_type": AWSRecordTypeEnum.REFUND,
+            "record_type": AWSRecordTypeEnum.REFUND.value,
             "service_amount": "35",
             "provider_discount_amount": "0",
         },
         {
             "service_name": "AWS Support (Business)",
-            "record_type": AWSRecordTypeEnum.SUPPORT,
+            "record_type": AWSRecordTypeEnum.SUPPORT.value,
             "service_amount": "100",
             "provider_discount_amount": "0",
         },
         {
             "service_name": "AWS Support (Enterprise)",
-            "record_type": AWSRecordTypeEnum.SUPPORT,
+            "record_type": AWSRecordTypeEnum.SUPPORT.value,
             "service_amount": "100",
             "provider_discount_amount": "0",
         },
         {
-            "service_name": AWSServiceEnum.TAX,
-            "record_type": AWSRecordTypeEnum.USAGE,
+            "service_name": AWSServiceEnum.TAX.value,
+            "record_type": AWSRecordTypeEnum.USAGE.value,
             "service_amount": "100",
             "provider_discount_amount": "0",
         },
         {
             "service_name": "Upfront service",
-            "record_type": AWSRecordTypeEnum.RECURRING,
+            "record_type": AWSRecordTypeEnum.RECURRING.value,
             "service_amount": "100",
             "provider_discount_amount": "7",
         },
         {
             "service_name": "Upfront service incentivate",
-            "record_type": AWSRecordTypeEnum.RECURRING,
+            "record_type": AWSRecordTypeEnum.RECURRING.value,
             "service_amount": "100",
             "provider_discount_amount": "12",
         },
@@ -2222,7 +2226,7 @@ def mock_journal_args(
             account_id=account_id, service_name="Marketplace service"
         )
         report = mock_marketplace_report_factory(groups=groups)["ResultsByTime"]
-        account_metrics[UsageMetricTypeEnum.MARKETPLACE] = generator._get_metrics_by_key(
+        account_metrics[UsageMetricTypeEnum.MARKETPLACE.value] = generator._get_metrics_by_key(
             report, account_id
         )
         marketplace_invoice_report = mock_invoice_by_service_report_group_factory(SERVICE_NAME)
@@ -2231,7 +2235,7 @@ def mock_journal_args(
             marketplace_invoice_report + usage_invoice_report
         )["ResultsByTime"]
 
-        account_metrics[UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY] = (
+        account_metrics[UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY.value] = (
             generator._get_invoice_entity_by_service(service_invoice_entity)
         )
         return {

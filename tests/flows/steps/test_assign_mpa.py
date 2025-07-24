@@ -21,7 +21,7 @@ def test_assign_mpa_phase_not_assign_mpa(
     agreement_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED),
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED.value),
         agreement=agreement_factory(vendor_id="123456789012"),
     )
 
@@ -48,7 +48,7 @@ def test_assign_mpa_phase_mpa_already_assigned(
     agreement_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA),
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA.value),
         agreement=agreement_factory(vendor_id="123456789012"),
     )
 
@@ -59,7 +59,7 @@ def test_assign_mpa_phase_mpa_already_assigned(
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
-    updated_order = set_phase(order, PhasesEnum.PRECONFIGURATION_MPA)
+    updated_order = set_phase(order, PhasesEnum.PRECONFIGURATION_MPA.value)
     mocked_update_order = mocker.patch(
         "swo_aws_extension.flows.steps.assign_mpa.update_order",
         return_value=updated_order,
@@ -88,7 +88,7 @@ def test_assign_mpa_phase_assign_mpa(
     buyer,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA),
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA.value),
         buyer=buyer,
     )
 
@@ -138,7 +138,7 @@ def test_assign_mpa_phase_assign_mpa_credentials_error(
     mpa_pool_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA)
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA.value)
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -189,7 +189,7 @@ def test_assign_mpa_phase_not_mpa_account(
     mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA)
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA.value)
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -226,7 +226,7 @@ def test_assign_mpa_phase_not_mpa_account_notification_already_created(
     pool_notification_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA)
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA.value)
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -265,9 +265,9 @@ def test_assign_mpa_split_billing_valid_mpa(
     mpa_pool_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA),
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA.value),
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.SPLIT_BILLING, master_payer_id="123456789012"
+            transfer_type=TransferTypesEnum.SPLIT_BILLING.value, master_payer_id="123456789012"
         ),
     )
     initial_order = deepcopy(order)
@@ -279,7 +279,7 @@ def test_assign_mpa_split_billing_valid_mpa(
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
 
-    updated_order = set_phase(order, PhasesEnum.CREATE_ACCOUNT)
+    updated_order = set_phase(order, PhasesEnum.CREATE_ACCOUNT.value)
     mocked_update_order = mocker.patch(
         "swo_aws_extension.flows.steps.assign_mpa.update_order",
         return_value=updated_order,
@@ -307,7 +307,7 @@ def test_assign_mpa_split_billing_valid_mpa(
 
     mock_client.get_caller_identity.assert_not_called()
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
-    initial_order = set_phase(initial_order, PhasesEnum.CREATE_ACCOUNT)
+    initial_order = set_phase(initial_order, PhasesEnum.CREATE_ACCOUNT.value)
     initial_order = set_mpa_email(initial_order, context.airtable_mpa.account_email)
     mocked_update_order.assert_called_once_with(
         mpt_client_mock,
@@ -333,9 +333,9 @@ def test_assign_mpa_split_billing_invalid_mpa(
     mock_switch_order_status_to_query,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA),
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA.value),
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.SPLIT_BILLING, master_payer_id="invalid"
+            transfer_type=TransferTypesEnum.SPLIT_BILLING.value, master_payer_id="invalid"
         ),
     )
 
@@ -375,7 +375,7 @@ def test_assign_mpa_empty_country(
     mpa_pool_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA)
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ASSIGN_MPA.value)
     )
     order["seller"]["address"]["country"] = ""
 
@@ -410,7 +410,7 @@ def test_assign_split_billing_mpa_phase_not_assign_mpa(
     agreement_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED),
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED.value),
         agreement=agreement_factory(vendor_id="123456789012"),
     )
 

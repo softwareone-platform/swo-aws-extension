@@ -260,11 +260,11 @@ def _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run):
                 "parameters": {
                     "fulfillment": [
                         {
-                            "externalId": FulfillmentParametersEnum.ACCOUNT_EMAIL,
+                            "externalId": FulfillmentParametersEnum.ACCOUNT_EMAIL.value,
                             "value": account_email,
                         },
                         {
-                            "externalId": FulfillmentParametersEnum.ACCOUNT_NAME,
+                            "externalId": FulfillmentParametersEnum.ACCOUNT_NAME.value,
                             "value": account_name,
                         },
                     ]

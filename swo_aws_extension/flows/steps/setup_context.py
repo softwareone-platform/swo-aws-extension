@@ -138,7 +138,9 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
 
         phase = get_phase(context.order)
         if not phase:
-            context.order = set_phase(context.order, PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION)
+            context.order = set_phase(
+                context.order, PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION.value
+            )
 
             update_order(
                 client,
@@ -185,7 +187,7 @@ class SetupContextPurchaseTransferWithoutOrganizationStep(SetupContext):
         self.init_template(client, context)
         phase = get_phase(context.order)
         if not phase:
-            context.order = set_phase(context.order, PhasesEnum.ASSIGN_MPA)
+            context.order = set_phase(context.order, PhasesEnum.ASSIGN_MPA.value)
             context.order = update_order(
                 client, context.order_id, parameters=context.order["parameters"]
             )

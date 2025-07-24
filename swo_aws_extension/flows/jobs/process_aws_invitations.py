@@ -24,7 +24,7 @@ class CheckInvitationLinksStep(Step):
         if get_phase(context.order) != PhasesEnum.CHECK_INVITATION_LINK:
             logger.info(
                 f"{context.order_id} - Stop - "
-                f"Expecting phase '{PhasesEnum.CHECK_INVITATION_LINK}'"
+                f"Expecting phase '{PhasesEnum.CHECK_INVITATION_LINK.value}'"
                 f" got '{get_phase(context.order)}'"
             )
             return
@@ -65,7 +65,8 @@ class AWSInvitationsProcessor:
 
         return orders
 
-    def has_more_pages(self, orders):
+    @staticmethod
+    def has_more_pages(orders):
         if not orders:
             return True
         pagination = orders["$meta"]["pagination"]
@@ -89,7 +90,8 @@ class AWSInvitationsProcessor:
             AwaitInvitationLinksStep(),
         )
 
-    def is_processable(self, context: PurchaseContext) -> bool:
+    @staticmethod
+    def is_processable(context: PurchaseContext) -> bool:
         return (
             context.is_purchase_order()
             and get_account_type(context.order) == AccountTypesEnum.EXISTING_ACCOUNT

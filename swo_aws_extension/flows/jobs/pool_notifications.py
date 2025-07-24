@@ -41,7 +41,7 @@ def process_pending_notification(crm_client, pending_notification):
 
     if ticket_state in CRM_TICKET_RESOLVED_STATE:
         pending_notification.ticket_state = ticket_state
-        pending_notification.status = NotificationStatusEnum.DONE
+        pending_notification.status = NotificationStatusEnum.DONE.value
         pending_notification.save()
         logger.info(f"Ticket {pending_notification.ticket_id} is completed.")
     elif ticket_state != pending_notification.ticket_state:
@@ -132,10 +132,12 @@ def add_new_notifications(minimum_mpa_threshold, accounts_map, open_notification
 
                 continue
             notification_type = (
-                NotificationTypeEnum.EMPTY if count_accounts == 0 else NotificationTypeEnum.WARNING
+                NotificationTypeEnum.EMPTY.value
+                if count_accounts == 0
+                else NotificationTypeEnum.WARNING.value
             )
             new_notification = {
-                "status": NotificationStatusEnum.NEW,
+                "status": NotificationStatusEnum.NEW.value,
                 "notification_type": notification_type,
                 "pls_enabled": pls_enabled,
                 "country": country,
@@ -187,13 +189,13 @@ def check_pool_accounts_notifications(config) -> None:
     add_new_notifications(config.minimum_mpa_threshold, accounts_map, pending_notifications)
 
     logger.info("Proceed to create new ticket if needed")
-    new_notifications = get_notifications_by_status(NotificationStatusEnum.NEW)
+    new_notifications = get_notifications_by_status(NotificationStatusEnum.NEW.value)
     for notification in new_notifications:
         if notification.notification_type == NotificationTypeEnum.EMPTY:
             summary = CRM_EMPTY_SUMMARY.format(
-                type_of_support=SupportTypesEnum.PARTNER_LED_SUPPORT
+                type_of_support=SupportTypesEnum.PARTNER_LED_SUPPORT.value
                 if notification.pls_enabled
-                else SupportTypesEnum.RESOLD_SUPPORT,
+                else SupportTypesEnum.RESOLD_SUPPORT.value,
                 seller_country=notification.country,
             )
             ticket = create_ticket(
@@ -205,9 +207,9 @@ def check_pool_accounts_notifications(config) -> None:
             )
         else:
             summary = CRM_NOTIFICATION_SUMMARY.format(
-                type_of_support=SupportTypesEnum.PARTNER_LED_SUPPORT
+                type_of_support=SupportTypesEnum.PARTNER_LED_SUPPORT.value
                 if notification.pls_enabled
-                else SupportTypesEnum.RESOLD_SUPPORT,
+                else SupportTypesEnum.RESOLD_SUPPORT.value,
                 seller_country=notification.country,
             )
             ticket = create_ticket(
@@ -218,7 +220,7 @@ def check_pool_accounts_notifications(config) -> None:
                 CRM_NOTIFICATION_ADDITIONAL_INFO,
             )
 
-        notification.status = NotificationStatusEnum.PENDING
+        notification.status = NotificationStatusEnum.PENDING.value
         notification.ticket_state = "New"
         notification.ticket_id = ticket.get("id", "")
         notification.save()

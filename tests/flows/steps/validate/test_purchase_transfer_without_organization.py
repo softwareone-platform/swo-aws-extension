@@ -8,7 +8,7 @@ from swo_aws_extension.flows.steps import ValidatePurchaseTransferWithoutOrganiz
 def test_validate_with_all_ok(mocker, order_factory, order_parameters_factory):
     order = order_factory(
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
+            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value,
             account_id="123456789012\n\n123456789012\n123456789012",
         ),
         order_type=ORDER_TYPE_PURCHASE,
@@ -27,7 +27,7 @@ def test_is_not_purchase_order(mocker, order_factory, order_parameters_factory):
     logger_mock = mocker.patch("swo_aws_extension.flows.steps.validate.logger")
     order = order_factory(
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION.value,
         ),
         order_type=ORDER_TYPE_CHANGE,
     )
@@ -46,7 +46,7 @@ def test_is_not_transfer_without_organization(mocker, order_factory, order_param
     logger_mock = mocker.patch("swo_aws_extension.flows.steps.validate.logger")
     order = order_factory(
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION
+            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION.value
         ),
         order_type=ORDER_TYPE_PURCHASE,
     )
@@ -67,7 +67,7 @@ def test_invalid_account_ids(
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
+            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value,
             account_id="164565\n5245646456",
         ),
         order_type=ORDER_TYPE_PURCHASE,
@@ -88,7 +88,7 @@ def test_no_account_ids(
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
+            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value,
             account_id="",
         ),
         order_type=ORDER_TYPE_PURCHASE,
@@ -111,7 +111,7 @@ def test_too_many_accounts(
     accounts = [f"{i:012}" for i in range(1, 22)]
     order = order_factory(
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
+            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value,
             account_id="\n".join(accounts),
         ),
         order_type=ORDER_TYPE_PURCHASE,
