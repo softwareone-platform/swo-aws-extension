@@ -16,7 +16,7 @@ class MPAPreConfiguration(Step):
         if get_phase(context.order) != PhasesEnum.PRECONFIGURATION_MPA:
             logger.info(
                 f"{context.order_id} - Skip - Current phase is '{get_phase(context.order)}', "
-                f"skipping as it is not '{PhasesEnum.PRECONFIGURATION_MPA}'"
+                f"skipping as it is not '{PhasesEnum.PRECONFIGURATION_MPA.value}'"
             )
             next_step(client, context)
             return
@@ -28,16 +28,16 @@ class MPAPreConfiguration(Step):
         account_type = get_account_type(context.order)
 
         if account_type == AccountTypesEnum.NEW_ACCOUNT:
-            next_phase = PhasesEnum.CREATE_ACCOUNT
+            next_phase = PhasesEnum.CREATE_ACCOUNT.value
         elif context.is_type_transfer_with_organization():
-            next_phase = PhasesEnum.CREATE_SUBSCRIPTIONS
+            next_phase = PhasesEnum.CREATE_SUBSCRIPTIONS.value
         else:
-            next_phase = PhasesEnum.TRANSFER_ACCOUNT
+            next_phase = PhasesEnum.TRANSFER_ACCOUNT.value
 
         context.order = set_phase(context.order, next_phase)
         update_order(client, context.order_id, parameters=context.order["parameters"])
         logger.info(
-            f"{context.order_id} - Action - '{PhasesEnum.PRECONFIGURATION_MPA}' completed "
+            f"{context.order_id} - Action - '{PhasesEnum.PRECONFIGURATION_MPA.value}' completed "
             f"successfully. "
             f"Proceeding to next phase '{next_phase}'"
         )

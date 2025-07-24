@@ -76,7 +76,7 @@ def test_get_termination_ticket_id():
         "parameters": {
             "ordering": [
                 {
-                    "externalId": OrderParametersEnum.CRM_TERMINATION_TICKET_ID,
+                    "externalId": OrderParametersEnum.CRM_TERMINATION_TICKET_ID.value,
                     "value": "ticket_123",
                 }
             ]
@@ -95,7 +95,7 @@ def test_set_crm_termination_ticket_id():
         "parameters": {
             "ordering": [
                 {
-                    "externalId": OrderParametersEnum.CRM_TERMINATION_TICKET_ID,
+                    "externalId": OrderParametersEnum.CRM_TERMINATION_TICKET_ID.value,
                     "value": "old_ticket",
                 }
             ]
@@ -109,7 +109,7 @@ def test_get_termination_parameter_found(mocker):
     mock_get_fulfillment_parameter = mocker.patch(
         "swo_aws_extension.parameters.get_ordering_parameter",
         return_value={
-            "externalId": OrderParametersEnum.TERMINATION,
+            "externalId": OrderParametersEnum.TERMINATION.value,
             "value": "termination_flow",
         },
     )
@@ -117,7 +117,7 @@ def test_get_termination_parameter_found(mocker):
         "parameters": {
             "fulfillment": [
                 {
-                    "externalId": OrderParametersEnum.TERMINATION,
+                    "externalId": OrderParametersEnum.TERMINATION.value,
                     "value": "termination_flow",
                 }
             ]
@@ -125,7 +125,9 @@ def test_get_termination_parameter_found(mocker):
     }
     result = get_termination_type_parameter(order)
     assert result == "termination_flow"
-    mock_get_fulfillment_parameter.assert_called_once_with(order, OrderParametersEnum.TERMINATION)
+    mock_get_fulfillment_parameter.assert_called_once_with(
+        order, OrderParametersEnum.TERMINATION.value
+    )
 
 
 def test_get_termination_parameter_not_set(mocker):
@@ -135,4 +137,6 @@ def test_get_termination_parameter_not_set(mocker):
     order = {"parameters": {"fulfillment": []}}
     result = get_termination_type_parameter(order)
     assert result is None
-    mock_get_fulfillment_parameter.assert_called_once_with(order, OrderParametersEnum.TERMINATION)
+    mock_get_fulfillment_parameter.assert_called_once_with(
+        order, OrderParametersEnum.TERMINATION.value
+    )

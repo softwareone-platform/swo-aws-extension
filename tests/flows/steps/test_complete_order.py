@@ -39,7 +39,7 @@ def test_complete_order(
 
     mock_switch_order_status_to_complete.assert_called_once_with(
         mpt_client_mock,
-        OrderCompletedTemplateEnum.NEW_ACCOUNT_WITH_PLS,
+        OrderCompletedTemplateEnum.NEW_ACCOUNT_WITH_PLS.value,
     )
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
 
@@ -53,7 +53,7 @@ def test_complete_purchase_order_phase(
     mock_switch_order_status_to_complete,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED)
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED.value)
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
@@ -66,7 +66,7 @@ def test_complete_purchase_order_phase(
 
     mock_switch_order_status_to_complete.assert_called_once_with(
         mpt_client_mock,
-        OrderCompletedTemplateEnum.NEW_ACCOUNT_WITH_PLS,
+        OrderCompletedTemplateEnum.NEW_ACCOUNT_WITH_PLS.value,
     )
 
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
@@ -76,7 +76,9 @@ def test_complete_purchase_order_phase_invalid_phase(
     mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.PRECONFIGURATION_MPA)
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.PRECONFIGURATION_MPA.value
+        )
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
@@ -113,7 +115,7 @@ def test_complete_change_order(
     complete_order = CompleteChangeOrderStep()
     complete_order(mpt_client_mock, context, next_step_mock)
     mock_switch_order_status_to_complete.assert_called_once_with(
-        mpt_client_mock, OrderCompletedTemplateEnum.CHANGE
+        mpt_client_mock, OrderCompletedTemplateEnum.CHANGE.value
     )
 
     next_step_mock.assert_called_once_with(mpt_client_mock, context)

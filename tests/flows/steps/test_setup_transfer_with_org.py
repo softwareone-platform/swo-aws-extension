@@ -22,7 +22,7 @@ def test_transfer_with_org_step(
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="111111111111",
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION.value,
         ),
     )
     template_response = Response()
@@ -57,7 +57,7 @@ def test_transfer_with_org_step_with_mpa(
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="123456789012",
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION.value,
         ),
     )
     mocker.patch(
@@ -94,17 +94,14 @@ def test_setup_querying(
     next_step_mock = mocker.Mock()
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION,
+            phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION.value,
         ),
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="",
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION.value,
         ),
     )
-
-    def return_order(client, order):
-        return order
 
     step = SetupContextPurchaseTransferWithOrganizationStep(config, "role_name")
     context = PurchaseContext.from_order_data(order)
@@ -120,12 +117,12 @@ def test_skip_purchase(
     next_step_mock = mocker.Mock()
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION,
+            phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION.value,
         ),
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="",
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
+            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value,
         ),
     )
 
@@ -151,12 +148,12 @@ def test_skip_change(
     order = order_factory(
         order_type=ORDER_TYPE_CHANGE,
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION,
+            phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION.value,
         ),
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="",
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
+            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value,
         ),
     )
 

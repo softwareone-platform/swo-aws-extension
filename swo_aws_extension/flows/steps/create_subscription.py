@@ -56,11 +56,11 @@ def add_subscription(client, context, account_id, account_email, account_name):
         "parameters": {
             "fulfillment": [
                 {
-                    "externalId": FulfillmentParametersEnum.ACCOUNT_EMAIL,
+                    "externalId": FulfillmentParametersEnum.ACCOUNT_EMAIL.value,
                     "value": account_email,
                 },
                 {
-                    "externalId": FulfillmentParametersEnum.ACCOUNT_NAME,
+                    "externalId": FulfillmentParametersEnum.ACCOUNT_NAME.value,
                     "value": account_name,
                 },
             ]
@@ -83,7 +83,7 @@ class CreateSubscription(Step):
         if get_phase(context.order) != PhasesEnum.CREATE_SUBSCRIPTIONS:
             logger.info(
                 f"{context.order_id} - Skip - Current phase is '{get_phase(context.order)}', "
-                f"skipping as it is not '{PhasesEnum.CREATE_SUBSCRIPTIONS}'"
+                f"skipping as it is not '{PhasesEnum.CREATE_SUBSCRIPTIONS.value}'"
             )
             next_step(client, context)
             return
@@ -119,12 +119,16 @@ class CreateSubscription(Step):
                 account_email,
                 account_name,
             )
-        next_phase = PhasesEnum.COMPLETED if context.is_split_billing() else PhasesEnum.CCP_ONBOARD
+        next_phase = (
+            PhasesEnum.COMPLETED.value
+            if context.is_split_billing()
+            else PhasesEnum.CCP_ONBOARD.value
+        )
         context.order = set_phase(context.order, next_phase)
         update_order(client, context.order_id, parameters=context.order["parameters"])
 
         logger.info(
-            f"'{context.order_id} - Action - {PhasesEnum.CREATE_SUBSCRIPTIONS}' "
+            f"'{context.order_id} - Action - {PhasesEnum.CREATE_SUBSCRIPTIONS.value}' "
             f"completed successfully. "
             f"Proceeding to next phase '{next_phase}'"
         )

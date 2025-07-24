@@ -95,7 +95,7 @@ def test_update_template_missing_template_shows_error(
 ):
     mock_client = mocker.Mock()
     default_template = template_factory(name=ORDER_DEFAULT_PROCESSING_TEMPLATE)
-    new_template = template_factory(name=OrderProcessingTemplateEnum.NEW_ACCOUNT)
+    new_template = template_factory(name=OrderProcessingTemplateEnum.NEW_ACCOUNT.value)
     mocker.patch(
         "swo_aws_extension.flows.order.get_product_template_or_default",
         return_value=new_template,
@@ -116,7 +116,7 @@ def test_update_processing_template_success(
 ):
     mock_client = mocker.Mock()
     default_template = template_factory(name=ORDER_DEFAULT_PROCESSING_TEMPLATE)
-    new_template = template_factory(name=OrderProcessingTemplateEnum.NEW_ACCOUNT)
+    new_template = template_factory(name=OrderProcessingTemplateEnum.NEW_ACCOUNT.value)
 
     mocker.patch(
         "swo_aws_extension.flows.order.get_product_template_or_default",
@@ -151,7 +151,7 @@ def test_update_processing_template_fail(
 ):
     mock_client = mocker.Mock()
     default_template = template_factory(name=ORDER_DEFAULT_PROCESSING_TEMPLATE)
-    new_template = template_factory(name=OrderProcessingTemplateEnum.NEW_ACCOUNT)
+    new_template = template_factory(name=OrderProcessingTemplateEnum.NEW_ACCOUNT.value)
 
     mocker.patch(
         "swo_aws_extension.flows.order.get_product_template_or_default",
@@ -221,7 +221,7 @@ def test_switch_order_status_to_process_success(
 ):
     mock_client = mocker.Mock()
     default_template = template_factory(name=ORDER_DEFAULT_PROCESSING_TEMPLATE)
-    new_template = template_factory(name=OrderProcessingTemplateEnum.NEW_ACCOUNT)
+    new_template = template_factory(name=OrderProcessingTemplateEnum.NEW_ACCOUNT.value)
 
     mocker.patch(
         "swo_aws_extension.flows.order.get_product_template_or_default",
@@ -259,7 +259,9 @@ def test_switch_order_status_to_query_success(
 ):
     mock_client = mocker.Mock()
     default_template = template_factory(name=ORDER_DEFAULT_PROCESSING_TEMPLATE)
-    new_template = template_factory(name=OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS)
+    new_template = template_factory(
+        name=OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS.value
+    )
 
     mocker.patch(
         "swo_aws_extension.flows.order.get_product_template_or_default",
@@ -281,7 +283,7 @@ def test_switch_order_status_to_query_success(
 
     context = InitialAWSContext.from_order_data(order)
     context.switch_order_status_to_query(
-        mock_client, OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS
+        mock_client, OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS.value
     )
 
     mock_query_order.assert_called_once_with(
@@ -298,7 +300,7 @@ def test_switch_order_status_to_complete_success(
 ):
     mock_client = mocker.Mock()
     default_template = template_factory(name=ORDER_DEFAULT_PROCESSING_TEMPLATE)
-    new_template = template_factory(name=OrderCompletedTemplateEnum.NEW_ACCOUNT_WITH_PLS)
+    new_template = template_factory(name=OrderCompletedTemplateEnum.NEW_ACCOUNT_WITH_PLS.value)
 
     mocker.patch(
         "swo_aws_extension.flows.order.get_product_template_or_default",
@@ -320,7 +322,7 @@ def test_switch_order_status_to_complete_success(
 
     context = InitialAWSContext.from_order_data(order)
     context.switch_order_status_to_complete(
-        mock_client, OrderCompletedTemplateEnum.NEW_ACCOUNT_WITH_PLS
+        mock_client, OrderCompletedTemplateEnum.NEW_ACCOUNT_WITH_PLS.value
     )
 
     mock_complete_order.assert_called_once_with(

@@ -83,36 +83,36 @@ def get_journal_processors(config):
     """
     tolerance = config.billing_discount_tolerance_rate
     return {
-        ItemSkusEnum.AWS_MARKETPLACE: GenerateMarketplaceJournalLines(
-            UsageMetricTypeEnum.MARKETPLACE,
+        ItemSkusEnum.AWS_MARKETPLACE.value: GenerateMarketplaceJournalLines(
+            UsageMetricTypeEnum.MARKETPLACE.value,
             tolerance,
         ),
-        ItemSkusEnum.AWS_USAGE: GenerateJournalLines(
-            UsageMetricTypeEnum.USAGE, tolerance, config.billing_discount_base
+        ItemSkusEnum.AWS_USAGE.value: GenerateJournalLines(
+            UsageMetricTypeEnum.USAGE.value, tolerance, config.billing_discount_base
         ),
-        ItemSkusEnum.AWS_USAGE_INCENTIVATE: GenerateJournalLines(
-            UsageMetricTypeEnum.USAGE, tolerance, config.billing_discount_incentivate
+        ItemSkusEnum.AWS_USAGE_INCENTIVATE.value: GenerateJournalLines(
+            UsageMetricTypeEnum.USAGE.value, tolerance, config.billing_discount_incentivate
         ),
-        ItemSkusEnum.AWS_OTHER_SERVICES: GenerateOtherServicesJournalLines(
-            UsageMetricTypeEnum.USAGE, tolerance, 0
+        ItemSkusEnum.AWS_OTHER_SERVICES.value: GenerateOtherServicesJournalLines(
+            UsageMetricTypeEnum.USAGE.value, tolerance, 0
         ),
-        ItemSkusEnum.AWS_SUPPORT: GenerateSupportJournalLines(
-            UsageMetricTypeEnum.SUPPORT, tolerance, config.billing_discount_base
+        ItemSkusEnum.AWS_SUPPORT.value: GenerateSupportJournalLines(
+            UsageMetricTypeEnum.SUPPORT.value, tolerance, config.billing_discount_base
         ),
-        ItemSkusEnum.AWS_SUPPORT_ENTERPRISE: GenerateSupportEnterpriseJournalLines(
-            UsageMetricTypeEnum.SUPPORT, tolerance, config.billing_discount_support_enterprise
+        ItemSkusEnum.AWS_SUPPORT_ENTERPRISE.value: GenerateSupportEnterpriseJournalLines(
+            UsageMetricTypeEnum.SUPPORT.value, tolerance, config.billing_discount_support_enterprise
         ),
-        ItemSkusEnum.SAVING_PLANS_RECURRING_FEE: GenerateJournalLines(
-            UsageMetricTypeEnum.SAVING_PLANS, tolerance, config.billing_discount_base
+        ItemSkusEnum.SAVING_PLANS_RECURRING_FEE.value: GenerateJournalLines(
+            UsageMetricTypeEnum.SAVING_PLANS.value, tolerance, config.billing_discount_base
         ),
-        ItemSkusEnum.SAVING_PLANS_RECURRING_FEE_INCENTIVATE: GenerateJournalLines(
-            UsageMetricTypeEnum.SAVING_PLANS, tolerance, config.billing_discount_incentivate
+        ItemSkusEnum.SAVING_PLANS_RECURRING_FEE_INCENTIVATE.value: GenerateJournalLines(
+            UsageMetricTypeEnum.SAVING_PLANS.value, tolerance, config.billing_discount_incentivate
         ),
-        ItemSkusEnum.UPFRONT: GenerateJournalLines(
-            UsageMetricTypeEnum.RECURRING, tolerance, config.billing_discount_base
+        ItemSkusEnum.UPFRONT.value: GenerateJournalLines(
+            UsageMetricTypeEnum.RECURRING.value, tolerance, config.billing_discount_base
         ),
-        ItemSkusEnum.UPFRONT_INCENTIVATE: GenerateJournalLines(
-            UsageMetricTypeEnum.RECURRING, tolerance, config.billing_discount_incentivate
+        ItemSkusEnum.UPFRONT_INCENTIVATE.value: GenerateJournalLines(
+            UsageMetricTypeEnum.RECURRING.value, tolerance, config.billing_discount_incentivate
         ),
     }
 
@@ -187,12 +187,12 @@ class GenerateItemJournalLines:
                 continue
             if target_discount is not None:
                 partner_discount = account_metrics.get(
-                    UsageMetricTypeEnum.PROVIDER_DISCOUNT, {}
+                    UsageMetricTypeEnum.PROVIDER_DISCOUNT.value, {}
                 ).get(service_name, 0)
                 if not self._is_service_discount_valid(amount, partner_discount, target_discount):
                     continue
             invoice_entity = account_metrics.get(
-                UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY, {}
+                UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY.value, {}
             ).get(service_name, "")
             invoice_id = account_invoices.get(invoice_entity, {}).get("invoice_id", "")
             journal_lines.append(
@@ -335,12 +335,12 @@ class GenerateOtherServicesJournalLines(GenerateItemJournalLines):
         exclude_services.append(AWSServiceEnum.REFUND)
         marketplace_services = [
             key.split(",")[1] if "," in key else key
-            for key in account_metrics.get(UsageMetricTypeEnum.MARKETPLACE, {}).keys()
+            for key in account_metrics.get(UsageMetricTypeEnum.MARKETPLACE.value, {}).keys()
         ]
         exclude_services.extend(marketplace_services)
         support_services = [
             key.split(",")[1] if "," in key else key
-            for key in account_metrics.get(UsageMetricTypeEnum.SUPPORT, {}).keys()
+            for key in account_metrics.get(UsageMetricTypeEnum.SUPPORT.value, {}).keys()
         ]
         exclude_services.extend(support_services)
         return self._get_usage_journal_lines(
@@ -364,8 +364,8 @@ class GenerateSupportJournalLines(GenerateItemJournalLines):
         self, account_id, item_external_id, account_metrics, journal_details, account_invoices
     ):
         support_discount = self._get_support_discount(
-            account_metrics.get(UsageMetricTypeEnum.SUPPORT, {}),
-            account_metrics.get(UsageMetricTypeEnum.REFUND, {}),
+            account_metrics.get(UsageMetricTypeEnum.SUPPORT.value, {}),
+            account_metrics.get(UsageMetricTypeEnum.REFUND.value, {}),
         )
         if support_discount == self.discount:
             return self._get_usage_journal_lines(
@@ -388,8 +388,8 @@ class GenerateSupportEnterpriseJournalLines(GenerateItemJournalLines):
         self, account_id, item_external_id, account_metrics, journal_details, account_invoices
     ):
         support_discount = self._get_support_discount(
-            account_metrics.get(UsageMetricTypeEnum.SUPPORT, {}),
-            account_metrics.get(UsageMetricTypeEnum.REFUND, {}),
+            account_metrics.get(UsageMetricTypeEnum.SUPPORT.value, {}),
+            account_metrics.get(UsageMetricTypeEnum.REFUND.value, {}),
         )
         if support_discount == self.discount:
             return self._get_usage_journal_lines(
@@ -830,7 +830,9 @@ class BillingJournalGenerator:
         Returns:
             dict: Organization usage reports.
         """
-        return {UsageMetricTypeEnum.MARKETPLACE: self._get_marketplace_usage_report(aws_client)}
+        return {
+            UsageMetricTypeEnum.MARKETPLACE.value: self._get_marketplace_usage_report(aws_client)
+        }
 
     def _get_account_metrics(self, aws_client, organization_reports, account_id):
         """
@@ -851,28 +853,28 @@ class BillingJournalGenerator:
         service_invoice_entity = self._get_service_invoice_entity_by_account_id_report(
             aws_client, account_id
         )
-        account_metrics[UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY] = (
+        account_metrics[UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY.value] = (
             self._get_invoice_entity_by_service(service_invoice_entity)
         )
         record_type_and_service_cost = self._get_record_type_and_service_cost_by_account_report(
             aws_client, account_id
         )
-        account_metrics[UsageMetricTypeEnum.USAGE] = self._get_metrics_by_key(
+        account_metrics[UsageMetricTypeEnum.USAGE.value] = self._get_metrics_by_key(
             record_type_and_service_cost, AWSRecordTypeEnum.USAGE
         )
-        account_metrics[UsageMetricTypeEnum.SUPPORT] = self._get_metrics_by_key(
+        account_metrics[UsageMetricTypeEnum.SUPPORT.value] = self._get_metrics_by_key(
             record_type_and_service_cost, AWSRecordTypeEnum.SUPPORT
         )
-        account_metrics[UsageMetricTypeEnum.REFUND] = self._get_metrics_by_key(
+        account_metrics[UsageMetricTypeEnum.REFUND.value] = self._get_metrics_by_key(
             record_type_and_service_cost, AWSRecordTypeEnum.REFUND
         )
-        account_metrics[UsageMetricTypeEnum.SAVING_PLANS] = self._get_metrics_by_key(
+        account_metrics[UsageMetricTypeEnum.SAVING_PLANS.value] = self._get_metrics_by_key(
             record_type_and_service_cost, AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE
         )
-        account_metrics[UsageMetricTypeEnum.PROVIDER_DISCOUNT] = self._get_metrics_by_key(
+        account_metrics[UsageMetricTypeEnum.PROVIDER_DISCOUNT.value] = self._get_metrics_by_key(
             record_type_and_service_cost, AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT
         )
-        account_metrics[UsageMetricTypeEnum.RECURRING] = self._get_metrics_by_key(
+        account_metrics[UsageMetricTypeEnum.RECURRING.value] = self._get_metrics_by_key(
             record_type_and_service_cost, AWSRecordTypeEnum.RECURRING
         )
         return account_metrics

@@ -27,7 +27,7 @@ def test_onboard_ccp_customer(
     agreement_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CCP_ONBOARD),
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CCP_ONBOARD.value),
         agreement=agreement_factory(vendor_id="123456789012"),
     )
 
@@ -76,12 +76,12 @@ def test_check_onboard_ccp_status_running(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CCP_ONBOARD, ccp_engagement_id="123123"
+            phase=PhasesEnum.CCP_ONBOARD.value, ccp_engagement_id="123123"
         )
     )
     mocked_onboard_status = mocker.patch(
         "swo_ccp_client.client.CCPClient.get_onboard_status",
-        return_value=onboard_customer_status_factory(CCPOnboardStatusEnum.RUNNING),
+        return_value=onboard_customer_status_factory(CCPOnboardStatusEnum.RUNNING.value),
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
@@ -106,12 +106,12 @@ def test_check_onboard_ccp_status_fail(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CCP_ONBOARD, ccp_engagement_id="123123"
+            phase=PhasesEnum.CCP_ONBOARD.value, ccp_engagement_id="123123"
         )
     )
     mocked_onboard_status = mocker.patch(
         "swo_ccp_client.client.CCPClient.get_onboard_status",
-        return_value=onboard_customer_status_factory(CCPOnboardStatusEnum.FAILED),
+        return_value=onboard_customer_status_factory(CCPOnboardStatusEnum.FAILED.value),
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
@@ -136,7 +136,7 @@ def test_check_onboard_ccp_status_fail(
     summary = CRM_CCP_TICKET_SUMMARY.format(
         ccp_engagement_id="123123",
         order_id=order["id"],
-        onboard_status=onboard_customer_status_factory(CCPOnboardStatusEnum.FAILED),
+        onboard_status=onboard_customer_status_factory(CCPOnboardStatusEnum.FAILED.value),
     )
     service_request = ServiceRequest(
         additional_info=CRM_CCP_TICKET_ADDITIONAL_INFO,
@@ -160,12 +160,14 @@ def test_check_onboard_ccp_status_fail_ticket_already_created(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CCP_ONBOARD, ccp_engagement_id="123123", crm_ccp_ticket_id="12345"
+            phase=PhasesEnum.CCP_ONBOARD.value,
+            ccp_engagement_id="123123",
+            crm_ccp_ticket_id="12345",
         )
     )
     mocked_onboard_status = mocker.patch(
         "swo_ccp_client.client.CCPClient.get_onboard_status",
-        return_value=onboard_customer_status_factory(CCPOnboardStatusEnum.FAILED),
+        return_value=onboard_customer_status_factory(CCPOnboardStatusEnum.FAILED.value),
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
@@ -201,15 +203,15 @@ def test_check_onboard_ccp_status_succeeded(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CCP_ONBOARD, ccp_engagement_id="123123"
+            phase=PhasesEnum.CCP_ONBOARD.value, ccp_engagement_id="123123"
         )
     )
     mocked_onboard_status = mocker.patch(
         "swo_ccp_client.client.CCPClient.get_onboard_status",
-        return_value=onboard_customer_status_factory(CCPOnboardStatusEnum.SUCCEEDED),
+        return_value=onboard_customer_status_factory(CCPOnboardStatusEnum.SUCCEEDED.value),
     )
 
-    updated_order = set_phase(order, PhasesEnum.COMPLETED)
+    updated_order = set_phase(order, PhasesEnum.COMPLETED.value)
     mocked_update_order = mocker.patch(
         "swo_aws_extension.flows.steps.ccp_onboard.update_order",
         return_value=updated_order,
@@ -243,7 +245,7 @@ def test_check_onboard_ccp_http_error(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CCP_ONBOARD, ccp_engagement_id="123123"
+            phase=PhasesEnum.CCP_ONBOARD.value, ccp_engagement_id="123123"
         )
     )
     mocked_onboard_status = mocker.patch(

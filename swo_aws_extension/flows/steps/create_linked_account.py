@@ -122,7 +122,7 @@ class CreateInitialLinkedAccountStep(Step):
         if get_phase(context.order) != PhasesEnum.CREATE_ACCOUNT:
             logger.info(
                 f"{context.order_id} - Skip - Current phase is '{get_phase(context.order)}', "
-                f"skipping as it is not '{PhasesEnum.CREATE_ACCOUNT}'"
+                f"skipping as it is not '{PhasesEnum.CREATE_ACCOUNT.value}'"
             )
             next_step(client, context)
             return
@@ -133,7 +133,7 @@ class CreateInitialLinkedAccountStep(Step):
                 logger.info(
                     f"{context.order_id} - Completed - AWS linked account created successfully"
                 )
-                context.order = set_phase(context.order, PhasesEnum.CREATE_SUBSCRIPTIONS)
+                context.order = set_phase(context.order, PhasesEnum.CREATE_SUBSCRIPTIONS.value)
                 update_order(client, context.order_id, parameters=context.order["parameters"])
                 next_step(client, context)
                 return
@@ -144,13 +144,15 @@ class CreateInitialLinkedAccountStep(Step):
                 manage_create_linked_account_error(
                     client,
                     context,
-                    OrderParametersEnum.ACCOUNT_NAME,
-                    OrderParametersEnum.ROOT_ACCOUNT_EMAIL,
+                    OrderParametersEnum.ACCOUNT_NAME.value,
+                    OrderParametersEnum.ROOT_ACCOUNT_EMAIL.value,
                 )
                 return
 
         has_error, order = validate_linked_account_parameters(
-            context, OrderParametersEnum.ACCOUNT_NAME, OrderParametersEnum.ROOT_ACCOUNT_EMAIL
+            context,
+            OrderParametersEnum.ACCOUNT_NAME.value,
+            OrderParametersEnum.ROOT_ACCOUNT_EMAIL.value,
         )
 
         if has_error:
@@ -208,15 +210,15 @@ class AddLinkedAccountStep(Step):
                 manage_create_linked_account_error(
                     client,
                     context,
-                    ChangeOrderParametersEnum.ACCOUNT_NAME,
-                    ChangeOrderParametersEnum.ROOT_ACCOUNT_EMAIL,
+                    ChangeOrderParametersEnum.ACCOUNT_NAME.value,
+                    ChangeOrderParametersEnum.ROOT_ACCOUNT_EMAIL.value,
                 )
                 return
 
         has_error, order = validate_linked_account_parameters(
             context,
-            ChangeOrderParametersEnum.ACCOUNT_NAME,
-            ChangeOrderParametersEnum.ROOT_ACCOUNT_EMAIL,
+            ChangeOrderParametersEnum.ACCOUNT_NAME.value,
+            ChangeOrderParametersEnum.ROOT_ACCOUNT_EMAIL.value,
         )
 
         if has_error:

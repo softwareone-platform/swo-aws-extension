@@ -69,11 +69,11 @@ def test_get_pending_notifications(mocker, base_info, pool_notification_factory)
         "swo_aws_extension.airtable.models.get_pool_notification_model"
     )
     pool_notification = pool_notification_factory()
-    pool_notification.status = NotificationStatusEnum.PENDING
+    pool_notification.status = NotificationStatusEnum.PENDING.value
     mock_pool_notification.return_value.all.return_value = [pool_notification]
-    result = get_notifications_by_status(NotificationStatusEnum.PENDING)
+    result = get_notifications_by_status(NotificationStatusEnum.PENDING.value)
     assert result == [pool_notification]
-    assert result[0].status == NotificationStatusEnum.PENDING
+    assert result[0].status == NotificationStatusEnum.PENDING.value
     mock_pool_notification.assert_called_once_with(base_info)
     mock_pool_notification.return_value.all.assert_called_once()
 

@@ -517,10 +517,13 @@ def test_synchronize_new_accounts_dates_test(
             "parameters": {
                 "fulfillment": [
                     {
-                        "externalId": FulfillmentParametersEnum.ACCOUNT_EMAIL,
+                        "externalId": FulfillmentParametersEnum.ACCOUNT_EMAIL.value,
                         "value": "test@example.com",
                     },
-                    {"externalId": FulfillmentParametersEnum.ACCOUNT_NAME, "value": "Test Account"},
+                    {
+                        "externalId": FulfillmentParametersEnum.ACCOUNT_NAME.value,
+                        "value": "Test Account",
+                    },
                 ]
             },
             "startDate": "2025-05-01T11:10:00Z",
