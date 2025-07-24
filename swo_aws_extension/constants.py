@@ -13,7 +13,6 @@ CRM_SUB_SERVICE = "Service Activation"
 
 COST_EXPLORER_DATE_FORMAT = "%Y-%m-%d"
 
-SERVICE_INVOICE_ENTITY = "SERVICE_INVOICE_ENTITY"
 AWS_MARKETPLACE = "AWS Marketplace"
 
 ERROR = "Error"
@@ -29,6 +28,8 @@ class UsageMetricTypeEnum(StrEnum):
     SUPPORT = "SUPPORT"
     REFUND = "REFUND"
     SAVING_PLANS = "SAVING_PLANS"
+    RECURRING = "RECURRING"
+    SERVICE_INVOICE_ENTITY = "SERVICE_INVOICE_ENTITY"
 
 
 class AWSServiceEnum(StrEnum):
@@ -44,6 +45,7 @@ class AWSRecordTypeEnum(StrEnum):
     SUPPORT = "Support"
     REFUND = "Refund"
     SAVING_PLAN_RECURRING_FEE = "SavingsPlanRecurringFee"
+    RECURRING = "Recurring"
 
 
 EXCLUDE_USAGE_SERVICES = [AWSServiceEnum.SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE]
