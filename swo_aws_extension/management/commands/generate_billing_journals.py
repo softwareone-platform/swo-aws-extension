@@ -5,10 +5,10 @@ from django.conf import settings
 
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import COMMAND_INVALID_BILLING_DATE
-from swo_aws_extension.flows.jobs.billing_journal import (
+from swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator import (
     BillingJournalGenerator,
-    get_journal_processors,
 )
+from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import get_journal_processors
 from swo_aws_extension.management.commands_helpers import StyledPrintCommand
 from swo_aws_extension.shared import mpt_client
 

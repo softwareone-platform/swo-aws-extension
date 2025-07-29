@@ -5,7 +5,7 @@ from swo_aws_extension.constants import (
     SubscriptionStatusEnum,
     UsageMetricTypeEnum,
 )
-from swo_aws_extension.flows.jobs.billing_journal import (
+from swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator import (
     BillingJournalGenerator,
     GenerateItemJournalLines,
     GenerateJournalLines,
