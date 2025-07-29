@@ -152,7 +152,8 @@ class BillingJournalGenerator:
             }
             self._log(
                 "info",
-                f"Creating new journal for authorization {authorization_id}: {journal_payload['name']}",
+                f"Creating new journal for authorization {authorization_id}:"
+                f" {journal_payload['name']}",
             )
             journal = self.mpt_api_client.billing.journal.create(journal_payload)
         else:
@@ -656,14 +657,7 @@ class BillingJournalGenerator:
 
     @staticmethod
     def _manage_line_error(
-        account_id,
-        item_external_id,
-        account_metrics,
-        journal_details,
-        account_invoices,
-        ex,
-        quality=1,
-        segment="COM",
+        account_id, item_external_id, account_metrics, journal_details, account_invoices, ex
     ):
         """
         Creates a journal line with error description for a specific account and item.
@@ -674,8 +668,6 @@ class BillingJournalGenerator:
             journal_details (dict): Journal metadata.
             account_invoices (dict): Invoices for the account.
             ex (AWSBillingException): Error message to include in the journal line.
-            quality (int, optional): Quality of the item. Defaults to 1.
-            segment (str, optional): Segment for the journal line. Defaults to "COM".
         """
         service_name = ex.service_name
         invoice_id = ""
@@ -696,5 +688,5 @@ class BillingJournalGenerator:
             journal_details,
             invoice_id,
             invoice_entity,
-            error_message,
+            error=error_message,
         )

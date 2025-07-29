@@ -31,7 +31,17 @@ from swo_aws_extension.constants import (
 )
 from swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator import (
     BillingJournalGenerator,
-    get_journal_processors,
+)
+from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import get_journal_processors
+from swo_aws_extension.flows.jobs.billing_journal.models import (
+    Description,
+    ExternalIds,
+    JournalLine,
+    Period,
+    Price,
+    Search,
+    SearchItem,
+    SearchSubscription,
 )
 from swo_aws_extension.notifications import MPTNotifier
 from swo_aws_extension.parameters import (
@@ -2263,7 +2273,7 @@ def mock_journal_args(
             "item_external_id": item_external_id,
             "account_metrics": account_metrics,
             "journal_details": {
-                "agreement_id": "agreement_id",
+                "agreement_id": "AGR-2119-4550-8674-5962",
                 "mpa_id": "mpa_id",
                 "start_date": "2025-01-01",
                 "end_date": "2025-02-01",
@@ -2282,22 +2292,39 @@ def mock_journal_line_factory():
         invoice_entity=INVOICE_ENTITY,
         invoice_id="EUINGB25-2163550",
         item_external_id="",
+        error=None,
     ):
-        value2 = f"{account_id}/{invoice_entity}"
-        return {
-            "description": {"value1": service_name, "value2": value2},
-            "externalIds": {"invoice": invoice_id, "reference": "agreement_id", "vendor": "mpa_id"},
-            "period": {"end": "2025-02-01", "start": "2025-01-01"},
-            "price": {"PPx1": 100.0, "unitPP": 100.0},
-            "quantity": 1,
-            "search": {
-                "item": {"criteria": "item.externalIds.vendor", "value": item_external_id},
-                "subscription": {
-                    "criteria": "subscription.externalIds.vendor",
-                    "value": account_id,
-                },
-            },
-            "segment": "COM",
-        }
+        return JournalLine(
+            description=Description(
+                value1=service_name,
+                value2=f"{account_id}/{invoice_entity}",
+            ),
+            externalIds=ExternalIds(
+                invoice=invoice_id,
+                reference="AGR-2119-4550-8674-5962",
+                vendor="mpa_id",
+            ),
+            period=Period(
+                start="2025-01-01",
+                end="2025-02-01",
+            ),
+            price=Price(
+                PPx1=100.0,
+                unitPP=100.0,
+            ),
+            quantity=1,
+            search=Search(
+                item=SearchItem(
+                    criteria="item.externalIds.vendor",
+                    value=item_external_id,
+                ),
+                subscription=SearchSubscription(
+                    criteria="subscription.externalIds.vendor",
+                    value=account_id,
+                ),
+            ),
+            segment="COM",
+            error=error,
+        )
 
     return _journal_line

@@ -58,12 +58,14 @@ class JournalLine:
     error: str | None = field(default=None)
 
     def to_dict(self) -> dict[str, Any]:
+        """Custom dict serialization."""
         data = asdict(self)
         if self.error is None:
             data.pop("error")
         return data
 
     def is_valid(self) -> bool:
+        """Check if the journal line is valid (no error)."""
         return self.error is None
 
     def to_jsonl(self) -> str:

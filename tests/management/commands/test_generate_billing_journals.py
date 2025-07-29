@@ -9,7 +9,7 @@ from swo_aws_extension.constants import COMMAND_INVALID_BILLING_DATE
 @freeze_time("2025-02-05 00:00:00")
 def test_call_command_no_params(mocker):
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.BillingJournalGenerator.generate_billing_journals",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.BillingJournalGenerator.generate_billing_journals",
         return_value=None,
     )
     out = StringIO()
@@ -24,7 +24,7 @@ def test_call_command_no_params(mocker):
 @freeze_time("2025-02-04 23:59:59")
 def test_call_command_wrong_date(mocker):
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.BillingJournalGenerator.generate_billing_journals",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.BillingJournalGenerator.generate_billing_journals",
         return_value=None,
     )
     out = StringIO()
@@ -38,7 +38,7 @@ def test_call_command_wrong_date(mocker):
 
 def test_call_command_with_params(mocker):
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.BillingJournalGenerator.generate_billing_journals",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.BillingJournalGenerator.generate_billing_journals",
         return_value=None,
     )
     out = StringIO()
@@ -52,7 +52,7 @@ def test_call_command_with_params(mocker):
 
 def test_test_call_command_with_error_year(mocker):
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.BillingJournalGenerator.generate_billing_journals",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.BillingJournalGenerator.generate_billing_journals",
         return_value=None,
     )
     out = StringIO()
@@ -66,7 +66,7 @@ def test_test_call_command_with_error_year(mocker):
 
 def test_test_call_command_with_error_month(mocker):
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.BillingJournalGenerator.generate_billing_journals",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.BillingJournalGenerator.generate_billing_journals",
         return_value=None,
     )
     out = StringIO()
@@ -80,7 +80,7 @@ def test_test_call_command_with_error_month(mocker):
 
 def test_call_command_with_one_authorization(mocker):
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.BillingJournalGenerator.generate_billing_journals",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.BillingJournalGenerator.generate_billing_journals",
         return_value=None,
     )
     out = StringIO()
@@ -98,7 +98,7 @@ def test_call_command_with_one_authorization(mocker):
 
 def test_call_command_with_multiple_authorization(mocker):
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.BillingJournalGenerator.generate_billing_journals",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.BillingJournalGenerator.generate_billing_journals",
         return_value=None,
     )
     out = StringIO()
@@ -120,7 +120,7 @@ def test_call_command_with_multiple_authorization(mocker):
 
 def test_call_command_with_invalid_authorization(mocker):
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.BillingJournalGenerator.generate_billing_journals",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.BillingJournalGenerator.generate_billing_journals",
         return_value=None,
     )
     out = StringIO()
