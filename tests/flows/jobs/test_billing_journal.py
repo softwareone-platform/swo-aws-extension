@@ -5,8 +5,11 @@ from swo_aws_extension.constants import (
     SubscriptionStatusEnum,
     UsageMetricTypeEnum,
 )
-from swo_aws_extension.flows.jobs.billing_journal import (
+from swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator import (
     BillingJournalGenerator,
+)
+from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingException
+from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import (
     GenerateItemJournalLines,
     GenerateJournalLines,
     GenerateOtherServicesJournalLines,
@@ -15,6 +18,16 @@ from swo_aws_extension.flows.jobs.billing_journal import (
     get_journal_processors,
 )
 from swo_rql import RQLQuery
+
+
+class DummyProcessor:
+    @staticmethod
+    def process(*args, **kwargs):
+        payload = {
+            "service_name": "TestService",
+            "amount": 100.0,
+        }
+        raise AWSBillingException("Test error", payload=payload)
 
 
 def test_generate_billing_journals_no_authorizations(
@@ -29,7 +42,7 @@ def test_generate_billing_journals_no_authorizations(
         billing_journal_processor=get_journal_processors(config),
     )
     mocker_get_authorizations = mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
         return_value=None,
         autospec=True,
     )
@@ -52,7 +65,7 @@ def test_generate_billing_journals_create_journal_empty_agreements(
         billing_journal_processor=get_journal_processors(config),
     )
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
         autospec=True,
     )
@@ -67,7 +80,7 @@ def test_generate_billing_journals_create_journal_empty_agreements(
         autospec=True,
     )
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
         return_value=[],
         autospec=True,
     )
@@ -88,7 +101,7 @@ def test_generate_billing_journals_authorization_with_no_agreements_create_new_j
         billing_journal_processor=get_journal_processors(config),
     )
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
         autospec=True,
     )
@@ -103,7 +116,7 @@ def test_generate_billing_journals_authorization_with_no_agreements_create_new_j
         autospec=True,
     )
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
         return_value=[],
         autospec=True,
     )
@@ -124,7 +137,7 @@ def test_generate_billing_journals_authorization_no_mpa_found(
         billing_journal_processor=get_journal_processors(config),
     )
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
         autospec=True,
     )
@@ -139,7 +152,7 @@ def test_generate_billing_journals_authorization_no_mpa_found(
         autospec=True,
     )
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
         return_value=[agreement_factory()],
         autospec=True,
     )
@@ -171,7 +184,7 @@ def test_generate_billing_journals_authorization_not_active_subscription(
         billing_journal_processor=get_journal_processors(config),
     )
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
         autospec=True,
     )
@@ -191,7 +204,7 @@ def test_generate_billing_journals_authorization_not_active_subscription(
     )
     agreement_data = agreement_factory(vendor_id="123456789012", subscriptions=subscriptions)
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
         return_value=[agreement_data],
         autospec=True,
     )
@@ -224,7 +237,7 @@ def test_generate_billing_journals_authorization_exception(
         billing_journal_processor=get_journal_processors(config),
     )
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
         autospec=True,
     )
@@ -244,7 +257,7 @@ def test_generate_billing_journals_authorization_exception(
     )
     agreement_data = agreement_factory(vendor_id="123456789012", subscriptions=subscriptions)
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
         return_value=[agreement_data],
         autospec=True,
     )
@@ -255,7 +268,8 @@ def test_generate_billing_journals_authorization_exception(
         autospec=True,
     )
     send_error = mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.send_error", autospec=True
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.send_error",
+        autospec=True,
     )
     aws_client_factory(config, "aws_mpa", "aws_role")
 
@@ -289,7 +303,7 @@ def test_generate_billing_journals_authorization_upload_file(
         authorizations=["AUTH-1"],
     )
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
         autospec=True,
     )
@@ -311,7 +325,7 @@ def test_generate_billing_journals_authorization_upload_file(
     mpa_account = "123456789012"
     agreement_data = agreement_factory(vendor_id=mpa_account, subscriptions=subscriptions)
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
         return_value=[agreement_data],
         autospec=True,
     )
@@ -380,14 +394,17 @@ def test_generate_agreement_journal_lines_subscription_exception(
         generator, "_generate_subscription_journal_lines", side_effect=Exception("sub error")
     )
     mocker.patch.object(generator, "_generate_mpa_journal_lines", return_value=[], autospec=True)
-    mocker.patch("swo_aws_extension.flows.jobs.billing_journal.send_error", autospec=True)
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.send_error",
+        autospec=True,
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
         return_value=[agreement_data],
         autospec=True,
     )
-    result = generator._generate_agreement_journal_lines(agreement_data)
-    assert result == []
+    generator._generate_agreement_journal_lines(agreement_data)
+    assert generator.journal_file_lines == []
 
 
 def test_generate_agreement_journal_lines_aws_client_error(
@@ -415,12 +432,12 @@ def test_generate_agreement_journal_lines_aws_client_error(
         ),
     )
     awsclient_patch = mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.AWSClient",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.AWSClient",
         side_effect=AWSError("error"),
         autospec=True,
     )
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
         autospec=True,
     )
@@ -435,7 +452,7 @@ def test_generate_agreement_journal_lines_aws_client_error(
         autospec=True,
     )
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
         return_value=[agreement_data],
         autospec=True,
     )
@@ -467,7 +484,7 @@ def test_generate_subscription_journal_lines_exception(
         subscriptions=[subscription],
     )
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
         autospec=True,
     )
@@ -480,13 +497,14 @@ def test_generate_subscription_journal_lines_exception(
         autospec=True,
     )
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
         return_value=[agreement_data],
         autospec=True,
     )
 
     send_error = mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.send_error", autospec=True
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.send_error",
+        autospec=True,
     )
     get_account_metrics_patch = mocker.patch.object(
         generator,
@@ -663,7 +681,7 @@ def test_generate_billing_journals_item_not_supported(
         authorizations=["AUTH-1"],
     )
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_authorizations",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
         autospec=True,
     )
@@ -690,7 +708,7 @@ def test_generate_billing_journals_item_not_supported(
     mpa_account = "123456789012"
     agreement_data = agreement_factory(vendor_id=mpa_account, subscriptions=subscriptions)
     mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.get_agreements_by_query",
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
         return_value=[agreement_data],
         autospec=True,
     )
@@ -702,3 +720,91 @@ def test_generate_billing_journals_item_not_supported(
 
     generator.generate_billing_journals()
     upload_mock.assert_not_called()
+
+
+def test_support_two_charges_error(mock_journal_args, mock_journal_line_factory):
+    proc = GenerateSupportEnterpriseJournalLines(
+        UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=35
+    )
+    item_external_id = ItemSkusEnum.AWS_SUPPORT_ENTERPRISE.value
+    args = mock_journal_args(item_external_id)
+    args["account_metrics"][UsageMetricTypeEnum.SUPPORT.value] = {
+        "AWS Support (Enterprise)": 100.0,
+        "AWS Support (Business)": 100.0,
+    }
+    args["account_metrics"][UsageMetricTypeEnum.REFUND.value] = {"refund": 35}
+
+    with pytest.raises(AWSBillingException) as exc_info:
+        proc.process(**args)
+
+    assert (
+        exc_info.value.message
+        == "Multiple support metrics found: {'AWS Support (Enterprise)': 100.0,"
+        " 'AWS Support (Business)': 100.0} with refund {'refund': 35}. "
+    )
+
+
+def test_process_item_journal_line_error(
+    mocker,
+    mpt_client,
+    agreement_factory,
+    subscriptions_factory,
+    config,
+    aws_client_factory,
+    mock_journal_line_factory,
+):
+    generator = BillingJournalGenerator(
+        mpt_client,
+        config,
+        2025,
+        1,
+        ["prod1"],
+        billing_journal_processor={ItemSkusEnum.AWS_SUPPORT.value: DummyProcessor()},
+        authorizations=["AUTH-1"],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
+        return_value=[{"id": "AUTH-1"}],
+        autospec=True,
+    )
+    mock_journal_query = mocker.patch.object(
+        generator.mpt_api_client.billing.journal, "query", autospec=True
+    )
+    mock_journal_query.return_value.all.return_value = [{"id": "JOURNAL-1", "status": "Draft"}]
+    mocker.patch.object(
+        generator.mpt_api_client.billing.journal,
+        "create",
+        return_value={"id": "JOURNAL-1"},
+        autospec=True,
+    )
+    linked_account = "1234567890"
+    subscriptions = subscriptions_factory(
+        vendor_id=linked_account,
+        status=SubscriptionStatusEnum.ACTIVE.value,
+    )
+    mpa_account = "mpa_id"
+    agreement_data = agreement_factory(vendor_id=mpa_account, subscriptions=subscriptions)
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
+        return_value=[agreement_data],
+        autospec=True,
+    )
+    _, _ = aws_client_factory(config, "aws_mpa", "aws_role")
+    mocker.patch.object(generator, "_get_account_metrics", return_value={}, autospec=True)
+    mocker.patch.object(generator, "_get_organization_invoices", return_value={}, autospec=True)
+    mocker.patch.object(generator, "_get_organization_reports", return_value={}, autospec=True)
+
+    upload_mock = mocker.patch.object(
+        generator.mpt_api_client.billing.journal, "upload", autospec=True
+    )
+
+    generator.generate_billing_journals()
+    upload_mock.assert_called_once()
+    journal_line = mock_journal_line_factory(
+        service_name="TestService",
+        item_external_id=ItemSkusEnum.AWS_SUPPORT.value,
+        error="Test error",
+        invoice_id="",
+        invoice_entity="",
+    )
+    assert generator.journal_file_lines == [journal_line, journal_line]
