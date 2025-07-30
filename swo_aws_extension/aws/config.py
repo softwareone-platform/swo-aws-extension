@@ -113,6 +113,13 @@ class Config:
         """
         return int(settings.EXTENSION_CONFIG.get("BILLING_DISCOUNT_TOLERANCE_RATE", 1))
 
+    @property
+    def mpt_portal_base_url(self) -> str:
+        """
+        Get the base URL for the MPT portal.
+        """
+        return settings.MPT_PORTAL_BASE_URL
+
 
 _CONFIG = None
 
