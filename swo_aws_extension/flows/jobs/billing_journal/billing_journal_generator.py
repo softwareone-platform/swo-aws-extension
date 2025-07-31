@@ -13,6 +13,7 @@ import logging
 from contextlib import contextmanager
 from datetime import date
 from io import BytesIO
+from urllib.parse import urljoin
 
 from mpt_extension_sdk.mpt_http.mpt import _paginated, get_agreements_by_query
 from mpt_extension_sdk.mpt_http.utils import find_first
@@ -21,6 +22,7 @@ from swo.mpt.extensions.runtime.tracer import dynamic_trace_span
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import (
+    AWS_BILLING_SUCCESS,
     AWS_MARKETPLACE,
     COST_EXPLORER_DATE_FORMAT,
     JOURNAL_PENDING_STATUS,
@@ -33,7 +35,7 @@ from swo_aws_extension.constants import (
 )
 from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingException
 from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import create_journal_line
-from swo_aws_extension.notifications import send_error
+from swo_aws_extension.notifications import Button, send_error, send_success
 from swo_mpt_api import MPTAPIClient
 from swo_rql import RQLQuery
 
@@ -328,6 +330,18 @@ class BillingJournalGenerator:
         final_file = BytesIO(journal_file.encode("utf-8"))
         self.mpt_api_client.billing.journal.upload(journal_id, final_file, "journal.jsonl")
         self._log("info", f"Uploaded journal file for journal ID {journal_id}")
+
+        journal_link = urljoin(
+            self.config.mpt_portal_base_url,
+            f"/billing/journals/{journal_id}",
+        )
+
+        send_success(
+            AWS_BILLING_SUCCESS,
+            f"Billing journal {journal_id} updated for {authorization['id']} "
+            f"with {len(self.journal_file_lines)} lines.",
+            button=Button(f"Open journal {journal_id}", journal_link),
+        )
 
     def generate_billing_journals(self):
         """

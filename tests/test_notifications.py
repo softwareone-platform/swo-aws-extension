@@ -13,6 +13,7 @@ from swo_aws_extension.notifications import (
     send_error,
     send_exception,
     send_notification,
+    send_success,
     send_warning,
 )
 
@@ -115,6 +116,7 @@ def test_send_notification_exception(mocker, settings, caplog):
         (send_warning, "#ffa500", "\u2622"),
         (send_error, "#df3422", "\U0001f4a3"),
         (send_exception, "#541c2e", "\U0001f525"),
+        (send_success, "#00FF00", "\u2705"),
     ],
 )
 def test_send_others(mocker, function, color, icon):
