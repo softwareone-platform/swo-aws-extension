@@ -93,6 +93,21 @@ def send_warning(
     )
 
 
+def send_success(
+    title: str,
+    text: str,
+    button: Button | None = None,
+    facts: FactsSection | None = None,
+) -> None:
+    send_notification(
+        f"\u2705 {title}",
+        text,
+        "#00FF00",
+        button=button,
+        facts=facts,
+    )
+
+
 def send_error(
     title: str,
     text: str,

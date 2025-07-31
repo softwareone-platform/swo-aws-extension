@@ -329,6 +329,10 @@ def test_generate_billing_journals_authorization_upload_file(
         return_value=[agreement_data],
         autospec=True,
     )
+    send_success = mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.send_success",
+        autospec=True,
+    )
     _, aws_mock = aws_client_factory(config, "aws_mpa", "aws_role")
 
     groups = mock_marketplace_report_group_factory(account_id=linked_account)
@@ -355,6 +359,7 @@ def test_generate_billing_journals_authorization_upload_file(
 
     generator.generate_billing_journals()
     upload_mock.assert_called_once()
+    send_success.assert_called_once()
 
 
 def test_generate_agreement_journal_lines_subscription_exception(
@@ -787,6 +792,10 @@ def test_process_item_journal_line_error(
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
         return_value=[agreement_data],
+        autospec=True,
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.send_success",
         autospec=True,
     )
     _, _ = aws_client_factory(config, "aws_mpa", "aws_role")
