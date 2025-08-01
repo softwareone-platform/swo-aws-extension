@@ -297,3 +297,10 @@ COMMAND_INVALID_BILLING_DATE = (
 )
 SYNCHRONIZATION_ERROR = "AWS Billing Journal Synchronization Error"
 AWS_BILLING_SUCCESS = "AWS Billing Journal Synchronization Success"
+
+
+class JournalAttachmentFilesNameEnum(StrEnum):
+    RECORD_TYPE_AND_SERVICE_COST = "Record type and service cost"
+    SERVICE_INVOICE_ENTITY = "Service invoice entity"
+    ORGANIZATION_INVOICES = "Organization invoices"
+    MARKETPLACE_USAGE_REPORT = "Marketplace usage report"

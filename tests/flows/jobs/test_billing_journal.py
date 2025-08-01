@@ -188,6 +188,12 @@ def test_generate_billing_journals_authorization_not_active_subscription(
         return_value=[{"id": "AUTH-1"}],
         autospec=True,
     )
+    mocker.patch.object(
+        generator,
+        "_add_attachments",
+        return_value=None,
+        autospec=True,
+    )
     mock_journal_query = mocker.patch.object(
         generator.mpt_api_client.billing.journal, "query", autospec=True
     )
@@ -241,9 +247,11 @@ def test_generate_billing_journals_authorization_exception(
         return_value=[{"id": "AUTH-1"}],
         autospec=True,
     )
+
     mock_journal_query = mocker.patch.object(
         generator.mpt_api_client.billing.journal, "query", autospec=True
     )
+
     mock_journal_query.return_value.all.return_value = [{"id": "JOURNAL-1", "status": "Draft"}]
     mocker.patch.object(
         generator.mpt_api_client.billing.journal,
@@ -263,7 +271,7 @@ def test_generate_billing_journals_authorization_exception(
     )
     mocker.patch.object(
         generator,
-        "_get_organization_invoices",
+        "_get_marketplace_usage_report",
         side_effect=Exception("Test exception"),
         autospec=True,
     )
@@ -317,6 +325,9 @@ def test_generate_billing_journals_authorization_upload_file(
         return_value={"id": "JOURNAL-1"},
         autospec=True,
     )
+    attach_mock = mocker.patch(
+        "swo_mpt_api.billing.journal_client.AttachmentsClient.upload", autospec=True
+    )
     linked_account = "1234-1234-1234"
     subscriptions = subscriptions_factory(
         vendor_id=linked_account,
@@ -360,6 +371,7 @@ def test_generate_billing_journals_authorization_upload_file(
     generator.generate_billing_journals()
     upload_mock.assert_called_once()
     send_success.assert_called_once()
+    attach_mock.assert_called_once()
 
 
 def test_generate_agreement_journal_lines_subscription_exception(
@@ -403,12 +415,18 @@ def test_generate_agreement_journal_lines_subscription_exception(
         "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.send_error",
         autospec=True,
     )
+    mocker.patch.object(
+        generator,
+        "_add_attachments",
+        return_value=None,
+        autospec=True,
+    )
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
         return_value=[agreement_data],
         autospec=True,
     )
-    generator._generate_agreement_journal_lines(agreement_data)
+    generator._generate_agreement_journal_lines(agreement_data, "JOURNAL-1")
     assert generator.journal_file_lines == []
 
 
@@ -690,6 +708,12 @@ def test_generate_billing_journals_item_not_supported(
         return_value=[{"id": "AUTH-1"}],
         autospec=True,
     )
+    mocker.patch.object(
+        generator,
+        "_add_attachments",
+        return_value=None,
+        autospec=True,
+    )
     mock_journal_query = mocker.patch.object(
         generator.mpt_api_client.billing.journal, "query", autospec=True
     )
@@ -702,7 +726,7 @@ def test_generate_billing_journals_item_not_supported(
     )
     mocker.patch.object(generator, "_get_account_metrics", return_value={}, autospec=True)
     mocker.patch.object(generator, "_get_organization_invoices", return_value={}, autospec=True)
-    mocker.patch.object(generator, "_get_organization_reports", return_value={}, autospec=True)
+    mocker.patch.object(generator, "_get_marketplace_usage_report", return_value={}, autospec=True)
 
     linked_account = "1234-1234-1234"
     subscriptions = subscriptions_factory(
@@ -767,6 +791,12 @@ def test_process_item_journal_line_error(
         billing_journal_processor={ItemSkusEnum.AWS_SUPPORT.value: DummyProcessor()},
         authorizations=["AUTH-1"],
     )
+    mocker.patch.object(
+        generator,
+        "_add_attachments",
+        return_value=None,
+        autospec=True,
+    )
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
@@ -801,7 +831,7 @@ def test_process_item_journal_line_error(
     _, _ = aws_client_factory(config, "aws_mpa", "aws_role")
     mocker.patch.object(generator, "_get_account_metrics", return_value={}, autospec=True)
     mocker.patch.object(generator, "_get_organization_invoices", return_value={}, autospec=True)
-    mocker.patch.object(generator, "_get_organization_reports", return_value={}, autospec=True)
+    mocker.patch.object(generator, "_get_marketplace_usage_report", return_value={}, autospec=True)
 
     upload_mock = mocker.patch.object(
         generator.mpt_api_client.billing.journal, "upload", autospec=True
@@ -817,3 +847,74 @@ def test_process_item_journal_line_error(
         invoice_entity="",
     )
     assert generator.journal_file_lines == [journal_line, journal_line]
+
+
+def test_generate_billing_journals_authorization_subscription_without_vendor_external(
+    mocker,
+    mpt_client,
+    agreement_factory,
+    subscriptions_factory,
+    config,
+    aws_client_factory,
+    data_aws_invoice_summary_factory,
+    mock_marketplace_report_factory,
+):
+    generator = BillingJournalGenerator(
+        mpt_client,
+        config,
+        2024,
+        5,
+        ["prod1"],
+        billing_journal_processor=get_journal_processors(config),
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
+        return_value=[{"id": "AUTH-1"}],
+        autospec=True,
+    )
+    mocker.patch.object(
+        generator,
+        "_add_attachments",
+        return_value=None,
+        autospec=True,
+    )
+    mock_journal_query = mocker.patch.object(
+        generator.mpt_api_client.billing.journal, "query", autospec=True
+    )
+    mock_journal_query.return_value.all.return_value = [{"id": "JOURNAL-1", "status": "Completed"}]
+    mock_create = mocker.patch.object(
+        generator.mpt_api_client.billing.journal,
+        "create",
+        return_value={"id": "JOURNAL-1"},
+        autospec=True,
+    )
+    subscriptions = subscriptions_factory(vendor_id="")
+    agreement_data = agreement_factory(vendor_id="123456789012", subscriptions=subscriptions)
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
+        return_value=[agreement_data],
+        autospec=True,
+    )
+    _, aws_mock = aws_client_factory(config, "aws_mpa", "aws_role")
+    aws_mock.list_invoice_summaries.return_value = {
+        "InvoiceSummaries": [data_aws_invoice_summary_factory()],
+    }
+    mpa_account = "123456789012"
+
+    aws_mock.list_invoice_summaries.side_effect = [
+        {
+            "InvoiceSummaries": [
+                data_aws_invoice_summary_factory(),
+                data_aws_invoice_summary_factory(),
+                data_aws_invoice_summary_factory(account_id=mpa_account),
+            ],
+        },
+    ]
+    aws_mock.get_cost_and_usage.side_effect = [mock_marketplace_report_factory()]
+
+    upload_mock = mocker.patch.object(
+        generator.mpt_api_client.billing.journal, "upload", autospec=True
+    )
+    generator.generate_billing_journals()
+    mock_create.assert_called_once()
+    upload_mock.assert_not_called()
