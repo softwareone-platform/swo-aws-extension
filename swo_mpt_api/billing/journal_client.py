@@ -19,7 +19,11 @@ class AttachmentsClient:
         return HttpQuery(self._client, url, rql)
 
     def upload(
-        self, file, mimetype:str, filename:str|None=None, attachment:JournalAttachment|None=None
+        self,
+        file,
+        mimetype: str,
+        filename: str | None = None,
+        attachment: JournalAttachment | None = None,
     ) -> JournalAttachment:
         """
         Uploads attachment files to the Journal

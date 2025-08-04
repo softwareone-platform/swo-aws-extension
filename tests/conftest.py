@@ -7,10 +7,11 @@ import jwt
 import pytest
 import responses
 from django.conf import settings
+from django.test import override_settings
 from mpt_extension_sdk.core.events.dataclasses import Event
 from mpt_extension_sdk.flows.context import ORDER_TYPE_TERMINATION
+from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 from rich.highlighter import ReprHighlighter as _ReprHighlighter
-from swo.mpt.extensions.runtime.djapp.conf import get_for_product
 
 from swo_aws_extension.airtable.models import (
     AirTableBaseInfo,
@@ -60,6 +61,15 @@ ACCOUNT_EMAIL = "test@aws.com"
 ACCOUNT_NAME = "Account Name"
 SERVICE_NAME = "Marketplace service"
 INVOICE_ENTITY = "Amazon Web Services EMEA SARL"
+
+
+@pytest.fixture(autouse=True)
+def force_test_settings():
+    """
+    Force the use of test settings for test execution stability.
+    """
+    with override_settings(DJANGO_SETTINGS_MODULE="tests.django.settings"):
+        yield
 
 
 @pytest.fixture
@@ -882,8 +892,8 @@ def mock_runtime_master_options():
 @pytest.fixture
 def mock_swoext_commands():
     return (
-        "swo.mpt.extensions.runtime.commands.run.run",
-        "swo.mpt.extensions.runtime.commands.django.django",
+        "mpt_extension_sdk.runtime.commands.run.run",
+        "mpt_extension_sdk.runtime.commands.django.django",
     )
 
 
@@ -946,7 +956,11 @@ def mock_gunicorn_logging_config():
                 "level": "INFO",
                 "propagate": False,
             },
-            "swo.mpt": {},
+            "swo.mpt": {
+                "handlers": ["rich"],
+                "level": "INFO",
+                "propagate": False,
+            },
         },
     }
 
@@ -1058,6 +1072,11 @@ def mock_env_webhook_secret():
 
 
 @pytest.fixture
+def mock_env_airtable_bases():
+    return '{ "airtable_base": "AIRTABLE_BASE" }'
+
+
+@pytest.fixture
 def mock_json_ext_variables():
     return {
         "EXT_WEBHOOKS_SECRETS",
@@ -1067,20 +1086,27 @@ def mock_json_ext_variables():
 @pytest.fixture
 def mock_valid_env_values(
     mock_env_webhook_secret,
+    mock_env_airtable_bases,
 ):
     return {
         "EXT_WEBHOOKS_SECRETS": mock_env_webhook_secret,
+        "EXT_AIRTABLE_BASES": mock_env_airtable_bases,
     }
 
 
 @pytest.fixture
-def mock_worker_initialize(mocker):
-    return mocker.patch("swo.mpt.extensions.runtime.workers.initialize")
+def mock_worker_call_command_path():
+    return "mpt_extension_sdk.runtime.workers.call_command"
 
 
 @pytest.fixture
-def mock_worker_call_command(mocker):
-    return mocker.patch("swo.mpt.extensions.runtime.workers.call_command")
+def mock_initialize_extension_path():
+    return "swo_aws_extension.initializer.initialize"
+
+
+@pytest.fixture
+def mock_get_wsgi_application_path():
+    return "mpt_extension_sdk.runtime.workers.get_wsgi_application"
 
 
 @pytest.fixture
@@ -2328,3 +2354,16 @@ def mock_journal_line_factory():
         )
 
     return _journal_line
+
+
+@pytest.fixture
+def mock_app_insights_instrumentation_key():
+    return "12345678-1234-1234-1234-123456789012"
+
+
+@pytest.fixture
+def mock_app_insights_connection_string(mock_app_insights_instrumentation_key):
+    return (
+        f"InstrumentationKey={mock_app_insights_instrumentation_key};"
+        "IngestionEndpoint=https://test.applicationinsights.azure.com/"
+    )

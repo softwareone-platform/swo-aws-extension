@@ -14,10 +14,10 @@ import json
 import os
 from pathlib import Path
 
+from azure.monitor.opentelemetry.exporter import AzureMonitorLogExporter
 from opentelemetry._logs import set_logger_provider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
-from azure.monitor.opentelemetry.exporter import AzureMonitorLogExporter
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,7 +29,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv(
     "MPT_DJANGO_SECRET_KEY",
-    "django-insecure-6r_%9ku+bg0=@xw1ah$wh+liwbsyhwpn#6alt*ppjn8t_uyp-u",
+    "django_secret",
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "swo.mpt.extensions.runtime.djapp.apps.DjAppConfig",
+    "mpt_extension_sdk.runtime.djapp.apps.DjAppConfig",
 ]
 
 MIDDLEWARE = [
@@ -61,7 +61,7 @@ MIDDLEWARE = [
     "mpt_extension_sdk.runtime.djapp.middleware.MPTClientMiddleware",
 ]
 
-ROOT_URLCONF = "swo.mpt.extensions.runtime.djapp.conf.urls"
+ROOT_URLCONF = "mpt_extension_sdk.runtime.djapp.conf.urls"
 
 TEMPLATES = [
     {
@@ -214,7 +214,9 @@ EXTENSION_CONFIG = {
 
 MPT_SETUP_CONTEXTS_FUNC = os.getenv(
     "MPT_SETUP_CONTEXTS_FUNC",
-    "mpt_extension_sdk.runtime.events.utils.setup_contexts",
+    "swo_aws_extension.flows.fulfillment.base.setup_contexts",
 )
 
 MPT_NOTIFY_CATEGORIES = json.loads(os.environ["MPT_NOTIFY_CATEGORIES"])
+
+INITIALIZER = os.getenv("MPT_INITIALIZER", "swo_aws_extension.initializer.initialize")
