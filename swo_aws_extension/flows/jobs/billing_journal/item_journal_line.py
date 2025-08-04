@@ -50,10 +50,10 @@ def get_journal_processors(config):
         ItemSkusEnum.AWS_SUPPORT_ENTERPRISE.value: GenerateSupportEnterpriseJournalLines(
             UsageMetricTypeEnum.SUPPORT.value, tolerance, config.billing_discount_support_enterprise
         ),
-        ItemSkusEnum.SAVING_PLANS_RECURRING_FEE.value: GenerateJournalLines(
+        ItemSkusEnum.SAVING_PLANS_RECURRING_FEE.value: GenerateSavingPlansJournalLines(
             UsageMetricTypeEnum.SAVING_PLANS.value, tolerance, config.billing_discount_base
         ),
-        ItemSkusEnum.SAVING_PLANS_RECURRING_FEE_INCENTIVATE.value: GenerateJournalLines(
+        ItemSkusEnum.SAVING_PLANS_RECURRING_FEE_INCENTIVATE.value: GenerateSavingPlansJournalLines(
             UsageMetricTypeEnum.SAVING_PLANS.value, tolerance, config.billing_discount_incentivate
         ),
         ItemSkusEnum.UPFRONT.value: GenerateJournalLines(
@@ -144,20 +144,19 @@ class GenerateItemJournalLines:
         raise NotImplementedError
 
     @staticmethod
-    def _get_support_discount(support_metrics, refund_metrics):
+    def _get_support_discount(support_metrics, discount):
         """
         Calculates the support discount based on the refund and support amounts from the
         per record cost metric.
         Args:
             support_metrics (dict): Support metrics from the AWS report.
-            refund_metrics (dict): Refund metrics from the AWS report.
+            discount (float): Discount amount from the AWS report.
         Returns:
             int: Support discount percentage rounded to the nearest integer.
         """
-
         if len(support_metrics) > 1:
             error_message = (
-                f"Multiple support metrics found: {support_metrics} with refund {refund_metrics}. "
+                f"Multiple support metrics found: {support_metrics} with discount {discount}. "
             )
             logger.error(error_message)
             error_payload = {
@@ -167,9 +166,7 @@ class GenerateItemJournalLines:
             raise AWSBillingException(error_message, error_payload)
 
         support = next(iter(support_metrics.values()), 0)
-        refund = next(iter(refund_metrics.values()), 0)
-
-        support_discount = refund / support * 100 if refund != 0 else 0
+        support_discount = discount / support * 100 if support != 0 else 0
         return round(abs(support_discount))
 
     def _get_usage_journal_lines(
@@ -201,15 +198,28 @@ class GenerateItemJournalLines:
         journal_lines = []
         metric_dict = account_metrics.get(metric_id, {})
         skip_services = skip_services if skip_services else []
-        for sub_key, amount in metric_dict.items():
-            service_name = sub_key.split(",")[1] if "," in sub_key else sub_key
-            if service_name in skip_services:
-                continue
+        usage = account_metrics.get(UsageMetricTypeEnum.USAGE.value, {})
+        recurring = account_metrics.get(UsageMetricTypeEnum.RECURRING.value, {})
+        partner_discount = account_metrics.get(UsageMetricTypeEnum.PROVIDER_DISCOUNT.value, {})
+
+        filtered_metrics = {s: a for s, a in metric_dict.items() if s not in skip_services}
+        for service_name, amount in filtered_metrics.items():
             if target_discount is not None:
-                partner_discount = account_metrics.get(
-                    UsageMetricTypeEnum.PROVIDER_DISCOUNT.value, {}
-                ).get(service_name, 0)
-                if not self._is_service_discount_valid(amount, partner_discount, target_discount):
+                if metric_id in [
+                    UsageMetricTypeEnum.USAGE,
+                    UsageMetricTypeEnum.RECURRING,
+                ]:
+                    total_service_amount = usage.get(service_name, 0.0) + recurring.get(
+                        service_name, 0.0
+                    )
+                else:
+                    total_service_amount = amount
+
+                if not self._is_service_discount_valid(
+                    total_service_amount,
+                    partner_discount.get(service_name, 0),
+                    target_discount,
+                ):
                     continue
             invoice_entity = account_metrics.get(
                 UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY.value, {}
@@ -287,6 +297,25 @@ class GenerateJournalLines(GenerateItemJournalLines):
         )
 
 
+class GenerateSavingPlansJournalLines(GenerateItemJournalLines):
+    """
+    Generate journal lines for AWS usage metrics
+    """
+
+    def process(
+        self, account_id, item_external_id, account_metrics, journal_details, account_invoices
+    ):
+        return self._get_usage_journal_lines(
+            self.metric_id,
+            account_metrics,
+            account_invoices,
+            item_external_id,
+            account_id,
+            journal_details,
+            target_discount=self.discount,
+        )
+
+
 class GenerateOtherServicesJournalLines(GenerateItemJournalLines):
     """
     Generate journal lines for other AWS services excluding usage and marketplace services.
@@ -299,15 +328,10 @@ class GenerateOtherServicesJournalLines(GenerateItemJournalLines):
         exclude_services.extend(EXCLUDE_USAGE_SERVICES)
         exclude_services.append(AWSServiceEnum.TAX)
         exclude_services.append(AWSServiceEnum.REFUND)
-        marketplace_services = [
-            key.split(",")[1] if "," in key else key
-            for key in account_metrics.get(UsageMetricTypeEnum.MARKETPLACE.value, {}).keys()
-        ]
+        marketplace_services = account_metrics.get(UsageMetricTypeEnum.MARKETPLACE.value, {}).keys()
+
         exclude_services.extend(marketplace_services)
-        support_services = [
-            key.split(",")[1] if "," in key else key
-            for key in account_metrics.get(UsageMetricTypeEnum.SUPPORT.value, {}).keys()
-        ]
+        support_services = account_metrics.get(UsageMetricTypeEnum.SUPPORT.value, {}).keys()
         exclude_services.extend(support_services)
         return self._get_usage_journal_lines(
             self.metric_id,
@@ -329,9 +353,10 @@ class GenerateSupportJournalLines(GenerateItemJournalLines):
     def process(
         self, account_id, item_external_id, account_metrics, journal_details, account_invoices
     ):
+        refund_metrics = account_metrics.get(UsageMetricTypeEnum.REFUND.value, {})
+        discount = next(iter(refund_metrics.values()), 0)
         support_discount = self._get_support_discount(
-            account_metrics.get(UsageMetricTypeEnum.SUPPORT.value, {}),
-            account_metrics.get(UsageMetricTypeEnum.REFUND.value, {}),
+            account_metrics.get(UsageMetricTypeEnum.SUPPORT.value, {}), discount
         )
         if support_discount == self.discount:
             return self._get_usage_journal_lines(
@@ -353,10 +378,14 @@ class GenerateSupportEnterpriseJournalLines(GenerateItemJournalLines):
     def process(
         self, account_id, item_external_id, account_metrics, journal_details, account_invoices
     ):
-        support_discount = self._get_support_discount(
-            account_metrics.get(UsageMetricTypeEnum.SUPPORT.value, {}),
-            account_metrics.get(UsageMetricTypeEnum.REFUND.value, {}),
+        support_metrics = account_metrics.get(UsageMetricTypeEnum.SUPPORT.value, {})
+        provider_discount_metrics = account_metrics.get(
+            UsageMetricTypeEnum.PROVIDER_DISCOUNT.value, {}
         )
+        support_name = next(iter(support_metrics.keys()), 0)
+        discount = abs(provider_discount_metrics.get(support_name, 0))
+        support_discount = self._get_support_discount(support_metrics, discount)
+
         if support_discount == self.discount:
             return self._get_usage_journal_lines(
                 self.metric_id,

@@ -417,21 +417,22 @@ class AWSClient:
         return self.account_aliases()[0] if self.account_aliases() else ""
 
     @wrap_boto3_error
-    def list_invoice_summaries_by_account_id(self, account_id, start_date, end_date):
-        """
-        List invoice summaries for the specified date range.
+    def list_invoice_summaries_by_account_id(self, account_id, year, month):
+        """List invoice summaries for the specified date range.
 
-        :param account_id: The AWS account ID for which to list invoice summaries.
-        :param start_date: The start date in 'YYYY-MM-DD' format.
-        :param end_date: The end date in 'YYYY-MM-DD' format.
-        :return: List(dict) A list of invoice summaries.
-        """
+        Args:
+            account_id (str): The AWS account ID for which to list invoice summaries.
+            year (int): The year of the billing period.
+            month (int): The month of the billing period (1-12).
 
+        Returns:
+            list[dict]: A list of invoice summaries for the specified account and billing period.
+        """
         invoicing_client = self._get_invoicing_client()
 
         invoice_summaries = []
         selector = {"ResourceType": "ACCOUNT_ID", "Value": account_id}
-        billing_period_filter = {"TimeInterval": {"StartDate": start_date, "EndDate": end_date}}
+        billing_period_filter = {"BillingPeriod": {"Month": month, "Year": year}}
 
         response = invoicing_client.list_invoice_summaries(
             Selector=selector,
@@ -454,22 +455,35 @@ class AWSClient:
         group_by=None,
         filter_by=None,
     ):
-        """
-        Get cost and usage data for the specified date range.
+        """Get cost and usage data for the specified date range.
 
-        :param start_date: The start date in 'YYYY-MM-DD' format.
-        :param end_date: The end date in 'YYYY-MM-DD' format.
-        :param group_by: List of dictionaries specifying how to group the data.
-        :param filter_by: Dictionary specifying the filter criteria for the data.
-        :return: Dict The cost and usage data.
-        """
+        Args:
+            start_date (str): The start date in 'YYYY-MM-DD' format.
+            end_date (str): The end date in 'YYYY-MM-DD' format.
+            group_by (list[dict], optional): List of dictionaries specifying how to group the data.
+            filter_by (dict, optional): Dictionary specifying the filter criteria for the data.
 
+        Returns:
+            list[dict]: A list of dictionaries containing cost and usage data for the specified
+            date range.
+        """
         ce_client = self._get_cost_explorer_client()
-        result = ce_client.get_cost_and_usage(
+        response = ce_client.get_cost_and_usage(
             TimePeriod={"Start": start_date, "End": end_date},
             Granularity="MONTHLY",
             Metrics=["UnblendedCost"],
             GroupBy=group_by or [],
             Filter=filter_by or {},
         )
-        return result["ResultsByTime"] if "ResultsByTime" in result else []
+        reports = response.get("ResultsByTime", [])
+        while response.get("NextPageToken"):
+            response = ce_client.get_cost_and_usage(
+                TimePeriod={"Start": start_date, "End": end_date},
+                Granularity="MONTHLY",
+                Metrics=["UnblendedCost"],
+                GroupBy=group_by or [],
+                Filter=filter_by or {},
+                NextPageToken=response["NextPageToken"],
+            )
+            reports.extend(response.get("ResultsByTime", []))
+        return reports

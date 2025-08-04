@@ -640,7 +640,9 @@ def test_generate_support_enterprise_journal_lines_process(
     item_external_id = ItemSkusEnum.AWS_SUPPORT_ENTERPRISE.value
     args = mock_journal_args(item_external_id)
     args["account_metrics"][UsageMetricTypeEnum.SUPPORT.value] = {"AWS Support (Enterprise)": 100.0}
-    args["account_metrics"][UsageMetricTypeEnum.REFUND.value] = {"refund": 35}
+    args["account_metrics"][UsageMetricTypeEnum.PROVIDER_DISCOUNT.value] = {
+        "AWS Support (Enterprise)": 35
+    }
 
     result = proc.process(**args)
     journal_line = mock_journal_line_factory(
@@ -762,7 +764,9 @@ def test_support_two_charges_error(mock_journal_args, mock_journal_line_factory)
         "AWS Support (Enterprise)": 100.0,
         "AWS Support (Business)": 100.0,
     }
-    args["account_metrics"][UsageMetricTypeEnum.REFUND.value] = {"refund": 35}
+    args["account_metrics"][UsageMetricTypeEnum.PROVIDER_DISCOUNT.value] = {
+        "AWS Support (Enterprise)": 35
+    }
 
     with pytest.raises(AWSBillingException) as exc_info:
         proc.process(**args)
@@ -770,7 +774,7 @@ def test_support_two_charges_error(mock_journal_args, mock_journal_line_factory)
     assert (
         exc_info.value.message
         == "Multiple support metrics found: {'AWS Support (Enterprise)': 100.0,"
-        " 'AWS Support (Business)': 100.0} with refund {'refund': 35}. "
+        " 'AWS Support (Business)': 100.0} with discount 35. "
     )
 
 
