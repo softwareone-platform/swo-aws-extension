@@ -35,11 +35,13 @@ from swo_aws_extension.constants import (
     AWSRecordTypeEnum,
     JournalAttachmentFilesNameEnum,
     SubscriptionStatusEnum,
+    TransferTypesEnum,
     UsageMetricTypeEnum,
 )
 from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingException
 from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import create_journal_line
 from swo_aws_extension.notifications import Button, send_error, send_success
+from swo_aws_extension.parameters import get_transfer_type
 from swo_mpt_api import MPTAPIClient
 from swo_mpt_api.models.hints import JournalAttachment
 from swo_rql import RQLQuery
@@ -197,7 +199,7 @@ class BillingJournalGenerator:
         Returns:
             list: List of agreements.
         """
-        select = "&select=subscriptions,subscriptions.lines"
+        select = "&select=subscriptions,subscriptions.lines,parameters"
         rql_filter = (
             RQLQuery(authorization__id=authorization.get("id"))
             & RQLQuery(status__in=[AgreementStatusEnum.ACTIVE, AgreementStatusEnum.UPDATING])
@@ -283,11 +285,9 @@ class BillingJournalGenerator:
                 )
 
         self._log("info", f"Generating usage lines for MPA account: {mpa_account}")
+        transfer_type = get_transfer_type(agreement)
         self._generate_mpa_journal_lines(
-            mpa_account,
-            first_active_subscription,
-            aws_client,
-            journal_details,
+            mpa_account, first_active_subscription, aws_client, journal_details, transfer_type
         )
         self._log(
             "info",
@@ -296,34 +296,17 @@ class BillingJournalGenerator:
         self._add_attachments(agreement.get("id"), journal_id, mpa_account)
 
     def _add_attachments(self, agreement_id, journal_id, mpa_account):
-        """
-        Adds attachments to the journal
+        """Adds attachments to the journal
+
         Args:
             agreement_id (str): Agreement ID used to name the attachment.
             journal_id (str): Journal ID to which the attachments will be added.
             mpa_account (str): AWS organization account ID.
-        Returns:
-            None
         """
 
-        zip_buffer = io.BytesIO()
+        zip_buffer = self._generate_zip()
         mimetype = "application/zip"
-        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            filename = f"{JournalAttachmentFilesNameEnum.MARKETPLACE_USAGE_REPORT}.json"
-            file_content = json.dumps(
-                self.organization_reports[UsageMetricTypeEnum.MARKETPLACE.value], indent=2
-            )
-            zip_file.writestr(filename, file_content)
-            filename = f"{JournalAttachmentFilesNameEnum.ORGANIZATION_INVOICES}.json"
-            file_content = json.dumps(self.organization_reports["organization_invoices"], indent=2)
-            zip_file.writestr(filename, file_content)
 
-            for account_id, reports in self.organization_reports["accounts"].items():
-                for key, value in reports.items():
-                    filename = f"{account_id} - {key}.json"
-                    file_content = json.dumps(value, indent=2)
-                    zip_file.writestr(filename, file_content)
-        zip_buffer.seek(0)
         filename = f"{agreement_id}-reports-{self.year}-{self.month}.zip"
 
         attachment = JournalAttachment(
@@ -672,11 +655,7 @@ class BillingJournalGenerator:
         return result
 
     def _generate_mpa_journal_lines(
-        self,
-        mpa_account,
-        first_active_subscription,
-        aws_client,
-        journal_details,
+        self, mpa_account, first_active_subscription, aws_client, journal_details, transfer_type
     ):
         """
         Generates journal lines for the MPA account, including metrics and invoices.
@@ -685,7 +664,14 @@ class BillingJournalGenerator:
             first_active_subscription (dict): First active subscription for the MPA account.
             aws_client (AWSClient): AWS client instance.
             journal_details (dict): Journal metadata.
+            transfer_type (str): Agreement transfer type.
         """
+        if transfer_type == TransferTypesEnum.SPLIT_BILLING:
+            self._log(
+                "info",
+                f"Skipping MPA account {mpa_account} journal lines generation due to split billing",
+            )
+            return
         if not first_active_subscription:
             self._log(
                 "info", f"No active subscriptions found to report MPA account {mpa_account} usage"
@@ -737,3 +723,25 @@ class BillingJournalGenerator:
             invoice_entity,
             error=error_message,
         )
+
+    def _generate_zip(self):
+        """Generates a ZIP file containing the organization reports."""
+
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            filename = f"{JournalAttachmentFilesNameEnum.MARKETPLACE_USAGE_REPORT}.json"
+            file_content = json.dumps(
+                self.organization_reports[UsageMetricTypeEnum.MARKETPLACE.value], indent=2
+            )
+            zip_file.writestr(filename, file_content)
+            filename = f"{JournalAttachmentFilesNameEnum.ORGANIZATION_INVOICES}.json"
+            file_content = json.dumps(self.organization_reports["organization_invoices"], indent=2)
+            zip_file.writestr(filename, file_content)
+
+            for account_id, reports in self.organization_reports["accounts"].items():
+                for key, value in reports.items():
+                    filename = f"{account_id} - {key}.json"
+                    file_content = json.dumps(value, indent=2)
+                    zip_file.writestr(filename, file_content)
+        zip_buffer.seek(0)
+        return zip_buffer
