@@ -289,9 +289,10 @@ class BillingJournalGenerator:
         self._generate_mpa_journal_lines(
             mpa_account, first_active_subscription, aws_client, journal_details, transfer_type
         )
+        total_amount = self._calculate_amount_by_account_id(mpa_account)
         self._log(
             "info",
-            f"Generated journal lines for organization account: {mpa_account}",
+            f"Generated journal lines for organization account {mpa_account}: {total_amount}",
         )
         self._add_attachments(agreement.get("id"), journal_id, mpa_account)
 
@@ -430,7 +431,26 @@ class BillingJournalGenerator:
         self._get_journal_lines_by_account(
             subscription, account_metrics, journal_details, account_invoices
         )
-        self._log("info", f"Generated journal lines for account {account_id}")
+        total_amount = self._calculate_amount_by_account_id(account_id)
+        self._log(
+            "info",
+            f"Generated journal lines for organization account {account_id}: {total_amount}",
+        )
+
+    def _calculate_amount_by_account_id(self, account_id):
+        """Calculates the total amount for a specific account ID from the journal file lines.
+
+        Args:
+            account_id (str): AWS account ID to calculate the total amount for.
+        Returns:
+            float: Total amount for the specified account ID.
+        """
+        total_amount = 0
+        for entry in self.journal_file_lines:
+            service_account_id = entry.description.value2.split("/")[0]
+            if service_account_id == account_id:
+                total_amount += entry.price.PPx1
+        return total_amount
 
     def _get_marketplace_usage_report(self, aws_client):
         """
@@ -494,7 +514,7 @@ class BillingJournalGenerator:
         dict: A dictionary containing invoice summaries grouped by account ID and entity.
         """
         invoice_summaries = aws_client.list_invoice_summaries_by_account_id(
-            mpa_account, self.start_date, self.end_date
+            mpa_account, self.year, self.month
         )
         invoices = {}
         for invoice_summary in invoice_summaries:
@@ -726,7 +746,6 @@ class BillingJournalGenerator:
 
     def _generate_zip(self):
         """Generates a ZIP file containing the organization reports."""
-
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             filename = f"{JournalAttachmentFilesNameEnum.MARKETPLACE_USAGE_REPORT}.json"
