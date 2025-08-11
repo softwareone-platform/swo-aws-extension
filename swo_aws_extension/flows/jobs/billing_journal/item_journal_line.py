@@ -1,4 +1,5 @@
 import logging
+from abc import ABC, abstractmethod
 
 from swo_aws_extension.constants import (
     EXCLUDE_USAGE_SERVICES,
@@ -128,7 +129,7 @@ def create_journal_line(
     )
 
 
-class GenerateItemJournalLines:
+class GenerateItemJournalLines(ABC):
     """
     Base class for generating journal lines for different AWS billing items.
     """
@@ -138,6 +139,7 @@ class GenerateItemJournalLines:
         self.billing_discount_tolerance_rate = billing_discount_tolerance_rate
         self.discount = discount
 
+    @abstractmethod
     def process(
         self, account_id, item_external_id, account_metrics, journal_details, account_invoices
     ):
