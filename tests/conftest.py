@@ -2040,8 +2040,8 @@ def mock_report_type_and_usage_report_group_factory():
     def _report_type_and_usage_report_group(
         record_type="Usage",
         service_name="AWS service name",
-        service_amount="718.461",
-        provider_discount_amount="50.29227",
+        service_amount="100",
+        provider_discount_amount="7",
     ):
         return [
             {
@@ -2273,6 +2273,7 @@ def mock_journal_line_factory():
         invoice_id="EUINGB25-2163550",
         item_external_id="",
         error=None,
+        price=100.0,
     ):
         return JournalLine(
             description=Description(
@@ -2289,8 +2290,8 @@ def mock_journal_line_factory():
                 end="2025-02-01",
             ),
             price=Price(
-                PPx1=100.0,
-                unitPP=100.0,
+                PPx1=price,
+                unitPP=price,
             ),
             quantity=1,
             search=Search(
