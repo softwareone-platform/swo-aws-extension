@@ -33,6 +33,7 @@ from swo_aws_extension.constants import (
     SYNCHRONIZATION_ERROR,
     AgreementStatusEnum,
     AWSRecordTypeEnum,
+    AWSServiceEnum,
     JournalAttachmentFilesNameEnum,
     SubscriptionStatusEnum,
     TransferTypesEnum,
@@ -239,6 +240,11 @@ class BillingJournalGenerator:
                 f"{agreement.get('id')} - Failed to create AWS client for MPA account"
                 f" {mpa_account}: {ex}",
             )
+            send_error(
+                SYNCHRONIZATION_ERROR,
+                f"{agreement.get('id')} - Failed to create AWS client for MPA account "
+                f"{mpa_account}: {ex}",
+            )
             return
 
         journal_details = {
@@ -356,26 +362,63 @@ class BillingJournalGenerator:
         if not self.journal_file_lines:
             self._log("info", f"No journal lines generated for authorization {authorization['id']}")
             return
-        self._log(
-            "info",
-            f"Found {len(self.journal_file_lines)} journal lines for journal ID {journal_id}",
-        )
+
         journal_file = "".join(entry.to_jsonl() for entry in self.journal_file_lines)
         final_file = BytesIO(journal_file.encode("utf-8"))
         self.mpt_api_client.billing.journal.upload(journal_id, final_file, "journal.jsonl")
-        self._log("info", f"Uploaded journal file for journal ID {journal_id}")
-
-        journal_link = urljoin(
-            self.config.mpt_portal_base_url,
-            f"/billing/journals/{journal_id}",
+        self._log(
+            "info",
+            f"Uploaded journal file for journal ID {journal_id} with "
+            f"{len(self.journal_file_lines)} lines",
         )
 
-        send_success(
-            AWS_BILLING_SUCCESS,
-            f"Billing journal {journal_id} updated for {authorization['id']} "
-            f"with {len(self.journal_file_lines)} lines.",
-            button=Button(f"Open journal {journal_id}", journal_link),
+        report_file = "".join(
+            entry.to_jsonl() for entry in self.journal_file_lines if not entry.is_valid()
         )
+        if report_file:
+            report_file_name = self._upload_failed_journal_report(journal_id, report_file)
+            attachment_link = urljoin(
+                self.config.mpt_portal_base_url,
+                f"/billing/journals/{journal_id}/attachments",
+            )
+            send_error(
+                SYNCHRONIZATION_ERROR,
+                f"Billing journal {journal_id} for {authorization['id']} uploaded with errors.",
+                button=Button(f"View errors attached in file {report_file_name}", attachment_link),
+            )
+        else:
+            journal_link = urljoin(
+                self.config.mpt_portal_base_url,
+                f"/billing/journals/{journal_id}",
+            )
+
+            send_success(
+                AWS_BILLING_SUCCESS,
+                f"Billing journal {journal_id} uploaded for {authorization['id']} "
+                f"with {len(self.journal_file_lines)} lines.",
+                button=Button(f"Open journal {journal_id}", journal_link),
+            )
+
+    def _upload_failed_journal_report(self, journal_id, report_file):
+        """Uploads a report file containing failed journal lines to the journal attachments.
+
+        Args:
+            journal_id (str): The ID of the journal to which the report will be attached.
+            report_file (str): The content of the report file containing failed journal lines.
+
+        Returns:
+            str: The name of the uploaded report file.
+        """
+        report_file_name = "ReportJournal.jsonl"
+        mimetype = "application/jsonl"
+        report = BytesIO(report_file.encode("utf-8"))
+        attachment = JournalAttachment(name=report_file_name, description="Failed journal report")
+        self.mpt_api_client.billing.journal.attachments(journal_id).upload(
+            filename=report_file_name, mimetype=mimetype, file=report, attachment=attachment
+        )
+        self._log("info", "Uploaded failed journal report")
+
+        return report_file_name
 
     def generate_billing_journals(self):
         """
@@ -430,6 +473,9 @@ class BillingJournalGenerator:
         account_invoices = self.organization_reports["organization_invoices"].get(account_id, {})
         self._get_journal_lines_by_account(
             subscription, account_metrics, journal_details, account_invoices
+        )
+        self._manage_invalid_services_by_account(
+            account_metrics, journal_details, account_invoices, account_id
         )
         total_amount = self._calculate_amount_by_account_id(account_id)
         self._log(
@@ -619,13 +665,15 @@ class BillingJournalGenerator:
                     "exception",
                     f"Failed to process subscription line {line.get('id')}: {ex}",
                 )
-                error_line = self._manage_line_error(
+                error_line = self._create_line_error(
                     account_id,
                     item_external_id,
                     account_metrics,
                     journal_details,
                     account_invoices,
-                    ex,
+                    ex.service_name,
+                    ex.amount,
+                    ex.message,
                 )
 
                 self.journal_file_lines.append(error_line)
@@ -707,10 +755,20 @@ class BillingJournalGenerator:
             journal_details,
             account_invoices,
         )
+        self._manage_invalid_services_by_account(
+            account_metrics, journal_details, account_invoices, mpa_account
+        )
 
     @staticmethod
-    def _manage_line_error(
-        account_id, item_external_id, account_metrics, journal_details, account_invoices, ex
+    def _create_line_error(
+        account_id,
+        item_external_id,
+        account_metrics,
+        journal_details,
+        account_invoices,
+        service_name,
+        amount,
+        error,
     ):
         """
         Creates a journal line with error description for a specific account and item.
@@ -720,18 +778,17 @@ class BillingJournalGenerator:
             account_metrics (dict): Metrics for the account.
             journal_details (dict): Journal metadata.
             account_invoices (dict): Invoices for the account.
-            ex (AWSBillingException): Error message to include in the journal line.
+            service_name (str): Name of the service associated with the error.
+            amount (float): Amount associated with the error.
+            error (str): Error message to include in the journal line.
         """
-        service_name = ex.service_name
         invoice_id = ""
         invoice_entity = ""
         if service_name:
             invoice_entity = account_metrics.get(
                 UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY.value, {}
             ).get(service_name, "")
-            invoice_id = account_invoices.get(invoice_entity, {}).get("invoice_id", "")
-        amount = ex.amount
-        error_message = ex.message
+            invoice_id = account_invoices.get(invoice_entity, {}).get("invoice_id")
 
         return create_journal_line(
             service_name,
@@ -741,7 +798,7 @@ class BillingJournalGenerator:
             journal_details,
             invoice_id,
             invoice_entity,
-            error=error_message,
+            error=error,
         )
 
     def _generate_zip(self):
@@ -764,3 +821,80 @@ class BillingJournalGenerator:
                     zip_file.writestr(filename, file_content)
         zip_buffer.seek(0)
         return zip_buffer
+
+    def _manage_invalid_services_by_account(
+        self, account_metrics, journal_details, account_invoices, account_id
+    ):
+        """Checks for services in the account that do not match any subscription item.
+
+        Args:
+            account_metrics (dict): Metrics for the account.
+            journal_details (dict): Journal metadata.
+            account_invoices (dict): Invoices for the account.
+            account_id (str): AWS account ID.
+        """
+        account_reports = self.organization_reports["accounts"].get(account_id, {})
+        if not account_reports:
+            return
+        services_by_account = self._get_services_amounts_by_account(account_reports)
+        partner_discount = account_metrics.get(UsageMetricTypeEnum.PROVIDER_DISCOUNT.value, {})
+
+        for service, amount in services_by_account.items():
+            service_exist = False
+            for line in self.journal_file_lines:
+                service_name = line.description.value1
+                service_account_id = line.description.value2.split("/")[0]
+                mpa_account_id = line.externalIds.vendor
+                if service_name == service and account_id in [service_account_id, mpa_account_id]:
+                    service_exist = True
+                    break
+
+            if not service_exist:
+                service_discount = partner_discount.get(service, 0)
+                partner_amount = amount - abs(service_discount)
+                discount = ((amount - partner_amount) / amount) * 100 if amount != 0 else 0
+                error_msg = (
+                    f"{account_id} - Service {service} with amount {amount} and discount "
+                    f"{discount} did not match any subscription item."
+                )
+                self._log("error", error_msg)
+                error_line = self._create_line_error(
+                    account_id,
+                    "Error",
+                    account_metrics,
+                    journal_details,
+                    account_invoices,
+                    service,
+                    amount,
+                    error_msg,
+                )
+                self.journal_file_lines.append(error_line)
+
+    @staticmethod
+    def _get_services_amounts_by_account(account_reports):
+        """
+        Extracts services and their amounts from the account reports.
+        Args:
+            account_reports (dict): Account reports containing service data.
+
+        Returns:
+            dict: A dictionary mapping service names to their amounts.
+
+        """
+        services_by_account = {}
+        record_type = account_reports.get(
+            JournalAttachmentFilesNameEnum.RECORD_TYPE_AND_SERVICE_COST
+        )
+        for result_by_time in record_type:
+            for group in result_by_time.get("Groups", []):
+                service_name = group["Keys"][1]
+                if service_name == AWSServiceEnum.TAX:
+                    continue
+
+                amount = get_report_amount(
+                    group.get("Metrics", {}).get("UnblendedCost", {}).get("Amount", "0")
+                )
+                if amount > 0:
+                    services_by_account[service_name] = amount
+
+        return services_by_account
