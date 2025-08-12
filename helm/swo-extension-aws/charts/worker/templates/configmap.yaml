@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ include "common.fullname" . }}
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+data:
+  APPLICATIONINSIGHTS_CONNECTION_STRING: {{ .Values.global.AppInsightsConnectionString | quote }}
+  OTEL_SERVICE_NAME: {{ .Values.global.OTELServiceName | quote }}
+
+  MPT_PORTAL_BASE_URL: {{ .Values.global.MpPortalBaseUrl | quote }}
+  MPT_API_BASE_URL: {{ .Values.global.MpBaseUrl | quote }}
+  MPT_PRODUCTS_IDS: {{ .Values.global.MpProductsIds | quote }}
+  MPT_SETUP_CONTEXTS_FUNC: {{ .Values.global.MpSetupContextsFunc | quote }}
+
+  MPT_ORDERS_API_POLLING_INTERVAL_SECS: {{ .Values.global.MpOrdersApiPollingIntervalSecs | quote }}
+
+  EXT_AWS_REGION: {{ .Values.global.AwsRegion | quote }}
+  EXT_AWS_OPENID_SCOPE: {{ .Values.global.AwsOpenIdScope | quote }}
+
+  EXT_CRM_OAUTH_URL: {{ .Values.global.CrmOauthUrl | quote }}
+  EXT_CRM_CLIENT_ID: {{ .Values.global.CrmClientId | quote }}
+  EXT_CRM_AUDIENCE: {{ .Values.global.CrmAudience | quote }}
+  EXT_CRM_API_BASE_URL: {{ .Values.global.CrmApiBaseUrl | quote }}
+
+  EXT_CCP_OAUTH_URL: {{ .Values.global.CcpOauthUrl | quote }}
+  EXT_CCP_CLIENT_ID: {{ .Values.global.CcpClientId | quote }}
+
+  EXT_CCP_API_BASE_URL: {{ .Values.global.CcpApiBaseUrl | quote }}
+  EXT_CCP_KEY_VAULT_SECRET_NAME: {{ .Values.global.CcpKeyVaultSecretName | quote }}
+  EXT_CCP_OAUTH_SCOPE: {{ .Values.global.CcpOauthScope | quote }}
+  EXT_CCP_OAUTH_CREDENTIALS_SCOPE: {{ .Values.global.CcpOauthCredentialsScope | quote }}
+
+  EXT_AIRTABLE_BASES: {{ .Values.global.AirTableBase | quote }}
+  EXT_MINIMUM_MPA_THRESHOLD: {{ .Values.global.ExtMinimumMpaThreshold | quote }}
+
+  EXT_FFC_SUB: {{ .Values.global.FfcOperationsSub | quote }}
+  EXT_FFC_OPERATIONS_API_BASE_URL: {{ .Values.global.FfcOperationsApiBase | quote }}
+  MPT_NOTIFY_CATEGORIES: {{ .Values.global.MpNotifyCategories | quote }}
