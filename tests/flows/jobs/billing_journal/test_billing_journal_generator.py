@@ -1,5 +1,3 @@
-import pytest
-
 from swo_aws_extension.constants import (
     ItemSkusEnum,
     SubscriptionStatusEnum,
@@ -11,24 +9,10 @@ from swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator impo
 )
 from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingException
 from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import (
-    GenerateItemJournalLines,
-    GenerateJournalLines,
-    GenerateOtherServicesJournalLines,
     GenerateSupportEnterpriseJournalLines,
-    GenerateSupportJournalLines,
     get_journal_processors,
 )
 from swo_rql import RQLQuery
-
-
-class DummyProcessor:
-    @staticmethod
-    def process(*args, **kwargs):
-        payload = {
-            "service_name": "TestService",
-            "amount": 100.0,
-        }
-        raise AWSBillingException("Test error", payload=payload)
 
 
 def test_generate_billing_journals_no_authorizations(
@@ -465,6 +449,10 @@ def test_generate_agreement_journal_lines_aws_client_error(
         return_value=[{"id": "AUTH-1"}],
         autospec=True,
     )
+    send_error = mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.send_error",
+        autospec=True,
+    )
     mock_journal_query = mocker.patch.object(
         generator.mpt_api_client.billing.journal, "query", autospec=True
     )
@@ -483,6 +471,7 @@ def test_generate_agreement_journal_lines_aws_client_error(
     mocker.patch.object(generator.mpt_api_client.billing.journal, "upload")
     generator.generate_billing_journals()
     awsclient_patch.assert_called_once()
+    send_error.assert_called_once()
 
 
 def test_generate_subscription_journal_lines_exception(
@@ -544,142 +533,6 @@ def test_generate_subscription_journal_lines_exception(
     get_account_metrics_patch.assert_called_once()
     mock_create.assert_not_called()
     upload_mock.assert_not_called()
-
-
-def test_generate_item_journal_lines_process_not_implemented():
-    base = GenerateItemJournalLines("metric", 1, 0)
-    with pytest.raises(NotImplementedError):
-        base.process("account_id", "item_external_id", {}, {}, {})
-
-
-def test_generate_marketplace_journal_lines_process(mock_journal_args, mock_journal_line_factory):
-    proc = GenerateJournalLines(
-        UsageMetricTypeEnum.MARKETPLACE.value, billing_discount_tolerance_rate=1, discount=0
-    )
-    external_id = ItemSkusEnum.AWS_MARKETPLACE.value
-    args = mock_journal_args(external_id)
-
-    result = proc.process(**args)
-    journal_line = mock_journal_line_factory(
-        service_name="Marketplace service",
-        item_external_id=external_id,
-    )
-    assert result == [journal_line]
-
-
-def test_generate_usage_journal_lines_process(mock_journal_args, mock_journal_line_factory):
-    proc = GenerateJournalLines(
-        UsageMetricTypeEnum.USAGE.value, billing_discount_tolerance_rate=1, discount=7
-    )
-    external_id = ItemSkusEnum.AWS_USAGE.value
-    args = mock_journal_args(external_id)
-    result = proc.process(**args)
-    journal_line = mock_journal_line_factory(
-        service_name="Usage service",
-        item_external_id=external_id,
-    )
-    assert result == [journal_line]
-
-
-def test_generate_usage_incentivate_journal_lines_process(
-    mock_journal_args, mock_journal_line_factory
-):
-    proc = GenerateJournalLines(
-        UsageMetricTypeEnum.USAGE.value, billing_discount_tolerance_rate=1, discount=12
-    )
-    external_id = ItemSkusEnum.AWS_USAGE_INCENTIVATE.value
-    args = mock_journal_args(external_id)
-    result = proc.process(**args)
-    journal_line = mock_journal_line_factory(
-        service_name="Usage service incentivate",
-        item_external_id=external_id,
-    )
-    assert result == [journal_line]
-
-
-def test_generate_other_services_journal_lines_process(
-    mock_journal_args, mock_journal_line_factory
-):
-    proc = GenerateOtherServicesJournalLines(
-        UsageMetricTypeEnum.USAGE.value, billing_discount_tolerance_rate=1, discount=0
-    )
-    external_id = ItemSkusEnum.AWS_OTHER_SERVICES.value
-    args = mock_journal_args(external_id)
-
-    result = proc.process(**args)
-    journal_line = mock_journal_line_factory(
-        service_name="Other AWS services",
-        item_external_id=external_id,
-    )
-    assert result == [journal_line]
-
-
-def test_generate_support_journal_lines_process(mock_journal_args, mock_journal_line_factory):
-    proc = GenerateSupportJournalLines(
-        UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=7
-    )
-    external_id = ItemSkusEnum.AWS_SUPPORT.value
-    args = mock_journal_args(external_id)
-    args["account_metrics"][UsageMetricTypeEnum.SUPPORT.value] = {"AWS Support (Business)": 100.0}
-    args["account_metrics"][UsageMetricTypeEnum.REFUND.value] = {"refund": 7}
-
-    result = proc.process(**args)
-    journal_line = mock_journal_line_factory(
-        service_name="AWS Support (Business)",
-        item_external_id=external_id,
-    )
-    assert result == [journal_line]
-
-
-def test_generate_support_enterprise_journal_lines_process(
-    mock_journal_args, mock_journal_line_factory
-):
-    proc = GenerateSupportEnterpriseJournalLines(
-        UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=35
-    )
-    item_external_id = ItemSkusEnum.AWS_SUPPORT_ENTERPRISE.value
-    args = mock_journal_args(item_external_id)
-    args["account_metrics"][UsageMetricTypeEnum.SUPPORT.value] = {"AWS Support (Enterprise)": 100.0}
-    args["account_metrics"][UsageMetricTypeEnum.PROVIDER_DISCOUNT.value] = {
-        "AWS Support (Enterprise)": 35
-    }
-
-    result = proc.process(**args)
-    journal_line = mock_journal_line_factory(
-        service_name="AWS Support (Enterprise)",
-        item_external_id=item_external_id,
-    )
-    assert result == [journal_line]
-
-
-def test_generate_recurring_lines_process(mock_journal_args, mock_journal_line_factory):
-    proc = GenerateJournalLines(
-        UsageMetricTypeEnum.RECURRING.value, billing_discount_tolerance_rate=1, discount=7
-    )
-    item_external_id = ItemSkusEnum.UPFRONT.value
-    args = mock_journal_args(item_external_id)
-    result = proc.process(**args)
-    journal_line = mock_journal_line_factory(
-        service_name="Upfront service",
-        item_external_id=item_external_id,
-    )
-    assert result == [journal_line]
-
-
-def test_generate_recurring_incentivate_journal_lines_process(
-    mock_journal_args, mock_journal_line_factory
-):
-    proc = GenerateJournalLines(
-        UsageMetricTypeEnum.RECURRING.value, billing_discount_tolerance_rate=1, discount=12
-    )
-    item_external_id = ItemSkusEnum.UPFRONT_INCENTIVATE.value
-    args = mock_journal_args(item_external_id)
-    result = proc.process(**args)
-    journal_line = mock_journal_line_factory(
-        service_name="Upfront service incentivate",
-        item_external_id=item_external_id,
-    )
-    assert result == [journal_line]
 
 
 def test_generate_billing_journals_item_not_supported(
@@ -754,30 +607,6 @@ def test_generate_billing_journals_item_not_supported(
     upload_mock.assert_not_called()
 
 
-def test_support_two_charges_error(mock_journal_args, mock_journal_line_factory):
-    proc = GenerateSupportEnterpriseJournalLines(
-        UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=35
-    )
-    item_external_id = ItemSkusEnum.AWS_SUPPORT_ENTERPRISE.value
-    args = mock_journal_args(item_external_id)
-    args["account_metrics"][UsageMetricTypeEnum.SUPPORT.value] = {
-        "AWS Support (Enterprise)": 100.0,
-        "AWS Support (Business)": 100.0,
-    }
-    args["account_metrics"][UsageMetricTypeEnum.PROVIDER_DISCOUNT.value] = {
-        "AWS Support (Enterprise)": 35
-    }
-
-    with pytest.raises(AWSBillingException) as exc_info:
-        proc.process(**args)
-
-    assert (
-        exc_info.value.message
-        == "Multiple support metrics found: {'AWS Support (Enterprise)': 100.0,"
-        " 'AWS Support (Business)': 100.0} with discount 35. "
-    )
-
-
 def test_process_item_journal_line_error(
     mocker,
     mpt_client,
@@ -793,7 +622,9 @@ def test_process_item_journal_line_error(
         2025,
         1,
         ["prod1"],
-        billing_journal_processor={ItemSkusEnum.AWS_SUPPORT.value: DummyProcessor()},
+        billing_journal_processor={
+            ItemSkusEnum.AWS_SUPPORT.value: GenerateSupportEnterpriseJournalLines("metric", 1, 0)
+        },
         authorizations=["AUTH-1"],
     )
     mocker.patch.object(
@@ -805,6 +636,15 @@ def test_process_item_journal_line_error(
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
         return_value=[{"id": "AUTH-1"}],
+        autospec=True,
+    )
+    payload = {
+        "service_name": "TestService",
+        "amount": 100.0,
+    }
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.item_journal_line.GenerateSupportEnterpriseJournalLines.process",
+        side_effect=AWSBillingException("Test error", payload=payload),
         autospec=True,
     )
     mock_journal_query = mocker.patch.object(
@@ -829,10 +669,12 @@ def test_process_item_journal_line_error(
         return_value=[agreement_data],
         autospec=True,
     )
-    mocker.patch(
-        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.send_success",
+    send_error = mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.send_error",
         autospec=True,
     )
+    mocker.patch("swo_mpt_api.billing.journal_client.AttachmentsClient.upload", autospec=True)
+
     _, _ = aws_client_factory(config, "aws_mpa", "aws_role")
     mocker.patch.object(generator, "_get_account_metrics", return_value={}, autospec=True)
     mocker.patch.object(generator, "_get_organization_invoices", return_value={}, autospec=True)
@@ -848,10 +690,12 @@ def test_process_item_journal_line_error(
         service_name="TestService",
         item_external_id=ItemSkusEnum.AWS_SUPPORT.value,
         error="Test error",
-        invoice_id="",
+        invoice_id=None,
         invoice_entity="",
     )
+
     assert generator.journal_file_lines == [journal_line, journal_line]
+    send_error.assert_called_once()
 
 
 def test_generate_billing_journals_authorization_subscription_without_vendor_external(
@@ -993,3 +837,126 @@ def test_generate_billing_journals_skip_mpa_usage_split_billing(
     mocker.patch.object(generator.mpt_api_client.billing.journal, "upload", autospec=True)
     generator.generate_billing_journals()
     aws_mock.list_invoice_summaries.assert_called_once()
+
+
+def test_process_item_invalid_service_provider_discount(
+    mocker,
+    mpt_client,
+    agreement_factory,
+    subscriptions_factory,
+    config,
+    aws_client_factory,
+    mock_journal_line_factory,
+    mock_marketplace_report_group_factory,
+    mock_marketplace_report_factory,
+    mock_invoice_by_service_report_factory,
+    mock_report_type_and_usage_report_factory,
+    data_aws_invoice_summary_factory,
+    mock_report_type_and_usage_report_group_factory,
+):
+    service_name = "AWS invalid discount service name"
+    generator = BillingJournalGenerator(
+        mpt_client,
+        config,
+        2025,
+        1,
+        ["prod1"],
+        billing_journal_processor=get_journal_processors(config),
+        authorizations=["AUTH-1"],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
+        return_value=[{"id": "AUTH-1"}],
+        autospec=True,
+    )
+    mock_journal_query = mocker.patch.object(
+        generator.mpt_api_client.billing.journal, "query", autospec=True
+    )
+    mock_journal_query.return_value.all.return_value = [{"id": "JOURNAL-1", "status": "Draft"}]
+    mocker.patch.object(
+        generator.mpt_api_client.billing.journal,
+        "create",
+        return_value={"id": "JOURNAL-1"},
+        autospec=True,
+    )
+    linked_account = "1234567890"
+    subscriptions = subscriptions_factory(
+        vendor_id=linked_account,
+        status=SubscriptionStatusEnum.ACTIVE.value,
+    )
+    agreement_data = agreement_factory(vendor_id="mpa_id", subscriptions=subscriptions)
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
+        return_value=[agreement_data],
+        autospec=True,
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.send_error",
+        autospec=True,
+    )
+    mocker.patch("swo_mpt_api.billing.journal_client.AttachmentsClient.upload", autospec=True)
+
+    _, aws_mock = aws_client_factory(config, "aws_mpa", "aws_role")
+
+    report_type_groups = mock_report_type_and_usage_report_group_factory(
+        record_type=UsageMetricTypeEnum.USAGE,
+        service_name=service_name,
+        service_amount="100",
+        provider_discount_amount="3",
+    )
+    report_type_groups.extend(
+        mock_report_type_and_usage_report_group_factory(
+            record_type=UsageMetricTypeEnum.REFUND,
+            service_name="refund",
+            service_amount="-100",
+            provider_discount_amount="0",
+        )
+    )
+    report_type_groups.extend(
+        mock_report_type_and_usage_report_group_factory(
+            record_type=UsageMetricTypeEnum.USAGE,
+            service_name="Tax",
+            service_amount="-5",
+            provider_discount_amount="0",
+        )
+    )
+
+    aws_mock.get_cost_and_usage.side_effect = [
+        mock_marketplace_report_factory(),
+        mock_invoice_by_service_report_factory(),
+        mock_report_type_and_usage_report_factory(report_type_groups),
+        mock_invoice_by_service_report_factory(),
+        mock_report_type_and_usage_report_factory(groups=[]),
+    ]
+    aws_mock.list_invoice_summaries.side_effect = [
+        {
+            "InvoiceSummaries": [
+                data_aws_invoice_summary_factory(account_id=linked_account),
+                data_aws_invoice_summary_factory(account_id="mpa_id"),
+            ],
+        },
+    ]
+
+    mocker.patch.object(generator.mpt_api_client.billing.journal, "upload", autospec=True)
+
+    generator.generate_billing_journals()
+    error_msg = (
+        f"{linked_account} - Service {service_name} with amount 3.0 and discount 100.0 did "
+        f"not match any subscription item."
+    )
+    journal_line = mock_journal_line_factory(
+        service_name="AWS service name",
+        item_external_id=ItemSkusEnum.AWS_USAGE.value,
+        invoice_id="EUINGB25-2163550",
+        invoice_entity="Amazon Web Services EMEA SARL",
+    )
+    journal_line_invalid = mock_journal_line_factory(
+        service_name=service_name,
+        item_external_id="Item not found",
+        invoice_id=None,
+        invoice_entity="",
+        price=3.0,
+        error=error_msg,
+    )
+
+    assert generator.journal_file_lines == [journal_line_invalid, journal_line]

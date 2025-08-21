@@ -295,6 +295,8 @@ COMMAND_INVALID_BILLING_DATE = (
     "Invalid billing date. The billing date must be in the past. "
     "You can't generate the billing of the current month until the 5th."
 )
+COMMAND_INVALID_BILLING_DATE_FUTURE = "Invalid billing date. Future months are not allowed."
+
 SYNCHRONIZATION_ERROR = "AWS Billing Journal Synchronization Error"
 AWS_BILLING_SUCCESS = "AWS Billing Journal Synchronization Success"
 
