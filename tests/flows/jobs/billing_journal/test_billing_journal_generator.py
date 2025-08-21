@@ -952,7 +952,7 @@ def test_process_item_invalid_service_provider_discount(
     )
     journal_line_invalid = mock_journal_line_factory(
         service_name=service_name,
-        item_external_id="Error",
+        item_external_id="Item not found",
         invoice_id=None,
         invoice_entity="",
         price=3.0,

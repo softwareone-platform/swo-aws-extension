@@ -14,7 +14,7 @@ class InMemoryZipBuilder:
     def write(self, filename: str, data: str):
         self._zip.writestr(filename, data)
 
-    def get_file(self) -> io.BytesIO:
+    def get_file_content(self) -> io.BytesIO:
         self._zip.close()
         self._buffer.seek(0)
         return self._buffer

@@ -401,12 +401,12 @@ class BillingJournalGenerator:
         self._log("info", f"Processing subscription for account {account_id}")
 
         account_metrics = self._get_account_metrics(aws_client, account_id)
-        account_invoices = self.organization_reports["organization_invoices"].get(account_id, {})
+        organization_invoices = self.organization_reports["organization_invoices"]
         self._get_journal_lines_by_account(
-            subscription, account_metrics, journal_details, account_invoices
+            subscription, account_metrics, journal_details, organization_invoices
         )
         self._manage_invalid_services_by_account(
-            account_metrics, journal_details, account_invoices, account_id
+            account_metrics, journal_details, organization_invoices, account_id
         )
         total_amount = self._calculate_amount_by_account_id(account_id)
         self._log(
@@ -450,17 +450,18 @@ class BillingJournalGenerator:
         invoice_summaries = aws_client.list_invoice_summaries_by_account_id(
             mpa_account, self.year, self.month
         )
+
         invoices = {}
         for invoice_summary in invoice_summaries:
             invoice_entity = invoice_summary.get("Entity", {}).get("InvoicingEntity")
             invoice_account_id = invoice_summary.get("AccountId")
+            if invoice_account_id != mpa_account:
+                continue
             invoice_id = invoice_summary.get("InvoiceId")
-            if invoice_account_id not in invoices:
-                invoices[invoice_account_id] = {}
-            if invoice_entity in invoices[invoice_account_id]:
-                invoices[invoice_account_id][invoice_entity]["invoice_id"] += invoice_id
+            if invoice_entity in invoices:
+                invoices[invoice_entity]["invoice_id"] += invoice_id
             else:
-                invoices[invoice_account_id][invoice_entity] = {
+                invoices[invoice_entity] = {
                     "invoice_id": invoice_summary.get("InvoiceId"),
                     "total_amount": invoice_summary.get("BaseCurrencyAmount", {}).get(
                         "TotalAmount"
@@ -590,16 +591,16 @@ class BillingJournalGenerator:
             return
 
         account_metrics = self._get_account_metrics(aws_client, mpa_account)
-        account_invoices = self.organization_reports["organization_invoices"].get(mpa_account, {})
+        organization_invoices = self.organization_reports["organization_invoices"]
 
         self._get_journal_lines_by_account(
             first_active_subscription,
             account_metrics,
             journal_details,
-            account_invoices,
+            organization_invoices,
         )
         self._manage_invalid_services_by_account(
-            account_metrics, journal_details, account_invoices, mpa_account
+            account_metrics, journal_details, organization_invoices, mpa_account
         )
 
     @staticmethod
@@ -648,7 +649,7 @@ class BillingJournalGenerator:
                 filename = f"{account_id} - {key}.json"
                 zip_builder.write(filename, json.dumps(value, indent=2))
 
-        return zip_builder.get_file()
+        return zip_builder.get_file_content()
 
     def _manage_invalid_services_by_account(
         self, account_metrics, journal_details, account_invoices, account_id
@@ -671,7 +672,7 @@ class BillingJournalGenerator:
                 self._log("error", error_msg)
                 error_line = self._create_line_error(
                     account_id,
-                    "Error",
+                    "Item not found",
                     account_metrics,
                     journal_details,
                     account_invoices,

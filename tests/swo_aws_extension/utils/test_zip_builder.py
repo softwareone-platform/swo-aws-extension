@@ -8,7 +8,7 @@ def test_in_memory_zip_builder_add_and_get_zip():
     builder.write("report1.jsonl", '{"account1": "value1"}')
     builder.write("report2.jsonl", '{"account2": "value2"}')
 
-    zip_buffer = builder.get_file()
+    zip_buffer = builder.get_file_content()
     with zipfile.ZipFile(zip_buffer, "r") as zf:
         result = (
             set(zf.namelist()),
