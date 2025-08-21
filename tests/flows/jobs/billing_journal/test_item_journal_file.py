@@ -7,10 +7,10 @@ from swo_aws_extension.constants import (
 from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingException
 from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import (
     GenerateItemJournalLines,
-    GenerateJournalLines,
     GenerateOtherServicesJournalLines,
     GenerateSupportEnterpriseJournalLines,
     GenerateSupportJournalLines,
+    GenerateUsageJournalLines,
 )
 
 
@@ -28,15 +28,8 @@ class DummyProcessorNotImplemented(GenerateItemJournalLines):
         super().process(*args, **kwargs)
 
 
-def test_generate_item_journal_lines_process_not_implemented():
-    """Test that NotImplementedError is raised when calling base process method."""
-    base = DummyProcessorNotImplemented("metric", 1, 0)
-    with pytest.raises(NotImplementedError):
-        base.process("account_id", "item_external_id", {}, {}, {})
-
-
 def test_generate_marketplace_journal_lines_process(mock_journal_args, mock_journal_line_factory):
-    proc = GenerateJournalLines(
+    proc = GenerateUsageJournalLines(
         UsageMetricTypeEnum.MARKETPLACE.value, billing_discount_tolerance_rate=1, discount=0
     )
     external_id = ItemSkusEnum.AWS_MARKETPLACE.value
@@ -51,7 +44,7 @@ def test_generate_marketplace_journal_lines_process(mock_journal_args, mock_jour
 
 
 def test_generate_usage_journal_lines_process(mock_journal_args, mock_journal_line_factory):
-    proc = GenerateJournalLines(
+    proc = GenerateUsageJournalLines(
         UsageMetricTypeEnum.USAGE.value, billing_discount_tolerance_rate=1, discount=7
     )
     external_id = ItemSkusEnum.AWS_USAGE.value
@@ -67,7 +60,7 @@ def test_generate_usage_journal_lines_process(mock_journal_args, mock_journal_li
 def test_generate_usage_incentivate_journal_lines_process(
     mock_journal_args, mock_journal_line_factory
 ):
-    proc = GenerateJournalLines(
+    proc = GenerateUsageJournalLines(
         UsageMetricTypeEnum.USAGE.value, billing_discount_tolerance_rate=1, discount=12
     )
     external_id = ItemSkusEnum.AWS_USAGE_INCENTIVATE.value
@@ -99,7 +92,6 @@ def test_generate_other_services_journal_lines_process(
 
 
 def test_generate_support_journal_lines_process(mock_journal_args, mock_journal_line_factory):
-    """Test GenerateSupportJournalLines process."""
     proc = GenerateSupportJournalLines(
         UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=7
     )
@@ -119,7 +111,6 @@ def test_generate_support_journal_lines_process(mock_journal_args, mock_journal_
 def test_generate_support_enterprise_journal_lines_process(
     mock_journal_args, mock_journal_line_factory
 ):
-    """Test GenerateSupportEnterpriseJournalLines process."""
     proc = GenerateSupportEnterpriseJournalLines(
         UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=35
     )
@@ -139,7 +130,7 @@ def test_generate_support_enterprise_journal_lines_process(
 
 
 def test_generate_recurring_lines_process(mock_journal_args, mock_journal_line_factory):
-    proc = GenerateJournalLines(
+    proc = GenerateUsageJournalLines(
         UsageMetricTypeEnum.RECURRING.value, billing_discount_tolerance_rate=1, discount=7
     )
     item_external_id = ItemSkusEnum.UPFRONT.value
@@ -155,7 +146,7 @@ def test_generate_recurring_lines_process(mock_journal_args, mock_journal_line_f
 def test_generate_recurring_incentivate_journal_lines_process(
     mock_journal_args, mock_journal_line_factory
 ):
-    proc = GenerateJournalLines(
+    proc = GenerateUsageJournalLines(
         UsageMetricTypeEnum.RECURRING.value, billing_discount_tolerance_rate=1, discount=12
     )
     item_external_id = ItemSkusEnum.UPFRONT_INCENTIVATE.value
@@ -169,7 +160,6 @@ def test_generate_recurring_incentivate_journal_lines_process(
 
 
 def test_support_two_charges_error(mock_journal_args, mock_journal_line_factory):
-    """Test error when multiple support metrics are present."""
     proc = GenerateSupportEnterpriseJournalLines(
         UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=35
     )

@@ -4,7 +4,10 @@ from datetime import datetime
 from django.conf import settings
 
 from swo_aws_extension.aws.config import Config
-from swo_aws_extension.constants import COMMAND_INVALID_BILLING_DATE
+from swo_aws_extension.constants import (
+    COMMAND_INVALID_BILLING_DATE,
+    COMMAND_INVALID_BILLING_DATE_FUTURE,
+)
 from swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator import (
     BillingJournalGenerator,
 )
@@ -24,8 +27,15 @@ class Command(StyledPrintCommand):
     def add_arguments(self, parser):
         # Calculate last month's date
         today = datetime.now()
-        default_year = today.year
-        default_month = today.month
+        year = today.year
+        month = today.month
+
+        if month == 1:
+            default_month = 12
+            default_year = year - 1
+        else:
+            default_month = month - 1
+            default_year = year
 
         parser.add_argument(
             "--year",
@@ -54,18 +64,34 @@ class Command(StyledPrintCommand):
     def error(self, message):
         self.stderr.write(self.style.ERROR(message), ending="\n")
 
-    def raise_for_invalid_date(self, year, month):
+    @staticmethod
+    def raise_for_invalid_date(year, month):
+        current_date = datetime.now()
+        current_year, current_month, current_day = (
+            current_date.year,
+            current_date.month,
+            current_date.day,
+        )
+
         if year < 2025:
             raise ValueError(f"Year must be 2025 or higher, got {year}")
 
         if month < 1 or month > 12:
             raise ValueError(f"Invalid month. Month must be between 1 and 12. Got {month} instead.")
 
-        invoice_date = datetime(year, month, 5, 0, 0, 0, 0)
-        current_date = datetime.now()
-        is_valid_billing_date = current_date < invoice_date
-        if is_valid_billing_date:
+        if current_date.month == month and current_date.year == year:
             raise ValueError(COMMAND_INVALID_BILLING_DATE)
+
+        if current_month == 1:
+            prev_month, prev_year = 12, current_year - 1
+        else:
+            prev_month, prev_year = current_month - 1, current_year
+
+        if year == prev_year and month == prev_month and current_day < 5:
+            raise ValueError(COMMAND_INVALID_BILLING_DATE)
+
+        if (year > current_year) or (year == current_year and month > current_month):
+            raise ValueError(COMMAND_INVALID_BILLING_DATE_FUTURE)
 
     def raise_for_invalid_authorizations(self, authorization):
         pattern = r"^AUT-(?:\d+-)*\d+$"
