@@ -1264,10 +1264,13 @@ def data_aws_invoice_summary_factory():
         billing_period_year=2025,
         total_amount="0.00",
         invoice_entity=INVOICE_ENTITY,
+        payment_currency="USD",
+        rate="0.88",
+        invoice_id="EUINGB25-2163550",
     ):
         return {
             "AccountId": account_id,
-            "InvoiceId": "EUINGB25-2163550",
+            "InvoiceId": invoice_id,
             "Entity": {"InvoicingEntity": invoice_entity},
             "BillingPeriod": {"Month": billing_period_month, "Year": billing_period_year},
             "InvoiceType": "INVOICE",
@@ -1289,7 +1292,12 @@ def data_aws_invoice_summary_factory():
             "PaymentCurrencyAmount": {
                 "TotalAmount": "0.00",
                 "TotalAmountBeforeTax": "0.00",
-                "CurrencyCode": "USD",
+                "CurrencyCode": payment_currency,
+                "CurrencyExchangeDetails": {
+                    "SourceCurrencyCode": "USD",
+                    "TargetCurrencyCode": payment_currency,
+                    "Rate": rate,
+                },
             },
         }
 
@@ -2022,7 +2030,7 @@ def mock_marketplace_report_group_factory():
 @pytest.fixture
 def mock_marketplace_report_factory(mock_marketplace_report_group_factory):
     def _marketplace_report(groups=None):
-        groups = groups or mock_marketplace_report_group_factory()
+        groups = groups if groups is not None else mock_marketplace_report_group_factory()
         return {
             "GroupDefinitions": [
                 {"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"},
@@ -2109,7 +2117,7 @@ def mock_report_type_and_usage_report_group_factory():
 @pytest.fixture
 def mock_report_type_and_usage_report_factory(mock_report_type_and_usage_report_group_factory):
     def _report_type_and_usage_report(groups=None):
-        groups = groups or mock_report_type_and_usage_report_group_factory()
+        groups = groups if groups is not None else mock_report_type_and_usage_report_group_factory()
         return {
             "GroupDefinitions": [
                 {"Type": "DIMENSION", "Key": "RECORD_TYPE"},
@@ -2304,7 +2312,20 @@ def mock_journal_args(
                 "start_date": "2025-01-01",
                 "end_date": "2025-02-01",
             },
-            "account_invoices": {INVOICE_ENTITY: {"invoice_id": "EUINGB25-2163550"}},
+            "account_invoices": {
+                "base_total_amount": 11.34,
+                "base_total_amount_before_tax": 10.49,
+                "invoice_entities": {
+                    INVOICE_ENTITY: {
+                        "base_currency_code": "USD",
+                        "exchange_rate": 0.0,
+                        "invoice_id": "EUINGB25-2163550",
+                        "payment_currency_code": "USD",
+                    }
+                },
+                "payment_currency_total_amount": 11.34,
+                "payment_currency_total_amount_before_tax": 10.49,
+            },
         }
 
     return _journal_args

@@ -8,6 +8,7 @@ from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingExcepti
 from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import (
     GenerateItemJournalLines,
     GenerateOtherServicesJournalLines,
+    GenerateSavingPlansJournalLines,
     GenerateSupportEnterpriseJournalLines,
     GenerateSupportJournalLines,
     GenerateUsageJournalLines,
@@ -25,7 +26,7 @@ class DummyProcessor(GenerateItemJournalLines):
 
 class DummyProcessorNotImplemented(GenerateItemJournalLines):
     def process(self, *args, **kwargs):
-        super().process(*args, **kwargs)
+        return super().process(*args, **kwargs)
 
 
 def test_generate_marketplace_journal_lines_process(mock_journal_args, mock_journal_line_factory):
@@ -159,6 +160,110 @@ def test_generate_recurring_incentivate_journal_lines_process(
     assert result == [journal_line]
 
 
+def test_generate_item_journal_line_not_implemented(mock_journal_args, mock_journal_line_factory):
+    proc = DummyProcessorNotImplemented(
+        UsageMetricTypeEnum.MARKETPLACE.value, billing_discount_tolerance_rate=1, discount=0
+    )
+    external_id = ItemSkusEnum.AWS_MARKETPLACE.value
+    args = mock_journal_args(external_id)
+
+    result = proc.process(**args)
+    journal_line = mock_journal_line_factory(
+        service_name="Marketplace service",
+        item_external_id=external_id,
+    )
+    assert result == [journal_line]
+
+
+def test_generate_item_journal_line_process_with_error(mock_journal_args):
+    proc = DummyProcessor(
+        UsageMetricTypeEnum.MARKETPLACE.value, billing_discount_tolerance_rate=1, discount=0
+    )
+    external_id = ItemSkusEnum.AWS_MARKETPLACE.value
+    args = mock_journal_args(external_id)
+
+    with pytest.raises(AWSBillingException):
+        proc.process(**args)
+
+
+def test_generate_usage_journal_lines_process_no_amount(
+    mock_journal_args, mock_journal_line_factory
+):
+    proc = GenerateUsageJournalLines(
+        UsageMetricTypeEnum.MARKETPLACE.value, billing_discount_tolerance_rate=1, discount=0
+    )
+    external_id = ItemSkusEnum.AWS_MARKETPLACE.value
+    args = mock_journal_args(external_id)
+    args["account_metrics"][UsageMetricTypeEnum.MARKETPLACE.value] = {}
+
+    result = proc.process(**args)
+    assert result == []
+
+
+def test_generate_support_journal_lines_no_support_metric(
+    mock_journal_args, mock_journal_line_factory
+):
+    proc = GenerateSupportJournalLines(
+        UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=7
+    )
+    external_id = ItemSkusEnum.AWS_SUPPORT.value
+    args = mock_journal_args(external_id)
+    args["account_metrics"][UsageMetricTypeEnum.SUPPORT.value] = {}
+    args["account_metrics"][UsageMetricTypeEnum.REFUND.value] = {"refund": 7}
+
+    result = proc.process(**args)
+
+    assert result == []
+
+
+def test_generate_support_journal_lines_no_refund_metric(
+    mock_journal_args, mock_journal_line_factory
+):
+    proc = GenerateSupportJournalLines(
+        UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=7
+    )
+    external_id = ItemSkusEnum.AWS_SUPPORT.value
+    args = mock_journal_args(external_id)
+    args["account_metrics"][UsageMetricTypeEnum.SUPPORT.value] = {"AWS Support (Business)": 100.0}
+    args["account_metrics"][UsageMetricTypeEnum.REFUND.value] = {}
+
+    result = proc.process(**args)
+    assert result == []
+
+
+def test_generate_support_enterprise_journal_lines_no_provider_discount(
+    mock_journal_args, mock_journal_line_factory
+):
+    proc = GenerateSupportEnterpriseJournalLines(
+        UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=35
+    )
+    item_external_id = ItemSkusEnum.AWS_SUPPORT_ENTERPRISE.value
+    args = mock_journal_args(item_external_id)
+    args["account_metrics"][UsageMetricTypeEnum.SUPPORT.value] = {"AWS Support (Enterprise)": 100.0}
+    args["account_metrics"][UsageMetricTypeEnum.PROVIDER_DISCOUNT.value] = {}
+
+    result = proc.process(**args)
+    assert result == []
+
+
+def test_generate_support_enterprise_journal_lines_no_support_metric(
+    mock_journal_args, mock_journal_line_factory
+):
+    proc = GenerateSupportEnterpriseJournalLines(
+        UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=35
+    )
+    item_external_id = ItemSkusEnum.AWS_SUPPORT_ENTERPRISE.value
+    args = mock_journal_args(item_external_id)
+    args["account_metrics"][UsageMetricTypeEnum.SUPPORT.value] = {}
+    args["account_metrics"][UsageMetricTypeEnum.PROVIDER_DISCOUNT.value] = {
+        "AWS Support (Enterprise)": 35
+    }
+
+    result = proc.process(**args)
+
+    assert result == []
+
+
 def test_support_two_charges_error(mock_journal_args, mock_journal_line_factory):
     proc = GenerateSupportEnterpriseJournalLines(
         UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=35
@@ -181,3 +286,78 @@ def test_support_two_charges_error(mock_journal_args, mock_journal_line_factory)
         == "Multiple support metrics found: {'AWS Support (Enterprise)': 100.0,"
         " 'AWS Support (Business)': 100.0} with discount 35. "
     )
+
+
+def test_generate_journal_line_with_exchange_rate(mock_journal_args, mock_journal_line_factory):
+    proc = GenerateUsageJournalLines(
+        UsageMetricTypeEnum.MARKETPLACE.value, billing_discount_tolerance_rate=1, discount=0
+    )
+    external_id = ItemSkusEnum.AWS_MARKETPLACE.value
+    args = mock_journal_args(external_id)
+    args["account_invoices"]["invoice_entities"] = {
+        "AWS Entity": {
+            "invoice_id": "INV-123",
+            "payment_currency_code": "EUR",
+            "base_currency_code": "USD",
+            "exchange_rate": 1.2,
+        }
+    }
+    args["account_metrics"][UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY.value] = {
+        "Marketplace service": "AWS Entity"
+    }
+
+    result = proc.process(**args)
+    journal_line = mock_journal_line_factory(
+        service_name="Marketplace service",
+        item_external_id=external_id,
+        price=120.0,
+        invoice_id="INV-123",
+        invoice_entity="AWS Entity",
+    )
+    assert result == [journal_line]
+
+
+def test_default_discount_validator_no_match(mock_journal_args):
+    proc = GenerateUsageJournalLines(
+        UsageMetricTypeEnum.USAGE.value, billing_discount_tolerance_rate=1, discount=7
+    )
+    external_id = ItemSkusEnum.AWS_USAGE.value
+    args = mock_journal_args(external_id)
+    args["account_metrics"][UsageMetricTypeEnum.PROVIDER_DISCOUNT.value] = {"Usage service": 15}
+
+    result = proc.process(**args)
+    assert result == []
+
+
+def test_generate_saving_plans_journal_lines_process(mock_journal_args, mock_journal_line_factory):
+    proc = GenerateSavingPlansJournalLines(
+        UsageMetricTypeEnum.SAVING_PLANS.value, billing_discount_tolerance_rate=1, discount=7
+    )
+    external_id = ItemSkusEnum.SAVING_PLANS_RECURRING_FEE.value
+    args = mock_journal_args(external_id)
+    args["account_metrics"][UsageMetricTypeEnum.SAVING_PLANS.value] = {"Saving plan service": 100.0}
+    args["account_metrics"][UsageMetricTypeEnum.PROVIDER_DISCOUNT.value] = {
+        "Saving plan service": 7
+    }
+    result = proc.process(**args)
+    journal_line = mock_journal_line_factory(
+        service_name="Saving plan service",
+        item_external_id=external_id,
+    )
+    assert result == [journal_line]
+
+
+def test_generate_saving_plans_journal_lines_process_invalid_discount(
+    mock_journal_args, mock_journal_line_factory
+):
+    proc = GenerateSavingPlansJournalLines(
+        UsageMetricTypeEnum.SAVING_PLANS.value, billing_discount_tolerance_rate=1, discount=7
+    )
+    external_id = ItemSkusEnum.SAVING_PLANS_RECURRING_FEE.value
+    args = mock_journal_args(external_id)
+    args["account_metrics"][UsageMetricTypeEnum.SAVING_PLANS.value] = {"Saving plan service": 100.0}
+    args["account_metrics"][UsageMetricTypeEnum.PROVIDER_DISCOUNT.value] = {
+        "Saving plan service": 3
+    }
+    result = proc.process(**args)
+    assert result == []

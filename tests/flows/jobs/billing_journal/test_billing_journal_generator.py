@@ -297,7 +297,7 @@ def test_generate_billing_journals_authorization_upload_file(
     )
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
-        return_value=[{"id": "AUTH-1"}],
+        return_value=[{"id": "AUTH-1", "currency": "USD"}],
         autospec=True,
     )
     mock_journal_query = mocker.patch.object(
@@ -581,7 +581,7 @@ def test_generate_billing_journals_item_not_supported(
         autospec=True,
     )
     mocker.patch.object(generator, "_get_account_metrics", return_value={}, autospec=True)
-    mocker.patch.object(generator, "_get_organization_invoices", return_value={}, autospec=True)
+    mocker.patch.object(generator, "_get_invoices", return_value={}, autospec=True)
     mocker.patch.object(generator, "_get_marketplace_usage_report", return_value={}, autospec=True)
 
     linked_account = "1234-1234-1234"
@@ -635,7 +635,7 @@ def test_process_item_journal_line_error(
     )
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
-        return_value=[{"id": "AUTH-1"}],
+        return_value=[{"id": "AUTH-1", "currency": "USD"}],
         autospec=True,
     )
     payload = {
@@ -677,7 +677,7 @@ def test_process_item_journal_line_error(
 
     _, _ = aws_client_factory(config, "aws_mpa", "aws_role")
     mocker.patch.object(generator, "_get_account_metrics", return_value={}, autospec=True)
-    mocker.patch.object(generator, "_get_organization_invoices", return_value={}, autospec=True)
+    mocker.patch.object(generator, "_get_invoices", return_value={}, autospec=True)
     mocker.patch.object(generator, "_get_marketplace_usage_report", return_value={}, autospec=True)
 
     upload_mock = mocker.patch.object(
@@ -718,7 +718,7 @@ def test_generate_billing_journals_authorization_subscription_without_vendor_ext
     )
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
-        return_value=[{"id": "AUTH-1"}],
+        return_value=[{"id": "AUTH-1", "currency": "USD"}],
         autospec=True,
     )
     mocker.patch.object(
@@ -866,7 +866,7 @@ def test_process_item_invalid_service_provider_discount(
     )
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
-        return_value=[{"id": "AUTH-1"}],
+        return_value=[{"id": "AUTH-1", "currency": "USD"}],
         autospec=True,
     )
     mock_journal_query = mocker.patch.object(
@@ -944,12 +944,7 @@ def test_process_item_invalid_service_provider_discount(
         f"{linked_account} - Service {service_name} with amount 3.0 and discount 100.0 did "
         f"not match any subscription item."
     )
-    journal_line = mock_journal_line_factory(
-        service_name="AWS service name",
-        item_external_id=ItemSkusEnum.AWS_USAGE.value,
-        invoice_id="EUINGB25-2163550",
-        invoice_entity="Amazon Web Services EMEA SARL",
-    )
+
     journal_line_invalid = mock_journal_line_factory(
         service_name=service_name,
         item_external_id="Item not found",
@@ -959,4 +954,166 @@ def test_process_item_invalid_service_provider_discount(
         error=error_msg,
     )
 
-    assert generator.journal_file_lines == [journal_line_invalid, journal_line]
+    assert generator.journal_file_lines == [journal_line_invalid]
+
+
+def test_generate_billing_journals_currency_validation_error(
+    mocker,
+    mpt_client,
+    agreement_factory,
+    subscriptions_factory,
+    config,
+    aws_client_factory,
+    data_aws_invoice_summary_factory,
+    mock_marketplace_report_factory,
+    mock_invoice_by_service_report_factory,
+):
+    generator = BillingJournalGenerator(
+        mpt_client,
+        config,
+        2024,
+        5,
+        ["prod1"],
+        billing_journal_processor=get_journal_processors(config),
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
+        return_value=[{"id": "AUTH-1", "currency": "USD"}],
+        autospec=True,
+    )
+    mock_journal_query = mocker.patch.object(
+        generator.mpt_api_client.billing.journal, "query", autospec=True
+    )
+    mock_journal_query.return_value.all.return_value = [{"id": "JOURNAL-1", "status": "Draft"}]
+    mocker.patch.object(
+        generator.mpt_api_client.billing.journal,
+        "create",
+        return_value={"id": "JOURNAL-1"},
+        autospec=True,
+    )
+    linked_account = "1234567890"
+    subscriptions = subscriptions_factory(
+        vendor_id=linked_account,
+        status=SubscriptionStatusEnum.ACTIVE.value,
+    )
+    mpa_account = "123456789012"
+    agreement_data = agreement_factory(vendor_id=mpa_account, subscriptions=subscriptions)
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
+        return_value=[agreement_data],
+        autospec=True,
+    )
+
+    invoice_summary = data_aws_invoice_summary_factory(
+        account_id=mpa_account, payment_currency="EUR"
+    )
+
+    _, aws_mock = aws_client_factory(config, "aws_mpa", "aws_role")
+    aws_mock.list_invoice_summaries.return_value = {
+        "InvoiceSummaries": [invoice_summary],
+    }
+    aws_mock.get_cost_and_usage.side_effect = [
+        mock_marketplace_report_factory(),
+        mock_invoice_by_service_report_factory(),
+    ]
+
+    send_error_mock = mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.send_error",
+        autospec=True,
+    )
+
+    generator.generate_billing_journals()
+    send_error_mock.assert_called_with(
+        "AWS Billing Journal Synchronization Error",
+        "Failed to generate billing journal for AGR-2119-4550-8674-5962: "
+        "Invoice entity Amazon Web Services EMEA SARL has payment currency EUR "
+        "which does not match authorization currency USD.",
+    )
+
+
+def test_generate_billing_journals_duplicate_invoice_entities(
+    mocker,
+    mpt_client,
+    agreement_factory,
+    subscriptions_factory,
+    mock_marketplace_report_factory,
+    data_aws_invoice_summary_factory,
+    mock_invoice_by_service_report_factory,
+    config,
+    aws_client_factory,
+    mock_marketplace_report_group_factory,
+    mock_report_type_and_usage_report_group_factory,
+    mock_report_type_and_usage_report_factory,
+    mock_journal_line_factory,
+):
+    generator = BillingJournalGenerator(
+        mpt_client,
+        config,
+        2025,
+        1,
+        ["prod1"],
+        billing_journal_processor=get_journal_processors(config),
+        authorizations=["AUTH-1"],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_authorizations",
+        return_value=[{"id": "AUTH-1", "currency": "USD"}],
+        autospec=True,
+    )
+    mock_journal_query = mocker.patch.object(
+        generator.mpt_api_client.billing.journal, "query", autospec=True
+    )
+    mock_journal_query.return_value.all.return_value = [{"id": "JOURNAL-1", "status": "Draft"}]
+    mocker.patch.object(
+        generator.mpt_api_client.billing.journal,
+        "create",
+        return_value={"id": "JOURNAL-1"},
+        autospec=True,
+    )
+    mocker.patch("swo_mpt_api.billing.journal_client.AttachmentsClient.upload", autospec=True)
+    linked_account = "1234-1234-1234"
+    subscriptions = subscriptions_factory(
+        vendor_id=linked_account,
+        status=SubscriptionStatusEnum.ACTIVE.value,
+    )
+    mpa_account = "mpa_id"
+    agreement_data = agreement_factory(vendor_id=mpa_account, subscriptions=subscriptions)
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.get_agreements_by_query",
+        return_value=[agreement_data],
+        autospec=True,
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.send_success",
+        autospec=True,
+    )
+    invoice1 = data_aws_invoice_summary_factory(account_id=mpa_account, invoice_id="INV-1")
+    invoice2 = data_aws_invoice_summary_factory(account_id=mpa_account, invoice_id="INV-2")
+
+    _, aws_mock = aws_client_factory(config, "aws_mpa", "aws_role")
+    aws_mock.list_invoice_summaries.return_value = {
+        "InvoiceSummaries": [invoice1, invoice2],
+    }
+
+    aws_mock.get_cost_and_usage.side_effect = [
+        mock_marketplace_report_factory(groups=[]),
+        mock_invoice_by_service_report_factory(),
+        mock_report_type_and_usage_report_factory(),
+        mock_invoice_by_service_report_factory(),
+        mock_report_type_and_usage_report_factory(groups=[]),
+    ]
+
+    mocker.patch.object(generator.mpt_api_client.billing.journal, "upload", autospec=True)
+
+    generator.generate_billing_journals()
+
+    journal_line = mock_journal_line_factory(
+        service_name="AWS service name",
+        item_external_id=ItemSkusEnum.AWS_USAGE.value,
+        error=None,
+        account_id=linked_account,
+        invoice_id="INV-1,INV-2",
+        invoice_entity="Amazon Web Services EMEA SARL",
+    )
+
+    assert generator.journal_file_lines == [journal_line]
