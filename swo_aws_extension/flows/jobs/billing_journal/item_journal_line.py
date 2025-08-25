@@ -189,12 +189,12 @@ class DefaultDiscountValidator(DiscountValidator):
 
     @override
     def validate(self, discount, amount, service_name, account_metrics, tolerance_rate):
-        partner_discount = account_metrics.get(UsageMetricTypeEnum.PROVIDER_DISCOUNT.value, {})
-        target_discount = partner_discount.get(service_name, 0)
-        provider_discount = self._calculate_provider_discount(discount, amount)
-        if target_discount == 0 and discount != 0:
+        partner_discounts = account_metrics.get(UsageMetricTypeEnum.PROVIDER_DISCOUNT.value, {})
+        service_discount = partner_discounts.get(service_name, 0)
+        provider_discount = self._calculate_provider_discount(service_discount, amount)
+        if discount == 0 and provider_discount != 0:
             return False
-        if abs(provider_discount - target_discount) > tolerance_rate:
+        if abs(provider_discount - discount) > tolerance_rate:
             return False
         return True
 
@@ -206,16 +206,14 @@ class UsageDiscountValidator(DiscountValidator):
     def validate(self, discount, amount, service_name, account_metrics, tolerance_rate):
         usage = account_metrics.get(UsageMetricTypeEnum.USAGE.value, {})
         recurring = account_metrics.get(UsageMetricTypeEnum.RECURRING.value, {})
-        partner_discount = account_metrics.get(UsageMetricTypeEnum.PROVIDER_DISCOUNT.value, {})
+        provider_discounts = account_metrics.get(UsageMetricTypeEnum.PROVIDER_DISCOUNT.value, {})
 
         total_amount = usage.get(service_name, 0.0) + recurring.get(service_name, 0.0)
 
-        target_discount = partner_discount.get(service_name, 0)
-        provider_discount = self._calculate_provider_discount(discount, total_amount)
+        service_discount = provider_discounts.get(service_name, 0)
+        provider_discount = self._calculate_provider_discount(service_discount, total_amount)
 
-        if target_discount == 0 and discount != 0:
-            return False
-        if abs(provider_discount - target_discount) > tolerance_rate:
+        if abs(provider_discount - discount) > tolerance_rate:
             return False
         return True
 
@@ -242,8 +240,8 @@ class GenerateItemJournalLines:
         exclude_services = self._exclude_services
         if not self._dynamic_exclude_services:
             return exclude_services
-        for patata in self._dynamic_exclude_services:
-            exclude_services.append(account_metrics.get(patata, {}).keys())
+        for dynamic_exclude_service in self._dynamic_exclude_services:
+            exclude_services.extend(account_metrics.get(dynamic_exclude_service, {}).keys())
 
         return exclude_services
 
@@ -270,7 +268,14 @@ class GenerateItemJournalLines:
             invoice_entity = account_metrics.get(
                 UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY.value, {}
             ).get(service_name, "")
-            invoice_id = account_invoices.get(invoice_entity, {}).get("invoice_id", "")
+            invoice_details = account_invoices.get("invoice_entities", {}).get(invoice_entity, {})
+
+            invoice_id = invoice_details.get("invoice_id", "")
+            payment_currency = invoice_details.get("payment_currency_code", "")
+            base_currency = invoice_details.get("base_currency_code", "")
+            if payment_currency != base_currency:
+                exchange_rate = invoice_details.get("exchange_rate", 0.0)
+                amount = round(amount * exchange_rate, 6)
             journal_lines.append(
                 create_journal_line(
                     service_name,
@@ -303,16 +308,16 @@ class GenerateSavingPlansJournalLines(GenerateItemJournalLines):
     """Generate journal lines for AWS Saving Plans metrics"""
 
     _exclude_services = []
-    _validator = DefaultTrueDiscountValidator
+    _validator = DefaultDiscountValidator
 
 
 class GenerateOtherServicesJournalLines(GenerateItemJournalLines):
     """Generate journal lines for other AWS services excluding usage and marketplace services."""
 
     _exclude_services = [
-        AWSServiceEnum.TAX,
-        AWSServiceEnum.REFUND,
-        AWSServiceEnum.SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE,
+        AWSServiceEnum.TAX.value,
+        AWSServiceEnum.REFUND.value,
+        AWSServiceEnum.SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE.value,
     ]
     _dynamic_exclude_services = [
         UsageMetricTypeEnum.MARKETPLACE.value,
