@@ -52,7 +52,7 @@ def test_send_notification_full(mocker, settings):
     mocked_message.addLinkButton.assert_called_once_with(button.label, button.url)
     mocked_section.title.assert_called_once_with(facts_section.title)
     mocked_section.addFact.assert_called_once_with(
-        list(facts_section.data.keys())[0], list(facts_section.data.values())[0]
+        next(iter(facts_section.data.keys())), next(iter(facts_section.data.values()))
     )
     mocked_message.addSection.assert_called_once_with(mocked_section)
     mocked_message.send.assert_called_once()
@@ -140,8 +140,8 @@ def test_send_others(mocker, function, color, icon):
 
 def test_dateformat():
     assert dateformat("2024-05-16T10:54:42.831Z") == "16 May 2024"
-    assert dateformat("") == ""
-    assert dateformat(None) == ""
+    assert not dateformat("")
+    assert not dateformat(None)
 
 
 def test_notify_unhandled_exception_in_teams(mocker):
@@ -169,8 +169,6 @@ def test_send_mpt_notification(
     order_parameters_factory,
     buyer,
 ):
-    """Test that MPT notification is sent correctly expected subject for order in
-    querying status."""
     mock_notify = mocker.patch("swo_aws_extension.notifications.notify", spec=True)
     context = InitialAWSContext.from_order_data(
         order_factory(

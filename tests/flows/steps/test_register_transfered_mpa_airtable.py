@@ -23,9 +23,8 @@ def organization_details_response_data():
 
 
 @pytest.fixture
-def mpa_pool_model_mock(mocker, base_info):
-    model = get_master_payer_account_pool_model(base_info)
-    return model
+def mpa_pool_model_mock(base_info):
+    return get_master_payer_account_pool_model(base_info)
 
 
 def test_success(

@@ -27,7 +27,7 @@ from swo_rql import RQLQuery
 logger = logging.getLogger(__name__)
 
 
-def synchronize_agreements(mpt_client, config, agreement_ids, dry_run, product_ids):
+def synchronize_agreements(mpt_client, config, agreement_ids, product_ids, *, dry_run):
     """
     Synchronize all agreements.
 

@@ -1,3 +1,4 @@
+# TODO: rewrite without accessing to _content. Using responses
 import json
 from unittest.mock import mock_open
 
@@ -73,7 +74,7 @@ def test_upload_journal_command_file_handling_error_on_upload(mocker, mpt_client
 
     error_response = Response()
     error_response.status_code = 400
-    error_response._content = json.dumps({"error": True, "message": "Test error"}).encode("utf-8")
+    error_response._content = json.dumps({"error": True, "message": "Test error"}).encode("utf-8")  # noqa: SLF001
     upload_mock = mocker.patch(
         "swo_mpt_api.billing.journal_client.JournalClient.upload",
         side_effect=HTTPError(response=error_response),
@@ -97,7 +98,7 @@ def test_upload_journal_command_file_handling_error_on_create_journal(mocker, mp
 
     error_response = Response()
     error_response.status_code = 400
-    error_response._content = json.dumps({"error": True, "message": "Test error"}).encode("utf-8")
+    error_response._content = json.dumps({"error": True, "message": "Test error"}).encode("utf-8")  # noqa: SLF001
 
     create_mock = mocker.patch(
         "swo_mpt_api.billing.journal_client.JournalClient.create",

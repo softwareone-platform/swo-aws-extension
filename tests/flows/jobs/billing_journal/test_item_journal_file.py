@@ -16,17 +16,14 @@ from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import (
 
 
 class DummyProcessor(GenerateItemJournalLines):
+    """Dummy processor that raises billing exception."""
     def process(self, *args, **kwargs):
+        """Start process."""
         payload = {
             "service_name": "TestService",
             "amount": 100.0,
         }
         raise AWSBillingException("Test error", payload=payload)
-
-
-class DummyProcessorNotImplemented(GenerateItemJournalLines):
-    def process(self, *args, **kwargs):
-        return super().process(*args, **kwargs)
 
 
 def test_generate_marketplace_journal_lines_process(mock_journal_args, mock_journal_line_factory):
@@ -161,7 +158,7 @@ def test_generate_recurring_incentivate_journal_lines_process(
 
 
 def test_generate_item_journal_line_not_implemented(mock_journal_args, mock_journal_line_factory):
-    proc = DummyProcessorNotImplemented(
+    proc = GenerateItemJournalLines(
         UsageMetricTypeEnum.MARKETPLACE.value, billing_discount_tolerance_rate=1, discount=0
     )
     external_id = ItemSkusEnum.AWS_MARKETPLACE.value

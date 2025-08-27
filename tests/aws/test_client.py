@@ -69,11 +69,11 @@ def test_aws_client_list_accounts(mocker, config, aws_client_factory, data_aws_a
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.list_accounts.side_effect = [
         {
-            "Accounts": [data_aws_account_factory(id=f"0000-{0:04}-{j:04}") for j in range(10)],
+            "Accounts": [data_aws_account_factory(aws_id=f"0000-{0:04}-{j:04}") for j in range(10)],
             "NextToken": "token0",
         },
         {
-            "Accounts": [data_aws_account_factory(id=f"0000-{1:04}-{j:04}") for j in range(10)],
+            "Accounts": [data_aws_account_factory(aws_id=f"0000-{1:04}-{j:04}") for j in range(10)],
         },
     ]
 

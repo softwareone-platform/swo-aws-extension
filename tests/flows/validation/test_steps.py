@@ -15,12 +15,12 @@ def test_initialize_item_step(mocker, mpt_client, aws_client_factory, order_fact
     )
 
     context = InitialAWSContext.from_order_data(order)
-    next = mocker.MagicMock()
+    next_step = mocker.MagicMock()
 
     step = InitializeItemStep()
-    step(mpt_client, context, next)
+    step(mpt_client, context, next_step)
 
-    next.assert_called_once()
+    next_step.assert_called_once()
     get_product_items_by_skus.assert_called_once()
 
     order_lines = [

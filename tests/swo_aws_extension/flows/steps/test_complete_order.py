@@ -14,8 +14,7 @@ def context(order_factory, fulfillment_parameters_factory):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED.value)
     )
-    order_context = InitialAWSContext.from_order_data(order)
-    return order_context
+    return InitialAWSContext.from_order_data(order)
 
 
 @pytest.fixture

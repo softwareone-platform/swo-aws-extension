@@ -26,7 +26,7 @@ def test_transfer_with_org_step(
         ),
     )
     template_response = Response()
-    template_response._content = b'{"data": ["template"]}'
+    template_response._content = b'{"data": ["template"]}'  # noqa: SLF001
     template_response.status_code = 200
     mpt_client_mock.get = mocker.Mock(return_value=template_response)
 
@@ -65,7 +65,7 @@ def test_transfer_with_org_step_with_mpa(
         return_value=mpa_pool_factory(),
     )
     template_response = Response()
-    template_response._content = b'{"data": ["template"]}'
+    template_response._content = b'{"data": ["template"]}'  # noqa: SLF001
     template_response.status_code = 200
     mpt_client_mock.get = mocker.Mock(return_value=template_response)
 

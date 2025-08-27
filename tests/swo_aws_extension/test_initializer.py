@@ -1,3 +1,4 @@
+import importlib
 import os
 import sys
 import types
@@ -10,70 +11,61 @@ def clear_initializer_env(monkeypatch):
     monkeypatch.delenv("MPT_INITIALIZER", raising=False)
 
 
-def make_mock_settings(app_config_name, use_app_insights=False, handler="console"):
-    """
-    Create a mock settings object for testing purposes to correct test instability
-    behavior.
-    """
-
+def make_mock_settings(app_config_name, handler="console", *, use_app_insights=False):
     class MockSettings:
-        USE_APPLICATIONINSIGHTS = use_app_insights
-        DEBUG = False
-        INSTALLED_APPS = []
-        EXTENSION_CONFIG = {}
-        MPT_PRODUCTS_IDS = "PRD-1111-1111"
-        LOGGING = {
-            "version": 1,
-            "disable_existing_loggers": False,
-            "formatters": {
-                "verbose": {
-                    "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
-                    "style": "{",
+        def __init__(self):
+            self.USE_APPLICATIONINSIGHTS = use_app_insights
+            self.DEBUG = False
+            self.INSTALLED_APPS = []
+            self.EXTENSION_CONFIG = {}
+            self.MPT_PRODUCTS_IDS = "PRD-1111-1111"
+            self.LOGGING = {
+                "version": 1,
+                "disable_existing_loggers": False,
+                "formatters": {
+                    "verbose": {
+                        "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+                        "style": "{",
+                    },
                 },
-            },
-            "handlers": {
-                "console": {
-                    "class": "logging.StreamHandler",
-                    "formatter": "verbose",
+                "handlers": {
+                    "console": {
+                        "class": "logging.StreamHandler",
+                        "formatter": "verbose",
+                    },
+                    "rich": {
+                        "class": "logging.StreamHandler",
+                        "formatter": "verbose",
+                    },
                 },
-                "rich": {
-                    "class": "logging.StreamHandler",
-                    "formatter": "verbose",
+                "root": {"handlers": [handler], "level": "INFO"},
+                "loggers": {
+                    "swo.mpt": {"handlers": [handler], "level": "INFO", "propagate": False},
                 },
-            },
-            "root": {"handlers": [handler], "level": "INFO"},
-            "loggers": {"swo.mpt": {"handlers": [handler], "level": "INFO", "propagate": False}},
-        }
-        if use_app_insights:
-            LOGGING["handlers"]["opentelemetry"] = {
-                "class": "logging.StreamHandler",
-                "formatter": "verbose",
             }
-        APPLICATIONINSIGHTS_CONNECTION_STRING = (
-            "InstrumentationKey=12345678-1234-1234-1234-123456789012"
-        )
+            if use_app_insights:
+                self.LOGGING["handlers"]["opentelemetry"] = {
+                    "class": "logging.StreamHandler",
+                    "formatter": "verbose",
+                }
+            self.APPLICATIONINSIGHTS_CONNECTION_STRING = (
+                "InstrumentationKey=12345678-1234-1234-1234-123456789012"
+            )
 
     return MockSettings()
 
 
 def test_initializer_sets_env(monkeypatch):
-    """
-    Test that the initializer sets the MPT_INITIALIZER environment variable correctly.
-    """
     monkeypatch.delenv("MPT_INITIALIZER", raising=False)
-    import importlib
 
-    import swo_aws_extension.initializer as initializer
+    from swo_aws_extension import initializer  # noqa: PLC0415
 
     importlib.reload(initializer)
     assert os.environ["MPT_INITIALIZER"] == "swo_aws_extension.initializer.initialize"
 
 
 def test_initialize_basic(monkeypatch, mocker):
-    """
-    Test the basic initialization of the runtime with default settings.
-    """
-    mock_settings = make_mock_settings("myext.app", handler="rich")
+    mock_settings = make_mock_settings("myext.app", handler="rich", use_app_insights=False)
 
     monkeypatch.setitem(sys.modules, "django.conf", types.SimpleNamespace(settings=mock_settings))
 
@@ -93,7 +85,7 @@ def test_initialize_basic(monkeypatch, mocker):
 
     monkeypatch.setattr("rich.reconfigure", lambda **kwargs: None)
 
-    import swo_aws_extension.initializer as initializer
+    from swo_aws_extension import initializer  # noqa: PLC0415
 
     options = {"color": True, "debug": True}
 
@@ -111,15 +103,12 @@ def test_initialize_basic(monkeypatch, mocker):
 
 
 def test_initialize_with_app_insights(monkeypatch, mocker, mock_app_insights_instrumentation_key):
-    """
-    Test the initialization with Application Insights enabled.
-    """
     mocker.patch(
         "azure.monitor.opentelemetry.exporter.AzureMonitorTraceExporter",
         autospec=True,
     )
 
-    mock_settings = make_mock_settings("myext.app", use_app_insights=True, handler="console")
+    mock_settings = make_mock_settings("myext.app", handler="console", use_app_insights=True)
 
     monkeypatch.setitem(
         sys.modules,
@@ -166,7 +155,7 @@ def test_initialize_with_app_insights(monkeypatch, mocker, mock_app_insights_ins
 
     mock_botocore = mocker.patch("swo_aws_extension.initializer.BotocoreInstrumentor")
 
-    import swo_aws_extension.initializer as initializer
+    from swo_aws_extension import initializer  # noqa: PLC0415
 
     options = {"color": False, "debug": False}
 

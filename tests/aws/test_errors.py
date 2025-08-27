@@ -84,7 +84,7 @@ def test_wrap_http_error_request_exception(mocker):
     with pytest.raises(AWSError) as e:
         wrapped_func()
 
-    assert "500 - Internal Server Error" == str(e.value)
+    assert str(e.value) == "500 - Internal Server Error"
 
 
 def test_wrap_boto3_error_client_error(mocker):
@@ -110,7 +110,7 @@ def test_wrap_boto3_error_boto_core_error(mocker):
     with pytest.raises(AWSError) as e:
         wrapped_func()
 
-    assert "Boto3 SDK error: An unspecified error occurred" == str(e.value)
+    assert str(e.value) == "Boto3 SDK error: An unspecified error occurred"
 
 
 def test_wrap_boto3_error_unexpected_error(mocker):

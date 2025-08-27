@@ -51,7 +51,7 @@ def test_to_api_dict(service_request):
 
 def test_preapre_headers(crm_client):
     order_id = "ORD-0000-0000"
-    headers = crm_client._prepare_headers(order_id)
+    headers = crm_client._prepare_headers(order_id)  # noqa: SLF001
     assert headers["x-correlation-id"] == order_id
 
 

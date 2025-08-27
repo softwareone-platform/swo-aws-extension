@@ -78,7 +78,7 @@ def test_create_transfer_request_ticket_with_organization_step_creates_ticket(
     next_step_mock = mocker.Mock()
 
     template_response = Response()
-    template_response._content = b'{"data": ["template"]}'
+    template_response._content = b'{"data": ["template"]}'  # noqa: SLF001
     template_response.status_code = 200
     mpt_client_mock.get = mocker.Mock(return_value=template_response)
 
@@ -132,10 +132,6 @@ def test_create_transfer_request_ticket_with_organization_step_ticket_exist(
     order_transfer_with_organization_and_ticket,
     service_client,
 ):
-    """
-    Test that the step does not create a ticket if it already exists for a transfer
-    with organization.
-    """
     context = PurchaseContext.from_order_data(order_transfer_with_organization_and_ticket)
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
@@ -151,9 +147,6 @@ def test_create_transfer_request_ticket_with_organization_step_ticket_exist(
 
 
 def test_create_transfer_request_ticket_skipped(mocker, mock_order, service_client):
-    """
-    Test that the step is skipped for orders that are not transfer with organization.
-    """
     context = PurchaseContext.from_order_data(mock_order)
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
@@ -169,9 +162,6 @@ def test_create_transfer_request_ticket_skipped(mocker, mock_order, service_clie
 
 
 def test_await_ticket(mocker, order_transfer_with_organization_and_ticket, service_client):
-    """
-    Test await ticket if it is not in completed state
-    """
     context = PurchaseContext.from_order_data(order_transfer_with_organization_and_ticket)
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
@@ -188,9 +178,6 @@ def test_await_ticket(mocker, order_transfer_with_organization_and_ticket, servi
 def test_await_ticket_continue_if_completed(
     mocker, order_transfer_with_organization_and_ticket, service_client
 ):
-    """
-    Test awaiting ticket if ticket is completed
-    """
     context = PurchaseContext.from_order_data(order_transfer_with_organization_and_ticket)
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
@@ -205,9 +192,6 @@ def test_await_ticket_continue_if_completed(
 
 
 def test_skip_await_ticket(mocker, mock_order):
-    """
-    Test skipping ticket if not set
-    """
     context = PurchaseContext.from_order_data(mock_order)
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
