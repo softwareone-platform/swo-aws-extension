@@ -38,7 +38,7 @@ def test_upload_attachment(requests_mock, mpt_client, tmp_path):
         status_code=201,
     )
     api = MPTAPIClient(mpt_client)
-    with open(file_path, "rb") as f:
+    with file_path.open("rb", encoding="utf-8") as f:
         result = api.billing.journal.attachments(journal_id).upload(
             f, "application/pdf", "test.pdf"
         )

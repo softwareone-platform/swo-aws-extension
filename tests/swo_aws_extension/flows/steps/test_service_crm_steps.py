@@ -199,7 +199,7 @@ def test_await_crm_ticket_status_no_ticket_id_raise(
     get_ticket_id.return_value = None
     await_crm_ticket_status.skip_if_no_ticket = False
 
-    with pytest.raises(ValueError, match="Ticket ID is required."):
+    with pytest.raises(ValueError, match=r"Ticket ID is required\."):
         await_crm_ticket_status(client, context, next_step)
 
     get_ticket_id.assert_called_once_with(context)

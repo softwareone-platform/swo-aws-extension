@@ -107,7 +107,7 @@ def test_update_template_missing_template_shows_error(
     )
 
     context = InitialAWSContext.from_order_data(order)
-    context._update_template(mock_client, MPT_ORDER_STATUS_COMPLETED, "NonExistingTemplate")
+    context._update_template(mock_client, MPT_ORDER_STATUS_COMPLETED, "NonExistingTemplate")  # noqa: SLF001
     mock_error_logger.assert_called_once()
 
 

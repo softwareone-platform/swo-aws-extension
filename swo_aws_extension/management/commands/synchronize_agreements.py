@@ -30,6 +30,10 @@ class Command(StyledPrintCommand):
     def handle(self, *args, **options):
         self.info("Start synchronizing agreements...")
         synchronize_agreements(
-            mpt_client, config, options["agreements"], options["dry_run"], settings.MPT_PRODUCTS_IDS
+            mpt_client,
+            config,
+            options["agreements"],
+            settings.MPT_PRODUCTS_IDS,
+            dry_run=options["dry_run"],
         )
         self.success("Synchronizing agreements completed.")

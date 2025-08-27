@@ -19,19 +19,16 @@ from unittest.mock import patch
     },
 )
 def test_settings_values(settings):
-    """
-    Test that the settings are correctly set from environment variables.
-    """
     settings = importlib.reload(importlib.import_module("swo_aws_extension.default"))
 
-    assert settings.SECRET_KEY == os.environ.get("DJANGO_SECRET", "django_secret")
-    assert settings.SERVICE_NAME == os.getenv("SERVICE_NAME", "Swo.Extensions.SwoDefaultExtensions")
-    assert settings.USE_APPLICATIONINSIGHTS == (
-        os.getenv("USE_APPLICATIONINSIGHTS", "False").lower() in ("true", "1", "t")
-    )
+    assert os.environ.get("DJANGO_SECRET", "django_secret") == settings.SECRET_KEY
+    assert os.getenv("SERVICE_NAME", "Swo.Extensions.SwoDefaultExtensions") == settings.SERVICE_NAME
+    assert (
+        os.getenv("USE_APPLICATIONINSIGHTS", "False").lower() in {"true", "1", "t"}
+    ) == settings.USE_APPLICATIONINSIGHTS
     assert settings.MPT_API_BASE_URL == "https://api.example.com"
     assert settings.MPT_API_TOKEN == "test-token"
-    assert settings.MPT_PRODUCTS_IDS == "123,456" or settings.MPT_PRODUCTS_IDS == "123,456"
+    assert settings.MPT_PRODUCTS_IDS == "123,456"
     assert settings.MPT_PORTAL_BASE_URL == "https://portal.example.com"
     assert settings.MPT_KEY_VAULT_NAME == "test-keyvault"
     assert settings.EXTENSION_CONFIG["DUE_DATE_DAYS"] == "30"
@@ -64,9 +61,6 @@ def test_settings_values(settings):
 def test_settings_values_with_app_insights(
     mocker, monkeypatch, mock_app_insights_connection_string
 ):
-    """
-    Test that Application Insights settings are correctly set when enabled.
-    """
     sys.modules.pop("swo_aws_extension.default", None)
 
     mocker.patch("swo_aws_extension.default.set_logger_provider")
@@ -79,4 +73,4 @@ def test_settings_values_with_app_insights(
     settings = importlib.reload(importlib.import_module("swo_aws_extension.default"))
 
     assert settings.USE_APPLICATIONINSIGHTS is True
-    assert settings.APPLICATIONINSIGHTS_CONNECTION_STRING == mock_app_insights_connection_string
+    assert mock_app_insights_connection_string == settings.APPLICATIONINSIGHTS_CONNECTION_STRING

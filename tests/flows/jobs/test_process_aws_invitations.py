@@ -27,9 +27,7 @@ def aws_invitation_processor_factory(mocker, mpt_client, config):
                 "swo_aws_extension.flows.jobs.process_aws_invitations.AWSInvitationsProcessor.get_querying_orders",
                 return_value=query_orders,
             )
-        processor = AWSInvitationsProcessor(mpt_client, config)
-
-        return processor
+        return AWSInvitationsProcessor(mpt_client, config)
 
     return _aws_invitation_processor
 
@@ -192,7 +190,7 @@ def test_process_one_order_with_invitations_accepted(
 def response_factory(status_code, data):
     response = Response()
     response.status_code = status_code
-    response._content = json.dumps(data).encode("utf-8")
+    response._content = json.dumps(data).encode("utf-8")  # noqa: SLF001
     return response
 
 

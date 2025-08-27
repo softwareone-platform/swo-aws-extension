@@ -117,9 +117,9 @@ def test_have_active_accounts(
     mpa_account_id = "mpa_account_id"
     mock_client.list_accounts.return_value = aws_accounts_factory(
         accounts=[
-            data_aws_account_factory(id=mpa_account_id),
-            data_aws_account_factory(id="account_1"),
-            data_aws_account_factory(id="account_2", status="SUSPENDED"),
+            data_aws_account_factory(aws_id=mpa_account_id),
+            data_aws_account_factory(aws_id="account_1"),
+            data_aws_account_factory(aws_id="account_2", status="SUSPENDED"),
         ]
     )
 

@@ -16,10 +16,6 @@ def test_assign_transfer_mpa_first_run(
     order_parameters_factory,
     agreement_factory,
 ):
-    """
-    First run moves the (order parameter) master_payer_id
-    to (fulfillment parameter) mpa_account_id
-    """
     mpt_client_mock = mocker.Mock(spec=MPTClient)
 
     order = order_factory(
@@ -49,7 +45,7 @@ def test_assign_transfer_mpa_first_run(
     )
 
     assert get_phase(context.order) == PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION
-    assert context.mpa_account == ""
+    assert not context.mpa_account
     step = AssignTransferMPAStep(config, "role_name")
     next_step_mock = mocker.Mock()
     step(mpt_client_mock, context, next_step_mock)

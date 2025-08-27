@@ -1,3 +1,4 @@
+from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import (
     ItemSkusEnum,
     SubscriptionStatusEnum,
@@ -411,7 +412,7 @@ def test_generate_agreement_journal_lines_subscription_exception(
         return_value=[agreement_data],
         autospec=True,
     )
-    generator._generate_agreement_journal_lines(agreement_data, "JOURNAL-1")
+    generator._generate_agreement_journal_lines(agreement_data, "JOURNAL-1")  # noqa: SLF001
     assert generator.journal_file_lines == []
 
 
@@ -423,8 +424,6 @@ def test_generate_agreement_journal_lines_aws_client_error(
     config,
     aws_client_factory,
 ):
-    from swo_aws_extension.aws.errors import AWSError
-
     generator = BillingJournalGenerator(
         mpt_client,
         config,

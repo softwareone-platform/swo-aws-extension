@@ -1,3 +1,4 @@
+from collections import UserDict
 from unittest.mock import MagicMock
 
 import pytest
@@ -5,8 +6,8 @@ import pytest
 from swo_mpt_api.httpquery import HttpQuery
 
 
-class DummyModel(dict):
-    pass
+class DummyModel(UserDict):
+    """Dummy model for tests purpuse only."""
 
 
 def test_one_returns_single_item():
@@ -69,9 +70,9 @@ def test_query_combines_existing_and_new_rql():
     hq = HttpQuery(mock_client, "http://fake-url", base_query)
     result = hq.query(new_rql)
     assert isinstance(result, HttpQuery)
-    assert result._query == f"{base_query}&{new_rql}"
-    assert result._url == "http://fake-url"
-    assert result._client == mock_client
+    assert result._query == f"{base_query}&{new_rql}"  # noqa: SLF001
+    assert result._url == "http://fake-url"  # noqa: SLF001
+    assert result._client == mock_client  # noqa: SLF001
 
 
 def test_query_uses_existing_query_only():
@@ -79,7 +80,7 @@ def test_query_uses_existing_query_only():
     base_query = "foo=1"
     hq = HttpQuery(mock_client, "http://fake-url", base_query)
     result = hq.query(None)
-    assert result._query == base_query
+    assert result._query == base_query  # noqa: SLF001
 
 
 def test_query_uses_new_rql_only():
@@ -87,14 +88,14 @@ def test_query_uses_new_rql_only():
     new_rql = "bar=2"
     hq = HttpQuery(mock_client, "http://fake-url")
     result = hq.query(new_rql)
-    assert result._query == new_rql
+    assert result._query == new_rql  # noqa: SLF001
 
 
 def test_query_with_no_query_or_rql():
     mock_client = MagicMock()
     hq = HttpQuery(mock_client, "http://fake-url")
     result = hq.query(None)
-    assert result._query is None
+    assert result._query is None  # noqa: SLF001
 
 
 def test__call_no_query():
@@ -104,7 +105,7 @@ def test__call_no_query():
     mock_response.raise_for_status.return_value = None
     mock_client.get.return_value = mock_response
     hq = HttpQuery(mock_client, "http://fake-url")
-    result = hq._call()
+    result = hq._call()  # noqa: SLF001
     mock_client.get.assert_called_once_with("http://fake-url")
     mock_response.raise_for_status.assert_called_once()
     assert result == {"data": [1]}
@@ -117,7 +118,7 @@ def test__call_with_self_query():
     mock_response.raise_for_status.return_value = None
     mock_client.get.return_value = mock_response
     hq = HttpQuery(mock_client, "http://fake-url", "foo=1")
-    result = hq._call()
+    result = hq._call()  # noqa: SLF001
     mock_client.get.assert_called_once_with("http://fake-url?foo=1")
     assert result == {"data": [2]}
 
@@ -129,7 +130,7 @@ def test__call_with_query_arg():
     mock_response.raise_for_status.return_value = None
     mock_client.get.return_value = mock_response
     hq = HttpQuery(mock_client, "http://fake-url")
-    result = hq._call(query="bar=2")
+    result = hq._call(query="bar=2")  # noqa: SLF001
     mock_client.get.assert_called_once_with("http://fake-url?bar=2")
     assert result == {"data": [3]}
 
@@ -141,6 +142,6 @@ def test__call_with_both_queries():
     mock_response.raise_for_status.return_value = None
     mock_client.get.return_value = mock_response
     hq = HttpQuery(mock_client, "http://fake-url", "foo=1")
-    result = hq._call(query="bar=2")
+    result = hq._call(query="bar=2")  # noqa: SLF001
     mock_client.get.assert_called_once_with("http://fake-url?foo=1&bar=2")
     assert result == {"data": [4]}
