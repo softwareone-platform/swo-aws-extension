@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 
 from swo_aws_extension.constants import (
@@ -16,6 +18,8 @@ from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import (
 
 
 class DummyProcessor(GenerateItemJournalLines):
+    """Dummy processor that raises billing exception."""
+
     def process(self, *args, **kwargs):
         payload = {
             "service_name": "TestService",
@@ -299,7 +303,7 @@ def test_generate_journal_line_with_exchange_rate(mock_journal_args, mock_journa
             "invoice_id": "INV-123",
             "payment_currency_code": "EUR",
             "base_currency_code": "USD",
-            "exchange_rate": 1.2,
+            "exchange_rate": Decimal("1.2"),
         }
     }
     args["account_metrics"][UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY.value] = {

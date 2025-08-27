@@ -2,6 +2,7 @@ import copy
 import json
 import signal
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 
 import jwt
 import pytest
@@ -1032,8 +1033,9 @@ def mock_logging_all_prefixes(
 
 @pytest.fixture()
 def mock_highlights(mock_logging_all_prefixes):
-    return _ReprHighlighter.highlights + [
-        rf"(?P<mpt_id>(?:{'|'.join(mock_logging_all_prefixes)})(?:-\d{{4}})*)"
+    return [
+        *_ReprHighlighter.highlights,
+        rf"(?P<mpt_id>(?:{'|'.join(mock_logging_all_prefixes)})(?:-\d{{4}})*)",
     ]
 
 
@@ -1958,7 +1960,7 @@ def mock_settings(settings):
     return settings
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_marketplace_report_group_factory():
     def _marketplace_report_group(
         account_id="1234-1234-1234",
@@ -1981,7 +1983,7 @@ def mock_marketplace_report_group_factory():
     return _marketplace_report_group
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_marketplace_report_factory(mock_marketplace_report_group_factory):
     def _marketplace_report(groups=None):
         groups = groups if groups is not None else mock_marketplace_report_group_factory()
@@ -2003,7 +2005,7 @@ def mock_marketplace_report_factory(mock_marketplace_report_group_factory):
     return _marketplace_report
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_invoice_by_service_report_group_factory():
     def _invoice_by_service_report_group(
         service_name="AWS service name", invoice_entity=INVOICE_ENTITY
@@ -2021,7 +2023,7 @@ def mock_invoice_by_service_report_group_factory():
     return _invoice_by_service_report_group
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_invoice_by_service_report_factory(mock_invoice_by_service_report_group_factory):
     def _invoice_by_service_report(groups=None):
         groups = groups or mock_invoice_by_service_report_group_factory()
@@ -2043,7 +2045,7 @@ def mock_invoice_by_service_report_factory(mock_invoice_by_service_report_group_
     return _invoice_by_service_report
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_report_type_and_usage_report_group_factory():
     def _report_type_and_usage_report_group(
         record_type="Usage",
@@ -2068,7 +2070,7 @@ def mock_report_type_and_usage_report_group_factory():
     return _report_type_and_usage_report_group
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_report_type_and_usage_report_factory(mock_report_type_and_usage_report_group_factory):
     def _report_type_and_usage_report(groups=None):
         groups = groups if groups is not None else mock_report_type_and_usage_report_group_factory()
@@ -2211,7 +2213,7 @@ def get_usage_data(
     return usage_metrics, usage_invoice_groups
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_journal_args(
     mpt_client,
     config,
@@ -2267,25 +2269,25 @@ def mock_journal_args(
                 "end_date": "2025-02-01",
             },
             "account_invoices": {
-                "base_total_amount": 11.34,
-                "base_total_amount_before_tax": 10.49,
+                "base_total_amount": Decimal("11.34"),
+                "base_total_amount_before_tax": Decimal("10.49"),
                 "invoice_entities": {
                     INVOICE_ENTITY: {
                         "base_currency_code": "USD",
-                        "exchange_rate": 0.0,
+                        "exchange_rate": Decimal("0.0"),
                         "invoice_id": "EUINGB25-2163550",
                         "payment_currency_code": "USD",
                     }
                 },
-                "payment_currency_total_amount": 11.34,
-                "payment_currency_total_amount_before_tax": 10.49,
+                "payment_currency_total_amount": Decimal("11.34"),
+                "payment_currency_total_amount_before_tax": Decimal("10.49"),
             },
         }
 
     return _journal_args
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_journal_line_factory():
     def _journal_line(
         service_name="service name",
@@ -2294,14 +2296,14 @@ def mock_journal_line_factory():
         invoice_id="EUINGB25-2163550",
         item_external_id="",
         error=None,
-        price=100.0,
+        price=Decimal(100),
     ):
         return JournalLine(
             description=Description(
                 value1=service_name,
                 value2=f"{account_id}/{invoice_entity}",
             ),
-            externalIds=ExternalIds(
+            external_ids=ExternalIds(
                 invoice=invoice_id,
                 reference="AGR-2119-4550-8674-5962",
                 vendor="mpa_id",
@@ -2311,8 +2313,8 @@ def mock_journal_line_factory():
                 end="2025-02-01",
             ),
             price=Price(
-                PPx1=price,
-                unitPP=price,
+                pp_x1=price,
+                unit_pp=price,
             ),
             quantity=1,
             search=Search(

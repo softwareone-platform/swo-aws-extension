@@ -2,6 +2,7 @@ import re
 from datetime import datetime
 
 from django.conf import settings
+from mpt_extension_sdk.core.utils import setup_client
 
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import (
@@ -13,7 +14,6 @@ from swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator impo
 )
 from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import get_journal_processors
 from swo_aws_extension.management.commands_helpers import StyledPrintCommand
-from swo_aws_extension.shared import mpt_client
 
 config = Config()
 
@@ -131,6 +131,7 @@ class Command(StyledPrintCommand):
 
     @staticmethod
     def process(year, month, authorizations):
+        mpt_client = setup_client()
         generator = BillingJournalGenerator(
             mpt_client,
             config,

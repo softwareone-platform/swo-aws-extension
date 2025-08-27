@@ -111,6 +111,7 @@ def test_test_call_command_with_error_month(mocker):
     assert "Invalid month. Month must be between 1 and 12. Got 13 instead." in error_output
 
 
+@freeze_time("2025-07-07 23:59:59")
 def test_call_command_with_one_authorization(mocker):
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.BillingJournalGenerator.generate_billing_journals",
@@ -129,6 +130,7 @@ def test_call_command_with_one_authorization(mocker):
     assert "" in error_output
 
 
+@freeze_time("2025-07-07 23:59:59")
 def test_call_command_with_multiple_authorization(mocker):
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.BillingJournalGenerator.generate_billing_journals",
@@ -151,6 +153,7 @@ def test_call_command_with_multiple_authorization(mocker):
     assert "" in error_output
 
 
+@freeze_time("2025-07-07 23:59:59")
 def test_call_command_with_invalid_authorization(mocker):
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator.BillingJournalGenerator.generate_billing_journals",
