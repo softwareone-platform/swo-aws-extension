@@ -5,6 +5,9 @@ import sys
 from unittest.mock import patch
 
 
+from mpt_extension_sdk.runtime.events.dispatcher_type import DispatcherType
+
+
 @patch.dict(
     os.environ,
     {
@@ -16,6 +19,7 @@ from unittest.mock import patch
         "MPT_NOTIFY_CATEGORIES": json.dumps(["category1", "category2"]),
         "MPT_ORDERS_API_POLLING_INTERVAL_SECS": "120",
         "MPT_INITIALIZER": "custom.initializer",
+        "DISPATCHER_TYPE": "context",
     },
 )
 def test_settings_values(settings):
@@ -46,6 +50,8 @@ def test_settings_values(settings):
     assert "handlers" in settings.LOGGING
     assert "console" in settings.LOGGING["handlers"]
     assert settings.LOGGING["root"]["handlers"] == ["rich"]
+    assert settings.MPT_SETUP_CONTEXTS_FUNC == "swo_aws_extension.flows.fulfillment.base.setup_contexts"
+    assert settings.DISPATCHER_TYPE == DispatcherType.CONTEXT.value
 
 
 @patch.dict(
@@ -59,6 +65,7 @@ def test_settings_values(settings):
         "MPT_NOTIFY_CATEGORIES": json.dumps(["category1", "category2"]),
         "MPT_ORDERS_API_POLLING_INTERVAL_SECS": "120",
         "MPT_INITIALIZER": "custom.initializer",
+        "DISPATCHER_TYPE": "context",
     },
 )
 def test_settings_values_with_app_insights(

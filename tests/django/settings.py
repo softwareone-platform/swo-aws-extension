@@ -14,6 +14,9 @@ import json
 import os
 from pathlib import Path
 
+
+from mpt_extension_sdk.runtime.events.dispatcher_type import DispatcherType
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -208,3 +211,5 @@ EXTENSION_CONFIG = {
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"
 
 INITIALIZER = os.getenv("MPT_INITIALIZER", "swo_aws_extension.initializer.initialize")
+
+DISPATCHER_TYPE = os.getenv("DISPATCHER_TYPE", DispatcherType.CONTEXT.value)

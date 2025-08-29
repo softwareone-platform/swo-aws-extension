@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 
 from azure.monitor.opentelemetry.exporter import AzureMonitorLogExporter
+from mpt_extension_sdk.runtime.events.dispatcher_type import DispatcherType
 from opentelemetry._logs import set_logger_provider
 from opentelemetry.sdk._logs import LoggerProvider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
@@ -220,3 +221,5 @@ MPT_SETUP_CONTEXTS_FUNC = os.getenv(
 MPT_NOTIFY_CATEGORIES = json.loads(os.environ["MPT_NOTIFY_CATEGORIES"])
 
 INITIALIZER = os.getenv("MPT_INITIALIZER", "swo_aws_extension.initializer.initialize")
+
+DISPATCHER_TYPE = os.getenv("DISPATCHER_TYPE", DispatcherType.CONTEXT.value)
