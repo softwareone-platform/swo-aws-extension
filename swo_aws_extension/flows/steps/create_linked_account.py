@@ -1,6 +1,4 @@
-import functools
 import logging
-from datetime import date
 
 from mpt_extension_sdk.flows.pipeline import Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
@@ -34,25 +32,28 @@ from swo_aws_extension.parameters import (
 logger = logging.getLogger(__name__)
 
 
-@functools.cache
-def notify_error_creating_linked_account(order_id, error, _date):
-    title = f"{order_id} - Error creating linked account"
-    send_error(title, error)
-
-
-def manage_create_linked_account_error(client, context, param_account_name, param_account_email):
+def manage_create_linked_account_error(
+    client: MPTClient,
+    context: ChangeContext,
+    param_account_name: str,
+    param_account_email: str,
+):
     """
-    Manage the error when creating a linked account. If the error is due to an email already
+    Manage the error when creating a linked account.
+
+    If the error is due to an email already
     existing, it sets the error on the parameter and switches the order to query.
+
     Args:
-        client (MPTClient): The MPT client instance.
-        context (InitialContext): The change context.
-        param_account_name (str): The parameter ID for the account name.
-        param_account_email (str): The parameter ID for the account email.
+        client: The MPT client instance.
+        context: The change context.
+        param_account_name: The parameter ID for the account name.
+        param_account_email: The parameter ID for the account email.
     """
     if context.account_creation_status.failure_reason == "EMAIL_ALREADY_EXISTS":
         logger.error(
-            f"{context.order_id} - Error - AWS linked account creation failed: email already exists"
+            "%s - Error - AWS linked account creation failed: email already exists",
+            context.order_id,
         )
         context.order = set_ordering_parameter_error(
             context.order,
@@ -76,29 +77,34 @@ def manage_create_linked_account_error(client, context, param_account_name, para
             client, OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE
         )
         logger.info(
-            f"{context.order_id} - Querying - Order switched to query to provide a valid email"
+            "%s - Querying - Order switched to query to provide a valid email", context.order_id,
         )
         return
     logger.error(
-        f"{context.order_id} - Stop - AWS linked account creation failed: "
-        f"{context.account_creation_status.failure_reason}"
+        "%s - Stop - AWS linked account creation failed: %s",
+        context.order_id, context.account_creation_status.failure_reason,
     )
 
 
-def validate_linked_account_parameters(context, param_account_name, param_account_email):
+def validate_linked_account_parameters(
+    context: ChangeContext,
+    param_account_name: str,
+    param_account_email: str,
+) -> tuple[bool, dict]:
     """
     Validate the parameters for creating a linked account.
+
     Args:
-        context (InitialContext): The change context.
-        param_account_name (str): The parameter ID for the account name.
-        param_account_email (str): The parameter ID for the account email.
+        context: The change context.
+        param_account_name: The parameter ID for the account name.
+        param_account_email: The parameter ID for the account email.
+
     Returns:
-        bool: True if there are errors, False otherwise.
-        dict: The updated order dictionary.
+        Tuple with boolean if validation succed and updated order.
     """
     has_error = False
     if not context.root_account_email:
-        logger.error(f"{context.order_id} - Error - Email not found in order parameters")
+        logger.error("%s - Error - Email not found in order parameters", context.order_id)
         context.order = set_ordering_parameter_error(
             context.order,
             param_account_email,
@@ -107,7 +113,7 @@ def validate_linked_account_parameters(context, param_account_name, param_accoun
         has_error = True
 
     if not context.account_name:
-        logger.error(f"{context.order_id} - Error - Account name not found in order parameters")
+        logger.error("%s - Error - Account name not found in order parameters", context.order_id)
         context.order = set_ordering_parameter_error(
             context.order,
             param_account_name,
@@ -118,36 +124,39 @@ def validate_linked_account_parameters(context, param_account_name, param_accoun
 
 
 class CreateInitialLinkedAccountStep(Step):
-    def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+    """Create initial linked account in AWS."""
+    def __call__(self, client: MPTClient, context: PurchaseContext, next_step):  # noqa: C901
+        """Execute step."""
         if get_phase(context.order) != PhasesEnum.CREATE_ACCOUNT:
             logger.info(
-                f"{context.order_id} - Skip - Current phase is '{get_phase(context.order)}', "
-                f"skipping as it is not '{PhasesEnum.CREATE_ACCOUNT.value}'"
+                "%s - Skip - Current phase is '{get_phase(context.order)}', "
+                "skipping as it is not '%s'",
+                context.order_id, PhasesEnum.CREATE_ACCOUNT.value,
             )
             next_step(client, context)
             return
 
         if context.account_creation_status:
-            logger.info(f"{context.order_id} - Start - Checking linked account request status")
+            logger.info("%s - Start - Checking linked account request status", context.order_id)
             if context.account_creation_status.status == "SUCCEEDED":
                 logger.info(
-                    f"{context.order_id} - Completed - AWS linked account created successfully"
+                    "%s - Completed - AWS linked account created successfully", context.order_id,
                 )
                 context.order = set_phase(context.order, PhasesEnum.CREATE_SUBSCRIPTIONS.value)
                 update_order(client, context.order_id, parameters=context.order["parameters"])
                 next_step(client, context)
                 return
-            elif context.account_creation_status.status == "IN_PROGRESS":
-                logger.info(f"{context.order_id} - Skip -AWS linked account creation in progress")
+            if context.account_creation_status.status == "IN_PROGRESS":
+                logger.info("%s - Skip -AWS linked account creation in progress", context.order_id)
                 return
-            else:
-                manage_create_linked_account_error(
-                    client,
-                    context,
-                    OrderParametersEnum.ACCOUNT_NAME.value,
-                    OrderParametersEnum.ROOT_ACCOUNT_EMAIL.value,
-                )
-                return
+
+            manage_create_linked_account_error(
+                client,
+                context,
+                OrderParametersEnum.ACCOUNT_NAME.value,
+                OrderParametersEnum.ROOT_ACCOUNT_EMAIL.value,
+            )
+            return
 
         has_error, order = validate_linked_account_parameters(
             context,
@@ -163,57 +172,61 @@ class CreateInitialLinkedAccountStep(Step):
             )
             context.switch_order_status_to_query(client)
             logger.info(
-                f"{context.order_id} - Querying - Order switched to query. Invalid email or "
-                f"account name"
+                "%s - Querying - Order switched to query. Invalid email or account name",
+                context.order_id,
             )
             return
 
         logger.info(
-            f"{context.order_id} - Intent - Creating initial linked account with: "
-            f"email={context.root_account_email}, name={context.account_name}"
+            "%s - Intent - Creating initial linked account with: email=%s, name=%s",
+            context.order_id, context.root_account_email, context.account_name,
         )
         try:
             linked_account = context.aws_client.create_linked_account(
                 context.root_account_email, context.account_name
             )
-            logger.info(f"{context.order_id} - Action - Linked account created: {linked_account}")
+            logger.info(
+                "%s - Action - Linked account created: %s",
+                context.order_id, linked_account,
+            )
 
             context.order = set_account_request_id(context.order, linked_account.account_request_id)
             update_order(client, context.order_id, parameters=context.order["parameters"])
         except AWSError as e:
-            logger.info(f"{context.order_id} - ActionError - Error creating Linked Account: {e}")
-            notify_error_creating_linked_account(
-                context.order_id,
-                str(e),
-                date.today().isoformat(),
+            logger.exception(
+                "%s - ActionError - Error creating Linked Account.", context.order_id,
             )
-            logger.info(f"{context.order_id} - Stop - Unable to create linked account")
+            title = f"{context.order_id} - Error creating linked account"
+            send_error(title, str(e))
+            logger.info("%s - Stop - Unable to create linked account", context.order_id)
 
 
 class AddLinkedAccountStep(Step):
+    """Add linked account to the AWS account."""
     def __call__(self, client: MPTClient, context: ChangeContext, next_step):
+        """Execute step."""
         if context.account_creation_status:
-            logger.info(f"{context.order_id} - Start - Checking linked account request status")
+            logger.info("%s - Start - Checking linked account request status", context.order_id)
             if context.account_creation_status.status == "SUCCEEDED":
                 # If we set the template to querying, we need to set it back to processing
                 template_name = TemplateNameManager.processing(context)
                 context.update_processing_template(client, template_name)
                 logger.info(
-                    f"{context.order_id} - Completed - AWS linked account created successfully"
+                    "%s - Completed - AWS linked account created successfully", context.order_id,
                 )
                 next_step(client, context)
                 return
-            elif context.account_creation_status.status == "IN_PROGRESS":
-                logger.info(f"{context.order_id} - Skip - AWS linked account creation in progress")
+            if context.account_creation_status.status == "IN_PROGRESS":
+                logger.info("%s - Skip - AWS linked account creation in progress", context.order_id)
                 return
-            else:
-                manage_create_linked_account_error(
-                    client,
-                    context,
-                    ChangeOrderParametersEnum.ACCOUNT_NAME.value,
-                    ChangeOrderParametersEnum.ROOT_ACCOUNT_EMAIL.value,
-                )
-                return
+
+            manage_create_linked_account_error(
+                client,
+                context,
+                ChangeOrderParametersEnum.ACCOUNT_NAME.value,
+                ChangeOrderParametersEnum.ROOT_ACCOUNT_EMAIL.value,
+            )
+            return
 
         has_error, order = validate_linked_account_parameters(
             context,
@@ -228,16 +241,16 @@ class AddLinkedAccountStep(Step):
                 context.order, ignore=parameter_ids_with_errors
             )
             context.switch_order_status_to_query(client)
-            logger.info(f"{context.order_id} - Querying - Order switched to query")
+            logger.info("%s - Querying - Order switched to query", context.order_id)
             return
 
         logger.info(
-            f"{context.order_id} - Intent - Creating new linked account with: "
-            f"email={context.root_account_email}, name={context.account_name}"
+            "%s - Intent - Creating new linked account with: email=%s, name=%s",
+            context.order_id, context.root_account_email, context.account_name,
         )
         linked_account = context.aws_client.create_linked_account(
             context.root_account_email, context.account_name
         )
-        logger.info(f"{context.order_id} - Action - Linked account created: {linked_account}")
+        logger.info("%s - Action - Linked account created: %s", context.order_id, linked_account)
         context.order = set_account_request_id(context.order, linked_account.account_request_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])

@@ -15,9 +15,9 @@ import os
 from pathlib import Path
 
 from azure.monitor.opentelemetry.exporter import AzureMonitorLogExporter
-from opentelemetry._logs import set_logger_provider
-from opentelemetry.sdk._logs import LoggerProvider
-from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry._logs import set_logger_provider  # noqa: PLC2701
+from opentelemetry.sdk._logs import LoggerProvider  # noqa: PLC2701
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor  # noqa: PLC2701
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -35,7 +35,7 @@ SECRET_KEY = os.getenv(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ("*",)
 
 
 # Application definition
@@ -130,7 +130,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # OpenTelemetry configuration
 SERVICE_NAME = os.getenv("SERVICE_NAME", "Swo.Extensions.SwoDefaultExtensions")
 APPLICATIONINSIGHTS_CONNECTION_STRING = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "")
-USE_APPLICATIONINSIGHTS = APPLICATIONINSIGHTS_CONNECTION_STRING != ""
+USE_APPLICATIONINSIGHTS = not APPLICATIONINSIGHTS_CONNECTION_STRING
 
 if USE_APPLICATIONINSIGHTS:
     logger_provider = LoggerProvider()

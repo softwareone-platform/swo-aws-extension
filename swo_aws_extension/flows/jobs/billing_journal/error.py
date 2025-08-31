@@ -1,4 +1,5 @@
-class AWSBillingException(Exception):
+class AWSBillingError(Exception):
+    """Base class for AWS billing."""
     def __init__(self, message: str, payload: dict) -> None:
         super().__init__(message)
         self.payload: dict = payload

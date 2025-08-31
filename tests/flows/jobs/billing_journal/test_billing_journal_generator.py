@@ -8,7 +8,7 @@ from swo_aws_extension.constants import (
 from swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator import (
     BillingJournalGenerator,
 )
-from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingException
+from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingError
 from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import (
     GenerateSupportEnterpriseJournalLines,
     get_journal_processors,
@@ -643,7 +643,7 @@ def test_process_item_journal_line_error(
     }
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.item_journal_line.GenerateSupportEnterpriseJournalLines.process",
-        side_effect=AWSBillingException("Test error", payload=payload),
+        side_effect=AWSBillingError("Test error", payload=payload),
         autospec=True,
     )
     mock_journal_query = mocker.patch.object(

@@ -17,24 +17,26 @@ logger = logging.getLogger(__name__)
 
 
 class RegisterTransferredMPAToAirtableStep(Step):
+    """Register transfer Master payer account to the airtable."""
     def exists_in_airtable(self, account_id):
-        """
-        Check if the MPA already exists in Airtable.
-        """
+        """Check if the MPA already exists in Airtable."""
         mpa_pool_model = get_master_payer_account_pool_model(AirTableBaseInfo.for_mpa_pool())
         formula = EQUAL(FIELD("Account Id"), STR_VALUE(account_id))
         response = mpa_pool_model.first(formula=formula)
         return response is not None
 
     def __call__(self, client, context: PurchaseContext, next_step):
+        """Execute step."""
         if context.airtable_mpa or self.exists_in_airtable(context.mpa_account):
             logger.info(
-                f"{context.order_id} - Skip - "
-                f"MPA {context.mpa_account} already registered in Airtable"
+                "%s - Skip - MPA %s already registered in Airtable",
+                context.order_id, context.mpa_account,
             )
             next_step(client, context)
             return
-        assert context.aws_client is not None, "Missing AWS client"
+        if not context.aws_client:
+            raise ValueError("Missing AWS client")
+
         mpa_pool_model = get_master_payer_account_pool_model(AirTableBaseInfo.for_mpa_pool())
         organization = context.aws_client.describe_organization()
         context.airtable_mpa = mpa_pool_model(
@@ -50,7 +52,7 @@ class RegisterTransferredMPAToAirtableStep(Step):
         context.airtable_mpa.account_name = context.aws_client.account_name()
         context.airtable_mpa.save()
         logger.info(
-            f"{context.order_id} - Action - "
-            f"Created MPA in Airtable: {context.airtable_mpa.id} for MPA: {context.mpa_account}"
+            "%s - Action - Created MPA in Airtable: %s for MPA: %s",
+            context.order_id, context.airtable_mpa.id, context.mpa_account,
         )
         next_step(client, context)
