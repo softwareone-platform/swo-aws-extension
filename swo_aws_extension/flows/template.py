@@ -10,9 +10,16 @@ from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.parameters import get_account_type, get_termination_type_parameter
 
 
+# TODO: I trully believe that there is no need for this manager
+# Because on each execution you already know if it is a complete
+# or processing step + inside processing there are ifs for change/terminate order
+# Since pipelines are separate for each of the type of the order, at that point you
+# already know what template to use, you don't need these functions
 class TemplateNameManager:
+    """Choose proper template for the order."""
     @staticmethod
     def processing(context: InitialAWSContext) -> str:
+        """For processing step."""
         if context.order_type == ORDER_TYPE_CHANGE:
             return OrderProcessingTemplateEnum.CHANGE.value
 
@@ -32,7 +39,8 @@ class TemplateNameManager:
         return OrderProcessingTemplateEnum.NEW_ACCOUNT.value
 
     @staticmethod
-    def complete(context: InitialAWSContext) -> str:
+    def complete(context: InitialAWSContext) -> str:  # noqa: C901
+        """For complete step."""
         if context.order_type == ORDER_TYPE_CHANGE:
             return OrderCompletedTemplateEnum.CHANGE.value
 

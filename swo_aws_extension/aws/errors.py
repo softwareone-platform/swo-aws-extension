@@ -7,17 +7,18 @@ from typing import ParamSpec, TypeVar
 import botocore.exceptions
 from requests import HTTPError, JSONDecodeError, RequestException
 
-P = ParamSpec("P")
-R = TypeVar("R")
+Param = ParamSpec("Param")
+RetType = TypeVar("RetType")
 
 logger = logging.getLogger(__name__)
 
 
 class AWSError(Exception):
-    pass
+    """AWS basic error."""
 
 
 class AWSHttpError(AWSError):
+    """AWS http error."""
     def __init__(self, status_code: int, content: str):
         self.status_code = status_code
         self.content = content
@@ -25,6 +26,7 @@ class AWSHttpError(AWSError):
 
 
 class AWSOpenIdError(AWSHttpError):
+    """AWS openId error."""
     def __init__(self, status_code: int, payload: dict) -> None:
         super().__init__(status_code, json.dumps(payload))
         self.payload: dict = payload
@@ -39,38 +41,40 @@ class AWSOpenIdError(AWSHttpError):
         return message
 
 
-def wrap_http_error(func: Callable[P, R]) -> Callable[P, R]:
+def wrap_http_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]:  # noqa: UP047
+    """Wraps http error to internal."""
     @wraps(func)
-    def _wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+    def _wrapper(*args: Param.args, **kwargs: Param.kwargs) -> RetType:
         try:
             return func(*args, **kwargs)
         except HTTPError as e:
-            logging.exception(f"HTTP error in {func.__name__}: {e}")
+            logger.exception("HTTP error in %s.", func.__name__)
             try:
                 raise AWSOpenIdError(e.response.status_code, e.response.json()) from e
             except JSONDecodeError:
                 raise AWSHttpError(e.response.status_code, e.response.content.decode()) from e
         except RequestException as e:
-            logging.exception(f"Unexpected HTTP error in {func.__name__}: {e}")
+            logger.exception("Unexpected HTTP error in %s.", func.__name__)
             raise AWSHttpError(e.response.status_code, e.response.content.decode()) from e
 
     return _wrapper
 
 
-def wrap_boto3_error(func: Callable[P, R]) -> Callable[P, R]:
+def wrap_boto3_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]:  # noqa: UP047
+    """Wraps boto3 error to internal extension errors."""
     @wraps(func)
-    def _wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+    def _wrapper(*args: Param.args, **kwargs: Param.kwargs) -> RetType:
         try:
             return func(*args, **kwargs)
         except AWSError as e:
-            raise e
+            raise e from e
         except botocore.exceptions.ClientError as e:
-            raise AWSError(f"AWS Client error: {e}") from e
+            raise AWSError(f"AWS Client error. {e}") from e
         except botocore.exceptions.BotoCoreError as e:
-            logging.exception(f"Boto3 SDK error in {func.__name__}: {e}")
+            logger.exception("Boto3 SDK error in %s.", func.__name__)
             raise AWSError(f"Boto3 SDK error: {e}") from e
         except Exception as e:
-            logging.exception(f"Unexpected error in {func.__name__}: {e}")
+            logger.exception("Unexpected error in %s.", func.__name__)
             raise AWSError(f"Unexpected error: {e}") from e
 
     return _wrapper

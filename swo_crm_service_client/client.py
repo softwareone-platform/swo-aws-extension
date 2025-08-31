@@ -21,12 +21,9 @@ from swo_aws_extension.openid import get_openid_token
 logger = logging.getLogger(__name__)
 
 
-class ServiceCRMException(Exception):
-    pass
-
-
 @dataclass
 class ServiceRequest:
+    """Service request API entity."""
     external_user_email: str = CRM_EXTERNAL_EMAIL
     external_username: str = CRM_EXTERNAL_USERNAME
     requester: str = CRM_REQUESTER
@@ -38,6 +35,7 @@ class ServiceRequest:
     service_type: str = CRM_SERVICE_TYPE
 
     def to_api_dict(self) -> dict:
+        """Converts to dict for CRM API."""
         return {
             "externalUserEmail": self.external_user_email,
             "externalUsername": self.external_username,
@@ -51,7 +49,11 @@ class ServiceRequest:
         }
 
 
+TIMEOUT = 60
+
+
 class CRMServiceClient(Session):
+    """Client to interact with CRM system."""
     def __init__(self, config, api_version="3.0.0"):
         super().__init__()
         self.config = config
@@ -97,7 +99,7 @@ class CRMServiceClient(Session):
         self.headers["Authorization"] = f"Bearer {self.api_token}"
 
     def get_crm_token(self):
-        """Get a new CRM token"""
+        """Get a new CRM token."""
         return get_openid_token(
             endpoint=self.config.oauth_url,
             client_id=self.config.client_id,
@@ -107,12 +109,14 @@ class CRMServiceClient(Session):
         )
 
     def request(self, method, url, *args, **kwargs):
+        """Makes HTTP request with provided token auth."""
         if self.is_token_expired():
             self.refresh_token()
         url = self._join_url(url)
         return super().request(method, url, *args, **kwargs)
 
     def prepare_request(self, request, *args, **kwargs):
+        """Overrides session prepare request to provide proper URL."""
         request.url = self._join_url(request.url)
         return super().prepare_request(request, *args, **kwargs)
 
@@ -125,31 +129,40 @@ class CRMServiceClient(Session):
 
     def create_service_request(self, order_id, service_request: ServiceRequest):
         """
-        Create a service request
-        :param order_id:
-        :param service_request:
-        :return: {"id": "CS0004728"}
+        Create a service request.
+
+        Args:
+            order_id: MPT order id
+            service_request: Service request
+
+        Returns:
+            Dictionary with created service request id {"id": "CS0004728"}
         """
         data = service_request.to_api_dict()
         response = self.post(
             url="/ticketing/ServiceRequests",
             json=data,
             headers=self._prepare_headers(order_id),
+            timeout=TIMEOUT,
         )
         response.raise_for_status()
         try:
             return response.json()
         except JSONDecodeError:
-            logger.error(
-                f"JSONDecodeError - Malformed response from ServiceNow CRM during service"
-                f" request. Status code: {response.status_code} - {response.content}"
+            logger.exception(
+                "JSONDecodeError - Malformed response from ServiceNow CRM during service"
+                " request. Status code: %s - %s",
+                response.status_code,
+                response.content,
             )
             raise
 
     def get_service_requests(self, order_id, service_request_id: str):
+        """Retrieves service requests from CRM system."""
         response = self.get(
             url=f"/ticketing/ServiceRequests/{service_request_id}",
             headers=self._prepare_headers(order_id),
+            timeout=TIMEOUT,
         )
         response.raise_for_status()
         return response.json()
@@ -159,8 +172,9 @@ _CRM_CLIENT = None
 
 
 def get_service_client() -> CRMServiceClient:
+    """Get CRM client."""
     config = CRMConfig()
-    global _CRM_CLIENT
+    global _CRM_CLIENT  # noqa: PLW0603
     if not _CRM_CLIENT:
         _CRM_CLIENT = CRMServiceClient(
             config=config,

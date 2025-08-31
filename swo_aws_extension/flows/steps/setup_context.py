@@ -31,11 +31,13 @@ logger = logging.getLogger(__name__)
 
 
 class SetupContext(Step):
+    """Initial setup context step."""
     def __init__(self, config, role_name):
         self._config = config
         self._role_name = role_name
 
     def setup_aws(self, context: InitialAWSContext):
+        """Initialize AWS client."""
         if not context.mpa_account:
             raise ValueError(
                 "SetupContextError - MPA account is required to setup AWS Client in context"
@@ -43,82 +45,74 @@ class SetupContext(Step):
 
         context.aws_client = AWSClient(self._config, context.mpa_account, self._role_name)
         logger.info(
-            f"{context.order_id} - Action - MPA credentials for {context.mpa_account} retrieved "
-            f"successfully"
+            "%s - Action - MPA credentials for %s retrieved successfully",
+            context.order_id, context.mpa_account,
         )
 
     def init_template(self, client: MPTClient, context: InitialAWSContext):
+        """Initialize processing template."""
         if context.template_name != ORDER_DEFAULT_PROCESSING_TEMPLATE:
             logger.info(
-                f"{context.order_id} - Skip - Setup template: Template is not default. "
-                f"Current template: `{context.template_name}`, "
-                f"expected template: `{ORDER_DEFAULT_PROCESSING_TEMPLATE}`"
+                "%s - Skip - Setup template: Template is not default. "
+                "Current template: `%s`, "
+                "expected template: `%s`",
+                context.order_id,
+                context.template_name,
+                ORDER_DEFAULT_PROCESSING_TEMPLATE,
             )
             return
 
         template_name = TemplateNameManager.processing(context)
         context.update_processing_template(client, template_name)
 
-    def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
-        self.init_template(client, context)
-        self.setup_aws(context)
-        logger.info(f"{context.order_id} - Next - SetupContext completed successfully")
-        next_step(client, context)
-
-
-class SetupPurchaseContext(SetupContext):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    @staticmethod
-    def setup_account_request_id(context):
+    def setup_account_request_id(self, context):
+        """Fetches linked account status."""
         account_request_id = get_account_request_id(context.order)
         if account_request_id:
             context.account_creation_status = context.aws_client.get_linked_account_status(
                 account_request_id
             )
             logger.info(
-                f"{context.order_id} - Action - Setup setup_account_request_id in context:"
-                f" {context.account_creation_status}"
+                "%s - Action - Setup setup_account_request_id in context: %s",
+                context.order_id, context.account_creation_status,
             )
 
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
+        """Execute step."""
+        self.init_template(client, context)
+        self.setup_aws(context)
+        logger.info("%s - Next - SetupContext completed successfully", context.order_id)
+        next_step(client, context)
+
+
+class SetupPurchaseContext(SetupContext):
+    """Setup Context for purchase order."""
+    def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
+        """Execute step."""
         self.init_template(client, context)
         if context.mpa_account:
             self.setup_aws(context)
             context.airtable_mpa = get_mpa_account(context.mpa_account)
         self.setup_account_request_id(context)
-        logger.info(f"{context.order_id} - Next - SetupPurchaseContext completed successfully")
+        logger.info("%s - Next - SetupPurchaseContext completed successfully", context.order_id)
 
         next_step(client, context)
 
 
 class SetupChangeContext(SetupContext):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    @staticmethod
-    def setup_account_request_id(context):
-        account_request_id = get_account_request_id(context.order)
-        if account_request_id:
-            context.account_creation_status = context.aws_client.get_linked_account_status(
-                account_request_id
-            )
-            logger.info(
-                f"{context.order_id} - Action - Setup setup_account_request_id in context:"
-                f" {context.account_creation_status}"
-            )
-
+    """Setup context for change order."""
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
+        """Execute step."""
         self.init_template(client, context)
         self.setup_aws(context)
         self.setup_account_request_id(context)
-        logger.info(f"{context.order_id} - Next - SetupChangeContext completed successfully")
+        logger.info("%s - Next - SetupChangeContext completed successfully", context.order_id)
         next_step(client, context)
 
 
 class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
-    def __call__(self, client, context: PurchaseContext, next_step):
+    """Setups context for purchase case with organization."""
+    def __call__(self, client, context: PurchaseContext, next_step):  # noqa: C901
         """
         If not a transfer with organization purchase order, then we skip this step.
 
@@ -128,11 +122,11 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
         """
         self.init_template(client, context)
         if not context.is_purchase_order():
-            logger.info(f"{context.order_id} - Skip - Is not a purchase order")
+            logger.info("%s - Skip - Is not a purchase order", context.order_id)
             next_step(client, context)
             return
         if not context.is_type_transfer_with_organization():
-            logger.info(f"{context.order_id} - Skip - Is not a transfer with organization order")
+            logger.info("%s - Skip - Is not a transfer with organization order", context.order_id)
             next_step(client, context)
             return
 
@@ -148,7 +142,7 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
                 parameters=context.order["parameters"],
             )
             logger.info(
-                f"{context.order_id} - Action - Updated phase to {get_phase(context.order)}"
+                "%s - Action - Updated phase to {get_phase(context.order)}", context.order_id,
             )
 
         if not context.order_master_payer_id:
@@ -166,8 +160,9 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
             else:
                 context.order = update_order(client, context.order_id, parameters=context.order)
             logger.info(
-                f"{context.order_id} - Querying - Order Master payer id is not set in "
-                f"Purchase transfer with organization"
+                "%s - Querying - Order Master payer id is not set in "
+                "Purchase transfer with organization",
+                context.order_id
             )
             return
 
@@ -176,14 +171,16 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
             context.airtable_mpa = get_mpa_account(context.mpa_account)
 
         logger.info(
-            f"{context.order_id} - Continue - Setup purchase transfer with organization completed "
-            f"successfully"
+            "%s - Continue - Setup purchase transfer with organization completed successfully",
+            context.order_id,
         )
         next_step(client, context)
 
 
 class SetupContextPurchaseTransferWithoutOrganizationStep(SetupContext):
+    """Setup context for purchases to transfer without organization."""
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
+        """Execute step."""
         self.init_template(client, context)
         phase = get_phase(context.order)
         if not phase:
@@ -192,18 +189,22 @@ class SetupContextPurchaseTransferWithoutOrganizationStep(SetupContext):
                 client, context.order_id, parameters=context.order["parameters"]
             )
             logger.info(
-                f"{context.order_id} - Action - Updated phase  to {get_phase(context.order)}"
+                "%s - Action - Updated phase  to %s", context.order_id, get_phase(context.order),
             )
         if context.mpa_account:
             self.setup_aws(context)
             context.airtable_mpa = get_mpa_account(context.mpa_account)
-        logger.info(f"{context.order_id} - Next - SetupPurchaseContext completed successfully")
+        logger.info("%s - Next - SetupPurchaseContext completed successfully", context.order_id)
         next_step(client, context)
 
 
 class SetupTerminateContextStep(SetupContext):
+    """Setup context for termination orders."""
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
+        """Execute step."""
         self.init_template(client, context)
         self.setup_aws(context)
-        logger.info(f"{context.order_id} - Next - SetupTerminateContextStep completed successfully")
+        logger.info(
+            "%s - Next - SetupTerminateContextStep completed successfully", context.order_id,
+        )
         next_step(client, context)

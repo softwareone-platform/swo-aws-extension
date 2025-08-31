@@ -9,6 +9,7 @@ from requests import HTTPError
 
 
 class MPAStatusEnum(StrEnum):
+    """Master payer account status."""
     READY = "Ready"
     ASSIGNED = "Assigned"
     ERROR = "Error"
@@ -16,17 +17,20 @@ class MPAStatusEnum(StrEnum):
 
 
 class NotificationTypeEnum(StrEnum):
+    """Notification type."""
     EMPTY = "Empty"
     WARNING = "Warning"
 
 
 class NotificationTicketStatusEnum(StrEnum):
+    """Notification ticket status."""
     NOT_CREATED = "Not Created"
     CREATED = "Ticket Created"
     CLOSED = "Ticket Closed"
 
 
 class NotificationStatusEnum(StrEnum):
+    """Notification status."""
     NEW = "New"
     PENDING = "Pending"
     DONE = "Done"
@@ -37,16 +41,16 @@ PLS_ENABLED = "PLS Enabled"
 
 @dataclass(frozen=True)
 class AirTableBaseInfo:
+    """Airtable base info."""
     api_key: str
     base_id: str
 
     @staticmethod
     def for_mpa_pool():
         """
-        Returns an AirTableBaseInfo object with the base identifier of the base that
-        contains the MPA pool tables and the API key.
+        Returns an AirTableBaseInfo object with the base identifier of the base.
 
-        Args:
+        That contains the MPA pool tables and the API key.
 
         Returns:
             AirTableBaseInfo: The base info.
@@ -60,8 +64,7 @@ class AirTableBaseInfo:
 @cache
 def get_master_payer_account_pool_model(base_info):
     """
-    Returns the MPAPool model class connected to the right base and with
-    the right API key.
+    Returns the MPAPool model class connected to the right base and with the right API key.
 
     Args:
         base_info (AirTableBaseInfo): The base info instance.
@@ -71,6 +74,7 @@ def get_master_payer_account_pool_model(base_info):
     """
 
     class MPAPool(Model):
+        """Master Payer account pool."""
         account_id = fields.TextField("Account Id")
         account_email = fields.TextField("Account Email")
         account_name = fields.TextField("Account Name")
@@ -94,8 +98,7 @@ def get_master_payer_account_pool_model(base_info):
 @cache
 def get_pool_notification_model(base_info):
     """
-    Returns the PoolNotification model class connected to the right base and with
-    the right API key.
+    PoolNotification model class connected to the right base and with the right API key.
 
     Args:
         base_info (AirTableBaseInfo): The base info instance.
@@ -124,11 +127,9 @@ def get_pool_notification_model(base_info):
 def get_available_mpa_from_pool():
     """
     Returns the list of available MPAs from the pool.
-    Args:
 
     Returns:
         list: The available MPAs.
-
     """
     mpa_pool = get_master_payer_account_pool_model(AirTableBaseInfo.for_mpa_pool())
 
@@ -137,14 +138,13 @@ def get_available_mpa_from_pool():
 
 def get_notifications_by_status(status):
     """
-    Returns the list for pool notifications for the selected status
+    Returns the list for pool notifications for the selected status.
 
     Returns:
         list[PoolNotification]: The pending notifications for the selected status.
     """
     pool_notification = get_pool_notification_model(AirTableBaseInfo.for_mpa_pool())
-    pending_notifications = pool_notification.all(formula=EQUAL(FIELD("Status"), STR_VALUE(status)))
-    return pending_notifications
+    return pool_notification.all(formula=EQUAL(FIELD("Status"), STR_VALUE(status)))
 
 
 def has_open_notification(country, pls_enabled):
@@ -172,6 +172,7 @@ def has_open_notification(country, pls_enabled):
 def get_open_notifications():
     """
     Returns the list of open notifications.
+
     Returns:
         list[PoolNotification]: The open notifications.
     """
@@ -194,9 +195,10 @@ def get_mpa_view_link():
         table_id = mpa_pool.get_table().id
         view_id = mpa_pool.get_table().schema().view("Master Payer Accounts").id
         record_id = mpa_pool.id
-        return f"https://airtable.com/{base_id}/{table_id}/{view_id}/{record_id}"
     except HTTPError:
         pass
+    else:
+        return f"https://airtable.com/{base_id}/{table_id}/{view_id}/{record_id}"
 
 
 def create_pool_notification(notification):
@@ -205,9 +207,7 @@ def create_pool_notification(notification):
 
     Args:
         notification (dict): The notification to create.
-
     """
-
     pool_notification = get_pool_notification_model(AirTableBaseInfo.for_mpa_pool())
     pool_notification(**notification).save()
 
@@ -222,7 +222,6 @@ def get_mpa_account(mpa_account_id):
     Returns:
         MPAAccount: The MPA account.
     """
-
     mpa_pool = get_master_payer_account_pool_model(AirTableBaseInfo.for_mpa_pool())
 
     return mpa_pool.first(formula=EQUAL(FIELD("Account Id"), mpa_account_id))
@@ -235,7 +234,4 @@ def get_mpa_accounts():
     Returns:
         list: The MPA accounts.
     """
-
-    mpa_pool = get_master_payer_account_pool_model(AirTableBaseInfo.for_mpa_pool())
-
-    return mpa_pool.all()
+    return get_master_payer_account_pool_model(AirTableBaseInfo.for_mpa_pool()).all()

@@ -10,6 +10,7 @@ from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 
 
 def initialize(options, group=DEFAULT_APP_CONFIG_GROUP, name=DEFAULT_APP_CONFIG_NAME):
+    """Custom initializaer of extension."""
     options["django_settings_module"] = "swo_aws_extension.default"
 
     sdk_initialize(
@@ -18,8 +19,8 @@ def initialize(options, group=DEFAULT_APP_CONFIG_GROUP, name=DEFAULT_APP_CONFIG_
         name=name,
     )
 
-    import django
-    from django.conf import settings
+    import django  # noqa: PLC0415
+    from django.conf import settings  # noqa: PLC0415
 
     if settings.USE_APPLICATIONINSIGHTS:
         BotocoreInstrumentor().instrument()

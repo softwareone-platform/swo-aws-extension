@@ -35,7 +35,7 @@ def process_pending_notification(crm_client, pending_notification):
         crm_client: The CRM client.
         pending_notification: The pending notification to process.
     """
-    logger.info(f"Processing pending notification {pending_notification.notification_id}")
+    logger.info("Processing pending notification %s", pending_notification.notification_id)
     ticket = crm_client.get_service_requests(None, pending_notification.ticket_id)
     ticket_state = ticket.get("state", "")
 
@@ -43,14 +43,14 @@ def process_pending_notification(crm_client, pending_notification):
         pending_notification.ticket_state = ticket_state
         pending_notification.status = NotificationStatusEnum.DONE.value
         pending_notification.save()
-        logger.info(f"Ticket {pending_notification.ticket_id} is completed.")
+        logger.info("Ticket %s is completed.", pending_notification.ticket_id)
     elif ticket_state != pending_notification.ticket_state:
         pending_notification.ticket_state = ticket_state
         pending_notification.save()
-        logger.info(f"Ticket {pending_notification.ticket_id} state updated to {ticket_state}.")
+        logger.info("Ticket %s state updated to %s.", pending_notification.ticket_id, ticket_state)
     else:
         logger.info(
-            f"Pending Notification {pending_notification.notification_id} is still pending."
+            "Pending Notification %s is still pending.", pending_notification.notification_id,
         )
 
 
@@ -66,20 +66,18 @@ def create_ticket(crm_client, notification, summary, title, additional_info):
         additional_info: Additional information for the notification.
     """
     logger.info(
-        f"New service request ticket will be created for country {notification.country} "
-        f"with PLS enabled: {notification.pls_enabled} "
-        f"and type: {notification.notification_type}."
+        "New service request ticket will be created for country %s with PLS enabled: %s "
+        "and type: %s.",
+        notification.country, notification.pls_enabled, notification.notification_type,
     )
     service_request = ServiceRequest(additional_info=additional_info, summary=summary, title=title)
     ticket = crm_client.create_service_request(None, service_request)
-    logger.info(f"Service request ticket created with id: {ticket.get('id', '')}")
+    logger.info("Service request ticket created with id: %s", ticket.get("id", ""))
     return ticket
 
 
-def delete_duplicated_new_notifications(open_notifications, pending_notifications):
-    """
-    Delete duplicated notifications.
-    """
+def delete_duplicated_new_notifications(open_notifications, pending_notifications):  # noqa: C901
+    """Delete duplicated notifications."""
     unique_notifications = []
     notifications_map = {}
 
@@ -93,14 +91,14 @@ def delete_duplicated_new_notifications(open_notifications, pending_notification
         )
         if existing_notification:
             notification.delete()
-            logger.info(f"Duplicated pending notification {notification.notification_id} deleted.")
+            logger.info("Duplicated pending notification %s deleted.", notification.notification_id)
             continue
 
         if notification.country not in notifications_map:
             notifications_map[notification.country] = {}
         if notification.pls_enabled in notifications_map[notification.country]:
             notification.delete()
-            logger.info(f"Duplicated new notification {notification.notification_id} deleted.")
+            logger.info("Duplicated new notification %s deleted.", notification.notification_id)
         else:
             notifications_map[notification.country][notification.pls_enabled] = True
 
@@ -110,10 +108,7 @@ def delete_duplicated_new_notifications(open_notifications, pending_notification
 
 
 def add_new_notifications(minimum_mpa_threshold, accounts_map, open_notifications):
-    """
-    Add new notifications based on the accounts map.
-    """
-
+    """Add new notifications based on the accounts map."""
     for country, pls_map in accounts_map.items():
         for pls_enabled, count_accounts in pls_map.items():
             if count_accounts > int(minimum_mpa_threshold):
@@ -126,8 +121,8 @@ def add_new_notifications(minimum_mpa_threshold, accounts_map, open_notification
             )
             if existing_notification:
                 logger.info(
-                    f"Pending notification already exists for PLS enabled:"
-                    f" {pls_enabled} and country {country}."
+                    "Pending notification already exists for PLS enabled: %s and country %s.",
+                    pls_enabled, country,
                 )
 
                 continue
@@ -144,14 +139,13 @@ def add_new_notifications(minimum_mpa_threshold, accounts_map, open_notification
             }
             create_pool_notification(new_notification)
             logger.info(
-                f"New notification created for country {country} with PLS enabled: {pls_enabled}."
+                "New notification created for country %s with PLS enabled: %s.",
+                country, pls_enabled,
             )
 
 
 def get_mpa_accounts_map():
-    """
-    Get the MPA accounts map.
-    """
+    """Get the MPA accounts map."""
     mpa_accounts = get_mpa_accounts()
     accounts_map = {}
     for mpa_account in mpa_accounts:
@@ -161,16 +155,12 @@ def get_mpa_accounts_map():
                 False: 0,
             }
         if mpa_account.status == MPAStatusEnum.READY:
-            accounts_map[mpa_account.country][mpa_account.pls_enabled] = (
-                accounts_map[mpa_account.country][mpa_account.pls_enabled] + 1
-            )
+            accounts_map[mpa_account.country][mpa_account.pls_enabled] += 1
     return accounts_map
 
 
 def check_pool_accounts_notifications(config) -> None:
-    """
-    Check the pool accounts notifications.
-    """
+    """Check the pool accounts notifications."""
     crm_client = get_service_client()
     open_notifications = get_open_notifications()
     pending_notifications = [

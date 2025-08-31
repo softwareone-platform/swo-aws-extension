@@ -4,7 +4,7 @@ from swo_aws_extension.constants import (
     ItemSkusEnum,
     UsageMetricTypeEnum,
 )
-from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingException
+from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingError
 from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import (
     GenerateItemJournalLines,
     GenerateOtherServicesJournalLines,
@@ -23,7 +23,7 @@ class DummyProcessor(GenerateItemJournalLines):
             "service_name": "TestService",
             "amount": 100.0,
         }
-        raise AWSBillingException("Test error", payload=payload)
+        raise AWSBillingError("Test error", payload=payload)
 
 
 def test_generate_marketplace_journal_lines_process(mock_journal_args, mock_journal_line_factory):
@@ -275,7 +275,7 @@ def test_support_two_charges_error(mock_journal_args, mock_journal_line_factory)
         "AWS Support (Enterprise)": 35
     }
 
-    with pytest.raises(AWSBillingException) as exc_info:
+    with pytest.raises(AWSBillingError) as exc_info:
         proc.process(**args)
 
     assert (

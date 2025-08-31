@@ -11,6 +11,7 @@ MAX_ACCOUNT_TRANSFER = 20
 
 
 class OrderParametersEnum(StrEnum):
+    """Ordering parameters external Ids."""
     ACCOUNT_TYPE = "accountType"
     ROOT_ACCOUNT_EMAIL = "orderRootAccountEmail"
     ACCOUNT_NAME = "orderAccountName"
@@ -23,11 +24,13 @@ class OrderParametersEnum(StrEnum):
 
 
 class ChangeOrderParametersEnum(StrEnum):
+    """Change parameters external Ids."""
     ACCOUNT_NAME = "changeOrderAccountName"
     ROOT_ACCOUNT_EMAIL = "changeOrderRootAccountEmail"
 
 
 class FulfillmentParametersEnum(StrEnum):
+    """Change parameters external Ids."""
     PHASE = "phase"
     ACCOUNT_REQUEST_ID = "accountRequestId"
     ACCOUNT_EMAIL = "accountEmail"
@@ -43,7 +46,9 @@ class FulfillmentParametersEnum(StrEnum):
 def get_parameter(parameter_phase, source, param_external_id):
     """
     Returns a parameter of a given phase by its external identifier.
+
     Returns an empty dictionary if the parameter is not found.
+
     Args:
         parameter_phase (str): The phase of the parameter (ordering, fulfillment).
         source (str): The source business object from which the parameter
@@ -67,7 +72,7 @@ get_fulfillment_parameter = functools.partial(get_parameter, PARAM_PHASE_FULFILL
 
 def reset_ordering_parameters_error(order):
     """
-    Reset errors for all ordering parameters
+    Reset errors for all ordering parameters.
 
     Args:
         order (dict): The order that contains the parameter.
@@ -83,7 +88,7 @@ def reset_ordering_parameters_error(order):
     return updated_order
 
 
-def set_ordering_parameter_error(order, param_external_id, error, required=True):
+def set_ordering_parameter_error(order, param_external_id, error, *, required=True):
     """
     Set a validation error on an ordering parameter.
 
@@ -112,6 +117,7 @@ def set_ordering_parameter_error(order, param_external_id, error, required=True)
 def update_ordering_parameter_constraints(order, param_external_id, hidden, required, readonly):
     """
     Update constraints on an ordering parameter.
+
     Args:
         order (dict): The order that contains the parameter.
         param_external_id (str): The external identifier of the parameter.
@@ -138,8 +144,7 @@ def update_ordering_parameter_constraints(order, param_external_id, hidden, requ
 
 def get_phase(source):
     """
-    Get the phase from the corresponding fulfillment parameter or an empty
-     string if it is not set.
+    Get the phase from the corresponding fulfillment parameter or an empty string if it is not set.
 
     Args:
         source (dict): The business object from which the MPA Account ID
@@ -177,8 +182,7 @@ def set_phase(order, phase):
 
 def get_account_email(source):
     """
-    Get the email from the corresponding ordering parameter or an empty
-     string if it is not set.
+    Get the email from the corresponding ordering parameter or an empty string if it is not set.
 
     Args:
         source (dict): The business object from which the email
@@ -196,8 +200,7 @@ def get_account_email(source):
 
 def get_account_name(source):
     """
-    Get the account name from the corresponding ordering parameter or an empty
-     string if it is not set.
+    Get the account name from the corresponding ordering parameter or an empty string.
 
     Args:
         source (dict): The business object from which the account name
@@ -215,8 +218,7 @@ def get_account_name(source):
 
 def get_account_request_id(source):
     """
-    Get the account request id from the corresponding fulfillment parameter or an empty
-     string if it is not set.
+    Get the account request id from the corresponding fulfillment parameter or an empty string.
 
     Args:
         source (dict): The business object from which the account request id
@@ -254,8 +256,7 @@ def set_account_request_id(order, account_request_id):
 
 def get_account_type(source):
     """
-    Get the account type from the corresponding ordering parameter or an empty
-     string if it is not set.
+    Get the account type from the corresponding ordering parameter or an empty string.
 
     Args:
         source (dict): The business object from which the account type
@@ -273,8 +274,7 @@ def get_account_type(source):
 
 def get_termination_type_parameter(order):
     """
-    Get the termination flow from the corresponding fulfillment
-    parameter or None if it is not set.
+    Get the termination flow from the corresponding fulfillment parameter or None if it is not set.
 
     Args:
         order (dict): The order that contains the parameter.
@@ -291,8 +291,7 @@ def get_termination_type_parameter(order):
 
 def get_support_type(source):
     """
-    Get the support type from the corresponding ordering parameter or an empty
-     string if it is not set.
+    Get the support type from the corresponding ordering parameter or an empty string.
 
     Args:
         source (dict): The business object from which the support type
@@ -330,8 +329,7 @@ def set_support_type(order, support_type):
 
 def get_transfer_type(source):
     """
-    Get the transfer type from the corresponding ordering parameter or an empty
-     string if it is not set.
+    Get the transfer type from the corresponding ordering parameter or an empty string.
 
     Args:
         source (dict): The business object from which the transfer type
@@ -349,8 +347,7 @@ def get_transfer_type(source):
 
 def get_master_payer_id(source):
     """
-    Get the master payer ID from the corresponding ordering
-    parameter or None if it is not set.
+    Get the master payer ID from the corresponding ordering parameter or None if it is not set.
 
     Args:
         source (dict): The business object from which the master payer ID
@@ -368,8 +365,7 @@ def get_master_payer_id(source):
 
 def get_crm_keeper_ticket_id(order):
     """
-    Get the CRM ticket ID from the corresponding fulfillment
-    parameter or None if it is not set.
+    Get the CRM ticket ID from the corresponding fulfillment parameter or None if it is not set.
 
     Args:
         order (dict): The order that contains the parameter.
@@ -406,8 +402,7 @@ def set_crm_keeper_ticket_id(order, crm_ticket_id):
 
 def get_crm_termination_ticket_id(order):
     """
-    Get the CRM ticket ID from the corresponding fulfillment
-    parameter or None if it is not set.
+    Get the CRM ticket ID from the corresponding fulfillment parameter or None if it is not set.
 
     Args:
         order (dict): The order that contains the parameter.
@@ -444,8 +439,7 @@ def set_crm_termination_ticket_id(order, crm_ticket_id):
 
 def get_crm_ccp_ticket_id(order):
     """
-    Get the CRM ticket ID from the corresponding fulfillment
-    parameter or None if it is not set.
+    Get the CRM ticket ID from the corresponding fulfillment parameter or None if it is not set.
 
     Args:
         order (dict): The order that contains the parameter.
@@ -482,8 +476,7 @@ def set_crm_ccp_ticket_id(order, crm_ticket_id):
 
 def get_crm_onboard_ticket_id(source):
     """
-    Get the link account service ticket ID from the corresponding fulfillment
-    parameter or None if it is not set.
+    Get the link account service ticket ID from the corresponding fulfillment parameter or None.
 
     Args:
         source (dict): The business object from which the link account service ticket ID
@@ -501,8 +494,7 @@ def get_crm_onboard_ticket_id(source):
 
 def set_crm_onboard_ticket_id(order, crm_ticket_id):
     """
-    Set the Onboard service ticket ID from the corresponding fulfillment
-    parameter or None if it is not set.
+    Set the Onboard service ticket ID from the corresponding fulfillment parameter or None.
 
     Args:
         order (dict): The business object from which the link account service ticket ID
@@ -523,10 +515,11 @@ def set_crm_onboard_ticket_id(order, crm_ticket_id):
 
 def get_ccp_engagement_id(source):
     """
-    Get the CCP engagement ID from the corresponding fulfillment
-    parameter or None if it is not set.
+    Get the CCP engagement ID from the corresponding fulfillment parameter or None if it is not set.
+
     Args:
         source (dict): The order that contains the parameter.
+
     Returns:
         str: The CCP engagement ID provided by client or None if it isn't set.
     """
@@ -540,9 +533,11 @@ def get_ccp_engagement_id(source):
 def set_ccp_engagement_id(source, ccp_customer_url):
     """
     Set the CCP engagement ID on the fulfillment parameters.
+
     Args:
         source (dict): The order that contains the parameter.
         ccp_customer_url (str): The CCP engagement ID provided by client.
+
     Returns:
         dict: The order updated.
     """
@@ -557,8 +552,7 @@ def set_ccp_engagement_id(source, ccp_customer_url):
 
 def get_account_id(source):
     """
-    Get the account ID from the corresponding ordering parameter or an empty
-     string if it is not set.
+    Get the account ID from the corresponding ordering parameter or an empty string.
 
     Args:
         source (dict): The business object from which the account ID
@@ -577,10 +571,12 @@ def get_account_id(source):
 def set_parameter_value(order, parameter_id, value):
     """
     Set the value of a parameter in the order.
+
     Args:
         order (dict): The order that contains the parameter.
         parameter_id (str): The external identifier of the parameter.
         value (any): The value to set for the parameter.
+
     Returns:
         dict: The order updated.
     """
@@ -596,9 +592,11 @@ def set_parameter_value(order, parameter_id, value):
 def get_parameter_value(order, parameter_id):
     """
     Get the value of a parameter in the order.
+
     Args:
         order (dict): The order that contains the parameter.
         parameter_id (str): The external identifier of the parameter.
+
     Returns:
         any: The value of the parameter.
     """
@@ -611,8 +609,10 @@ def get_parameter_value(order, parameter_id):
 
 def reset_ordering_parameters(order, list_parameters):
     """
-    Reset the ordering parameters to empty string and update their constraints
-    to be hidden, not required, and not readonly.
+    Reset the ordering parameters to empty string.
+
+    Update their constraints to be hidden, not required, and not readonly.
+
     Args:
         order: The order object to update.
         list_parameters: List of parameter IDs to reset.
@@ -637,6 +637,7 @@ def reset_ordering_parameters(order, list_parameters):
 def list_ordering_parameters_with_errors(order) -> list[str]:
     """
     List all ordering parameters externalId with errors.
+
     Args:
         order (dict): The order that contains the parameter.
 
@@ -653,11 +654,11 @@ def list_ordering_parameters_with_errors(order) -> list[str]:
 def prepare_parameters_for_querying(order, ignore: list[str]):
     """
     Hide all ordering parameters that are empty except the ones in ignore list.
+
     Args:
         order (dict): The order that contains the parameter.
         ignore (list): List of parameter external IDs to edit.
     """
-
     updated_order = copy.deepcopy(order)
 
     for param in updated_order["parameters"][PARAM_PHASE_ORDERING]:
@@ -721,8 +722,7 @@ def set_mpa_email(order, mpa_email):
 
 def get_crm_transfer_organization_ticket_id(order):
     """
-    Get the CRM ticket ID from the corresponding fulfillment
-    parameter or None if it is not set.
+    Get the CRM ticket ID from the corresponding fulfillment parameter or None if it is not set.
 
     Args:
         order (dict): The order that contains the parameter.

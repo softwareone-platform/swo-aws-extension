@@ -62,7 +62,9 @@ Purchase options:
 
 
 class SetupNewAccountParametersConstraintsStep(Step):
+    """Setups parameters visibility and constraints for purchase for new aws account."""
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+        """Execute step."""
         if get_account_type(context.order) == AccountTypesEnum.NEW_ACCOUNT:
             parameters_to_reset = [
                 OrderParametersEnum.MASTER_PAYER_ID,
@@ -74,7 +76,9 @@ class SetupNewAccountParametersConstraintsStep(Step):
 
 
 class SetupExistingAccountParametersConstraintsStep:
+    """Setups parameters visibility and constraints for purchase for existing account."""
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+        """Execute step."""
         if get_account_type(context.order) == AccountTypesEnum.EXISTING_ACCOUNT:
             context.order = update_ordering_parameter_constraints(
                 context.order,
@@ -107,12 +111,14 @@ class SetupExistingAccountParametersConstraintsStep:
 
 
 class ValidateNewAccount(Step):
+    """Validates if it is a new AWS account and all email and name parameters are fulfilled."""
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+        """Execute steps."""
         if get_account_type(context.order) != AccountTypesEnum.NEW_ACCOUNT:
             next_step(client, context)
             return
 
-        logger.info(f"{context.order_id} - Validating new account order")
+        logger.info("%s - Validating new account order", context.order_id)
         required_parameters = [
             OrderParametersEnum.ROOT_ACCOUNT_EMAIL,
             OrderParametersEnum.ACCOUNT_NAME,
@@ -121,7 +127,7 @@ class ValidateNewAccount(Step):
             get_account_email(context.order),
             get_account_name(context.order),
         ]
-        if any(value is None or value == "" for value in required_values):
+        if any(not value for value in required_values):
             for param in required_parameters:
                 context.order = update_ordering_parameter_constraints(
                     context.order,
@@ -136,12 +142,14 @@ class ValidateNewAccount(Step):
 
 
 class ValidateExistingAccount(Step):
+    """Validates if it transfer existing account."""
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+        """Execute step."""
         if get_account_type(context.order) != AccountTypesEnum.EXISTING_ACCOUNT:
             next_step(client, context)
             return
 
-        logger.info(f"{context.order_id} - Validate Existing account order")
+        logger.info("%s - Validate Existing account order", context.order_id)
 
         if not get_transfer_type(context.order):
             context.order = set_ordering_parameter_error(
@@ -155,7 +163,9 @@ class ValidateExistingAccount(Step):
 
 
 class ValidateTransferWithoutOrganizationStep(Step):
+    """Validates if it is a transfer without organization."""
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+        """Execute step."""
         is_transfer_without_organization = (
             get_account_type(context.order) == AccountTypesEnum.EXISTING_ACCOUNT
             and get_transfer_type(context.order) == TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION
@@ -165,7 +175,7 @@ class ValidateTransferWithoutOrganizationStep(Step):
             next_step(client, context)
             return
 
-        logger.info(f"{context.order_id} - Validate Purchase without organization")
+        logger.info("%s - Validate Purchase without organization", context.order_id)
 
         if not context.get_account_ids():
             context.order = update_ordering_parameter_constraints(
@@ -190,7 +200,9 @@ class ValidateTransferWithoutOrganizationStep(Step):
 
 
 class ValidatePurchaseTransferWithOrganizationStep(Step):
+    """Validates if it is a transfer with organization."""
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+        """Execute step."""
         is_with_org = (
             get_account_type(context.order) == AccountTypesEnum.EXISTING_ACCOUNT
             and get_transfer_type(context.order) == TransferTypesEnum.TRANSFER_WITH_ORGANIZATION
@@ -200,7 +212,7 @@ class ValidatePurchaseTransferWithOrganizationStep(Step):
             next_step(client, context)
             return
 
-        logger.info(f"{context.order_id} - Validate Purchase WITH organization")
+        logger.info("%s - Validate Purchase WITH organization", context.order_id)
 
         if not get_master_payer_id(context.order):
             context.order = update_ordering_parameter_constraints(
@@ -211,24 +223,23 @@ class ValidatePurchaseTransferWithOrganizationStep(Step):
                 readonly=False,
             )
             return
-        logger.info(f"{context.order_id} - MPA: {get_master_payer_id(context.order)}")
+        logger.info("%s - MPA: %s", context.order_id, get_master_payer_id(context.order))
 
         next_step(client, context)
 
 
-def is_split_billing_mpa_id_valid(context):
-    """
-    Validates the split billing MPA ID.
-    """
+def is_split_billing_mpa_id_valid(context: PurchaseContext):
+    """Validates the split billing MPA ID."""
     is_valid = True
     mpa_id = get_master_payer_id(context.order)
 
     logger.info(
-        f"{context.order_id} - MPA: {mpa_id}. Validating if already exist on "
-        f"Airtable for the same Client"
+        "%s - MPA: %s. Validating if already exist on Airtable for the same Client",
+        context.order_id,
+        mpa_id,
     )
     if not context.airtable_mpa:
-        logger.error(f"{context.order_id} - MPA: {mpa_id}. MPA account not found.")
+        logger.error("%s - MPA: %s. MPA account not found.", context.order_id, mpa_id)
         context.order = set_ordering_parameter_error(
             context.order,
             OrderParametersEnum.MASTER_PAYER_ID,
@@ -242,7 +253,7 @@ def is_split_billing_mpa_id_valid(context):
             ERR_SPLIT_BILLING_INVALID_CLIENT_ID_MPA_ID.to_dict(),
         )
         is_valid = False
-    elif context.airtable_mpa.status not in [MPAStatusEnum.ASSIGNED, MPAStatusEnum.TRANSFERRED]:
+    elif context.airtable_mpa.status not in {MPAStatusEnum.ASSIGNED, MPAStatusEnum.TRANSFERRED}:
         context.order = set_ordering_parameter_error(
             context.order,
             OrderParametersEnum.MASTER_PAYER_ID,
@@ -269,7 +280,9 @@ def is_split_billing_mpa_id_valid(context):
 
 
 class ValidateSplitBillingStep(Step):
+    """Checks split billing use case."""
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+        """Execute step."""
         is_split_billing = (
             get_account_type(context.order) == AccountTypesEnum.EXISTING_ACCOUNT
             and get_transfer_type(context.order) == TransferTypesEnum.SPLIT_BILLING
@@ -277,7 +290,7 @@ class ValidateSplitBillingStep(Step):
         if not is_split_billing:
             next_step(client, context)
             return
-        logger.info(f"{context.order_id} - Validate Purchase SPLIT BILLING")
+        logger.info("%s - Validate Purchase SPLIT BILLING", context.order_id)
         required_parameters = [
             OrderParametersEnum.MASTER_PAYER_ID,
             OrderParametersEnum.ROOT_ACCOUNT_EMAIL,
@@ -288,7 +301,7 @@ class ValidateSplitBillingStep(Step):
             get_account_email(context.order),
             get_account_name(context.order),
         ]
-        if any(value is None or value == "" for value in required_values):
+        if any(not value for value in required_values):
             for param in required_parameters:
                 context.order = update_ordering_parameter_constraints(
                     context.order,
@@ -303,7 +316,8 @@ class ValidateSplitBillingStep(Step):
             next_step(client, context)
 
 
-def validate_purchase_order(client, context):
+def validate_purchase_order(client: MPTClient, context: PurchaseContext):
+    """Pipeline for validation of purchase order."""
     context.order = reset_order_error(context.order)
     context.order = reset_ordering_parameters_error(context.order)
 

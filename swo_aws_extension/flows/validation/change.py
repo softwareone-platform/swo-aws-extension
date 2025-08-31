@@ -8,7 +8,8 @@ logger = logging.getLogger(__name__)
 
 
 def validate_and_setup_change_order(client, context):
-    logger.info(f"Validating Change order - {context.order_id}")
+    """Setup pipeline for change order."""
+    logger.info("Validating Change order - %s", context.order_id)
     pipeline = Pipeline(
         InitializeItemStep(),
     )

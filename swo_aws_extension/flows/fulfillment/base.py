@@ -25,10 +25,9 @@ from swo_aws_extension.parameters import get_transfer_type
 logger = logging.getLogger(__name__)
 
 
-def fulfill_order(client, context):
+def fulfill_order(client, context):  # noqa: C901
     """
-    Fulfills an order of any type by processing the necessary actions
-    based on the provided parameters.
+    Fulfills an order of any type by processing the necessary actions based on the parameters.
 
     Args:
         client (MPTClient): An instance of the client for consuming the MPT platform API.
@@ -37,40 +36,42 @@ def fulfill_order(client, context):
     Returns:
         None
     """
-    logger.info(f"{context.order_id} - Start processing {context.order_type}")
+    logger.info("%s - Start processing %s", context.order_id, context.order_type)
     try:
         if context.is_purchase_order():
             context = PurchaseContext.from_context(context)  # type: PurchaseContext
-            logger.info(f"Context type: {type(context)} {context}")
+            logger.info("Context type: %s %s", type(context), context)
             if context.is_type_transfer_with_organization():
                 logger.info(
-                    f"{context.order_id} - Pipeline - Starting: purchase transfer with organization"
+                    "%s - Pipeline - Starting: purchase transfer with organization",
+                    context.order_id,
                 )
                 purchase_transfer_with_organization.run(client, context)
                 return
-            elif context.is_type_transfer_without_organization():
+
+            if context.is_type_transfer_without_organization():
                 logger.info(
-                    f"{context.order_id} - Pipeline - Starting: "
-                    f"purchase transfer without organization"
+                    "%s - Pipeline - Starting: purchase transfer without organization",
+                    context.order_id,
                 )
                 purchase_transfer_without_organization.run(client, context)
             elif context.is_split_billing():
                 logger.info(
-                    f"{context.order_id} - Pipeline - Starting: purchase split billing order"
+                    "%s - Pipeline - Starting: purchase split billing order", context.order_id,
                 )
                 purchase_split_billing.run(client, context)
             else:
-                logger.info(f"{context.order_id} - Pipeline - Starting: purchase")
+                logger.info("%s - Pipeline - Starting: purchase", context.order_id)
                 purchase.run(client, context)
         elif context.is_change_order():
-            logger.info(f"{context.order_id} - Pipeline - Starting: change order")
+            logger.info("%s - Pipeline - Starting: change order", context.order_id)
             context = ChangeContext.from_context(context)
             change_order.run(client, context)
         elif context.is_termination_order():  # pragma: no branch
             context = TerminateContext.from_context(context)
             terminate.run(client, context)
         else:
-            raise RuntimeError(f"{context.order_id} - Unsupported order type: {context.order_type}")
+            logger.warning("%s - Unsupported order type: %s", context.order_id, context.order_type)
     except Exception:
         notify_unhandled_exception_in_teams(
             "fulfillment",
@@ -82,11 +83,13 @@ def fulfill_order(client, context):
 
 def get_mpa_by_country_and_pls(mpa_pool, country, pls):
     """
-    Get list of MPA by country and PLS status for the provided MPA pool
+    Get list of MPA by country and PLS status for the provided MPA pool.
+
     Args:
         mpa_pool (list): List of MPAs
         country (str): Country code
         pls (bool): PLS status
+
     Returns: List of MPAs
     """
     return [mpa for mpa in mpa_pool if mpa.country == country and mpa.pls_enabled == pls]
@@ -94,7 +97,8 @@ def get_mpa_by_country_and_pls(mpa_pool, country, pls):
 
 def setup_contexts(mpt_client, orders):
     """
-    List of contexts from orders
+    List of contexts from orders.
+
     Args:
         mpt_client (MPTClient): MPT client
         orders (list): List of orders
@@ -106,10 +110,10 @@ def setup_contexts(mpt_client, orders):
         for order in orders
         if not order.get("agreement", {}).get("externalIds", {}).get("vendor", "")
         and get_transfer_type(order)
-        not in [
+        not in {
             TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
             TransferTypesEnum.SPLIT_BILLING,
-        ]
+        }
     }
     pls_mpa_pool_map = {}
     if purchase_orders_pls_status_map:
@@ -123,15 +127,14 @@ def setup_contexts(mpt_client, orders):
 
     for order in orders:
         context = InitialAWSContext.from_order_data(order)
-        if context.is_purchase_order():
-            if order["id"] in purchase_orders_pls_status_map:
-                country, pls = purchase_orders_pls_status_map[order["id"]]
-                # Check if there is an available MPA for the order.
-                # If there is, assign it to the context.
-                # Otherwise, leave it as None to be handled on the order processed.
-                if pls_mpa_pool_map.get(f"{country}_{pls}", None):
-                    # Assign first available MPA from the pool
-                    context.airtable_mpa = pls_mpa_pool_map[f"{country}_{pls}"].pop(0)
+        if context.is_purchase_order() and order["id"] in purchase_orders_pls_status_map:
+            country, pls = purchase_orders_pls_status_map[order["id"]]
+            # Check if there is an available MPA for the order.
+            # If there is, assign it to the context.
+            # Otherwise, leave it as None to be handled on the order processed.
+            if pls_mpa_pool_map.get(f"{country}_{pls}", None):
+                # Assign first available MPA from the pool
+                context.airtable_mpa = pls_mpa_pool_map[f"{country}_{pls}"].pop(0)
 
         contexts.append(context)
 

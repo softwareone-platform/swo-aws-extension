@@ -36,10 +36,10 @@ def validate_order(mpt_client, context):
             pass
 
         logger.info(
-            f"Validation of order {context.order['id']} succeeded "
-            f"with{'out' if not has_errors else ''} errors"
+            "Validation of order %s succeeded with%s errors",
+            context.order["id"],
+            "out" if not has_errors else "",
         )
-        return order
     except Exception:
         notify_unhandled_exception_in_teams(
             "validation",
@@ -47,3 +47,5 @@ def validate_order(mpt_client, context):
             strip_trace_id(traceback.format_exc()),
         )
         raise
+    else:
+        return order

@@ -26,7 +26,8 @@ from swo_aws_extension.parameters import (
 logger = logging.getLogger(__name__)
 
 
-def is_list_of_aws_accounts(multiline_account_id):
+def is_list_of_aws_accounts(multiline_account_id: str) -> bool:
+    """Checks if it is a list of AWS accounts."""
     if not multiline_account_id:
         return False
     pattern = r"^(?:\d{12}(?:\n+|$))+$"
@@ -34,20 +35,18 @@ def is_list_of_aws_accounts(multiline_account_id):
 
 
 class ValidatePurchaseTransferWithoutOrganizationStep(Step):
-    """
-    Validate if the transfer without organization is possible.
-    """
-
+    """Validate if the transfer without organization is possible."""
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+        """Run step."""
         # Checking if the step is for this type of order
         if not context.is_purchase_order():
-            logger.info(f"{context.order_id} - Skip - Order is not a purchase")
+            logger.info("%s - Skip - Order is not a purchase", context.order_id)
             next_step(client, context)
             return
 
         if not context.is_type_transfer_without_organization():
             logger.info(
-                f"{context.order_id} - Skip - Order is not a transfer without organization "
+                "%s - Skip - Order is not a transfer without organization", context.order_id,
             )
             next_step(client, context)
             return
@@ -65,8 +64,9 @@ class ValidatePurchaseTransferWithoutOrganizationStep(Step):
             )
             self.order_to_querying(client, context)
             logger.info(
-                f"{context.order_id} - Querying - Transfer without organization has "
-                f"ordering parameter `orderAccountId` empty. "
+                "%s - Querying - Transfer without organization has "
+                "ordering parameter `orderAccountId` empty. ",
+                context.order_id,
             )
             return
 
@@ -83,7 +83,8 @@ class ValidatePurchaseTransferWithoutOrganizationStep(Step):
             )
             self.order_to_querying(client, context)
             logger.info(
-                f"{context.order_id} - Querying - Invalid accounts ID format in `orderAccountId`. "
+                "%s - Querying - Invalid accounts ID format in `orderAccountId`. ",
+                context.order_id,
             )
             return
 
@@ -100,17 +101,18 @@ class ValidatePurchaseTransferWithoutOrganizationStep(Step):
             )
             self.order_to_querying(client, context)
             logger.info(
-                f"{context.order_id} - Querying - Transfer without organization has "
-                f"too many accounts"
+                "%s - Querying - Transfer without organization has too many accounts",
+                context.order_id,
             )
             return
 
         logger.info(
-            f"{context.order_id} - Next - Transfer without organization validation completed."
+            "%s - Next - Transfer without organization validation completed.", context.order_id,
         )
         next_step(client, context)
 
-    def order_to_querying(self, client, context):
+    def order_to_querying(self, client: MPTClient, context: PurchaseContext):
+        """Move order status to quering status."""
         if context.order_status != MPT_ORDER_STATUS_QUERYING:
             context.switch_order_status_to_query(client)
         else:
