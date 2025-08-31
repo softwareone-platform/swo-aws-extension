@@ -113,7 +113,7 @@ class CCPClient(Session):
         response.raise_for_status()
         data = response.json()
         status_code = data.get("statusCode")
-        if status_code in {requests.not_found, requests.internal_server_error}:
+        if status_code in {requests.codes.not_found, requests.codes.internal_server_error}:
             http_error_msg = (
                 f"{status_code} Client Error: {data.get('message')} for url: {response.url}"
             )

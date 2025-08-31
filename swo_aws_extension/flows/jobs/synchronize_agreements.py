@@ -35,8 +35,8 @@ def synchronize_agreements(mpt_client, config, agreement_ids, product_ids, *, dr
         mpt_client: The MPT client.
         config: The configuration object.
         agreement_ids: List of specific agreement IDs to synchronize.
-        dry_run: Whether to perform a dry run.
         product_ids: List of product IDs to filter agreements.
+        dry_run: Whether to perform a dry run.
     """
     product_ids = list(set(product_ids))
     select = "&select=lines,parameters,subscriptions,subscriptions.lines,product,listing"
@@ -62,7 +62,7 @@ def synchronize_agreements(mpt_client, config, agreement_ids, product_ids, *, dr
                 continue
 
             aws_client = AWSClient(config, mpa_account, SWO_EXTENSION_MANAGEMENT_ROLE)
-            sync_agreement_subscriptions(mpt_client, aws_client, agreement, dry_run)
+            sync_agreement_subscriptions(mpt_client, aws_client, agreement, dry_run=dry_run)
         except Exception as e:
             logger.exception("%s - Failed to synchronize agreement.", agreement.get("id"))
             send_error(

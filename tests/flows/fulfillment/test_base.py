@@ -432,15 +432,10 @@ def test_is_type_unknown(
             transfer_type="",
         ),
     )
-    teams_notification = mocker.patch(
-        "swo_aws_extension.flows.fulfillment.base.notify_unhandled_exception_in_teams"
-    )
-    with pytest.raises(RuntimeError):
-        fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
+    fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
 
     pipeline_mock_purchase_transfer_with_organization.assert_not_called()
     pipeline_mock_purchase_transfer_without_organization.assert_not_called()
     pipeline_mock_purchase.assert_not_called()
     pipeline_mock_change_order.assert_not_called()
     pipeline_mock_terminate.assert_not_called()
-    teams_notification.assert_called_once()

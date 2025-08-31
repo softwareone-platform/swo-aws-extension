@@ -242,8 +242,8 @@ def test_and_merge():
 @pytest.mark.parametrize("op", ["eq", "ne", "gt", "ge", "le", "lt"])
 def test_dotted_path_comp(op):
     assert str(getattr(RQLQuery().asset.id, op)("value")) == f"{op}(asset.id,value)"
-    assert str(getattr(RQLQuery().asset.id, op)(name=True)) == f"{op}(asset.id,true)"
-    assert str(getattr(RQLQuery().asset.id, op)(name=False)) == f"{op}(asset.id,false)"
+    assert str(getattr(RQLQuery().asset.id, op)(True)) == f"{op}(asset.id,true)"  # noqa: FBT003
+    assert str(getattr(RQLQuery().asset.id, op)(False)) == f"{op}(asset.id,false)"  # noqa: FBT003
     assert str(getattr(RQLQuery().asset.id, op)(10)) == f"{op}(asset.id,10)"
     assert str(getattr(RQLQuery().asset.id, op)(10.678937)) == f"{op}(asset.id,10.678937)"
 
@@ -274,6 +274,10 @@ def test_dotted_path_search(op):
 
 
 @pytest.mark.parametrize(
+    "parameters",
+    [("first", "second"), ["first", "second"]],
+)
+@pytest.mark.parametrize(
     ("method", "op"),
     [
         ("in_", "in"),
@@ -281,19 +285,15 @@ def test_dotted_path_search(op):
         ("out", "out"),
     ],
 )
-@pytest.mark.parametrize(
-    "parameters",
-    [("first", "second"), ["first", "second"]],
-)
 def test_dotted_path_list(method, op, parameters):
     rexpr = getattr(RQLQuery().asset.id, method)(parameters)
     assert str(rexpr) == f"{op}(asset.id,(first,second))"
 
 
 @pytest.mark.parametrize("op", ["in", "out"])
-def test_dotted_path_list_raise_exception(method, op):
+def test_dotted_path_list_raise_exception(op):
     with pytest.raises(TypeError):
-        getattr(RQLQuery().asset.id, method)("Test")
+        getattr(RQLQuery().asset.id, op)("Test")
 
 
 @pytest.mark.parametrize(
@@ -306,7 +306,8 @@ def test_dotted_path_list_raise_exception(method, op):
     ],
 )
 def test_dotted_path_bool(expr, value, expected_op):
-    assert str(getattr(RQLQuery().asset.id, expr)(value)) == f"{expected_op}(asset.id,{expr}())"
+    rql_str = str(getattr(RQLQuery().asset.id, expr)(value=value))
+    assert rql_str == f"{expected_op}(asset.id,{expr}())"
 
 
 def test_dotted_path_already_evaluated():

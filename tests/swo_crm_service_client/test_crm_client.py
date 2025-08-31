@@ -107,6 +107,7 @@ def test_create_service_request(crm_client, service_request, mocker):
         url="/ticketing/ServiceRequests",
         json=expected_json,
         headers={"x-correlation-id": order_id},
+        timeout=60,
     )
 
 
@@ -122,7 +123,8 @@ def test_get_service_request(crm_client, mocker):
 
     assert response == service_request_response
     crm_client.get.assert_called_once_with(
-        url="/ticketing/ServiceRequests/12345", headers={"x-correlation-id": order_id}
+        url="/ticketing/ServiceRequests/12345", headers={"x-correlation-id": order_id},
+        timeout=60,
     )
 
 
@@ -178,6 +180,7 @@ def test_create_service_request_json_decode_error(crm_client, service_request, m
         url="/ticketing/ServiceRequests",
         json=expected_json,
         headers={"x-correlation-id": order_id},
+        timeout=60,
     )
 
 

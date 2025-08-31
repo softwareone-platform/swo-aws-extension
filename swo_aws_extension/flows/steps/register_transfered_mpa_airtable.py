@@ -10,7 +10,7 @@ from swo_aws_extension.airtable.models import (
 )
 from swo_aws_extension.constants import SupportTypesEnum
 from swo_aws_extension.flows.order import PurchaseContext
-from swo_aws_extension.flows.steps.assign_mpa import coppy_context_data_to_mpa_pool_model
+from swo_aws_extension.flows.steps.assign_mpa import copy_context_data_to_mpa_pool_model
 from swo_aws_extension.parameters import get_support_type
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ class RegisterTransferredMPAToAirtableStep(Step):
             account_id=context.mpa_account,
             account_email=organization["MasterAccountEmail"],
         )
-        context.airtable_mpa = coppy_context_data_to_mpa_pool_model(
+        context.airtable_mpa = copy_context_data_to_mpa_pool_model(
             context, context.airtable_mpa, status=MPAStatusEnum.TRANSFERRED
         )
         context.airtable_mpa.pls_enabled = (

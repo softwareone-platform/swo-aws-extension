@@ -179,7 +179,7 @@ def test_generate_item_journal_line_process_with_error(mock_journal_args):
     external_id = ItemSkusEnum.AWS_MARKETPLACE.value
     args = mock_journal_args(external_id)
 
-    with pytest.raises(AWSBillingException):
+    with pytest.raises(AWSBillingError):
         proc.process(**args)
 
 

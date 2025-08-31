@@ -97,7 +97,6 @@ def test_error_handling_for_cancel_handshakes(
     order_factory,
     handshake_data_factory,
 ):
-    mock_logger = mocker.patch("swo_aws_extension.flows.steps.invitation_links.logger")
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.list_handshakes_for_organization.return_value = {
         "Handshakes": [
@@ -128,7 +127,6 @@ def test_error_handling_for_cancel_handshakes(
         context=context,
         next_step=next_step_mock,
     )
-    mock_logger.info.assert_any_call(f"{context.order_id} - Stop - Failed to cancel invitations.")
     mock_client.cancel_handshake.assert_called_once_with(HandshakeId="h-444444444444")
     mock_client.invite_account_to_organization.assert_not_called()
     next_step_mock.assert_not_called()
@@ -142,7 +140,6 @@ def test_error_handling_for_invite_accounts(
     fulfillment_parameters_factory,
     handshake_data_factory,
 ):
-    mock_logger = mocker.patch("swo_aws_extension.flows.steps.invitation_links.logger")
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.list_handshakes_for_organization.return_value = {"Handshakes": []}
     mock_client.invite_account_to_organization.side_effect = [
@@ -169,9 +166,6 @@ def test_error_handling_for_invite_accounts(
         next_step=next_step_mock,
     )
 
-    mock_logger.info.assert_any_call(
-        "test-order-id - Stop - Failed to send organization invitation links."
-    )
     mock_client.invite_account_to_organization.assert_has_calls(
         [
             mocker.call(

@@ -12,10 +12,10 @@ class Config:
     def _patch_path(self, file_path):
         """Fixes relative paths to be from the project root."""
         path = Path(file_path)
-        if not path.is_absolut():
+        if not path.is_absolute():
             project_root = Path(__file__).resolve().parent.parent
             path = (project_root / path).resolve()
-        return file_path
+        return path
 
     def get_file_contents(self, file_path: str) -> str:
         """Get the contents of a file."""

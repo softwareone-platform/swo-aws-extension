@@ -131,5 +131,5 @@ def test_fail(
     context = PurchaseContext(aws_client=None, order=order, airtable_mpa=None)
     next_step = mocker.MagicMock()
     step = RegisterTransferredMPAToAirtableStep()
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         step(mpt_client, context, next_step)
