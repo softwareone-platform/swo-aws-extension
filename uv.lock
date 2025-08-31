@@ -692,7 +692,7 @@ wheels = [
 
 [[package]]
 name = "mpt-extension-sdk"
-version = "5.5.0"
+version = "5.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "azure-identity" },
@@ -723,9 +723,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9c/f5/de188f93c90a730bd655ae38ddf1597deb4d65f5ef8c5f2a7966e324e983/mpt_extension_sdk-5.5.0.tar.gz", hash = "sha256:6ba8e68ec7831d925c7a2a9ab45776fc827fda32d71d786093c87b7c0909044a", size = 26768, upload-time = "2025-07-29T12:25:50.146Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/81/17/a9000f73c7bbaecca4debb3519faa9621a37b89d824a63cafe0f5ef36f03/mpt_extension_sdk-5.10.0.tar.gz", hash = "sha256:260cf6454bc8e8fb64dd089f925e52f7627936878d8ead46e19068778f44f48f", size = 30085, upload-time = "2025-08-31T21:07:26.24Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/b2/30b2191c505aaeb10d58ec26913e6d0a807b91838f74988c7c416b2b6465/mpt_extension_sdk-5.5.0-py3-none-any.whl", hash = "sha256:89bde2853498d0aeab436f697e851c0fcfff33c802f43ab4dc50fc7d85d57606", size = 38802, upload-time = "2025-07-29T12:25:48.953Z" },
+    { url = "https://files.pythonhosted.org/packages/be/44/cd9f547b0c0eb52b83f5750191bf9e3b4e836bd65b85202c6dfca2c53412/mpt_extension_sdk-5.10.0-py3-none-any.whl", hash = "sha256:9c633537371f20fd0abc8920b0ac1f49e380b556533fd4ec72c6b3086d0cd448", size = 41919, upload-time = "2025-08-31T21:07:25.309Z" },
 ]
 
 [[package]]
@@ -1503,15 +1503,15 @@ wheels = [
 
 [[package]]
 name = "rich"
-version = "13.7.1"
+version = "14.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "markdown-it-py" },
     { name = "pygments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b3/01/c954e134dc440ab5f96952fe52b4fdc64225530320a910473c1fe270d9aa/rich-13.7.1.tar.gz", hash = "sha256:9be308cb1fe2f1f57d67ce99e95af38a1e2bc71ad9813b0e247cf7ffbcc3a432", size = 221248, upload-time = "2024-02-28T14:51:19.472Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fe/75/af448d8e52bf1d8fa6a9d089ca6c07ff4453d86c65c145d0a300bb073b9b/rich-14.1.0.tar.gz", hash = "sha256:e497a48b844b0320d45007cdebfeaeed8db2a4f4bcf49f15e455cfc4af11eaa8", size = 224441, upload-time = "2025-07-25T07:32:58.125Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/87/67/a37f6214d0e9fe57f6ae54b2956d550ca8365857f42a1ce0392bb21d9410/rich-13.7.1-py3-none-any.whl", hash = "sha256:4edbae314f59eb482f54e9e30bf00d33350aaa94f4bfcd4e9e3110e64d0d7222", size = 240681, upload-time = "2024-02-28T14:51:14.353Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/30/3c4d035596d3cf444529e0b2953ad0466f6049528a879d27534700580395/rich-14.1.0-py3-none-any.whl", hash = "sha256:536f5f1785986d6dbdea3c75205c473f970777b4a0d6c6dd1b696aa05a3fa04f", size = 243368, upload-time = "2025-07-25T07:32:56.73Z" },
 ]
 
 [[package]]
@@ -1656,7 +1656,7 @@ requires-dist = [
     { name = "django", specifier = "==4.2.*" },
     { name = "jinja2", specifier = "==3.1.*" },
     { name = "markdown-it-py", specifier = "==3.0.*" },
-    { name = "mpt-extension-sdk", specifier = "==5.5.*" },
+    { name = "mpt-extension-sdk", specifier = "==5.10.*" },
     { name = "openpyxl", specifier = "==3.1.*" },
     { name = "phonenumbers", specifier = "==8.13.*" },
     { name = "pyairtable", specifier = "==2.3.*" },
@@ -1699,7 +1699,7 @@ runtime = [
     { name = "opentelemetry-instrumentation-requests", specifier = "==0.51b0" },
     { name = "opentelemetry-sdk", specifier = "==1.30.*" },
     { name = "pyfiglet", specifier = "==1.0.*" },
-    { name = "rich", specifier = "==13.7.*" },
+    { name = "rich", specifier = "==14.1.*" },
     { name = "watchfiles", specifier = "==0.21.*" },
 ]
 
