@@ -72,6 +72,7 @@ def test_onboard_customer(
     ccp_client.post.assert_called_once_with(
         url="/services/aws-essentials/customer?api-version=v2",
         json=onboard_customer_factory(),
+        timeout=60,
     )
 
 
@@ -86,7 +87,8 @@ def test_get_onboard_status(mocker, ccp_client, onboard_customer_status_factory)
     assert response == onboard_customer_status_factory()
     ccp_client.get.assert_called_once_with(
         url="services/aws-essentials/customer/engagement/"
-        "73ae391e-69de-472c-8d05-2f7feb173207?api-version=v2"
+        "73ae391e-69de-472c-8d05-2f7feb173207?api-version=v2",
+        timeout=60,
     )
 
 

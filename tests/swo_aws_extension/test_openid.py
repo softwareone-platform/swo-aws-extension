@@ -29,6 +29,7 @@ def test_get_openid_token_success(mocker):
             "scope": scope,
             "audience": audience,
         },
+        timeout=60,
     )
 
 
@@ -56,4 +57,5 @@ def test_get_openid_token_failure(mocker):
             "scope": scope,
             "audience": audience,
         },
+        timeout=60,
     )

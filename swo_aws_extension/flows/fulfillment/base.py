@@ -71,7 +71,7 @@ def fulfill_order(client, context):  # noqa: C901
             context = TerminateContext.from_context(context)
             terminate.run(client, context)
         else:
-            logger.warning("%s - Unsupported order type: %s", context.order_id, context.order_type)
+            logger.error("%s - Unsupported order type: %s", context.order_id, context.order_type)
     except Exception:
         notify_unhandled_exception_in_teams(
             "fulfillment",

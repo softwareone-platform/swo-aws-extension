@@ -212,9 +212,7 @@ class UsageDiscountValidator(DiscountValidator):
         service_discount = provider_discounts.get(service_name, 0)
         provider_discount = self._calculate_provider_discount(service_discount, total_amount)
 
-        return not abs(provider_discount - discount) > tolerance_rate:
-            return False
-        return True
+        return abs(provider_discount - discount) <= tolerance_rate
 
 
 class DefaultTrueDiscountValidator(DiscountValidator):
@@ -274,11 +272,13 @@ class GenerateItemJournalLines:
             base_currency = invoice_details.get("base_currency_code", "")
             if payment_currency != base_currency:
                 exchange_rate = invoice_details.get("exchange_rate", 0.0)
-                amount = round(amount * exchange_rate, 6)
+                adjusted_amount = round(amount * exchange_rate, 6)
+            else:
+                adjusted_amount = amount
             journal_lines.append(
                 create_journal_line(
                     service_name,
-                    amount,
+                    adjusted_amount,
                     item_external_id,
                     account_id,
                     journal_details,
@@ -312,13 +312,8 @@ class GenerateSavingPlansJournalLines(GenerateItemJournalLines):
     def __init__(self, metric_id, billing_discount_tolerance_rate, discount=None):
         super().__init__(metric_id, billing_discount_tolerance_rate, discount=discount)
 
-<<<<<<< HEAD
-    _exclude_services = []
-    _validator = DefaultDiscountValidator
-=======
         self._exclude_services = []
-        self._validator = DefaultTrueDiscountValidator
->>>>>>> 6a7ad8a (MPT-11915 Update code related to ruff rules in AWS extension code)
+        self._validator = DefaultDiscountValidator
 
 
 class GenerateOtherServicesJournalLines(GenerateItemJournalLines):
@@ -326,29 +321,16 @@ class GenerateOtherServicesJournalLines(GenerateItemJournalLines):
     def __init__(self, metric_id, billing_discount_tolerance_rate, discount=None):
         super().__init__(metric_id, billing_discount_tolerance_rate, discount=discount)
 
-<<<<<<< HEAD
-    _exclude_services = [
-        AWSServiceEnum.TAX.value,
-        AWSServiceEnum.REFUND.value,
-        AWSServiceEnum.SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE.value,
-    ]
-    _dynamic_exclude_services = [
-        UsageMetricTypeEnum.MARKETPLACE.value,
-        UsageMetricTypeEnum.SUPPORT.value,
-    ]
-    _validator = DefaultDiscountValidator
-=======
         self._exclude_services = [
-            AWSServiceEnum.TAX,
-            AWSServiceEnum.REFUND,
-            AWSServiceEnum.SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE,
+            AWSServiceEnum.TAX.value,
+            AWSServiceEnum.REFUND.value,
+            AWSServiceEnum.SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE.value,
         ]
         self._dynamic_exclude_services = [
             UsageMetricTypeEnum.MARKETPLACE.value,
             UsageMetricTypeEnum.SUPPORT.value,
         ]
         self._validator = DefaultDiscountValidator
->>>>>>> 6a7ad8a (MPT-11915 Update code related to ruff rules in AWS extension code)
 
 
 class GenerateSupportJournalLines(GenerateItemJournalLines):

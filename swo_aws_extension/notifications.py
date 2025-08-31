@@ -145,7 +145,8 @@ def send_exception(
 
 class MPTNotifier:  # TODO: Consider moving some of the functionality to SDK
     """Email notification using MPT API."""
-    mpt_client: MPTClient
+    def __init__(self, mpt_client: MPTClient):
+        self.mpt_client = mpt_client
 
     def notify_re_order(self, order_context: type["InitialAWSContext"]) -> None:
         """

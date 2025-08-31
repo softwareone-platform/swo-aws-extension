@@ -716,8 +716,10 @@ class BillingJournalGenerator:
     def _get_exchange_rate_by_invoice_entity_and_currency(
         self, organization_invoices, invoice_entity
     ):
-        """Gets the maximum exchange rate for a specific invoicing entity and currency
-        from a list of organization invoice summaries. If no invoices are found for the
+        """
+        Gets the maximum exchange rate for a specific invoicing entity and currency.
+
+        From a list of organization invoice summaries. If no invoices are found for the
         specified invoicing entity, it returns the maximum exchange rate across all invoices
         for the given currency.
 
@@ -797,7 +799,7 @@ class BillingJournalGenerator:
             )
 
             if invoice_entity in invoice_entities:
-                invoice_entities[invoice_entity]["invoice_id"] += f",{invoice_id}"
+                invoice_entities[invoice_entity]["invoice_id"] += f",{invoice_id}"  # noqa: WPS336
             else:
                 invoice_entities[invoice_entity] = {
                     "invoice_id": invoice_id,
