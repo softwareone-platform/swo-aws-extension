@@ -2,6 +2,7 @@ import copy
 import datetime as dt
 import json
 import signal
+from decimal import Decimal
 
 import jwt
 import pytest
@@ -1028,7 +1029,7 @@ def mock_logging_all_prefixes(
 def mock_highlights(mock_logging_all_prefixes):
     return [
         *_ReprHighlighter.highlights,
-        rf"(?P<mpt_id>(?:{'|'.join(mock_logging_all_prefixes)})(?:-\d{{4}})*)"
+        rf"(?P<mpt_id>(?:{'|'.join(mock_logging_all_prefixes)})(?:-\d{{4}})*)",
     ]
 
 
@@ -2283,18 +2284,18 @@ def mock_journal_args(
                 "end_date": "2025-02-01",
             },
             "account_invoices": {
-                "base_total_amount": 11.34,
-                "base_total_amount_before_tax": 10.49,
+                "base_total_amount": Decimal("11.34"),
+                "base_total_amount_before_tax": Decimal("10.49"),
                 "invoice_entities": {
                     INVOICE_ENTITY: {
                         "base_currency_code": "USD",
-                        "exchange_rate": 0.0,
+                        "exchange_rate": Decimal("0.0"),
                         "invoice_id": "EUINGB25-2163550",
                         "payment_currency_code": "USD",
                     }
                 },
-                "payment_currency_total_amount": 11.34,
-                "payment_currency_total_amount_before_tax": 10.49,
+                "payment_currency_total_amount": Decimal("11.34"),
+                "payment_currency_total_amount_before_tax": Decimal("10.49"),
             },
         }
 
@@ -2310,14 +2311,14 @@ def mock_journal_line_factory():
         invoice_id="EUINGB25-2163550",
         item_external_id="",
         error=None,
-        price=100.0,
+        price=Decimal(100),
     ):
         return JournalLine(
             description=Description(
                 value1=service_name,
                 value2=f"{account_id}/{invoice_entity}",
             ),
-            externalIds=ExternalIds(
+            external_ids=ExternalIds(
                 invoice=invoice_id,
                 reference="AGR-2119-4550-8674-5962",
                 vendor="mpa_id",
@@ -2327,8 +2328,8 @@ def mock_journal_line_factory():
                 end="2025-02-01",
             ),
             price=Price(
-                PPx1=price,
-                unitPP=price,
+                pp_x1=price,
+                unit_pp=price,
             ),
             quantity=1,
             search=Search(

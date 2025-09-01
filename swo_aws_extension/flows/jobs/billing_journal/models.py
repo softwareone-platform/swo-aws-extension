@@ -1,5 +1,6 @@
 import json
 from dataclasses import asdict, dataclass, field
+from decimal import Decimal
 from typing import Any
 
 
@@ -7,6 +8,7 @@ from typing import Any
 @dataclass
 class Description:
     """Billing journal description."""
+
     value1: str
     value2: str
 
@@ -14,6 +16,7 @@ class Description:
 @dataclass
 class ExternalIds:
     """Billing journal external ids."""
+
     invoice: str
     reference: str
     vendor: str
@@ -22,6 +25,7 @@ class ExternalIds:
 @dataclass
 class Period:
     """Billing journal period."""
+
     start: str
     end: str
 
@@ -29,13 +33,15 @@ class Period:
 @dataclass
 class Price:
     """Billing journal price."""
-    PPx1: float
-    unitPP: float  # noqa: N815
+
+    pp_x1: Decimal
+    unit_pp: Decimal
 
 
 @dataclass
 class SearchItem:
     """Billing charge search item."""
+
     criteria: str
     value: str
 
@@ -43,6 +49,7 @@ class SearchItem:
 @dataclass
 class SearchSubscription:
     """Billing charge search subscription."""
+
     criteria: str
     value: str
 
@@ -50,16 +57,17 @@ class SearchSubscription:
 @dataclass
 class Search:
     """Billing charge search."""
+
     item: SearchItem
     subscription: SearchSubscription
 
 
-# TODO: fix N815 here, makes no sense
 @dataclass
 class JournalLine:
     """Charge line."""
+
     description: Description
-    externalIds: ExternalIds  # noqa: N815
+    external_ids: ExternalIds
     period: Period
     price: Price
     quantity: int
@@ -70,6 +78,10 @@ class JournalLine:
     def to_dict(self) -> dict[str, Any]:
         """Custom dict serialization."""
         data = asdict(self)
+        data["externalIds"] = data.pop("external_ids")
+        data["price"]["PPx1"] = data["price"].pop("pp_x1")
+        data["price"]["UnitPP"] = data["price"].pop("unit_pp")
+
         if self.error is None:
             data.pop("error")
         return data
@@ -80,4 +92,4 @@ class JournalLine:
 
     def to_jsonl(self) -> str:
         """Export as a single JSONL line."""
-        return json.dumps(self.to_dict()) + "\n"
+        return json.dumps(self.to_dict(), default=str) + "\n"
