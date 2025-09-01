@@ -3,6 +3,7 @@ from enum import StrEnum
 from functools import cache
 
 from django.conf import settings
+from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 from pyairtable.formulas import AND, EQUAL, FIELD, NOT_EQUAL, STR_VALUE
 from pyairtable.orm import Model, fields
 from requests import HTTPError
@@ -10,6 +11,7 @@ from requests import HTTPError
 
 class MPAStatusEnum(StrEnum):
     """Master payer account status."""
+
     READY = "Ready"
     ASSIGNED = "Assigned"
     ERROR = "Error"
@@ -18,12 +20,14 @@ class MPAStatusEnum(StrEnum):
 
 class NotificationTypeEnum(StrEnum):
     """Notification type."""
+
     EMPTY = "Empty"
     WARNING = "Warning"
 
 
 class NotificationTicketStatusEnum(StrEnum):
     """Notification ticket status."""
+
     NOT_CREATED = "Not Created"
     CREATED = "Ticket Created"
     CLOSED = "Ticket Closed"
@@ -31,6 +35,7 @@ class NotificationTicketStatusEnum(StrEnum):
 
 class NotificationStatusEnum(StrEnum):
     """Notification status."""
+
     NEW = "New"
     PENDING = "Pending"
     DONE = "Done"
@@ -42,6 +47,7 @@ PLS_ENABLED = "PLS Enabled"
 @dataclass(frozen=True)
 class AirTableBaseInfo:
     """Airtable base info."""
+
     api_key: str
     base_id: str
 
@@ -57,7 +63,7 @@ class AirTableBaseInfo:
         """
         return AirTableBaseInfo(
             api_key=settings.EXTENSION_CONFIG["AIRTABLE_API_TOKEN"],
-            base_id=settings.EXTENSION_CONFIG["AIRTABLE_BASES"],
+            base_id=get_for_product(settings, "AIRTABLE_BASES", settings.MPT_PRODUCTS_IDS[0]),
         )
 
 
@@ -75,6 +81,7 @@ def get_master_payer_account_pool_model(base_info):
 
     class MPAPool(Model):
         """Master Payer account pool."""
+
         account_id = fields.TextField("Account Id")
         account_email = fields.TextField("Account Email")
         account_name = fields.TextField("Account Name")

@@ -184,7 +184,7 @@ EXTENSION_CONFIG = {
     "CCP_OAUTH_URL": "https://example.com/oauth2/token",
     "AWS_REGION": "us-east-1",
     "AIRTABLE_API_TOKEN": "api_key",
-    "AIRTABLE_BASES": "base_id",
+    "AIRTABLE_BASES": {"PRD-1111-1111": "base_id"},
     "CCP_OAUTH_SCOPE": "oauth_scope",
     "CCP_API_BASE_URL": "https://example.com",
     "MINIMUM_MPA_THRESHOLD": 3,
