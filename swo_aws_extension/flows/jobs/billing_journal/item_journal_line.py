@@ -84,7 +84,7 @@ def create_journal_line(
 
     Args:
         service_name (str): Name of the AWS service.
-        amount (float): Amount to bill.
+        amount (Decimal): Amount to bill.
         item_external_id (str): External item ID.
         account_id (str): AWS account ID.
         journal_details (dict): Journal metadata.
@@ -102,7 +102,7 @@ def create_journal_line(
             value1=service_name,
             value2=f"{account_id}/{invoice_entity}",
         ),
-        externalIds=ExternalIds(
+        external_ids=ExternalIds(
             invoice=invoice_id,
             reference=journal_details["agreement_id"],
             vendor=journal_details["mpa_id"],
@@ -112,8 +112,8 @@ def create_journal_line(
             end=journal_details["end_date"],
         ),
         price=Price(
-            PPx1=amount,
-            unitPP=amount,
+            pp_x1=amount,
+            unit_pp=amount,
         ),
         quantity=quantity,
         search=Search(
@@ -133,6 +133,7 @@ def create_journal_line(
 
 class DiscountValidator(ABC):
     """Base class for discount validation."""
+
     @abstractmethod
     def validate(self, discount, amount, service_name, account_metrics, tolerance_rate):
         """Validate discount on AWS."""
@@ -161,6 +162,7 @@ class DiscountValidator(ABC):
 
 class SupportDiscountValidator(DiscountValidator):
     """Discount validator for AWS support services."""
+
     @override
     def validate(self, discount, amount, service_name, account_metrics, tolerance_rate):
         refund_metrics = account_metrics.get(UsageMetricTypeEnum.REFUND.value, {})
@@ -173,6 +175,7 @@ class SupportDiscountValidator(DiscountValidator):
 
 class SupportEnterpriseDiscountValidator(DiscountValidator):
     """Discount validator for AWS support enterprise services."""
+
     @override
     def validate(self, discount, amount, service_name, account_metrics, tolerance_rate):
         support_metrics = account_metrics.get(UsageMetricTypeEnum.SUPPORT.value, {})
@@ -187,6 +190,7 @@ class SupportEnterpriseDiscountValidator(DiscountValidator):
 
 class DefaultDiscountValidator(DiscountValidator):
     """Default discount validator for AWS services."""
+
     @override
     def validate(self, discount, amount, service_name, account_metrics, tolerance_rate):
         partner_discounts = account_metrics.get(UsageMetricTypeEnum.PROVIDER_DISCOUNT.value, {})
@@ -201,13 +205,14 @@ class DefaultDiscountValidator(DiscountValidator):
 
 class UsageDiscountValidator(DiscountValidator):
     """Discount validator for AWS usage and recurring services."""
+
     @override
     def validate(self, discount, amount, service_name, account_metrics, tolerance_rate):
         usage = account_metrics.get(UsageMetricTypeEnum.USAGE.value, {})
         recurring = account_metrics.get(UsageMetricTypeEnum.RECURRING.value, {})
         provider_discounts = account_metrics.get(UsageMetricTypeEnum.PROVIDER_DISCOUNT.value, {})
 
-        total_amount = usage.get(service_name, 0.0) + recurring.get(service_name, 0.0)
+        total_amount = usage.get(service_name, 0) + recurring.get(service_name, 0)
 
         service_discount = provider_discounts.get(service_name, 0)
         provider_discount = self._calculate_provider_discount(service_discount, total_amount)
@@ -217,6 +222,7 @@ class UsageDiscountValidator(DiscountValidator):
 
 class DefaultTrueDiscountValidator(DiscountValidator):
     """Validator that returns True."""
+
     @override
     def validate(self, discount, amount, service_name, account_metrics, tolerance_rate):
         return True
@@ -224,6 +230,7 @@ class DefaultTrueDiscountValidator(DiscountValidator):
 
 class GenerateItemJournalLines:
     """Base class for generating journal lines for different AWS billing items."""
+
     def __init__(self, metric_id, billing_discount_tolerance_rate, discount=None):
         self._metric_id = metric_id
         self._billing_discount_tolerance_rate = billing_discount_tolerance_rate
@@ -271,7 +278,7 @@ class GenerateItemJournalLines:
             payment_currency = invoice_details.get("payment_currency_code", "")
             base_currency = invoice_details.get("base_currency_code", "")
             if payment_currency != base_currency:
-                exchange_rate = invoice_details.get("exchange_rate", 0.0)
+                exchange_rate = invoice_details.get("exchange_rate", 0)
                 adjusted_amount = round(amount * exchange_rate, 6)
             else:
                 adjusted_amount = amount
@@ -291,6 +298,7 @@ class GenerateItemJournalLines:
 
 class GenerateMarketplaceJournalLines(GenerateItemJournalLines):
     """Generate journal lines for AWS Marketplace usage metrics."""
+
     def __init__(self, metric_id, billing_discount_tolerance_rate, discount=None):
         super().__init__(metric_id, billing_discount_tolerance_rate, discount=discount)
 
@@ -300,6 +308,7 @@ class GenerateMarketplaceJournalLines(GenerateItemJournalLines):
 
 class GenerateUsageJournalLines(GenerateItemJournalLines):
     """Generate journal lines for AWS usage metrics."""
+
     def __init__(self, metric_id, billing_discount_tolerance_rate, discount=None):
         super().__init__(metric_id, billing_discount_tolerance_rate, discount=discount)
 
@@ -309,6 +318,7 @@ class GenerateUsageJournalLines(GenerateItemJournalLines):
 
 class GenerateSavingPlansJournalLines(GenerateItemJournalLines):
     """Generate journal lines for AWS Saving Plans metrics."""
+
     def __init__(self, metric_id, billing_discount_tolerance_rate, discount=None):
         super().__init__(metric_id, billing_discount_tolerance_rate, discount=discount)
 
@@ -318,6 +328,7 @@ class GenerateSavingPlansJournalLines(GenerateItemJournalLines):
 
 class GenerateOtherServicesJournalLines(GenerateItemJournalLines):
     """Generate journal lines for other AWS services excluding usage and marketplace services."""
+
     def __init__(self, metric_id, billing_discount_tolerance_rate, discount=None):
         super().__init__(metric_id, billing_discount_tolerance_rate, discount=discount)
 
@@ -335,6 +346,7 @@ class GenerateOtherServicesJournalLines(GenerateItemJournalLines):
 
 class GenerateSupportJournalLines(GenerateItemJournalLines):
     """Generate journal lines for AWS support usage metrics."""
+
     def __init__(self, metric_id, billing_discount_tolerance_rate, discount=None):
         super().__init__(metric_id, billing_discount_tolerance_rate, discount=discount)
 
@@ -344,6 +356,7 @@ class GenerateSupportJournalLines(GenerateItemJournalLines):
 
 class GenerateSupportEnterpriseJournalLines(GenerateItemJournalLines):
     """Generate journal lines for AWS support enterprise usage metrics."""
+
     def __init__(self, metric_id, billing_discount_tolerance_rate, discount=None):
         super().__init__(metric_id, billing_discount_tolerance_rate, discount=discount)
 

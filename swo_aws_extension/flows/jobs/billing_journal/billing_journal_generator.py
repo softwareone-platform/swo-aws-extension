@@ -13,6 +13,7 @@ import datetime as dt
 import json
 import logging
 from contextlib import contextmanager
+from decimal import Decimal
 from io import BytesIO
 from urllib.parse import urljoin
 
@@ -72,19 +73,20 @@ def get_authorizations(mpt_client, rql_query, limit=10):  # pragma: no cover
 
 def get_report_amount(amount):
     """
-    Converts a string amount to a float, handling both comma and dot as decimal separators.
+    Converts a string amount to a decimal, handling both comma and dot as decimal separators.
 
     Args:
         amount (str): The amount as a string, potentially with commas or dots.
 
     Returns:
-        float: The amount converted to a float.
+        amount: The amount converted to a decimal.
     """
-    return float(amount.replace(",", ".") if "," in amount else amount)
+    return Decimal(amount.replace(",", ".") if "," in amount else amount)
 
 
 class BillingJournalGenerator:
     """Generate billing journal."""
+
     def __init__(
         self,
         mpt_client,
@@ -433,7 +435,7 @@ class BillingJournalGenerator:
         for entry in self.journal_file_lines:
             service_account_id = entry.description.value2.split("/")[0]
             if service_account_id == account_id:
-                total_amount += entry.price.PPx1
+                total_amount += entry.price.pp_x1
         return total_amount
 
     def _get_marketplace_usage_report(self, aws_client):
@@ -688,7 +690,7 @@ class BillingJournalGenerator:
         for line in self.journal_file_lines:
             service_name = line.description.value1
             service_account_id = line.description.value2.split("/")[0]
-            mpa_account_id = line.externalIds.vendor
+            mpa_account_id = line.external_ids.vendor
             if service_name == service and account_id in {service_account_id, mpa_account_id}:
                 return True
         return False
@@ -728,11 +730,11 @@ class BillingJournalGenerator:
             invoice_entity (str): The invoicing entity to filter by.
 
         Returns:
-            float: The maximum exchange rate for the specified invoicing entity,
+            exchange_rate: The maximum exchange rate for the specified invoicing entity,
             or the maximum exchange rate across all invoices if none found.
         """
         exchange_rates = [
-            float(
+            Decimal(
                 inv.get("PaymentCurrencyAmount", {})
                 .get("CurrencyExchangeDetails", {})
                 .get("Rate", 0)
@@ -746,7 +748,7 @@ class BillingJournalGenerator:
 
         if invoice_entity_exchange_rate == 0:
             exchange_rates = [
-                float(
+                Decimal(
                     inv.get("PaymentCurrencyAmount", {})
                     .get("CurrencyExchangeDetails", {})
                     .get("Rate", 0)
@@ -761,7 +763,7 @@ class BillingJournalGenerator:
 
     @staticmethod
     def _sum_invoice_amounts(invoices, currency_group, field):
-        return sum(float(invoice.get(currency_group, {}).get(field, 0)) for invoice in invoices)
+        return sum(Decimal(invoice.get(currency_group, {}).get(field, 0)) for invoice in invoices)
 
     def _validate_invoice_currencies(
         self, agreement_id, organization_invoices, authorization_currency
@@ -791,11 +793,12 @@ class BillingJournalGenerator:
             invoice_entity = invoice_summary.get("Entity", {}).get("InvoicingEntity")
             invoice_id = invoice_summary.get("InvoiceId")
             base_currency = invoice_summary.get("BaseCurrencyAmount", {}).get("CurrencyCode")
-            payment_currency = invoice_summary.get("PaymentCurrencyAmount", {}).get(
-                "CurrencyCode", ""
-            )
+
             exchange_rate = self._get_exchange_rate_by_invoice_entity_and_currency(
                 organization_invoices, invoice_entity
+            )
+            payment_currency = self._get_payment_currency_by_exchange_rate(
+                organization_invoices, exchange_rate
             )
 
             if invoice_entity in invoice_entities:
@@ -828,3 +831,17 @@ class BillingJournalGenerator:
             f"Found {len(organization_invoices)} organization invoice summaries: {invoices}",
         )
         return invoices
+
+    @staticmethod
+    def _get_payment_currency_by_exchange_rate(organization_invoices, exchange_rate):
+        invoice_summary = find_first(
+            lambda inv: Decimal(
+                inv.get("PaymentCurrencyAmount", {})
+                .get("CurrencyExchangeDetails", {})
+                .get("Rate", 0)
+            )
+            == exchange_rate,
+            organization_invoices,
+            {},
+        )
+        return invoice_summary.get("PaymentCurrencyAmount", {}).get("CurrencyCode", "USD")
