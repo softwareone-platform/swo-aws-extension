@@ -1,31 +1,33 @@
+import datetime as dt
+from decimal import Decimal
+
 from swo_rql import constants
 
 
-def parse_kwargs(query_dict):
+def parse_kwargs(query_dict: dict) -> list[str]:
+    """Parse dict representation of RQL string and return RQL string."""
     query = []
     for lookup, value in query_dict.items():
         tokens = lookup.split("__")
         if len(tokens) == 1:
-            #  field=value
             field = tokens[0]
-            value = rql_encode("eq", value)
-            query.append(f"eq({field},{value})")
+            encoded_value = rql_encode("eq", value)
+            query.append(f"eq({field},{encoded_value})")
             continue
         op = tokens[-1]
         if op not in constants.KEYWORDS:
-            # field__nested=value
             field = ".".join(tokens)
-            value = rql_encode("eq", value)
-            query.append(f"eq({field},{value})")
+            encoded_value = rql_encode("eq", value)
+            query.append(f"eq({field},{encoded_value})")
             continue
         field = ".".join(tokens[:-1])
         if op in constants.COMP or op in constants.SEARCH:
-            value = rql_encode(op, value)
-            query.append(f"{op}({field},{value})")
+            encoded_value = rql_encode(op, value)
+            query.append(f"{op}({field},{encoded_value})")
             continue
         if op in constants.LIST:
-            value = rql_encode(op, value)
-            query.append(f"{op}({field},({value}))")
+            encoded_value = rql_encode(op, value)
+            query.append(f"{op}({field},({encoded_value}))")
             continue
 
         cmpop = "eq" if value is True else "ne"
@@ -35,10 +37,17 @@ def parse_kwargs(query_dict):
     return query
 
 
-def rql_encode(op, value):
-    from datetime import date, datetime
-    from decimal import Decimal
+def rql_encode(op: str, value: str | list) -> str:  # noqa: C901
+    """
+    Encodes the value for the RQL string and converts it to the str.
 
+    Args:
+        op: RQL operations
+        value: RQL filter value
+
+    Returns:
+        Encoded value string
+    """
     if op not in constants.LIST:
         if isinstance(value, str):
             return value
@@ -46,9 +55,9 @@ def rql_encode(op, value):
             return "true" if value else "false"
         if isinstance(value, int | float | Decimal):
             return str(value)
-        if isinstance(value, date | datetime):
+        if isinstance(value, dt.date | dt.datetime):
             return value.isoformat()
-    if op in constants.LIST and isinstance(value, list | tuple):
+    elif op in constants.LIST and isinstance(value, list | tuple):
         return ",".join(value)
     raise TypeError(f"the `{op}` operator doesn't support the {type(value)} type.")
 
@@ -245,7 +254,13 @@ class RQLQuery:
         """
         return self._list("out", value)
 
-    def in_(self, value):
+    def in_(self, value: list[str]):
+        """
+        Apply the `in` operator to the field this `R` object refers to.
+
+        Args:
+            value (list[str]): The list of values to which compare the field.
+        """
         return self._list("in", value)
 
     def oneof(self, value: list[str]):
@@ -266,7 +281,7 @@ class RQLQuery:
         """
         return self._bool("null", value)
 
-    def empty(self, value: bool = True):
+    def empty(self, *, value: bool = True):
         """
         Apply the `empty` operator to the field this `R` object refers to.
 
@@ -277,11 +292,8 @@ class RQLQuery:
         return self._bool("empty", value)
 
     def not_empty(self):
-        """
-        Apply the `not_empty` operator to the field this `R` object refers to.
-        """
-        query = self._bool("empty", False)
-        return query
+        """Apply the `not_empty` operator to the field this `R` object refers to."""
+        return self._bool("empty", value=False)
 
     def like(self, value: list[str]):
         """
@@ -321,7 +333,7 @@ class RQLQuery:
         self.expr = f"eq({self._field},{expr}())"
         return self
 
-    def _to_string(self, query):
+    def _to_string(self, query):  # noqa: C901
         tokens = []
         if query.expr:
             if query.negated:

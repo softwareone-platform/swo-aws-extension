@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AccountCreationStatus:
+    """AWS account creation status."""
     account_request_id: str
     status: str
     account_name: str
@@ -28,12 +29,12 @@ class AccountCreationStatus:
     def from_boto3_response(cls, response):
         """
         Create an AccountCreationStatus object from a boto3 response.
+
         Args:
             response: The boto3 response.
 
         Returns:
             AccountCreationStatus: The AccountCreationStatus object.
-
         """
         status_info = response["CreateAccountStatus"]
         return cls(
@@ -55,6 +56,7 @@ class AccountCreationStatus:
 
 
 class AWSClient:
+    """AWS client."""
     def __init__(self, config, mpa_account_id, role_name) -> None:
         self.config = config
         self.mpa_account_id = mpa_account_id
@@ -67,7 +69,8 @@ class AWSClient:
         """
         Get the OpenID Connect access token.
 
-        :return: str The OpenID Connect access token.
+        Returns:
+            The OpenID Connect access token.
         """
         ccp_client = CCPClient(self.config)
         url = self.config.ccp_oauth_url
@@ -79,7 +82,7 @@ class AWSClient:
         }
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
-        response = requests.post(url, headers=headers, data=payload)
+        response = requests.post(url, headers=headers, data=payload, timeout=60)
         response.raise_for_status()
         logger.info("OpenId Access token issued")
         response_data = response.json()
@@ -90,7 +93,8 @@ class AWSClient:
         """
         Get the credentials for the assumed role.
 
-        :return: dict() The credentials for the assumed role.
+        Returns:
+            The credentials for the assumed role.
         """
         if not self.mpa_account_id:
             raise AWSError("Parameter 'mpa_account_id' must be provided to assume the role.")
@@ -106,14 +110,18 @@ class AWSClient:
     def _get_organization_client(self):
         """
         Get the organization client.
-        :return: The organization client.
+
+        Returns:
+            The organization client.
         """
         return self._get_client("organizations")
 
     def _get_client(self, service_name):
         """
         Get the organization client.
-        :return: The organization client.
+
+        Returns:
+            The organization client.
         """
         return boto3.client(
             service_name,
@@ -125,7 +133,9 @@ class AWSClient:
     def _get_cloudformation_client(self):
         """
         Get the cloudformation client.
-        :return: The cloudformation client.
+
+        Returns:
+            The cloudformation client.
         """
         return boto3.client(
             "cloudformation",
@@ -138,7 +148,9 @@ class AWSClient:
     def _get_sts_client(self):
         """
         Get the STS client.
-        :return: The STS client.
+
+        Returns:
+            The STS client.
         """
         return boto3.client(
             "sts",
@@ -150,7 +162,9 @@ class AWSClient:
     def _get_cost_explorer_client(self):
         """
         Get the Cost Explorer client.
-        :return: The Cost Explorer client.
+
+        Returns:
+            The Cost Explorer client.
         """
         return boto3.client(
             "ce",
@@ -162,7 +176,9 @@ class AWSClient:
     def _get_invoicing_client(self):
         """
         Get the Invoicing client.
-        :return: The Invoicing client.
+
+        Returns:
+            The Invoicing client.
         """
         return boto3.client(
             "invoicing",
@@ -174,26 +190,21 @@ class AWSClient:
 
     @wrap_boto3_error
     def get_caller_identity(self):
-        """
-        Method used to validate credentials.
-
-        :return: None
-        """
+        """Method used to validate credentials."""
         sts_client = self._get_sts_client()
         sts_client.get_caller_identity()
 
     @wrap_boto3_error
     def create_organization(self):
         """
-        Create an organization. If the organization already exists,
-        the function logs a warning and continues.
+        Create an organization. If the organization already exists.
 
-        :return: None
+        The function logs a warning and continues.
         """
         org_client = self._get_organization_client()
         try:
             response = org_client.create_organization(FeatureSet="ALL")
-            logger.info(f"Organization created with Id {response['Organization']['Id']}")
+            logger.info("Organization created with Id %s", response["Organization"]["Id"])
         except botocore.exceptions.ClientError as e:
             if e.response["Error"]["Code"] == "AlreadyInOrganizationException":
                 logger.warning("Organization already exists. Skipping creation.")
@@ -205,10 +216,9 @@ class AWSClient:
         self,
     ):
         """
-        Activate the organizations access. If the access is already active,
-        the function logs a warning and continues.
+        Activate the organizations access.
 
-        :return: None
+        If the access is already active, the function logs a warning and continues.
         """
         cloudformation_client = self._get_cloudformation_client()
 
@@ -220,47 +230,53 @@ class AWSClient:
         """
         Create a linked account.
 
-        :param email: The email of the account.
-        :param account_name: The name of the account.
-        :param role_name: The role name. By defaults: OrganizationAccountAccessRole
-        :return: AccountCreationStatus The status of the linked account creation.
+        Args:
+            email: The email of the account.
+            account_name: The name of the account.
+            role_name: The role name. By defaults: OrganizationAccountAccessRole
+
+        Returns:
+            AccountCreationStatus The status of the linked account creation.
         """
         org_client = self._get_organization_client()
         response = org_client.create_account(
             Email=email, AccountName=account_name, RoleName=role_name, IamUserAccessToBilling="DENY"
         )
-        account_creation_status = AccountCreationStatus.from_boto3_response(response)
-        return account_creation_status
+        return AccountCreationStatus.from_boto3_response(response)
 
     @wrap_boto3_error
     def get_linked_account_status(self, create_account_request_id):
         """
         Get the status of a linked account.
 
-        :param create_account_request_id: The request ID from create_account call.
-        :return: AccountCreationStatus The status of the linked account.
+        Args:
+            create_account_request_id: The request ID from create_account call.
+
+        Returns:
+            AccountCreationStatus The status of the linked account.
         """
         org_client = self._get_organization_client()
         response = org_client.describe_create_account_status(
             CreateAccountRequestId=create_account_request_id
         )
-        account_creation_status = AccountCreationStatus.from_boto3_response(response)
-        return account_creation_status
+        return AccountCreationStatus.from_boto3_response(response)
 
     @wrap_boto3_error
     def list_accounts(self):
         """
         List the accounts in the organization.
 
-        :return: list({
-            'Id': 'string',
-            'Arn': 'string',
-            'Email': 'string',
-            'Name': 'string',
-            'Status': 'ACTIVE'|'SUSPENDED'|'PENDING_CLOSURE',
-            'JoinedMethod': 'INVITED'|'CREATED',
-            'JoinedTimestamp': datetime(2015, 1, 1)
-        }) The accounts in the organization.
+        Returns:
+            AWS account list in the organization.
+            list({
+                'Id': 'string',
+                'Arn': 'string',
+                'Email': 'string',
+                'Name': 'string',
+                'Status': 'ACTIVE'|'SUSPENDED'|'PENDING_CLOSURE',
+                'JoinedMethod': 'INVITED'|'CREATED',
+                'JoinedTimestamp': datetime(2015, 1, 1)
+            })
         """
         org_client = self._get_organization_client()
         accounts = []
@@ -276,24 +292,23 @@ class AWSClient:
         """
         Describe organization.
 
-        :param email: The email of the account.
-        :param account_name: The name of the account.
-        :param role_name: The role name. By defaults: OrganizationAccountAccessRole
-        :response {
-                        "MasterAccountArn":
-                        "arn:aws:organizations::111111111111:account/o-exampleorgid/111111111111",
-                        "MasterAccountEmail": "bill@example.com",
-                        "MasterAccountId": "111111111111",
-                        "Id": "o-exampleorgid",
-                        "FeatureSet": "ALL",
-                        "Arn": "arn:aws:organizations::111111111111:organization/o-exampleorgid",
-                        "AvailablePolicyTypes": [
-                                {
-                                        "Status": "ENABLED",
-                                        "Type": "SERVICE_CONTROL_POLICY"
-                                }
-                        ]
-                }
+        Returns:
+            AWS organization
+            {
+                "MasterAccountArn":
+                "arn:aws:organizations::111111111111:account/o-exampleorgid/111111111111",
+                "MasterAccountEmail": "bill@example.com",
+                "MasterAccountId": "111111111111",
+                "Id": "o-exampleorgid",
+                "FeatureSet": "ALL",
+                "Arn": "arn:aws:organizations::111111111111:organization/o-exampleorgid",
+                "AvailablePolicyTypes": [
+                        {
+                                "Status": "ENABLED",
+                                "Type": "SERVICE_CONTROL_POLICY"
+                        }
+                ]
+            }
         """
         org_client = self._get_organization_client()
         response = org_client.describe_organization()
@@ -305,6 +320,7 @@ class AWSClient:
 
         Args:
             account_id (str): The AWS account ID to invite.
+            notes (str): organization notes.
 
         Returns (Handshake):
             dict: A dictionary containing details of the handshake, including:
@@ -342,7 +358,6 @@ class AWSClient:
             Organizations.Client.exceptions.TooManyRequestsException: If too many requests are made.
 
         see: https://boto3.amazonaws.com/v1/documentation/api/1.26.92/reference/services/organizations/client/invite_account_to_organization.html
-
         """
         org_client = self._get_organization_client()
         try:
@@ -353,9 +368,9 @@ class AWSClient:
             return response.get("Handshake", None)
         except botocore.exceptions.ClientError as e:
             if e.response["Error"]["Code"] == "DuplicateHandshakeException":
-                logger.error(
-                    f"Failed to invite account {account_id} to the organization: "
-                    f"{e.response['Error']['Message']}"
+                logger.exception(
+                    "Failed to invite account %s to the organization: %s",
+                    account_id, e.response["Error"]["Message"]
                 )
             else:
                 raise
@@ -364,9 +379,9 @@ class AWSClient:
         """
         List all handshakes in the organization.
 
-        returns: list(dict) - List of handshakes
+        Returns:
+            List of handshakes
         """
-
         org_client = self._get_organization_client()
         filter_handshake = {"ActionType": "INVITE"}
         response = org_client.list_handshakes_for_organization(Filter=filter_handshake)
@@ -382,17 +397,15 @@ class AWSClient:
         """
         Cancel a handshake.
 
-        :param handshake_id: The ID of the handshake to cancel.
-        :return: None
+        Args:
+            handshake_id: The ID of the handshake to cancel.
         """
         org_client = self._get_organization_client()
         return org_client.cancel_handshake(HandshakeId=handshake_id)
 
     @wrap_boto3_error
     def enable_scp(self):
-        """
-        Enable SCP for the organization.
-        """
+        """Enable SCP for the organization."""
         org_client = self._get_organization_client()
 
         root = org_client.list_roots()["Roots"][0]
@@ -401,23 +414,26 @@ class AWSClient:
             lambda p: p.get("Type") == "SERVICE_CONTROL_POLICY", root.get("PolicyTypes", []), None
         )
         if policy and policy.get("Status", "") == "ENABLED":
-            logger.info(f"Policy Already Enabled for root {root['Id']}. Skipping.")
+            logger.info("Policy Already Enabled for root %s. Skipping.", root["Id"])
             return
 
         org_client.enable_policy_type(RootId=root["Id"], PolicyType="SERVICE_CONTROL_POLICY")
         logger.info("SCP has been enabled")
 
     def account_aliases(self):
+        """Returns AWS account aliases."""
         iam_client = self._get_client("iam")
         response = iam_client.list_account_aliases()
         return response.get("AccountAliases", [])
 
     def account_name(self) -> str:
+        """Account name."""
         return self.account_aliases()[0] if self.account_aliases() else ""
 
     @wrap_boto3_error
     def list_invoice_summaries_by_account_id(self, account_id, year, month):
-        """List invoice summaries for the specified date range.
+        """
+        List invoice summaries for the specified date range.
 
         Args:
             account_id (str): The AWS account ID for which to list invoice summaries.
@@ -454,7 +470,8 @@ class AWSClient:
         group_by=None,
         filter_by=None,
     ):
-        """Get cost and usage data for the specified date range.
+        """
+        Get cost and usage data for the specified date range.
 
         Args:
             start_date (str): The start date in 'YYYY-MM-DD' format.

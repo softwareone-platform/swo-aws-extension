@@ -21,7 +21,7 @@ def test_call_command_no_params(mocker):
     output = out.getvalue()
     error_output = err.getvalue()
     assert "Running generate_billing_journals for 2025-12" in output
-    assert error_output == ""
+    assert not error_output
 
 
 @freeze_time("2025-02-04 23:59:59")
@@ -35,7 +35,7 @@ def test_call_command_wrong_date(mocker):
     call_command("generate_billing_journals", stdout=out, stderr=err)
     output = out.getvalue()
     error_output = err.getvalue()
-    assert output == ""
+    assert not output
     assert COMMAND_INVALID_BILLING_DATE in error_output
 
 
@@ -50,7 +50,7 @@ def test_call_command_future_date(mocker):
     call_command("generate_billing_journals", stdout=out, stderr=err, year=2026, month=1)
     output = out.getvalue()
     error_output = err.getvalue()
-    assert output == ""
+    assert not output
     assert COMMAND_INVALID_BILLING_DATE_FUTURE in error_output
 
 
@@ -65,7 +65,7 @@ def test_call_command_current_month(mocker):
     call_command("generate_billing_journals", stdout=out, stderr=err, year=2025, month=2)
     output = out.getvalue()
     error_output = err.getvalue()
-    assert output == ""
+    assert not output
     assert COMMAND_INVALID_BILLING_DATE in error_output
 
 
@@ -80,7 +80,7 @@ def test_call_command_with_params(mocker):
     output = out.getvalue()
     error_output = err.getvalue()
     assert "Running generate_billing_journals for 2025-03" in output
-    assert error_output == ""
+    assert not error_output
 
 
 def test_test_call_command_with_error_year(mocker):
@@ -93,7 +93,7 @@ def test_test_call_command_with_error_year(mocker):
     call_command("generate_billing_journals", year=1998, month=3, stdout=out, stderr=err)
     output = out.getvalue()
     error_output = err.getvalue()
-    assert output == ""
+    assert not output
     assert "Year must be 2025 or higher, got 1998" in error_output
 
 
@@ -107,7 +107,7 @@ def test_test_call_command_with_error_month(mocker):
     call_command("generate_billing_journals", year=2025, month=13, stdout=out, stderr=err)
     output = out.getvalue()
     error_output = err.getvalue()
-    assert output == ""
+    assert not output
     assert "Invalid month. Month must be between 1 and 12. Got 13 instead." in error_output
 
 

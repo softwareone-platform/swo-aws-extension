@@ -1,5 +1,5 @@
 """
-Billing Journal Generator
+Billing Journal Generator.
 
 This module provides the BillingJournalGenerator class, which is responsible for generating
 and uploading billing journals for AWS Marketplace accounts, based on agreements, subscriptions,
@@ -9,14 +9,14 @@ Entry point: BillingJournalGenerator.generate_billing_journals()
 """
 
 import calendar
+import datetime as dt
 import json
 import logging
 from contextlib import contextmanager
-from datetime import date
 from io import BytesIO
 from urllib.parse import urljoin
 
-from mpt_extension_sdk.mpt_http.mpt import _paginated, get_agreements_by_query
+from mpt_extension_sdk.mpt_http.mpt import _paginated, get_agreements_by_query  # noqa: PLC2701
 from mpt_extension_sdk.mpt_http.utils import find_first
 from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
 
@@ -38,7 +38,7 @@ from swo_aws_extension.constants import (
     UsageMetricTypeEnum,
 )
 from swo_aws_extension.file_builder.zip_builder import InMemoryZipBuilder
-from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingException
+from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingError
 from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import create_journal_line
 from swo_aws_extension.notifications import Button, send_error, send_success
 from swo_aws_extension.parameters import get_transfer_type
@@ -54,12 +54,13 @@ def get_authorizations(mpt_client, rql_query, limit=10):  # pragma: no cover
     """
     Retrieve authorizations based on the provided RQL query.
 
-        Args:
-            mpt_client (MPTClient): MPT API client instance.
-            rql_query (RQLQuery): Query to filter authorizations.
-            limit (int): Maximum number of authorizations to retrieve.
-        Returns:
-            list or None: List of authorizations or None if request fails.
+    Args:
+        mpt_client (MPTClient): MPT API client instance.
+        rql_query (RQLQuery): Query to filter authorizations.
+        limit (int): Maximum number of authorizations to retrieve.
+
+    Returns:
+        list or None: List of authorizations or None if request fails.
     """
     url = (
         f"/catalog/authorizations?{rql_query}&select=externalIds,product"
@@ -72,8 +73,10 @@ def get_authorizations(mpt_client, rql_query, limit=10):  # pragma: no cover
 def get_report_amount(amount):
     """
     Converts a string amount to a float, handling both comma and dot as decimal separators.
+
     Args:
         amount (str): The amount as a string, potentially with commas or dots.
+
     Returns:
         float: The amount converted to a float.
     """
@@ -81,6 +84,7 @@ def get_report_amount(amount):
 
 
 class BillingJournalGenerator:
+    """Generate billing journal."""
     def __init__(
         self,
         mpt_client,
@@ -100,6 +104,7 @@ class BillingJournalGenerator:
             year (int): Billing year.
             month (int): Billing month.
             product_ids (list): List of product IDs to process.
+            billing_journal_processor: billing journal processor
             authorizations (list, optional): List of authorization IDs to filter.
         """
         self.mpt_client = mpt_client
@@ -123,8 +128,8 @@ class BillingJournalGenerator:
 
     @staticmethod
     def _get_billing_period(year, month):
-        start_date = date(year, month, 1)
-        end_date = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+        start_date = dt.date(year, month, 1)
+        end_date = dt.date(year + 1, 1, 1) if month == 12 else dt.date(year, month + 1, 1)
         return start_date.strftime(COST_EXPLORER_DATE_FORMAT), end_date.strftime(
             COST_EXPLORER_DATE_FORMAT
         )
@@ -192,7 +197,7 @@ class BillingJournalGenerator:
             self.logger_context.pop(key, None)
 
     @dynamic_trace_span(lambda *args: f"Agreement {args[1]['id']}")
-    def _generate_agreement_journal_lines(self, agreement, journal_id):
+    def _generate_agreement_journal_lines(self, agreement, journal_id):  # noqa: C901
         mpa_account = agreement.get("externalIds", {}).get("vendor", "")
         self._log("info", f"Start generating journal lines for organization account: {mpa_account}")
 
@@ -520,7 +525,7 @@ class BillingJournalGenerator:
                         account_invoices,
                     )
                 )
-            except AWSBillingException as ex:
+            except AWSBillingError as ex:
                 self._log(
                     "exception",
                     f"Failed to process subscription line {line.get('id')}: {ex}",
@@ -684,7 +689,7 @@ class BillingJournalGenerator:
             service_name = line.description.value1
             service_account_id = line.description.value2.split("/")[0]
             mpa_account_id = line.externalIds.vendor
-            if service_name == service and account_id in [service_account_id, mpa_account_id]:
+            if service_name == service and account_id in {service_account_id, mpa_account_id}:
                 return True
         return False
 
@@ -711,8 +716,10 @@ class BillingJournalGenerator:
     def _get_exchange_rate_by_invoice_entity_and_currency(
         self, organization_invoices, invoice_entity
     ):
-        """Gets the maximum exchange rate for a specific invoicing entity and currency
-        from a list of organization invoice summaries. If no invoices are found for the
+        """
+        Gets the maximum exchange rate for a specific invoicing entity and currency.
+
+        From a list of organization invoice summaries. If no invoices are found for the
         specified invoicing entity, it returns the maximum exchange rate across all invoices
         for the given currency.
 
@@ -792,7 +799,7 @@ class BillingJournalGenerator:
             )
 
             if invoice_entity in invoice_entities:
-                invoice_entities[invoice_entity]["invoice_id"] += f",{invoice_id}"
+                invoice_entities[invoice_entity]["invoice_id"] += f",{invoice_id}"  # noqa: WPS336
             else:
                 invoice_entities[invoice_entity] = {
                     "invoice_id": invoice_id,

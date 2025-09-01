@@ -6,9 +6,11 @@ config = Config()
 
 
 class Command(StyledPrintCommand):
+    """Check pool account notifications."""
     help = "Check Pool Account Notifications"
 
     def handle(self, *args, **options):
+        """Run command."""
         self.info("Start processing Check Pool Accounts Notifications...")
         check_pool_accounts_notifications(config)
         self.success("Processing Check Pool Accounts Notifications completed.")

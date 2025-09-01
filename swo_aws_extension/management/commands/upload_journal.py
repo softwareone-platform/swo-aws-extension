@@ -1,5 +1,5 @@
 import argparse
-from datetime import datetime
+import datetime as dt
 
 from mpt_extension_sdk.core.utils import setup_client
 from requests.exceptions import HTTPError
@@ -11,24 +11,22 @@ from swo_mpt_api.models.hints import Journal
 
 class Command(StyledPrintCommand):
     """
-    Upload a journal file to the marketplace
+    Upload a journal file to the marketplace.
 
     Upload a journal file to the marketplace by providing authorization id or journal id
+    swoext django upload_journal --authorization AUT-0001-0001 journal_lines.jsonl
+    swoext django upload_journal --journal BJO-0005-0005 journal_lines.jsonl
 
     Args:
         file: The jsonl file to upload
         authorization: Optional - The authorization id, it will create
         journal: Optional - The journal id, it will create
-
-    Example:
-        swoext django upload_journal --authorization AUT-0001-0001 journal_lines.jsonl
-
-        swoext django upload_journal --journal BJO-0005-0005 journal_lines.jsonl
     """
 
     help = "Upload journal file to MPT"
 
     def add_arguments(self, parser):
+        """Add required arguments."""
         group = parser.add_mutually_exclusive_group(required=True)
         group.add_argument("--authorization", help="Authorization ID to create a new journal")
         group.add_argument(
@@ -39,6 +37,7 @@ class Command(StyledPrintCommand):
         )
 
     def handle(self, *args, **options):
+        """Run command."""
         file = options["file"]
         authorization = options["authorization"]
         journal_id = options["journal"]
@@ -47,9 +46,10 @@ class Command(StyledPrintCommand):
         api = MPTAPIClient(client)
 
         if not journal_id:
+            now = dt.datetime.now(tz=dt.UTC)
             journal_data = Journal(
                 authorization={"id": authorization},
-                name=f"{datetime.now().strftime('%Y-%m-%d')} - Manual upload - {file.name}",
+                name=f"{now.strftime('%Y-%m-%d')} - Manual upload - {file.name}",
             )
             self.info(
                 f"Creating journal for authorization "

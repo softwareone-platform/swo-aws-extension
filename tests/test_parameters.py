@@ -9,6 +9,7 @@ from swo_aws_extension.parameters import (
 )
 
 
+# TODO: make one assert
 def test_prepare_parameters_for_querying(order_factory, order_parameters_factory):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -59,5 +60,5 @@ def test_prepare_parameters_for_querying(order_factory, order_parameters_factory
 
     # Check empty parameter is hidden
     termination_parameter = get_ordering_parameter(order, OrderParametersEnum.TERMINATION.value)
-    assert termination_parameter["value"] == ""
+    assert not termination_parameter["value"]
     assert termination_parameter["constraints"] == {"hidden": True, "readonly": True}

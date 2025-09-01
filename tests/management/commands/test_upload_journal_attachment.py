@@ -1,3 +1,4 @@
+# TODO: rewrite without accessing _context. Use reponses
 import json
 from unittest.mock import mock_open
 
@@ -47,7 +48,7 @@ def test_upload_file_fail(mocker, tmp_path):
 
     error_response = Response()
     error_response.status_code = 400
-    error_response._content = json.dumps({"error": True, "message": "Test error"}).encode("utf-8")
+    error_response._content = json.dumps({"error": True, "message": "Test error"}).encode("utf-8")  # noqa: SLF001
 
     mocker.patch(
         "swo_mpt_api.billing.journal_client.AttachmentsClient.upload",
@@ -66,7 +67,7 @@ def test_upload_zip_file_fail(mocker, tmp_path):
     journal_id = "JRN-123"
     error_response = Response()
     error_response.status_code = 400
-    error_response._content = json.dumps({"error": True, "message": "Test error"}).encode("utf-8")
+    error_response._content = json.dumps({"error": True, "message": "Test error"}).encode("utf-8")  # noqa: SLF001
 
     mocker.patch(
         "swo_mpt_api.billing.journal_client.AttachmentsClient.upload",
@@ -77,7 +78,7 @@ def test_upload_zip_file_fail(mocker, tmp_path):
         call_command("upload_journal_attachment", journal_id, str(test_folder))
 
 
-def test_upload_non_existing_path_fail(mocker):
+def test_upload_non_existing_path_fail(mocker, tmp_path):
     journal_id = "JRN-123"
     with pytest.raises(CommandError):
-        call_command("upload_journal_attachment", journal_id, "/tmp/non-existing-folder")
+        call_command("upload_journal_attachment", journal_id, tmp_path / "non-existing-folder")

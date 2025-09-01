@@ -173,7 +173,7 @@ def test_assign_mpa_phase_assign_mpa_credentials_error(
     mocked_update_order.assert_not_called()
     mocked_mpa_view_link.assert_called_once()
     error = (
-        "AWS Client error: An error occurred (InvalidIdentityToken) when calling the "
+        "AWS Client error. An error occurred (InvalidIdentityToken) when calling the "
         "get_caller_identity operation: No OpenIDConnect provider found in your "
         "account for https://sts.windows.net/0001/"
     )

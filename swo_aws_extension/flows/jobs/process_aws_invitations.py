@@ -19,23 +19,26 @@ logger = logging.getLogger(__name__)
 
 
 class CheckInvitationLinksStep(Step):
+    """Check invitation links."""
     def __call__(self, client, context: PurchaseContext, next_step):
+        """Execute step."""
         if get_phase(context.order) != PhasesEnum.CHECK_INVITATION_LINK:
             logger.info(
-                f"{context.order_id} - Stop - "
-                f"Expecting phase '{PhasesEnum.CHECK_INVITATION_LINK.value}'"
-                f" got '{get_phase(context.order)}'"
+                "%s - Stop - Expecting phase '%s' got '%s'",
+                context.order_id, PhasesEnum.CHECK_INVITATION_LINK.value, get_phase(context.order),
             )
             return
         next_step(client, context)
 
 
 class AWSInvitationsProcessor:
+    """Process AWS invitation."""
     def __init__(self, client, config):
         self.client = client
         self.config = config
 
     def get_querying_orders(self):
+        """Retrieve querying orders."""
         orders = []
         orders_for_product_ids = RQLQuery().agreement.product.id.in_(settings.MPT_PRODUCTS_IDS)
         orders_in_querying = RQLQuery(status="Querying")
@@ -58,27 +61,26 @@ class AWSInvitationsProcessor:
                 page = response.json()
                 orders.extend(page["data"])
             else:
-                logger.warning(f"Order API error: {response.status_code} {response.content}")
+                logger.warning("Order API error: %s %s", response.status_code, response.content)
                 return []
             offset += limit
 
         return orders
 
-    @staticmethod
-    def has_more_pages(orders):
+    def has_more_pages(self, orders):
+        """Are there more pages."""
         if not orders:
             return True
         pagination = orders["$meta"]["pagination"]
         return pagination["total"] > pagination["limit"] + pagination["offset"]
 
     def prepare_contexts(self) -> list[PurchaseContext]:
-        contexts = []
-        for o in self.get_querying_orders():
-            contexts.append(PurchaseContext.from_order_data(o))
+        """Prepare context."""
+        return [PurchaseContext.from_order_data(order) for order in self.get_querying_orders()]
 
-        return contexts
-
+    # TODO: why? Step that returns pipeline, reverts all the logic
     def get_pipeline(self) -> Pipeline:
+        """Returns pipeline."""
         return Pipeline(
             CheckInvitationLinksStep(),
             ValidatePurchaseTransferWithoutOrganizationStep(),
@@ -89,8 +91,8 @@ class AWSInvitationsProcessor:
             AwaitInvitationLinksStep(),
         )
 
-    @staticmethod
-    def is_processable(context: PurchaseContext) -> bool:
+    def is_processable(self, context: PurchaseContext) -> bool:
+        """Is context processable."""
         return (
             context.is_purchase_order()
             and get_account_type(context.order) == AccountTypesEnum.EXISTING_ACCOUNT
@@ -99,17 +101,11 @@ class AWSInvitationsProcessor:
         )
 
     def process_aws_invitations(self):
-        """
-        Process AWS invitations.
-        """
-        client = self.client
-
-        contexts = self.prepare_contexts()
-        pipeline = self.get_pipeline()
-        for context in contexts:
+        """Process AWS invitations."""
+        for context in self.prepare_contexts():
             try:
                 if not self.is_processable(context):
                     continue
-                pipeline.run(client, context)
-            except Exception as e:
-                logger.exception(e)
+                self.get_pipeline().run(self.client, context)
+            except Exception:
+                logger.exception()

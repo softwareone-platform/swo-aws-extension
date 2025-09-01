@@ -1,3 +1,4 @@
+from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import (
     ItemSkusEnum,
     SubscriptionStatusEnum,
@@ -7,7 +8,7 @@ from swo_aws_extension.constants import (
 from swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator import (
     BillingJournalGenerator,
 )
-from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingException
+from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingError
 from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import (
     GenerateSupportEnterpriseJournalLines,
     get_journal_processors,
@@ -411,7 +412,7 @@ def test_generate_agreement_journal_lines_subscription_exception(
         return_value=[agreement_data],
         autospec=True,
     )
-    generator._generate_agreement_journal_lines(agreement_data, "JOURNAL-1")
+    generator._generate_agreement_journal_lines(agreement_data, "JOURNAL-1")  # noqa: SLF001
     assert generator.journal_file_lines == []
 
 
@@ -423,8 +424,6 @@ def test_generate_agreement_journal_lines_aws_client_error(
     config,
     aws_client_factory,
 ):
-    from swo_aws_extension.aws.errors import AWSError
-
     generator = BillingJournalGenerator(
         mpt_client,
         config,
@@ -644,7 +643,7 @@ def test_process_item_journal_line_error(
     }
     mocker.patch(
         "swo_aws_extension.flows.jobs.billing_journal.item_journal_line.GenerateSupportEnterpriseJournalLines.process",
-        side_effect=AWSBillingException("Test error", payload=payload),
+        side_effect=AWSBillingError("Test error", payload=payload),
         autospec=True,
     )
     mock_journal_query = mocker.patch.object(

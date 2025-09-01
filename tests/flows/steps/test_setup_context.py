@@ -181,12 +181,6 @@ def test_transfer_without_organization(
     agreement_factory,
     mpa_pool_factory,
 ):
-    """
-    Tests:
-    - Next step is called
-    - phase is initialized
-    """
-
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=""),
         agreement=agreement_factory(vendor_id="123456789012"),

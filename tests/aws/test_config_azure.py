@@ -6,7 +6,7 @@ from swo_aws_extension.aws.config import Config
 
 
 class DummyConfig(Config):
-    # expose get_file_contents for direct call without __init__ side-effects
+    """Expose get_file_contents for direct call without __init__ side-effects."""
     def __init__(self):
         pass
 

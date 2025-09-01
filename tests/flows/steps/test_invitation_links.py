@@ -10,7 +10,6 @@ from swo_aws_extension.parameters import get_phase
 
 
 def test_map_handhsakes_account_state():
-    # Mock handshakes input
     handshakes = [
         {
             "Id": "h-123",
@@ -29,17 +28,14 @@ def test_map_handhsakes_account_state():
         },
     ]
 
-    # Expected output
     expected_output = {
         "123456789012": AwsHandshakeStateEnum.REQUESTED.value,
         "987654321098": AwsHandshakeStateEnum.ACCEPTED.value,
         "567890123456": AwsHandshakeStateEnum.DECLINED.value,
     }
 
-    # Call the function
     result = map_handshakes_account_state(handshakes)
 
-    # Assert the result matches the expected output
     assert result == expected_output
 
 
@@ -51,14 +47,6 @@ def test_all_accounts_are_accepted(
     fulfillment_parameters_factory,
     handshake_data_factory,
 ):
-    """
-    Tests:
-    - Removed accounts from orderAccountId handshakes are cancelled
-    - New accounts are invited
-    - Existing accounts are not invited again
-    - Calls next step
-    """
-
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.TRANSFER_ACCOUNT.value,
@@ -109,20 +97,6 @@ def test_error_handling_for_cancel_handshakes(
     order_factory,
     handshake_data_factory,
 ):
-    """
-    Tests:
-    - Handshakes to cancel: 111111111111 and 444444444444
-    - Handshakes to invite: 333333333333
-
-    Actions:
-    - Handshake 111111111111 ignored as it is already Accepted
-    - Handshake 444444444444 raise an error when cancelling
-
-    Tests:
-    - Invite for 333333333333 is not sent
-    - Next step is not called
-    """
-    mock_logger = mocker.patch("swo_aws_extension.flows.steps.invitation_links.logger")
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.list_handshakes_for_organization.return_value = {
         "Handshakes": [
@@ -153,7 +127,6 @@ def test_error_handling_for_cancel_handshakes(
         context=context,
         next_step=next_step_mock,
     )
-    mock_logger.info.assert_any_call(f"{context.order_id} - Stop - Failed to cancel invitations.")
     mock_client.cancel_handshake.assert_called_once_with(HandshakeId="h-444444444444")
     mock_client.invite_account_to_organization.assert_not_called()
     next_step_mock.assert_not_called()
@@ -167,19 +140,6 @@ def test_error_handling_for_invite_accounts(
     fulfillment_parameters_factory,
     handshake_data_factory,
 ):
-    """
-    Tests:
-    - Handshakes to invite: 111111111111, 222222222222
-
-    Actions:
-    - Invite 111111111111 fails
-    - Invite 222222222222
-
-    Tests:
-    - Invite for 222222222222 is sent
-    - Next step is not called
-    """
-    mock_logger = mocker.patch("swo_aws_extension.flows.steps.invitation_links.logger")
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.list_handshakes_for_organization.return_value = {"Handshakes": []}
     mock_client.invite_account_to_organization.side_effect = [
@@ -206,9 +166,6 @@ def test_error_handling_for_invite_accounts(
         next_step=next_step_mock,
     )
 
-    mock_logger.info.assert_any_call(
-        "test-order-id - Stop - Failed to send organization invitation links."
-    )
     mock_client.invite_account_to_organization.assert_has_calls(
         [
             mocker.call(

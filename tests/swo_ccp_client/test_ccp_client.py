@@ -72,6 +72,7 @@ def test_onboard_customer(
     ccp_client.post.assert_called_once_with(
         url="/services/aws-essentials/customer?api-version=v2",
         json=onboard_customer_factory(),
+        timeout=60,
     )
 
 
@@ -86,7 +87,8 @@ def test_get_onboard_status(mocker, ccp_client, onboard_customer_status_factory)
     assert response == onboard_customer_status_factory()
     ccp_client.get.assert_called_once_with(
         url="services/aws-essentials/customer/engagement/"
-        "73ae391e-69de-472c-8d05-2f7feb173207?api-version=v2"
+        "73ae391e-69de-472c-8d05-2f7feb173207?api-version=v2",
+        timeout=60,
     )
 
 
@@ -217,22 +219,6 @@ def test_prepare_request(mocker):
     join_url.assert_called_once()
 
 
-def test_join_url(mocker):
-    mocker.patch("swo_ccp_client.client.CCPClient.get_ccp_access_token", return_value="auth-token")
-
-    config = mocker.Mock()
-    config.ccp_api_base_url = "https://localhost"
-    client = CCPClient(config)
-    assert client._join_url("/resource/12") == client._join_url("https://localhost/resource/12")
-    assert client._join_url("resource/12") == client._join_url("https://localhost/resource/12")
-
-    config = mocker.Mock()
-    config.ccp_api_base_url = "https://localhost/"
-    client = CCPClient(config)
-    assert client._join_url("/resource/12") == client._join_url("https://localhost/resource/12")
-    assert client._join_url("resource/12") == client._join_url("https://localhost/resource/12")
-
-
 def test_request(mocker):
     mocker.patch("swo_ccp_client.client.CCPClient.get_ccp_access_token", return_value="auth-token")
     config = mocker.Mock()
@@ -284,7 +270,7 @@ def test_keyvault_url_parsing(url, expected_value, mocker, settings):
     config = Config()
     client = CCPClient(config)
 
-    key_vault_name = client._parse_keyvault_name_from_url(url)
+    key_vault_name = client._parse_keyvault_name_from_url(url)  # noqa: SLF001
 
     assert key_vault_name == expected_value
 

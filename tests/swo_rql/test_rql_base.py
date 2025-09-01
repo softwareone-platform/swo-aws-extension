@@ -1,4 +1,4 @@
-from datetime import date, datetime
+import datetime as dt
 from decimal import Decimal
 
 import pytest
@@ -241,21 +241,20 @@ def test_and_merge():
 
 @pytest.mark.parametrize("op", ["eq", "ne", "gt", "ge", "le", "lt"])
 def test_dotted_path_comp(op):
-    R = RQLQuery
-    assert str(getattr(R().asset.id, op)("value")) == f"{op}(asset.id,value)"
-    assert str(getattr(R().asset.id, op)(True)) == f"{op}(asset.id,true)"
-    assert str(getattr(R().asset.id, op)(False)) == f"{op}(asset.id,false)"
-    assert str(getattr(R().asset.id, op)(10)) == f"{op}(asset.id,10)"
-    assert str(getattr(R().asset.id, op)(10.678937)) == f"{op}(asset.id,10.678937)"
+    assert str(getattr(RQLQuery().asset.id, op)("value")) == f"{op}(asset.id,value)"
+    assert str(getattr(RQLQuery().asset.id, op)(True)) == f"{op}(asset.id,true)"  # noqa: FBT003
+    assert str(getattr(RQLQuery().asset.id, op)(False)) == f"{op}(asset.id,false)"  # noqa: FBT003
+    assert str(getattr(RQLQuery().asset.id, op)(10)) == f"{op}(asset.id,10)"
+    assert str(getattr(RQLQuery().asset.id, op)(10.678937)) == f"{op}(asset.id,10.678937)"
 
     d = Decimal("32983.328238273")
-    assert str(getattr(R().asset.id, op)(d)) == f"{op}(asset.id,{str(d)})"
+    assert str(getattr(RQLQuery().asset.id, op)(d)) == f"{op}(asset.id,{d})"
 
-    d = date.today()
-    assert str(getattr(R().asset.id, op)(d)) == f"{op}(asset.id,{d.isoformat()})"
+    d = dt.datetime.now(tz=dt.UTC).date()
+    assert str(getattr(RQLQuery().asset.id, op)(d)) == f"{op}(asset.id,{d.isoformat()})"
 
-    d = datetime.now()
-    assert str(getattr(R().asset.id, op)(d)) == f"{op}(asset.id,{d.isoformat()})"
+    d = dt.datetime.now(tz=dt.UTC)
+    assert str(getattr(RQLQuery().asset.id, op)(d)) == f"{op}(asset.id,{d.isoformat()})"
 
     class Test:
         pass
@@ -263,18 +262,21 @@ def test_dotted_path_comp(op):
     test = Test()
 
     with pytest.raises(TypeError):
-        getattr(R().asset.id, op)(test)
+        getattr(RQLQuery().asset.id, op)(test)
 
 
 @pytest.mark.parametrize("op", ["like", "ilike"])
 def test_dotted_path_search(op):
-    R = RQLQuery
-    assert str(getattr(R().asset.id, op)("value")) == f"{op}(asset.id,value)"
-    assert str(getattr(R().asset.id, op)("*value")) == f"{op}(asset.id,*value)"
-    assert str(getattr(R().asset.id, op)("value*")) == f"{op}(asset.id,value*)"
-    assert str(getattr(R().asset.id, op)("*value*")) == f"{op}(asset.id,*value*)"
+    assert str(getattr(RQLQuery().asset.id, op)("value")) == f"{op}(asset.id,value)"
+    assert str(getattr(RQLQuery().asset.id, op)("*value")) == f"{op}(asset.id,*value)"
+    assert str(getattr(RQLQuery().asset.id, op)("value*")) == f"{op}(asset.id,value*)"
+    assert str(getattr(RQLQuery().asset.id, op)("*value*")) == f"{op}(asset.id,*value*)"
 
 
+@pytest.mark.parametrize(
+    "parameters",
+    [("first", "second"), ["first", "second"]],
+)
 @pytest.mark.parametrize(
     ("method", "op"),
     [
@@ -283,17 +285,15 @@ def test_dotted_path_search(op):
         ("out", "out"),
     ],
 )
-def test_dotted_path_list(method, op):
-    R = RQLQuery
-
-    rexpr = getattr(R().asset.id, method)(("first", "second"))
+def test_dotted_path_list(method, op, parameters):
+    rexpr = getattr(RQLQuery().asset.id, method)(parameters)
     assert str(rexpr) == f"{op}(asset.id,(first,second))"
 
-    rexpr = getattr(R().asset.id, method)(["first", "second"])
-    assert str(rexpr) == f"{op}(asset.id,(first,second))"
 
+@pytest.mark.parametrize("op", ["in", "out"])
+def test_dotted_path_list_raise_exception(op):
     with pytest.raises(TypeError):
-        getattr(R().asset.id, method)("Test")
+        getattr(RQLQuery().asset.id, op)("Test")
 
 
 @pytest.mark.parametrize(
@@ -306,9 +306,8 @@ def test_dotted_path_list(method, op):
     ],
 )
 def test_dotted_path_bool(expr, value, expected_op):
-    R = RQLQuery
-
-    assert str(getattr(R().asset.id, expr)(value)) == f"{expected_op}(asset.id,{expr}())"
+    rql_str = str(getattr(RQLQuery().asset.id, expr)(value=value))
+    assert rql_str == f"{expected_op}(asset.id,{expr}())"
 
 
 def test_dotted_path_already_evaluated():
@@ -322,7 +321,7 @@ def test_str():
     assert str(RQLQuery(id="ID")) == "eq(id,ID)"
     assert str(~RQLQuery(id="ID")) == "not(eq(id,ID))"
     assert str(~RQLQuery(id="ID", field="value")) == "not(and(eq(id,ID),eq(field,value)))"
-    assert str(RQLQuery()) == ""
+    assert not str(RQLQuery())
 
 
 def test_hash():
@@ -337,7 +336,7 @@ def test_hash():
 
 
 def test_empty():
-    assert RQLQuery("value").empty() == RQLQuery("value").empty(True)
+    assert RQLQuery("value").empty() == RQLQuery("value").empty(value=True)
     assert str(RQLQuery("value").empty()) == "eq(value,empty())"
     assert str(RQLQuery("value").not_empty()) == "ne(value,empty())"
-    assert RQLQuery("value").empty(False) == RQLQuery("value").not_empty()
+    assert RQLQuery("value").empty(value=False) == RQLQuery("value").not_empty()

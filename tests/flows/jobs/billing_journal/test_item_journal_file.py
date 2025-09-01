@@ -4,7 +4,7 @@ from swo_aws_extension.constants import (
     ItemSkusEnum,
     UsageMetricTypeEnum,
 )
-from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingException
+from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingError
 from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import (
     GenerateItemJournalLines,
     GenerateOtherServicesJournalLines,
@@ -16,17 +16,14 @@ from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import (
 
 
 class DummyProcessor(GenerateItemJournalLines):
+    """Dummy processor that raises billing exception."""
     def process(self, *args, **kwargs):
+        """Start process."""
         payload = {
             "service_name": "TestService",
             "amount": 100.0,
         }
-        raise AWSBillingException("Test error", payload=payload)
-
-
-class DummyProcessorNotImplemented(GenerateItemJournalLines):
-    def process(self, *args, **kwargs):
-        return super().process(*args, **kwargs)
+        raise AWSBillingError("Test error", payload=payload)
 
 
 def test_generate_marketplace_journal_lines_process(mock_journal_args, mock_journal_line_factory):
@@ -161,7 +158,7 @@ def test_generate_recurring_incentivate_journal_lines_process(
 
 
 def test_generate_item_journal_line_not_implemented(mock_journal_args, mock_journal_line_factory):
-    proc = DummyProcessorNotImplemented(
+    proc = GenerateItemJournalLines(
         UsageMetricTypeEnum.MARKETPLACE.value, billing_discount_tolerance_rate=1, discount=0
     )
     external_id = ItemSkusEnum.AWS_MARKETPLACE.value
@@ -182,7 +179,7 @@ def test_generate_item_journal_line_process_with_error(mock_journal_args):
     external_id = ItemSkusEnum.AWS_MARKETPLACE.value
     args = mock_journal_args(external_id)
 
-    with pytest.raises(AWSBillingException):
+    with pytest.raises(AWSBillingError):
         proc.process(**args)
 
 
@@ -278,7 +275,7 @@ def test_support_two_charges_error(mock_journal_args, mock_journal_line_factory)
         "AWS Support (Enterprise)": 35
     }
 
-    with pytest.raises(AWSBillingException) as exc_info:
+    with pytest.raises(AWSBillingError) as exc_info:
         proc.process(**args)
 
     assert (

@@ -1,7 +1,7 @@
 import copy
+import datetime as dt
 import json
 import signal
-from datetime import UTC, datetime, timedelta
 
 import jwt
 import pytest
@@ -65,18 +65,12 @@ INVOICE_ENTITY = "Amazon Web Services EMEA SARL"
 
 @pytest.fixture(autouse=True)
 def force_test_settings():
-    """
-    Force the use of test settings for test execution stability.
-    """
     with override_settings(DJANGO_SETTINGS_MODULE="tests.django.settings"):
         yield
 
 
 @pytest.fixture
 def requests_mocker():
-    """
-    Allow mocking of http calls made with requests.
-    """
     with responses.RequestsMock() as rsps:
         yield rsps
 
@@ -308,7 +302,7 @@ def pricelist_items_factory():
 
 
 @pytest.fixture
-def lines_factory(agreement, deployment_id: str = None):
+def lines_factory(agreement, deployment_id=None):
     agreement_id = agreement["id"].split("-", 1)[1]
 
     def _items(
@@ -355,7 +349,8 @@ def subscriptions_factory(lines_factory):
         lines=None,
         status="Terminating",
     ):
-        start_date = start_date.isoformat() if start_date else datetime.now(UTC).isoformat()
+        now = dt.datetime.now(tz=dt.UTC).isoformat()
+        start_date = start_date.isoformat() if start_date else now
         if lines is None:
             lines = []
             for sku in AWS_ITEMS_SKUS:
@@ -384,12 +379,13 @@ def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_fa
         licensee_name="My beautiful licensee",
         licensee_address=None,
         licensee_contact=None,
-        use_buyer_address=False,
         subscriptions=None,
         fulfillment_parameters=None,
         ordering_parameters=None,
         lines=None,
         vendor_id="",
+        *,
+        use_buyer_address=False,
     ):
         if not subscriptions:
             subscriptions = [
@@ -586,9 +582,9 @@ def agreement(buyer, licensee, listing, seller):
 
 @pytest.fixture
 def buyer_factory():
-    def _factory(id=None, name=None, email=None):
+    def _factory(buyer_id=None, name=None, email=None):
         return {
-            "id": id or "BUY-1111-1111",
+            "id": buyer_id or "BUY-1111-1111",
             "name": name or "A buyer",
             "email": email or "buyer@example.com",
         }
@@ -606,10 +602,6 @@ def order_factory(
     seller,
     template_factory,
 ):
-    """
-    Marketplace platform order for tests.
-    """
-
     def _order(
         order_id="ORD-0792-5000-2253-4210",
         order_type="Purchase",
@@ -754,21 +746,14 @@ def webhook(settings):
 
 @pytest.fixture
 def mpt_client(settings):
-    """
-    Create an instance of the MPT client used by the extension.
-    """
     settings.MPT_API_BASE_URL = "https://localhost"
-    from mpt_extension_sdk.core.utils import setup_client
+    from mpt_extension_sdk.core.utils import setup_client  # noqa: PLC0415
 
     return setup_client()
 
 
 @pytest.fixture
 def mpt_error_factory():
-    """
-    Generate an error message returned by the Marketplace platform.
-    """
-
     def _mpt_error(
         status,
         title,
@@ -792,22 +777,16 @@ def mpt_error_factory():
 
 @pytest.fixture
 def airtable_error_factory():
-    """
-    Generate an error message returned by the Airtable API.
-    """
-
     def _airtable_error(
         message,
         error_type="INVALID_REQUEST_UNKNOWN",
     ):
-        error = {
+        return {
             "error": {
                 "type": error_type,
                 "message": message,
             }
         }
-
-        return error
 
     return _airtable_error
 
@@ -824,7 +803,7 @@ def mpt_list_response():
 
 @pytest.fixture
 def jwt_token(settings):
-    iat = nbf = int(datetime.now().timestamp())
+    iat = nbf = int(dt.datetime.now(tz=dt.UTC).timestamp())
     exp = nbf + 300
     return jwt.encode(
         {
@@ -1047,7 +1026,8 @@ def mock_logging_all_prefixes(
 
 @pytest.fixture
 def mock_highlights(mock_logging_all_prefixes):
-    return _ReprHighlighter.highlights + [
+    return [
+        *_ReprHighlighter.highlights,
         rf"(?P<mpt_id>(?:{'|'.join(mock_logging_all_prefixes)})(?:-\d{{4}})*)"
     ]
 
@@ -1226,7 +1206,7 @@ def account_creation_status_factory(lines_factory):
 def data_aws_account_factory():
     def create_aws_account(
         status="ACTIVE",
-        id="1234-1234-1234",
+        aws_id="1234-1234-1234",
         arn="arn",
         email="test@example.com",
         join_method="CREATED",
@@ -1244,13 +1224,13 @@ def data_aws_account_factory():
         :return:
         """
         return {
-            "Id": id,
+            "Id": aws_id,
             "Arn": arn,
             "Email": email,
             "Name": name,
             "Status": status,
             "JoinedMethod": join_method,
-            "JoinedTimestamp": datetime(2015, 1, 1),
+            "JoinedTimestamp": dt.datetime(2015, 1, 1, tzinfo=dt.UTC),
         }
 
     return create_aws_account
@@ -1350,7 +1330,7 @@ def order_close_account(
     subscriptions_factory,
     agreement_factory,
 ):
-    order = order_factory(
+    return order_factory(
         order_type=ORDER_TYPE_TERMINATION,
         order_parameters=order_parameters_factory(
             account_email=ACCOUNT_EMAIL,
@@ -1364,12 +1344,11 @@ def order_close_account(
         ),
         agreement=agreement_factory(vendor_id="123456789012"),
     )
-    return order
 
 
 @pytest.fixture
 def order_unlink_account(order_factory, order_parameters_factory, subscriptions_factory):
-    order = order_factory(
+    return order_factory(
         order_type=ORDER_TYPE_TERMINATION,
         order_parameters=order_parameters_factory(
             account_email=ACCOUNT_EMAIL,
@@ -1381,12 +1360,11 @@ def order_unlink_account(order_factory, order_parameters_factory, subscriptions_
             status="Terminating",
         ),
     )
-    return order
 
 
 @pytest.fixture
 def order_terminate_without_type(order_factory, order_parameters_factory, subscriptions_factory):
-    order = order_factory(
+    return order_factory(
         order_type=ORDER_TYPE_TERMINATION,
         order_parameters=order_parameters_factory(
             account_email=ACCOUNT_EMAIL,
@@ -1398,14 +1376,13 @@ def order_terminate_without_type(order_factory, order_parameters_factory, subscr
             status="Terminating",
         ),
     )
-    return order
 
 
 @pytest.fixture
 def order_terminate_with_invalid_terminate_type(
     order_factory, order_parameters_factory, subscriptions_factory
 ):
-    order = order_factory(
+    return order_factory(
         order_type=ORDER_TYPE_TERMINATION,
         order_parameters=order_parameters_factory(
             account_email=ACCOUNT_EMAIL,
@@ -1417,7 +1394,6 @@ def order_terminate_with_invalid_terminate_type(
             status="Terminating",
         ),
     )
-    return order
 
 
 @pytest.fixture
@@ -1458,42 +1434,33 @@ def service_request_ticket_factory():
 
 @pytest.fixture
 def order_termination_close_account_multiple(order_close_account, subscriptions_factory):
-    order_close_account["subscriptions"] = []
-    order_close_account["subscriptions"].append(
+    order_close_account["subscriptions"] = [
         subscriptions_factory(
             subscription_id="SUB-1000-2000-3001",
             vendor_id="000000001",
             status="Terminating",
         )[0],
-    )
-    order_close_account["subscriptions"].append(
         subscriptions_factory(
             subscription_id="SUB-1000-2000-3002",
             vendor_id="000000002",
             status="Terminating",
         )[0],
-    )
-    order_close_account["subscriptions"].append(
         subscriptions_factory(
             subscription_id="SUB-1000-2000-3003",
             vendor_id="000000003",
             status="Terminating",
         )[0],
-    )
-    order_close_account["subscriptions"].append(
         subscriptions_factory(
             subscription_id="SUB-1000-2000-3004",
             vendor_id="000000004",
             status="Active",
         )[0],
-    )
-    order_close_account["subscriptions"].append(
         subscriptions_factory(
             subscription_id="SUB-1000-2000-3005",
             vendor_id="000000005",
             status="Terminated",
         )[0],
-    )
+    ]
     return order_close_account
 
 
@@ -1508,13 +1475,14 @@ def mpa_pool_factory(mocker):
         account_id="Account Id",
         account_email="test@email.com",
         account_name=ACCOUNT_NAME,
-        pls_enabled=True,
         status="Ready",
         agreement_id="",
         client_id="client_id",
         scu="XX-SCU-200500",
         buyer_id="",
         country="US",
+        *,
+        pls_enabled=True,
     ):
         mpa_pool = mocker.MagicMock()
         mpa_pool.account_id = account_id
@@ -1538,11 +1506,12 @@ def pool_notification_factory(mocker):
     def _pool_notification(
         notification_id=1,
         notification_type=NotificationTypeEnum.WARNING.value,
-        pls_enabled=True,
         ticket_id="Ticket Id",
         ticket_state="New",
         status=NotificationStatusEnum.PENDING.value,
         country="US",
+        *,
+        pls_enabled=True,
     ):
         pool_notification = mocker.MagicMock()
         pool_notification.notification_id = notification_id
@@ -1798,13 +1767,14 @@ def roots_factory():
 @pytest.fixture
 def handshake_data_factory():
     def _factory(account_id, state):
+        now = dt.datetime.now(tz=dt.UTC)
         return {
             "Id": f"h-{account_id}",
             "Arn": f"arn:aws:organizations::123456789012:handshake/h-{account_id}",
             "Parties": [{"Id": account_id, "Type": "ACCOUNT"}],
             "State": state,
-            "RequestedTimestamp": datetime.now(),
-            "ExpirationTimestamp": datetime.now() + timedelta(days=15),
+            "RequestedTimestamp": now,
+            "ExpirationTimestamp": now + dt.timedelta(days=15),
             "Action": "INVITE",
             "Resources": [
                 {"Type": "MASTER_EMAIL", "Value": "diego@example.com"},
@@ -1883,7 +1853,7 @@ def template_factory():
         "# Sample Template\n\nUse this input box to define your message "
         "against a given order or request type. Think about how you message "
         "can be succinct but informative, think about the tone you would like "
-        "to use and the information that’s key for the consumer of such "
+        "to use and the information that's key for the consumer of such "
         "information in the given context.\n\n## Formatting\n\nMarkdown allows "
         "you to control various aspects of formatting such as:\n\n* Bullets and"
         " numbering\n* Italics and Bold\n* Titles\n* Link embedding\n\n"
@@ -1898,17 +1868,18 @@ def template_factory():
 
     def _template(
         name=None,
-        id=None,
+        template_id=None,
         content=None,
-        type=None,
-        default=False,
+        template_type=None,
         product=None,
+        *,
+        default=False,
     ):
         return {
-            "id": id or "TPL-1975-5250-0018",
+            "id": template_id or "TPL-1975-5250-0018",
             "name": name or "New Linked account",
             "content": content or sample_content,
-            "type": type or "OrderCompleted",
+            "type": template_type or "OrderCompleted",
             "default": default,
             "product": product
             or {
@@ -1954,11 +1925,10 @@ def mock_get_rendered_template(mocker):
     mocked_jinja_env = mocker.MagicMock()
     mocked_jinja_env.get_template.return_value = mocked_template
     mocker.patch("swo_aws_extension.notifications.env", mocked_jinja_env)
-    mock_get_rendered_template = mocker.patch(
+    return mocker.patch(
         "swo_aws_extension.notifications.get_rendered_template",
         return_value="rendered-template",
     )
-    return mock_get_rendered_template
 
 
 @pytest.fixture
@@ -1976,7 +1946,7 @@ def mock_jwt_encoder(ffc_client_settings):
         return jwt.encode(
             {
                 "sub": ffc_client_settings.EXTENSION_CONFIG["FFC_SUB"],
-                "exp": now + timedelta(minutes=5),
+                "exp": now + dt.timedelta(minutes=5),
                 "nbf": now,
                 "iat": now,
             },
@@ -2138,22 +2108,22 @@ def mock_report_type_and_usage_report_factory(mock_report_type_and_usage_report_
 
 def build_usage_metrics(generator, report):
     return {
-        UsageMetricTypeEnum.USAGE.value: generator._get_metrics_by_key(
+        UsageMetricTypeEnum.USAGE.value: generator._get_metrics_by_key(  # noqa: SLF001
             report, AWSRecordTypeEnum.USAGE.value
         ),
-        UsageMetricTypeEnum.SAVING_PLANS.value: generator._get_metrics_by_key(
+        UsageMetricTypeEnum.SAVING_PLANS.value: generator._get_metrics_by_key(  # noqa: SLF001
             report, AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE.value
         ),
-        UsageMetricTypeEnum.PROVIDER_DISCOUNT.value: generator._get_metrics_by_key(
+        UsageMetricTypeEnum.PROVIDER_DISCOUNT.value: generator._get_metrics_by_key(  # noqa: SLF001
             report, AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT.value
         ),
-        UsageMetricTypeEnum.REFUND.value: generator._get_metrics_by_key(
+        UsageMetricTypeEnum.REFUND.value: generator._get_metrics_by_key(  # noqa: SLF001
             report, AWSRecordTypeEnum.REFUND.value
         ),
-        UsageMetricTypeEnum.SUPPORT.value: generator._get_metrics_by_key(
+        UsageMetricTypeEnum.SUPPORT.value: generator._get_metrics_by_key(  # noqa: SLF001
             report, AWSRecordTypeEnum.SUPPORT.value
         ),
-        UsageMetricTypeEnum.RECURRING.value: generator._get_metrics_by_key(
+        UsageMetricTypeEnum.RECURRING.value: generator._get_metrics_by_key(  # noqa: SLF001
             report, AWSRecordTypeEnum.RECURRING.value
         ),
     }
@@ -2290,7 +2260,7 @@ def mock_journal_args(
             account_id=account_id, service_name="Marketplace service"
         )
         report = mock_marketplace_report_factory(groups=groups)["ResultsByTime"]
-        account_metrics[UsageMetricTypeEnum.MARKETPLACE.value] = generator._get_metrics_by_key(
+        account_metrics[UsageMetricTypeEnum.MARKETPLACE.value] = generator._get_metrics_by_key(  # noqa: SLF001
             report, account_id
         )
         marketplace_invoice_report = mock_invoice_by_service_report_group_factory(SERVICE_NAME)
@@ -2300,7 +2270,7 @@ def mock_journal_args(
         )["ResultsByTime"]
 
         account_metrics[UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY.value] = (
-            generator._get_invoice_entity_by_service(service_invoice_entity)
+            generator._get_invoice_entity_by_service(service_invoice_entity)  # noqa: SLF001
         )
         return {
             "account_id": account_id,

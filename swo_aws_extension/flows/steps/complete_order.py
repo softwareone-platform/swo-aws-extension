@@ -11,25 +11,27 @@ logger = logging.getLogger(__name__)
 
 
 class CompleteOrderStep(Step):
+    """Complete order with template."""
     def __call__(self, client, context, next_step):
+        """Execute step."""
         self._complete_order(client, context)
         next_step(client, context)
 
     def _complete_order(self, client, context: InitialAWSContext):
         template_name = TemplateNameManager.complete(context)
         context.switch_order_status_to_complete(client, template_name)
-        logger.info(f"{context.order_id} - Completed - order has been completed successfully")
+        logger.info("%s - Completed - order has been completed successfully", context.order_id)
 
 
 class CompletePurchaseOrderStep(CompleteOrderStep):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
+    """Complete purchase order."""
     def __call__(self, client, context, next_step):
+        """Execute step."""
         if get_phase(context.order) != PhasesEnum.COMPLETED:
             logger.info(
-                f"{context.order_id} - Skip - Current phase is '{get_phase(context.order)}', "
-                f"skipping as it is not '{PhasesEnum.COMPLETED.value}'"
+                "%s - Skip - Current phase is '{get_phase(context.order)}', "
+                "skipping as it is not '%s'",
+                context.order_id, PhasesEnum.COMPLETED.value,
             )
             next_step(client, context)
             return
@@ -39,14 +41,18 @@ class CompletePurchaseOrderStep(CompleteOrderStep):
 
 
 class CompleteChangeOrderStep(CompleteOrderStep):
+    """Complete change order."""
     def __call__(self, client, context, next_step):
+        """Exececute step."""
         context.order = set_account_request_id(context.order, "")
         self._complete_order(client, context)
         next_step(client, context)
 
 
 class CompleteTerminationOrderStep(CompleteOrderStep):
+    """Complete termination order."""
     def __call__(self, client, context, next_step):
+        """Execute step."""
         context.order = set_account_request_id(context.order, "")
         self._complete_order(client, context)
         next_step(client, context)
