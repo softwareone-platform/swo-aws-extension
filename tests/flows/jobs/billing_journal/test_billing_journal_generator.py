@@ -74,7 +74,7 @@ def test_generate_billing_journals_create_journal_empty_agreements(
     )
     mocker.patch.object(generator.mpt_api_client.billing.journal, "upload", autospec=True)
     generator.generate_billing_journals()
-    mock_create.assert_called_once()
+    mock_create.assert_not_called()
 
 
 def test_generate_billing_journals_authorization_with_no_agreements_create_new_journal(
@@ -110,7 +110,7 @@ def test_generate_billing_journals_authorization_with_no_agreements_create_new_j
     )
     mocker.patch.object(generator.mpt_api_client.billing.journal, "upload", autospec=True)
     generator.generate_billing_journals()
-    mock_create.assert_called_once()
+    mock_create.assert_not_called()
 
 
 def test_generate_billing_journals_authorization_no_mpa_found(

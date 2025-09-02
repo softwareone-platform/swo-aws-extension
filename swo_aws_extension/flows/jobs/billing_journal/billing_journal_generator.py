@@ -304,15 +304,17 @@ class BillingJournalGenerator:
         self._log("info", f"Generating billing journals for {authorization['id']}")
         self.journal_file_lines = []
         self.authorization_currency = authorization.get("currency")
-        journal_id = self._obtain_journal_id(authorization["id"])
-        self._log("info", f"Generating journal lines for journal ID: {journal_id}")
         agreements = self._get_authorization_agreements(authorization)
+
         if not agreements:
             self._log("info", f"No agreements found for authorization {authorization['id']}")
             return
+
         self._log(
             "info", f"Found {len(agreements)} agreements for authorization {authorization['id']}"
         )
+        journal_id = self._obtain_journal_id(authorization["id"])
+        self._log("info", f"Generating journal lines for journal ID: {journal_id}")
 
         for agreement in agreements:
             try:
