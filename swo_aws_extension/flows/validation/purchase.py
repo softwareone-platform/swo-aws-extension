@@ -63,6 +63,7 @@ Purchase options:
 
 class SetupNewAccountParametersConstraintsStep(Step):
     """Setups parameters visibility and constraints for purchase for new aws account."""
+
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         """Execute step."""
         if get_account_type(context.order) == AccountTypesEnum.NEW_ACCOUNT:
@@ -77,6 +78,7 @@ class SetupNewAccountParametersConstraintsStep(Step):
 
 class SetupExistingAccountParametersConstraintsStep:
     """Setups parameters visibility and constraints for purchase for existing account."""
+
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         """Execute step."""
         if get_account_type(context.order) == AccountTypesEnum.EXISTING_ACCOUNT:
@@ -112,6 +114,7 @@ class SetupExistingAccountParametersConstraintsStep:
 
 class ValidateNewAccount(Step):
     """Validates if it is a new AWS account and all email and name parameters are fulfilled."""
+
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         """Execute steps."""
         if get_account_type(context.order) != AccountTypesEnum.NEW_ACCOUNT:
@@ -143,6 +146,7 @@ class ValidateNewAccount(Step):
 
 class ValidateExistingAccount(Step):
     """Validates if it transfer existing account."""
+
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         """Execute step."""
         if get_account_type(context.order) != AccountTypesEnum.EXISTING_ACCOUNT:
@@ -164,6 +168,7 @@ class ValidateExistingAccount(Step):
 
 class ValidateTransferWithoutOrganizationStep(Step):
     """Validates if it is a transfer without organization."""
+
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         """Execute step."""
         is_transfer_without_organization = (
@@ -201,6 +206,7 @@ class ValidateTransferWithoutOrganizationStep(Step):
 
 class ValidatePurchaseTransferWithOrganizationStep(Step):
     """Validates if it is a transfer with organization."""
+
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         """Execute step."""
         is_with_org = (
@@ -281,6 +287,7 @@ def is_split_billing_mpa_id_valid(context: PurchaseContext):
 
 class ValidateSplitBillingStep(Step):
     """Checks split billing use case."""
+
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         """Execute step."""
         is_split_billing = (

@@ -38,7 +38,8 @@ def test_is_not_purchase_order(mocker, order_factory, order_parameters_factory):
     step(client, context, next_step)
     next_step.assert_called_once_with(client, context)
     assert logger_mock.info.mock_calls[0] == mocker.call(
-        "%s - Skip - Order is not a purchase", "ORD-0792-5000-2253-4210",
+        "%s - Skip - Order is not a purchase",
+        "ORD-0792-5000-2253-4210",
     )
 
 
@@ -58,7 +59,8 @@ def test_is_not_transfer_without_organization(mocker, order_factory, order_param
     step(client, context, next_step)
     next_step.assert_called_once_with(client, context)
     assert logger_mock.info.mock_calls[0] == mocker.call(
-        "%s - Skip - Order is not a transfer without organization", "ORD-0792-5000-2253-4210",
+        "%s - Skip - Order is not a transfer without organization",
+        "ORD-0792-5000-2253-4210",
     )
 
 

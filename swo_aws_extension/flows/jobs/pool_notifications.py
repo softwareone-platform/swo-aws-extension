@@ -50,7 +50,8 @@ def process_pending_notification(crm_client, pending_notification):
         logger.info("Ticket %s state updated to %s.", pending_notification.ticket_id, ticket_state)
     else:
         logger.info(
-            "Pending Notification %s is still pending.", pending_notification.notification_id,
+            "Pending Notification %s is still pending.",
+            pending_notification.notification_id,
         )
 
 
@@ -68,7 +69,9 @@ def create_ticket(crm_client, notification, summary, title, additional_info):
     logger.info(
         "New service request ticket will be created for country %s with PLS enabled: %s "
         "and type: %s.",
-        notification.country, notification.pls_enabled, notification.notification_type,
+        notification.country,
+        notification.pls_enabled,
+        notification.notification_type,
     )
     service_request = ServiceRequest(additional_info=additional_info, summary=summary, title=title)
     ticket = crm_client.create_service_request(None, service_request)
@@ -122,7 +125,8 @@ def add_new_notifications(minimum_mpa_threshold, accounts_map, open_notification
             if existing_notification:
                 logger.info(
                     "Pending notification already exists for PLS enabled: %s and country %s.",
-                    pls_enabled, country,
+                    pls_enabled,
+                    country,
                 )
 
                 continue
@@ -140,7 +144,8 @@ def add_new_notifications(minimum_mpa_threshold, accounts_map, open_notification
             create_pool_notification(new_notification)
             logger.info(
                 "New notification created for country %s with PLS enabled: %s.",
-                country, pls_enabled,
+                country,
+                pls_enabled,
             )
 
 

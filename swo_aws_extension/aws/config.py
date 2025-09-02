@@ -6,6 +6,7 @@ from django.conf import settings
 
 class Config:
     """AWS extension configuration."""
+
     def __init__(self):
         self.setup_azure_env()
 

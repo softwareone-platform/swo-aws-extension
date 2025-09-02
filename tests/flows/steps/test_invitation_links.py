@@ -166,18 +166,16 @@ def test_error_handling_for_invite_accounts(
         next_step=next_step_mock,
     )
 
-    mock_client.invite_account_to_organization.assert_has_calls(
-        [
-            mocker.call(
-                Target={"Id": "111111111111", "Type": "ACCOUNT"},
-                Notes="Softwareone invite for order test-order-id.",
-            ),
-            mocker.call(
-                Target={"Id": "222222222222", "Type": "ACCOUNT"},
-                Notes="Softwareone invite for order test-order-id.",
-            ),
-        ]
-    )
+    mock_client.invite_account_to_organization.assert_has_calls([
+        mocker.call(
+            Target={"Id": "111111111111", "Type": "ACCOUNT"},
+            Notes="Softwareone invite for order test-order-id.",
+        ),
+        mocker.call(
+            Target={"Id": "222222222222", "Type": "ACCOUNT"},
+            Notes="Softwareone invite for order test-order-id.",
+        ),
+    ])
     next_step_mock.assert_not_called(), "Next step should not be called as there is errors"
 
 

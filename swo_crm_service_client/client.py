@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ServiceRequest:
     """Service request API entity."""
+
     external_user_email: str = CRM_EXTERNAL_EMAIL
     external_username: str = CRM_EXTERNAL_USERNAME
     requester: str = CRM_REQUESTER
@@ -54,6 +55,7 @@ TIMEOUT = 60
 
 class CRMServiceClient(Session):
     """Client to interact with CRM system."""
+
     def __init__(self, config, api_version="3.0.0"):
         super().__init__()
         self.config = config

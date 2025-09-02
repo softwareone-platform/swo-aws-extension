@@ -59,6 +59,7 @@ def setup_agreement_external_id(client, context, account_id):
 
 class AssignMPA(Step):
     """Assign Master payer account to the agreement."""
+
     def __init__(self, config, role_name):
         self._config = config
         self._role_name = role_name
@@ -69,7 +70,9 @@ class AssignMPA(Step):
         if phase and phase != PhasesEnum.ASSIGN_MPA:
             logger.info(
                 "%s - Next - Current phase is '%s', skipping as it is not '%s'",
-                context.order_id, phase, PhasesEnum.ASSIGN_MPA.value,
+                context.order_id,
+                phase,
+                PhasesEnum.ASSIGN_MPA.value,
             )
             next_step(client, context)
             return
@@ -81,7 +84,9 @@ class AssignMPA(Step):
             )
             logger.info(
                 "%s - Next - MPA account %s already assigned to order %s. Continue",
-                context.order_id, context.mpa_account, context.order_id,
+                context.order_id,
+                context.mpa_account,
+                context.order_id,
             )
             next_step(client, context)
             return
@@ -108,7 +113,9 @@ class AssignMPA(Step):
                 create_pool_notification(new_notification)
                 logger.info(
                     "%s - Action - Created new empty notification for %s with PLS status: %s",
-                    context.order_id, context.seller_country, context.pls_enabled,
+                    context.order_id,
+                    context.seller_country,
+                    context.pls_enabled,
                 )
             return
 
@@ -123,7 +130,8 @@ class AssignMPA(Step):
         except AWSError as e:
             logger.exception(
                 "%s - Error - Failed to retrieve MPA credentials for %s.",
-                context.order_id, context.airtable_mpa.account_id,
+                context.order_id,
+                context.airtable_mpa.account_id,
             )
             are_credentials_valid = False
             credentials_error = str(e)
@@ -143,7 +151,8 @@ class AssignMPA(Step):
             return
         logger.info(
             "%s - Action - MPA credentials for %s retrieved successfully",
-            context.order_id, context.airtable_mpa.account_id,
+            context.order_id,
+            context.airtable_mpa.account_id,
         )
         airtable_mpa = context.airtable_mpa
         airtable_mpa = copy_context_data_to_mpa_pool_model(context, airtable_mpa)
@@ -159,13 +168,16 @@ class AssignMPA(Step):
         )
 
         logger.info(
-            "%s - Next - Master Payer Account %s assigned.", context.order_id, context.mpa_account,
+            "%s - Next - Master Payer Account %s assigned.",
+            context.order_id,
+            context.mpa_account,
         )
         next_step(client, context)
 
 
 class AssignSplitBillingMPA(Step):
     """Assign Split billing MPA to the agreement."""
+
     def __init__(self, config, role_name):
         self._config = config
         self._role_name = role_name
@@ -176,7 +188,9 @@ class AssignSplitBillingMPA(Step):
         if phase and phase != PhasesEnum.ASSIGN_MPA:
             logger.info(
                 "%s - Next - Current phase is '%s', skipping as it is not '%s'",
-                context.order_id, context.order_id, PhasesEnum.ASSIGN_MPA.value,
+                context.order_id,
+                context.order_id,
+                PhasesEnum.ASSIGN_MPA.value,
             )
             next_step(client, context)
             return
@@ -197,7 +211,8 @@ class AssignSplitBillingMPA(Step):
 
         logger.info(
             "%s - Action - MPA credentials for %s retrieved successfully",
-            context.order_id, context.airtable_mpa.account_id,
+            context.order_id,
+            context.airtable_mpa.account_id,
         )
 
         context.order = set_mpa_email(context.order, context.airtable_mpa.account_email)
@@ -210,13 +225,15 @@ class AssignSplitBillingMPA(Step):
 
         logger.info(
             "%s - Next - Split Billing Master Payer Account %s assigned.",
-            context.order_id, context.mpa_account,
+            context.order_id,
+            context.mpa_account,
         )
         next_step(client, context)
 
 
 class AssignTransferMPAStep(Step):
     """Assign MPA for transfered AWS accounts."""
+
     def __init__(self, config, role_name):
         self._config = config
         self._role_name = role_name
@@ -250,7 +267,8 @@ class AssignTransferMPAStep(Step):
         if get_phase(context.order) != PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION:
             logger.info(
                 "%s - Skipping - Current phase is '%s', skipping as it is not '%s'",
-                context.order_id, get_phase(context.order),
+                context.order_id,
+                get_phase(context.order),
                 PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION.value,
             )
             next_step(client, context)
@@ -259,7 +277,8 @@ class AssignTransferMPAStep(Step):
         if not context.mpa_account:
             logger.info(
                 "%s - Action - MPA account is not set in context. Setting to %s",
-                context.order_id, context.order_master_payer_id,
+                context.order_id,
+                context.order_master_payer_id,
             )
             setup_agreement_external_id(client, context, context.order_master_payer_id)
         try:
@@ -269,7 +288,8 @@ class AssignTransferMPAStep(Step):
             context.order = set_phase(context.order, PhasesEnum.PRECONFIGURATION_MPA.value)
             logger.info(
                 "%s - Action - Update phase to %s",
-                context.order_id, PhasesEnum.CREATE_SUBSCRIPTIONS.value,
+                context.order_id,
+                PhasesEnum.CREATE_SUBSCRIPTIONS.value,
             )
             update_order(client, context.order_id, parameters=context.order["parameters"])
             logger.info(
@@ -280,7 +300,8 @@ class AssignTransferMPAStep(Step):
         except AWSError as e:
             logger.exception(
                 "%s - Error- Failed to retrieve MPA credentials for %s.",
-                context.order_id, context.mpa_account,
+                context.order_id,
+                context.mpa_account,
             )
             credentials_error = str(e)
             title = (

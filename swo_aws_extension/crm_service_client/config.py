@@ -3,6 +3,7 @@ from django.conf import settings
 
 class CRMConfig:
     """CRM access."""
+
     @property
     def base_url(self) -> str:
         """Base CRM url."""

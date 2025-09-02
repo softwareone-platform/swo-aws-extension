@@ -123,7 +123,8 @@ def test_get_service_request(crm_client, mocker):
 
     assert response == service_request_response
     crm_client.get.assert_called_once_with(
-        url="/ticketing/ServiceRequests/12345", headers={"x-correlation-id": order_id},
+        url="/ticketing/ServiceRequests/12345",
+        headers={"x-correlation-id": order_id},
         timeout=60,
     )
 
