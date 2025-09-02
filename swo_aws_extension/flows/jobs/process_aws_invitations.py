@@ -20,12 +20,15 @@ logger = logging.getLogger(__name__)
 
 class CheckInvitationLinksStep(Step):
     """Check invitation links."""
+
     def __call__(self, client, context: PurchaseContext, next_step):
         """Execute step."""
         if get_phase(context.order) != PhasesEnum.CHECK_INVITATION_LINK:
             logger.info(
                 "%s - Stop - Expecting phase '%s' got '%s'",
-                context.order_id, PhasesEnum.CHECK_INVITATION_LINK.value, get_phase(context.order),
+                context.order_id,
+                PhasesEnum.CHECK_INVITATION_LINK.value,
+                get_phase(context.order),
             )
             return
         next_step(client, context)
@@ -33,6 +36,7 @@ class CheckInvitationLinksStep(Step):
 
 class AWSInvitationsProcessor:
     """Process AWS invitation."""
+
     def __init__(self, client, config):
         self.client = client
         self.config = config

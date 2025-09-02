@@ -23,6 +23,7 @@ JOURNAL_PENDING_STATUS = [ERROR, DRAFT, VALIDATED]
 
 class UsageMetricTypeEnum(StrEnum):
     """AWS usage metric."""
+
     MARKETPLACE = "MARKETPLACE"
     USAGE = "USAGE"
     PROVIDER_DISCOUNT = "PROVIDER_DISCOUNT"
@@ -35,6 +36,7 @@ class UsageMetricTypeEnum(StrEnum):
 
 class AWSServiceEnum(StrEnum):
     """AWS service type."""
+
     SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE = "Savings Plans for AWS Compute usage"
     TAX = "Tax"
     REFUND = "Refund"
@@ -43,6 +45,7 @@ class AWSServiceEnum(StrEnum):
 
 class AWSRecordTypeEnum(StrEnum):
     """AWS."""
+
     USAGE = "Usage"
     SOLUTION_PROVIDER_PROGRAM_DISCOUNT = "Solution Provider Program Discount"
     SUPPORT = "Support"
@@ -56,6 +59,7 @@ EXCLUDE_USAGE_SERVICES = [AWSServiceEnum.SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE]
 
 class ItemSkusEnum(StrEnum):
     """Item sku type."""
+
     AWS_USAGE = "AWS Usage"
     AWS_MARKETPLACE = "AWS Marketplace"
     AWS_USAGE_INCENTIVATE = "AWS Usage incentivate"
@@ -73,12 +77,14 @@ AWS_ITEMS_SKUS = [item.value for item in ItemSkusEnum]
 
 class AccountTypesEnum(StrEnum):
     """AWS extension account parameter choice."""
+
     NEW_ACCOUNT = "NewAccount"
     EXISTING_ACCOUNT = "ExistingAccount"
 
 
 class PhasesEnum(StrEnum):
     """AWS extension phase number."""
+
     ASSIGN_MPA = "assignMPA"
     PRECONFIGURATION_MPA = "preConfigurationMPA"
     CREATE_ACCOUNT = "createAccount"
@@ -95,18 +101,21 @@ CRM_TICKET_RESOLVED_STATE = "Resolved"
 
 class TerminationParameterChoices(StrEnum):
     """AWS extension termination parameter choice."""
+
     CLOSE_ACCOUNT = "CloseAccount"
     UNLINK_ACCOUNT = "UnlinkAccount"
 
 
 class SupportTypesEnum(StrEnum):
     """AWS extension support type choice."""
+
     RESOLD_SUPPORT = "ResoldSupport"
     PARTNER_LED_SUPPORT = "PartnerLedSupport"
 
 
 class TransferTypesEnum(StrEnum):
     """AWS extension transfer type."""
+
     TRANSFER_WITHOUT_ORGANIZATION = "TransferWithoutOrganization"
     TRANSFER_WITH_ORGANIZATION = "TransferWithOrganization"
     SPLIT_BILLING = "SplitBilling"
@@ -114,6 +123,7 @@ class TransferTypesEnum(StrEnum):
 
 class CCPOnboardStatusEnum(StrEnum):
     """CCP onboard statuses."""
+
     RUNNING = "Running"
     SUCCEEDED = "Succeeded"
     FAILED = "Failed"
@@ -211,6 +221,7 @@ CRM_CCP_TICKET_SUMMARY = (
 
 class StateMessageError(StrEnum):
     """State messages."""
+
     REQUESTED = "Review the invitation for account {account}."
     OPEN = "Review the invitation for account {account}."
     CANCELED = (
@@ -245,6 +256,7 @@ FAILED_TO_SAVE_SECRET_TO_KEY_VAULT = "Failed to save secret to key vault"  # noq
 
 class AwsHandshakeStateEnum(StrEnum):
     """AWS handshake statuses."""
+
     REQUESTED = "REQUESTED"
     OPEN = "OPEN"
     CANCELED = "CANCELED"
@@ -255,12 +267,14 @@ class AwsHandshakeStateEnum(StrEnum):
 
 class AgreementStatusEnum(StrEnum):
     """MPT Agreement status."""
+
     ACTIVE = "Active"
     UPDATING = "Updating"
 
 
 class SubscriptionStatusEnum(StrEnum):
     """MPT subscription status."""
+
     ACTIVE = "Active"
     CONFIGURING = "Configuring"
     EXPIRED = "Expired"
@@ -271,6 +285,7 @@ class SubscriptionStatusEnum(StrEnum):
 
 class TemplateTypeEnum(StrEnum):
     """MPT template types."""
+
     ORDER_COMPLETED = "OrderCompleted"
     ORDER_PROCESSING = "OrderProcessing"
     ORDER_QUERYING = "OrderQuerying"
@@ -278,6 +293,7 @@ class TemplateTypeEnum(StrEnum):
 
 class OrderCompletedTemplateEnum(StrEnum):
     """Order completed templates."""
+
     TRANSFER_WITH_ORG_WITH_PLS = "Order completed existing tenant with org - pls"
     TRANSFER_WITH_ORG_WITHOUT_PLS = "Order completed existing tenant with org - no pls"
     TRANSFER_WITHOUT_ORG_WITH_PLS = "Order completed existing tenant - pls"
@@ -292,6 +308,7 @@ class OrderCompletedTemplateEnum(StrEnum):
 
 class OrderProcessingTemplateEnum(StrEnum):
     """Order processing templates."""
+
     NEW_ACCOUNT = "New Tenant - processing"
     CHANGE = "Processing add Linked account"
     TRANSFER_WITH_ORG = "Order processing template transfer with org"
@@ -304,6 +321,7 @@ class OrderProcessingTemplateEnum(StrEnum):
 
 class OrderQueryingTemplateEnum(StrEnum):
     """Order querying templates."""
+
     NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE = "Order querying template - root e-mail provided not unique."
     TRANSFER_AWAITING_INVITATIONS = "Querying - awaiting invitations acceptance"
 
@@ -321,6 +339,7 @@ AWS_BILLING_SUCCESS = "AWS Billing Journal Synchronization Success"
 
 class JournalAttachmentFilesNameEnum(StrEnum):
     """Journal attachments file names."""
+
     RECORD_TYPE_AND_SERVICE_COST = "Record type and service cost"
     SERVICE_INVOICE_ENTITY = "Service invoice entity"
     ORGANIZATION_INVOICES = "Organization invoices"

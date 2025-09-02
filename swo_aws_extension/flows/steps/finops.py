@@ -23,16 +23,22 @@ def create_finops_entitlement(ffc_client, account_id, buyer_id, logger_header):
     if entitlement:
         logger.info(
             "%s - Skipping - Entitlement already exists (%s) for account id %s",
-            logger_header, entitlement["id"], account_id,
+            logger_header,
+            entitlement["id"],
+            account_id,
         )
     else:
         logger.info(
-            "%s - Action - Creating entitlement for account id %s", logger_header, account_id,
+            "%s - Action - Creating entitlement for account id %s",
+            logger_header,
+            account_id,
         )
         entitlement = ffc_client.create_entitlement(buyer_id, account_id)
         logger.info(
             "%s - Action - Created entitlement %s for account id %s",
-            logger_header, entitlement["id"], account_id,
+            logger_header,
+            entitlement["id"],
+            account_id,
         )
 
 
@@ -42,6 +48,7 @@ class CreateFinOpsEntitlementStep(Step):
 
     It uses the FinOpsClient to create the entitlement.
     """
+
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
         """Execute step."""
         ffc_client = get_ffc_client()
@@ -62,12 +69,14 @@ class CreateFinOpsMPAEntitlementStep(Step):
 
     It uses the FinOpsClient to create the entitlement.
     """
+
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
         """Execute step."""
         ffc_client = get_ffc_client()
         logger.info(
             "%s - Action - Creating FinOps entitlement for MPA account %s",
-            context.order_id, context.mpa_account,
+            context.order_id,
+            context.mpa_account,
         )
         create_finops_entitlement(
             ffc_client, context.mpa_account, context.buyer["id"], context.order_id
@@ -98,6 +107,7 @@ class DeleteFinOpsEntitlementsStep(Step):
 
     It uses the FinOpsClient to delete the entitlement.
     """
+
     def __call__(self, client: MPTClient, context: TerminateContext, next_step):
         """Execute step."""
         ffc_client = get_ffc_client()
@@ -109,7 +119,8 @@ class DeleteFinOpsEntitlementsStep(Step):
             ffc_client.terminate_entitlement(context.mpa_account)
             logger.info(
                 "%s - Action - Terminated entitlement for MPA account id %s",
-                context.order_id, context.mpa_account,
+                context.order_id,
+                context.mpa_account,
             )
 
         logger.info("%s - Next - Terminate FinOps entitlement completed", context.order_id)
@@ -128,18 +139,23 @@ class DeleteFinOpsEntitlementsStep(Step):
         if not entitlement:
             logger.info(
                 "%s - Skip - Could not find entitlement for account id %s",
-                context.order_id, account_id,
+                context.order_id,
+                account_id,
             )
             return
         if entitlement["status"] == "new":
             ffc_client.delete_entitlement(entitlement["id"])
             logger.info(
                 "%s - Action - Deleted entitlement %s for account id %s",
-                context.order_id, entitlement["id"], account_id,
+                context.order_id,
+                entitlement["id"],
+                account_id,
             )
         elif entitlement["status"] == "active":
             ffc_client.terminate_entitlement(entitlement["id"])
             logger.info(
                 "%s - Action - Terminated entitlement %s for account id %s",
-                context.order_id, entitlement["id"], account_id,
+                context.order_id,
+                entitlement["id"],
+                account_id,
             )

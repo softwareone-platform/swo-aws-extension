@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class RegisterTransferredMPAToAirtableStep(Step):
     """Register transfer Master payer account to the airtable."""
+
     def exists_in_airtable(self, account_id):
         """Check if the MPA already exists in Airtable."""
         mpa_pool_model = get_master_payer_account_pool_model(AirTableBaseInfo.for_mpa_pool())
@@ -30,7 +31,8 @@ class RegisterTransferredMPAToAirtableStep(Step):
         if context.airtable_mpa or self.exists_in_airtable(context.mpa_account):
             logger.info(
                 "%s - Skip - MPA %s already registered in Airtable",
-                context.order_id, context.mpa_account,
+                context.order_id,
+                context.mpa_account,
             )
             next_step(client, context)
             return
@@ -53,6 +55,8 @@ class RegisterTransferredMPAToAirtableStep(Step):
         context.airtable_mpa.save()
         logger.info(
             "%s - Action - Created MPA in Airtable: %s for MPA: %s",
-            context.order_id, context.airtable_mpa.id, context.mpa_account,
+            context.order_id,
+            context.airtable_mpa.id,
+            context.mpa_account,
         )
         next_step(client, context)

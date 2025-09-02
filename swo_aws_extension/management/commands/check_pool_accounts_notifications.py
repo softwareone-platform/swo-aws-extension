@@ -7,6 +7,7 @@ config = Config()
 
 class Command(StyledPrintCommand):
     """Check pool account notifications."""
+
     help = "Check Pool Account Notifications"
 
     def handle(self, *args, **options):

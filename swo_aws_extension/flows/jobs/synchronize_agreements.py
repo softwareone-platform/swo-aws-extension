@@ -93,7 +93,8 @@ def _get_active_accounts(aws_client, agreement_id, mpa_account_id):
         if account["Status"] != "ACTIVE":
             logger.info(
                 "%s - Skipping - Import Account %s as it is not active",
-                agreement_id, account["Id"],
+                agreement_id,
+                account["Id"],
             )
             continue
 
@@ -118,26 +119,27 @@ def check_existing_subscription_items(mpt_client, items, subscription, agreement
     skus_to_delete = [sku for sku in purchased_skus if sku not in AWS_ITEMS_SKUS]
     if skus_to_add:
         for sku_to_add in skus_to_add:
-            subscription["lines"].append(
-                {
-                    "item": find_first(
-                        lambda item, sku=sku_to_add: item["externalIds"]["vendor"] == sku,
-                        items,
-                    ),
-                    "quantity": 1,
-                }
-            )
+            subscription["lines"].append({
+                "item": find_first(
+                    lambda item, sku=sku_to_add: item["externalIds"]["vendor"] == sku,
+                    items,
+                ),
+                "quantity": 1,
+            })
         subscription = update_agreement_subscription(
             mpt_client, subscription.get("id"), lines=subscription.get("lines")
         )
         logger.info(
             "%s - Action - Added items %s to subscription %s",
-            agreement_id, skus_to_add, subscription.get("id"),
+            agreement_id,
+            skus_to_add,
+            subscription.get("id"),
         )
 
     if skus_to_delete:
         lines = [
-            line for line in subscription.get("lines", [])
+            line
+            for line in subscription.get("lines", [])
             if line["item"]["externalIds"]["vendor"] not in skus_to_delete
         ]
         subscription = update_agreement_subscription(
@@ -145,7 +147,9 @@ def check_existing_subscription_items(mpt_client, items, subscription, agreement
         )
         logger.info(
             "%s - Action - Removed items %s from subscription %s",
-            agreement_id, skus_to_delete, subscription.get("id"),
+            agreement_id,
+            skus_to_delete,
+            subscription.get("id"),
         )
 
 
@@ -219,7 +223,8 @@ def _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run): 
             if not items:
                 logger.error(
                     "%s - Failed to get product items with skus %s",
-                    agreement.get("id"), AWS_ITEMS_SKUS,
+                    agreement.get("id"),
+                    AWS_ITEMS_SKUS,
                 )
                 continue
 
@@ -229,7 +234,9 @@ def _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run): 
                 )
                 logger.info(
                     "%s - Next - Subscription for %s (%s) synchronized",
-                    agreement.get("id"), account_id, existing_subscription["id"],
+                    agreement.get("id"),
+                    account_id,
+                    existing_subscription["id"],
                 )
                 continue
 
@@ -250,14 +257,16 @@ def _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run): 
                 logger.error(
                     "%s - Error - %s is not linked to any "
                     "agreement subscription and split billing has been detected",
-                    agreement.get("id"), account_id,
+                    agreement.get("id"),
+                    account_id,
                 )
                 send_error(
                     "Synchronize AWS agreement subscriptions - New linked account detected",
                     "%s - Linked Account %s is not linked to any "
                     "subscription and split billing has been detected. This account will not be "
                     "synchronized.",
-                    agreement.get("id"), account_id,
+                    agreement.get("id"),
+                    account_id,
                 )
                 continue
 
@@ -292,14 +301,19 @@ def _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run): 
             if dry_run:
                 logger.info(
                     "%s - Subscription for %s (%s) to be created: %s",
-                    agreement.get("id"), account_id, subscription["name"], subscription,
+                    agreement.get("id"),
+                    account_id,
+                    subscription["name"],
+                    subscription,
                 )
                 continue
 
             subscription = create_agreement_subscription(mpt_client, subscription)
             logger.info(
                 "%s - Subscription for %s (%s) created",
-                agreement.get("id"), account_id, subscription["id"],
+                agreement.get("id"),
+                account_id,
+                subscription["id"],
             )
             ffc_client = get_ffc_client()
             create_finops_entitlement(
@@ -308,7 +322,8 @@ def _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run): 
         except Exception:
             logger.exception(
                 "%s - Failed to synchronize account %s.",
-                agreement.get("id"), account_id,
+                agreement.get("id"),
+                account_id,
             )
 
 

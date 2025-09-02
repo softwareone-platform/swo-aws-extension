@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class SetupContext(Step):
     """Initial setup context step."""
+
     def __init__(self, config, role_name):
         self._config = config
         self._role_name = role_name
@@ -46,7 +47,8 @@ class SetupContext(Step):
         context.aws_client = AWSClient(self._config, context.mpa_account, self._role_name)
         logger.info(
             "%s - Action - MPA credentials for %s retrieved successfully",
-            context.order_id, context.mpa_account,
+            context.order_id,
+            context.mpa_account,
         )
 
     def init_template(self, client: MPTClient, context: InitialAWSContext):
@@ -74,7 +76,8 @@ class SetupContext(Step):
             )
             logger.info(
                 "%s - Action - Setup setup_account_request_id in context: %s",
-                context.order_id, context.account_creation_status,
+                context.order_id,
+                context.account_creation_status,
             )
 
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
@@ -87,6 +90,7 @@ class SetupContext(Step):
 
 class SetupPurchaseContext(SetupContext):
     """Setup Context for purchase order."""
+
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
         """Execute step."""
         self.init_template(client, context)
@@ -101,6 +105,7 @@ class SetupPurchaseContext(SetupContext):
 
 class SetupChangeContext(SetupContext):
     """Setup context for change order."""
+
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
         """Execute step."""
         self.init_template(client, context)
@@ -112,6 +117,7 @@ class SetupChangeContext(SetupContext):
 
 class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
     """Setups context for purchase case with organization."""
+
     def __call__(self, client, context: PurchaseContext, next_step):  # noqa: C901
         """
         If not a transfer with organization purchase order, then we skip this step.
@@ -142,7 +148,8 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
                 parameters=context.order["parameters"],
             )
             logger.info(
-                "%s - Action - Updated phase to {get_phase(context.order)}", context.order_id,
+                "%s - Action - Updated phase to {get_phase(context.order)}",
+                context.order_id,
             )
 
         if not context.order_master_payer_id:
@@ -162,7 +169,7 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
             logger.info(
                 "%s - Querying - Order Master payer id is not set in "
                 "Purchase transfer with organization",
-                context.order_id
+                context.order_id,
             )
             return
 
@@ -179,6 +186,7 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
 
 class SetupContextPurchaseTransferWithoutOrganizationStep(SetupContext):
     """Setup context for purchases to transfer without organization."""
+
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
         """Execute step."""
         self.init_template(client, context)
@@ -189,7 +197,9 @@ class SetupContextPurchaseTransferWithoutOrganizationStep(SetupContext):
                 client, context.order_id, parameters=context.order["parameters"]
             )
             logger.info(
-                "%s - Action - Updated phase  to %s", context.order_id, get_phase(context.order),
+                "%s - Action - Updated phase  to %s",
+                context.order_id,
+                get_phase(context.order),
             )
         if context.mpa_account:
             self.setup_aws(context)
@@ -200,11 +210,13 @@ class SetupContextPurchaseTransferWithoutOrganizationStep(SetupContext):
 
 class SetupTerminateContextStep(SetupContext):
     """Setup context for termination orders."""
+
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
         """Execute step."""
         self.init_template(client, context)
         self.setup_aws(context)
         logger.info(
-            "%s - Next - SetupTerminateContextStep completed successfully", context.order_id,
+            "%s - Next - SetupTerminateContextStep completed successfully",
+            context.order_id,
         )
         next_step(client, context)

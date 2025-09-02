@@ -17,13 +17,15 @@ class MPAPreConfiguration(Step):
 
     It configures master payer account, create organization, activate access and enables SCP.
     """
+
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         """Execute step."""
         if get_phase(context.order) != PhasesEnum.PRECONFIGURATION_MPA:
             logger.info(
                 "%s - Skip - Current phase is '{get_phase(context.order)}', "
                 "skipping as it is not '%s'",
-                context.order_id, PhasesEnum.PRECONFIGURATION_MPA.value,
+                context.order_id,
+                PhasesEnum.PRECONFIGURATION_MPA.value,
             )
             next_step(client, context)
             return

@@ -36,6 +36,7 @@ def is_list_of_aws_accounts(multiline_account_id: str) -> bool:
 
 class ValidatePurchaseTransferWithoutOrganizationStep(Step):
     """Validate if the transfer without organization is possible."""
+
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         """Run step."""
         # Checking if the step is for this type of order
@@ -46,7 +47,8 @@ class ValidatePurchaseTransferWithoutOrganizationStep(Step):
 
         if not context.is_type_transfer_without_organization():
             logger.info(
-                "%s - Skip - Order is not a transfer without organization", context.order_id,
+                "%s - Skip - Order is not a transfer without organization",
+                context.order_id,
             )
             next_step(client, context)
             return
@@ -107,7 +109,8 @@ class ValidatePurchaseTransferWithoutOrganizationStep(Step):
             return
 
         logger.info(
-            "%s - Next - Transfer without organization validation completed.", context.order_id,
+            "%s - Next - Transfer without organization validation completed.",
+            context.order_id,
         )
         next_step(client, context)
 

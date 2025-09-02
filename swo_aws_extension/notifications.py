@@ -41,6 +41,7 @@ env.filters["dateformat"] = dateformat
 @dataclass
 class Button:
     """MS Teams button."""
+
     label: str
     url: str
 
@@ -48,6 +49,7 @@ class Button:
 @dataclass
 class FactsSection:
     """MS Teams facts section."""
+
     title: str
     data: dict
 
@@ -145,6 +147,7 @@ def send_exception(
 
 class MPTNotifier:  # TODO: Consider moving some of the functionality to SDK
     """Email notification using MPT API."""
+
     def __init__(self, mpt_client: MPTClient):
         self.mpt_client = mpt_client
 

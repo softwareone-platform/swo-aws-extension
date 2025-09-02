@@ -77,12 +77,14 @@ def manage_create_linked_account_error(
             client, OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE
         )
         logger.info(
-            "%s - Querying - Order switched to query to provide a valid email", context.order_id,
+            "%s - Querying - Order switched to query to provide a valid email",
+            context.order_id,
         )
         return
     logger.error(
         "%s - Stop - AWS linked account creation failed: %s",
-        context.order_id, context.account_creation_status.failure_reason,
+        context.order_id,
+        context.account_creation_status.failure_reason,
     )
 
 
@@ -125,13 +127,15 @@ def validate_linked_account_parameters(
 
 class CreateInitialLinkedAccountStep(Step):
     """Create initial linked account in AWS."""
+
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):  # noqa: C901
         """Execute step."""
         if get_phase(context.order) != PhasesEnum.CREATE_ACCOUNT:
             logger.info(
                 "%s - Skip - Current phase is '{get_phase(context.order)}', "
                 "skipping as it is not '%s'",
-                context.order_id, PhasesEnum.CREATE_ACCOUNT.value,
+                context.order_id,
+                PhasesEnum.CREATE_ACCOUNT.value,
             )
             next_step(client, context)
             return
@@ -140,7 +144,8 @@ class CreateInitialLinkedAccountStep(Step):
             logger.info("%s - Start - Checking linked account request status", context.order_id)
             if context.account_creation_status.status == "SUCCEEDED":
                 logger.info(
-                    "%s - Completed - AWS linked account created successfully", context.order_id,
+                    "%s - Completed - AWS linked account created successfully",
+                    context.order_id,
                 )
                 context.order = set_phase(context.order, PhasesEnum.CREATE_SUBSCRIPTIONS.value)
                 update_order(client, context.order_id, parameters=context.order["parameters"])
@@ -179,7 +184,9 @@ class CreateInitialLinkedAccountStep(Step):
 
         logger.info(
             "%s - Intent - Creating initial linked account with: email=%s, name=%s",
-            context.order_id, context.root_account_email, context.account_name,
+            context.order_id,
+            context.root_account_email,
+            context.account_name,
         )
         try:
             linked_account = context.aws_client.create_linked_account(
@@ -187,14 +194,16 @@ class CreateInitialLinkedAccountStep(Step):
             )
             logger.info(
                 "%s - Action - Linked account created: %s",
-                context.order_id, linked_account,
+                context.order_id,
+                linked_account,
             )
 
             context.order = set_account_request_id(context.order, linked_account.account_request_id)
             update_order(client, context.order_id, parameters=context.order["parameters"])
         except AWSError as e:
             logger.exception(
-                "%s - ActionError - Error creating Linked Account.", context.order_id,
+                "%s - ActionError - Error creating Linked Account.",
+                context.order_id,
             )
             title = f"{context.order_id} - Error creating linked account"
             send_error(title, str(e))
@@ -203,6 +212,7 @@ class CreateInitialLinkedAccountStep(Step):
 
 class AddLinkedAccountStep(Step):
     """Add linked account to the AWS account."""
+
     def __call__(self, client: MPTClient, context: ChangeContext, next_step):
         """Execute step."""
         if context.account_creation_status:
@@ -212,7 +222,8 @@ class AddLinkedAccountStep(Step):
                 template_name = TemplateNameManager.processing(context)
                 context.update_processing_template(client, template_name)
                 logger.info(
-                    "%s - Completed - AWS linked account created successfully", context.order_id,
+                    "%s - Completed - AWS linked account created successfully",
+                    context.order_id,
                 )
                 next_step(client, context)
                 return
@@ -246,7 +257,9 @@ class AddLinkedAccountStep(Step):
 
         logger.info(
             "%s - Intent - Creating new linked account with: email=%s, name=%s",
-            context.order_id, context.root_account_email, context.account_name,
+            context.order_id,
+            context.root_account_email,
+            context.account_name,
         )
         linked_account = context.aws_client.create_linked_account(
             context.root_account_email, context.account_name

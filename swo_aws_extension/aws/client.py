@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AccountCreationStatus:
     """AWS account creation status."""
+
     account_request_id: str
     status: str
     account_name: str
@@ -57,6 +58,7 @@ class AccountCreationStatus:
 
 class AWSClient:
     """AWS client."""
+
     def __init__(self, config, mpa_account_id, role_name) -> None:
         self.config = config
         self.mpa_account_id = mpa_account_id
@@ -370,7 +372,8 @@ class AWSClient:
             if e.response["Error"]["Code"] == "DuplicateHandshakeException":
                 logger.exception(
                     "Failed to invite account %s to the organization: %s",
-                    account_id, e.response["Error"]["Message"]
+                    account_id,
+                    e.response["Error"]["Message"],
                 )
             else:
                 raise

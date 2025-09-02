@@ -9,6 +9,7 @@ class InMemoryZipBuilder:
     This class allows adding files to a ZIP archive and retrieving the
     resulting ZIP file as a BytesIO object.
     """
+
     def __init__(self):
         self._buffer = io.BytesIO()
         self._zip = zipfile.ZipFile(self._buffer, "w", zipfile.ZIP_DEFLATED)

@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 class InitializeItemStep(Step):
     """Initialize step."""
+
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         """Execute step."""
         items = get_product_items_by_skus(
@@ -19,7 +20,9 @@ class InitializeItemStep(Step):
         )
         if not items:
             logger.error(
-                "%s - Failed to get product items with skus %s", context.order_id, AWS_ITEMS_SKUS,
+                "%s - Failed to get product items with skus %s",
+                context.order_id,
+                AWS_ITEMS_SKUS,
             )
             return
         items = [{"item": item, "quantity": 1} for item in items]

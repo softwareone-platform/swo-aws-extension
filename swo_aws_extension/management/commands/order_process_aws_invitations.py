@@ -8,6 +8,7 @@ config = Config()
 
 class Command(StyledPrintCommand):
     """Check AWS invitation state."""
+
     help = "Check AWS invitation states"
     name = "order_process_aws_invitations"
 

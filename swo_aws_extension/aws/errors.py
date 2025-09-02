@@ -19,6 +19,7 @@ class AWSError(Exception):
 
 class AWSHttpError(AWSError):
     """AWS http error."""
+
     def __init__(self, status_code: int, content: str):
         self.status_code = status_code
         self.content = content
@@ -27,6 +28,7 @@ class AWSHttpError(AWSError):
 
 class AWSOpenIdError(AWSHttpError):
     """AWS openId error."""
+
     def __init__(self, status_code: int, payload: dict) -> None:
         super().__init__(status_code, json.dumps(payload))
         self.payload: dict = payload
@@ -43,6 +45,7 @@ class AWSOpenIdError(AWSHttpError):
 
 def wrap_http_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]:  # noqa: UP047
     """Wraps http error to internal."""
+
     @wraps(func)
     def _wrapper(*args: Param.args, **kwargs: Param.kwargs) -> RetType:
         try:
@@ -62,6 +65,7 @@ def wrap_http_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]:
 
 def wrap_boto3_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]:  # noqa: UP047
     """Wraps boto3 error to internal extension errors."""
+
     @wraps(func)
     def _wrapper(*args: Param.args, **kwargs: Param.kwargs) -> RetType:
         try:

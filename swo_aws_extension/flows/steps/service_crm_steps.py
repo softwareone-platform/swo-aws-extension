@@ -48,6 +48,7 @@ logger = logging.getLogger(__name__)
 
 class AwaitCRMTicketStatusStep(Step):
     """Await for a CRM ticket to reach any of the target status before proceeding."""
+
     def __init__(
         self,
         get_ticket_id: callable(InitialAWSContext),
@@ -86,7 +87,10 @@ class AwaitCRMTicketStatusStep(Step):
         if ticket["state"] not in self.target_status:
             logger.info(
                 "%s - Stopping - Awaiting for ticket_id=%s to move from state=%s to any of %s",
-                context.order_id, ticket_id, ticket["state"], self.target_status,
+                context.order_id,
+                ticket_id,
+                ticket["state"],
+                self.target_status,
             )
             return
         next_step(client, context)
@@ -94,6 +98,7 @@ class AwaitCRMTicketStatusStep(Step):
 
 class CreateServiceRequestStep(Step):
     """Create CRM ticket request."""
+
     def __init__(
         self,
         service_request_factory: Callable[[InitialAWSContext], ServiceRequest],
@@ -127,6 +132,7 @@ class CreateServiceRequestStep(Step):
 
 class CreateTerminationServiceRequestStep(CreateServiceRequestStep):
     """Create CRM ticket for Termination order."""
+
     def __init__(self):
         # TODO: what's the point to pass functions via constructor if you are already
         # has inheritance? Just override them here
@@ -168,7 +174,8 @@ class CreateTerminationServiceRequestStep(CreateServiceRequestStep):
             raise ValueError("Updating crm service ticket id - Ticket id is required.")
         logger.info(
             "%s - Action - Ticket created for terminate account with id=%s",
-            context.order_id, crm_ticket_id,
+            context.order_id,
+            crm_ticket_id,
         )
         context.order = set_crm_termination_ticket_id(context.order, crm_ticket_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])
@@ -176,6 +183,7 @@ class CreateTerminationServiceRequestStep(CreateServiceRequestStep):
 
 class AwaitTerminationServiceRequestStep(AwaitCRMTicketStatusStep):
     """Wait for CRM service request."""
+
     def __init__(self):
         super().__init__(
             get_ticket_id=self.get_crm_ticket,
@@ -190,6 +198,7 @@ class AwaitTerminationServiceRequestStep(AwaitCRMTicketStatusStep):
 
 class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
     """Create transfer request ticket for CRM system (without organization)."""
+
     def __init__(self):
         super().__init__(
             service_request_factory=self.build_service_request,
@@ -225,7 +234,8 @@ class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
             raise ValueError("Updating crm service ticket id - Ticket id is required.")
         logger.info(
             "%s - Action - Ticket created for transfer organization with id=%s",
-            context.order_id, crm_ticket_id,
+            context.order_id,
+            crm_ticket_id,
         )
         context.order = set_crm_transfer_organization_ticket_id(context.order, crm_ticket_id)
         context.update_processing_template(
@@ -234,7 +244,8 @@ class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
         )
         logger.info(
             "%s - Action - Created transfer service request ticket with id=%s",
-            context.order_id, crm_ticket_id,
+            context.order_id,
+            crm_ticket_id,
         )
 
     def should_create_ticket_criteria(self, context: PurchaseContext) -> bool:
@@ -245,6 +256,7 @@ class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
 
 class CreateUpdateKeeperTicketStep(CreateServiceRequestStep):
     """Create ticket to CRM to update Keeper."""
+
     def __init__(self):
         super().__init__(
             service_request_factory=self.build_service_request,
@@ -285,7 +297,8 @@ class CreateUpdateKeeperTicketStep(CreateServiceRequestStep):
             raise ValueError("Ticket id is required.")
         logger.info(
             "%s - Action - Ticket created for keeper shared credentials with id=%s",
-            context.order_id, crm_ticket_id,
+            context.order_id,
+            crm_ticket_id,
         )
         context.order = set_crm_keeper_ticket_id(context.order, crm_ticket_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])
@@ -293,6 +306,7 @@ class CreateUpdateKeeperTicketStep(CreateServiceRequestStep):
 
 class CreateOnboardTicketStep(CreateServiceRequestStep):
     """Create onboard ticket."""
+
     def __init__(self):
         super().__init__(
             service_request_factory=self.build_service_request,
@@ -338,7 +352,8 @@ class CreateOnboardTicketStep(CreateServiceRequestStep):
             raise ValueError("Ticket id is required.")
         logger.info(
             "%s - Action - Ticket created for onboard account with id=%s",
-            context.order_id, crm_ticket_id,
+            context.order_id,
+            crm_ticket_id,
         )
         context.order = set_crm_onboard_ticket_id(context.order, crm_ticket_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])
@@ -346,6 +361,7 @@ class CreateOnboardTicketStep(CreateServiceRequestStep):
 
 class AwaitTransferRequestTicketWithOrganizationStep(AwaitCRMTicketStatusStep):
     """Wait for CRM transfer request be completed."""
+
     def __init__(self):
         super().__init__(
             get_ticket_id=self.get_crm_ticket,

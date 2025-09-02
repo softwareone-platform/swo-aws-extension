@@ -17,6 +17,7 @@ from swo_aws_extension.parameters import get_account_type, get_termination_type_
 # already know what template to use, you don't need these functions
 class TemplateNameManager:
     """Choose proper template for the order."""
+
     @staticmethod
     def processing(context: InitialAWSContext) -> str:
         """For processing step."""

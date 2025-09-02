@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 class CompleteOrderStep(Step):
     """Complete order with template."""
+
     def __call__(self, client, context, next_step):
         """Execute step."""
         self._complete_order(client, context)
@@ -25,13 +26,15 @@ class CompleteOrderStep(Step):
 
 class CompletePurchaseOrderStep(CompleteOrderStep):
     """Complete purchase order."""
+
     def __call__(self, client, context, next_step):
         """Execute step."""
         if get_phase(context.order) != PhasesEnum.COMPLETED:
             logger.info(
                 "%s - Skip - Current phase is '{get_phase(context.order)}', "
                 "skipping as it is not '%s'",
-                context.order_id, PhasesEnum.COMPLETED.value,
+                context.order_id,
+                PhasesEnum.COMPLETED.value,
             )
             next_step(client, context)
             return
@@ -42,6 +45,7 @@ class CompletePurchaseOrderStep(CompleteOrderStep):
 
 class CompleteChangeOrderStep(CompleteOrderStep):
     """Complete change order."""
+
     def __call__(self, client, context, next_step):
         """Exececute step."""
         context.order = set_account_request_id(context.order, "")
@@ -51,6 +55,7 @@ class CompleteChangeOrderStep(CompleteOrderStep):
 
 class CompleteTerminationOrderStep(CompleteOrderStep):
     """Complete termination order."""
+
     def __call__(self, client, context, next_step):
         """Execute step."""
         context.order = set_account_request_id(context.order, "")

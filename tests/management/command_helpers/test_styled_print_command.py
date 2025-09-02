@@ -3,6 +3,7 @@ from swo_aws_extension.management.commands_helpers import StyledPrintCommand
 
 class DummyCommand(StyledPrintCommand):
     """Dummy command."""
+
     def handle(self, *args, **options):
         """Run dummy command."""
         self.success("Happy world")

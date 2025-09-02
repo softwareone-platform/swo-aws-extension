@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 class CCPOnboard(Step):
     """Onboard account for CCP."""
+
     def __init__(self, config):
         self.config = config
 
@@ -39,7 +40,8 @@ class CCPOnboard(Step):
         if get_phase(context.order) != PhasesEnum.CCP_ONBOARD:
             logger.info(
                 "Current phase is '%s', skipping as it is not '%s'",
-                get_phase(context.order), PhasesEnum.CCP_ONBOARD.value,
+                get_phase(context.order),
+                PhasesEnum.CCP_ONBOARD.value,
             )
             next_step(mpt_client, context)
             return
@@ -72,7 +74,8 @@ class CCPOnboard(Step):
         """
         logger.info(
             "%s - Action - Checking CCP onboarding status for ccp_engagement_id=%s",
-            context.order_id, context.ccp_engagement_id,
+            context.order_id,
+            context.ccp_engagement_id,
         )
 
         onboard_status = ccp_client.get_onboard_status(context.ccp_engagement_id)
@@ -92,7 +95,8 @@ class CCPOnboard(Step):
             return
         logger.info(
             "%s - CCP Onboarding is in status %s. Notify the failure and continue",
-            context.order_id, onboard_status["engagementState"],
+            context.order_id,
+            onboard_status["engagementState"],
         )
         self._notify_ccp_onboard_failure(context, onboard_status)
         context.order = set_phase(context.order, PhasesEnum.COMPLETED.value)

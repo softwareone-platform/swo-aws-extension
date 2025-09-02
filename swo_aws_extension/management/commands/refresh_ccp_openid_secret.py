@@ -5,6 +5,7 @@ from swo_ccp_client.client import CCPClient
 
 class Command(StyledPrintCommand):
     """Refresh CCP openid secret."""
+
     help = "Refresh CCP OpenID Secret"
 
     def handle(self, *args, **options):  # pragma: no cover

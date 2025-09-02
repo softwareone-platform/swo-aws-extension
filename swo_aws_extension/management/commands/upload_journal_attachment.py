@@ -25,6 +25,7 @@ class Command(StyledPrintCommand):
         path: The file or folder to upload as attachment. In case of a folder, it will be zipped
         journal: The journal id, it will create
     """
+
     help = "Upload journal attachments files to MPT"
 
     def add_arguments(self, parser):
