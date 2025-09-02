@@ -11,6 +11,8 @@ from django.utils.module_loading import import_string
 from mpt_extension_sdk.core.events.dataclasses import Event
 from mpt_extension_sdk.core.utils import setup_client
 
+from swo_rql import RQLQuery
+
 logger = logging.getLogger(__name__)
 
 
@@ -61,9 +63,10 @@ class OrderEventProducer(EventProducer):
                     self.dispatcher.dispatch_event(Event(context.order_id, "orders", context))
 
     def get_processing_orders(self):
-        products = ",".join(settings.MPT_PRODUCTS_IDS)
         orders = []
-        rql_query = f"and(in(agreement.product.id,({products})),eq(status,processing))"
+        rql_query = RQLQuery().agreement.product.id.in_(settings.MPT_PRODUCTS_IDS) & RQLQuery(
+            status="processing"
+        )
         url = (
             f"/commerce/orders?{rql_query}&select=audit,parameters,lines,subscriptions,"
             f"subscriptions.lines,agreement,buyer,seller&order=audit.created.at"

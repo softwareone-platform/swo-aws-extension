@@ -37,7 +37,7 @@ class CCPOnboard(Step):
         if get_phase(context.order) != PhasesEnum.CCP_ONBOARD:
             logger.info(
                 f"Current phase is '{get_phase(context.order)}', "
-                f"skipping as it is not '{PhasesEnum.CCP_ONBOARD}'"
+                f"skipping as it is not '{PhasesEnum.CCP_ONBOARD.value}'"
             )
             next_step(mpt_client, context)
             return
@@ -80,7 +80,7 @@ class CCPOnboard(Step):
             logger.info(f"{context.order_id} - Stop - CCP Onboarding is still in progress.")
             return
         if onboard_status["engagementState"] == CCPOnboardStatusEnum.SUCCEEDED:
-            context.order = set_phase(context.order, PhasesEnum.COMPLETED)
+            context.order = set_phase(context.order, PhasesEnum.COMPLETED.value)
             context.order = update_order(
                 mpt_client, context.order_id, parameters=context.order["parameters"]
             )
@@ -93,7 +93,7 @@ class CCPOnboard(Step):
             f" Notify the failure and continue"
         )
         self._notify_ccp_onboard_failure(context, onboard_status)
-        context.order = set_phase(context.order, PhasesEnum.COMPLETED)
+        context.order = set_phase(context.order, PhasesEnum.COMPLETED.value)
         context.order = update_order(
             mpt_client, context.order_id, parameters=context.order["parameters"]
         )

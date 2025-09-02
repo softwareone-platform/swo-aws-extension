@@ -452,7 +452,14 @@ def test_synchronize_agreement_with_specific_ids_exception(
 
 @freeze_time("2025-05-01 11:10:00")
 def test_synchronize_new_accounts_dates_test(
-    mocker, mpt_client, config, product_items, aws_client_factory, agreement_factory, ffc_client
+    mocker,
+    mpt_client,
+    config,
+    product_items,
+    aws_client_factory,
+    agreement_factory,
+    ffc_client,
+    lines_factory,
 ):
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_product_items_by_skus",
@@ -490,6 +497,13 @@ def test_synchronize_new_accounts_dates_test(
         agreement_accounts,
         dry_run=False,
     )
+    lines = []
+    for sku in AWS_ITEMS_SKUS:
+        line = lines_factory(external_vendor_id=sku, name=sku, quantity=1)
+        del line[0]["id"]
+        del line[0]["oldQuantity"]
+        del line[0]["price"]
+        lines.extend(line)
 
     expected_call = (
         mpt_client,
@@ -498,80 +512,18 @@ def test_synchronize_new_accounts_dates_test(
             "autoRenew": True,
             "commitmentDate": "2025-06-01T11:10:00Z",
             "externalIds": {"vendor": "123456789012"},
-            "lines": [
-                {
-                    "item": {
-                        "externalIds": {"vendor": "AWS Usage"},
-                        "id": "ITM-1234-1234-1234-0001",
-                        "name": "AWS Usage",
-                    },
-                    "quantity": 1,
-                },
-                {
-                    "item": {
-                        "externalIds": {"vendor": "AWS Marketplace"},
-                        "id": "ITM-1234-1234-1234-0001",
-                        "name": "AWS Marketplace",
-                    },
-                    "quantity": 1,
-                },
-                {
-                    "item": {
-                        "externalIds": {"vendor": "AWS Usage incentivate"},
-                        "id": "ITM-1234-1234-1234-0001",
-                        "name": "AWS Usage incentivate",
-                    },
-                    "quantity": 1,
-                },
-                {
-                    "item": {
-                        "externalIds": {"vendor": "AWS Other services"},
-                        "id": "ITM-1234-1234-1234-0001",
-                        "name": "AWS Other services",
-                    },
-                    "quantity": 1,
-                },
-                {
-                    "item": {
-                        "externalIds": {"vendor": "AWS Support Enterprise"},
-                        "id": "ITM-1234-1234-1234-0001",
-                        "name": "AWS Support Enterprise",
-                    },
-                    "quantity": 1,
-                },
-                {
-                    "item": {
-                        "externalIds": {"vendor": "Upfront"},
-                        "id": "ITM-1234-1234-1234-0001",
-                        "name": "Upfront",
-                    },
-                    "quantity": 1,
-                },
-                {
-                    "item": {
-                        "externalIds": {"vendor": "AWS Support"},
-                        "id": "ITM-1234-1234-1234-0001",
-                        "name": "AWS Support",
-                    },
-                    "quantity": 1,
-                },
-                {
-                    "item": {
-                        "externalIds": {"vendor": "Saving Plans Recurring Fee"},
-                        "id": "ITM-1234-1234-1234-0001",
-                        "name": "Saving Plans Recurring Fee",
-                    },
-                    "quantity": 1,
-                },
-            ],
+            "lines": lines,
             "name": "Subscription for Test Account (123456789012)",
             "parameters": {
                 "fulfillment": [
                     {
-                        "externalId": FulfillmentParametersEnum.ACCOUNT_EMAIL,
+                        "externalId": FulfillmentParametersEnum.ACCOUNT_EMAIL.value,
                         "value": "test@example.com",
                     },
-                    {"externalId": FulfillmentParametersEnum.ACCOUNT_NAME, "value": "Test Account"},
+                    {
+                        "externalId": FulfillmentParametersEnum.ACCOUNT_NAME.value,
+                        "value": "Test Account",
+                    },
                 ]
             },
             "startDate": "2025-05-01T11:10:00Z",

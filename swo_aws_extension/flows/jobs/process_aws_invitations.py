@@ -14,6 +14,7 @@ from swo_aws_extension.flows.steps import (
     ValidatePurchaseTransferWithoutOrganizationStep,
 )
 from swo_aws_extension.parameters import get_account_type, get_phase
+from swo_rql import RQLQuery
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class CheckInvitationLinksStep(Step):
         if get_phase(context.order) != PhasesEnum.CHECK_INVITATION_LINK:
             logger.info(
                 f"{context.order_id} - Stop - "
-                f"Expecting phase '{PhasesEnum.CHECK_INVITATION_LINK}'"
+                f"Expecting phase '{PhasesEnum.CHECK_INVITATION_LINK.value}'"
                 f" got '{get_phase(context.order)}'"
             )
             return
@@ -36,9 +37,10 @@ class AWSInvitationsProcessor:
         self.config = config
 
     def get_querying_orders(self):
-        products = ",".join(settings.MPT_PRODUCTS_IDS)
         orders = []
-        rql_query = f"and(in(agreement.product.id,({products})),eq(status,Querying))"
+        orders_for_product_ids = RQLQuery().agreement.product.id.in_(settings.MPT_PRODUCTS_IDS)
+        orders_in_querying = RQLQuery(status="Querying")
+        rql_query = orders_for_product_ids & orders_in_querying
         url = (
             f"/commerce/orders?{rql_query}&select=audit,parameters,lines,subscriptions,"
             f"subscriptions.lines,agreement,buyer&order=audit.created.at"
@@ -63,7 +65,8 @@ class AWSInvitationsProcessor:
 
         return orders
 
-    def has_more_pages(self, orders):
+    @staticmethod
+    def has_more_pages(orders):
         if not orders:
             return True
         pagination = orders["$meta"]["pagination"]
@@ -87,7 +90,8 @@ class AWSInvitationsProcessor:
             AwaitInvitationLinksStep(),
         )
 
-    def is_processable(self, context: PurchaseContext) -> bool:
+    @staticmethod
+    def is_processable(context: PurchaseContext) -> bool:
         return (
             context.is_purchase_order()
             and get_account_type(context.order) == AccountTypesEnum.EXISTING_ACCOUNT

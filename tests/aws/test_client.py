@@ -104,3 +104,75 @@ def test_enable_scp_already_enabled(config, aws_client_factory, roots_factory):
     aws_client.enable_scp()
     mock_client.list_roots.assert_called_once_with()
     mock_client.enable_policy_type.assert_not_called()
+
+
+def test_aws_client_list_invoice_summaries(
+    mocker, config, aws_client_factory, data_aws_invoice_summary_factory
+):
+    account_id = "test_account_id"
+    aws_client, mock_client = aws_client_factory(config, account_id, "test_role_name")
+    mock_client.list_invoice_summaries.side_effect = [
+        {
+            "InvoiceSummaries": [data_aws_invoice_summary_factory()],
+            "NextToken": "token0",
+        },
+        {
+            "InvoiceSummaries": [data_aws_invoice_summary_factory()],
+        },
+    ]
+    year = 2025
+    month = 2
+
+    list_invoices = aws_client.list_invoice_summaries_by_account_id(account_id, year, month)
+    assert len(list_invoices) == 2
+    expected_calls = [
+        call(
+            Selector={"ResourceType": "ACCOUNT_ID", "Value": account_id},
+            Filter={"BillingPeriod": {"Month": month, "Year": year}},
+        ),
+        call(
+            Selector={"ResourceType": "ACCOUNT_ID", "Value": account_id},
+            Filter={"BillingPeriod": {"Month": month, "Year": year}},
+            NextToken="token0",
+        ),
+    ]
+    mock_client.list_invoice_summaries.assert_has_calls(expected_calls)
+
+
+def test_aws_client_get_cost_and_usage(
+    mocker, config, aws_client_factory, data_aws_cost_and_usage_factory
+):
+    account_id = "test_account_id"
+    aws_client, mock_client = aws_client_factory(config, account_id, "test_role_name")
+    aws_cost_and_usage = data_aws_cost_and_usage_factory()
+    aws_cost_and_usage["NextPageToken"] = "token0"
+    mock_client.get_cost_and_usage.side_effect = [
+        aws_cost_and_usage,
+        data_aws_cost_and_usage_factory(),
+    ]
+
+    start_date = "2025-01-01"
+    end_date = "2025-02-01"
+    group_by = [{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}]
+    filter_by = {"Dimensions": {"Key": "LINKED_ACCOUNT", "Values": [account_id]}}
+
+    cost_and_usage = aws_client.get_cost_and_usage(start_date, end_date, group_by, filter_by)
+    assert len(cost_and_usage[0]["Groups"]) == 2
+    expected_calls = [
+        call(
+            TimePeriod={"Start": start_date, "End": end_date},
+            Granularity="MONTHLY",
+            Metrics=["UnblendedCost"],
+            GroupBy=group_by,
+            Filter=filter_by,
+        ),
+        call(
+            TimePeriod={"Start": start_date, "End": end_date},
+            Granularity="MONTHLY",
+            Metrics=["UnblendedCost"],
+            GroupBy=group_by,
+            Filter=filter_by,
+            NextPageToken="token0",
+        ),
+    ]
+    mock_client.get_cost_and_usage.assert_has_calls(expected_calls)

@@ -4,10 +4,21 @@ from django.conf import settings
 
 
 class Config:
+    @staticmethod
+    def _patch_path(file_path):
+        """
+        Fixes relative paths to be from the project root.
+        """
+        if not os.path.isabs(file_path):
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+            file_path = os.path.abspath(os.path.join(project_root, file_path))
+        return file_path
+
     def get_file_contents(self, file_path: str) -> str:
         """
         Get the contents of a file.
         """
+        file_path = self._patch_path(file_path)
         if not os.path.exists(file_path):
             raise FileNotFoundError(file_path)
         with open(file_path, encoding="utf-8") as file:
@@ -73,6 +84,41 @@ class Config:
         Get the minimum MPA threshold.
         """
         return settings.EXTENSION_CONFIG["MINIMUM_MPA_THRESHOLD"]
+
+    @property
+    def billing_discount_base(self) -> int:
+        """
+        Get the base billing discount.
+        """
+        return int(settings.EXTENSION_CONFIG.get("BILLING_DISCOUNT_BASE", 7))
+
+    @property
+    def billing_discount_incentivate(self) -> int:
+        """
+        Get the billing discount for incentivate services.
+        """
+        return int(settings.EXTENSION_CONFIG.get("BILLING_DISCOUNT_INCENTIVATE", 12))
+
+    @property
+    def billing_discount_support_enterprise(self) -> int:
+        """
+        Get the billing discount for enterprise support.
+        """
+        return settings.EXTENSION_CONFIG.get("BILLING_DISCOUNT_SUPPORT_ENTERPRISE", 35)
+
+    @property
+    def billing_discount_tolerance_rate(self) -> int:
+        """
+        Get the billing discount for enterprise support.
+        """
+        return int(settings.EXTENSION_CONFIG.get("BILLING_DISCOUNT_TOLERANCE_RATE", 1))
+
+    @property
+    def mpt_portal_base_url(self) -> str:
+        """
+        Get the base URL for the MPT portal.
+        """
+        return settings.MPT_PORTAL_BASE_URL
 
 
 _CONFIG = None

@@ -22,6 +22,7 @@ from swo_aws_extension.flows.steps.finops import create_finops_entitlement
 from swo_aws_extension.notifications import send_error
 from swo_aws_extension.parameters import FulfillmentParametersEnum
 from swo_finops_client.client import get_ffc_client
+from swo_rql import RQLQuery
 
 logger = logging.getLogger(__name__)
 
@@ -37,21 +38,22 @@ def synchronize_agreements(mpt_client, config, agreement_ids, dry_run, product_i
         dry_run: Whether to perform a dry run.
         product_ids: List of product IDs to filter agreements.
     """
+    product_ids = list(set(product_ids))
+    select = "&select=lines,parameters,subscriptions,subscriptions.lines,product,listing"
     if agreement_ids:
-        rql_query = (
-            f"and(in(id,({','.join(agreement_ids)})),eq(status,Active)),"
-            f"in(product.id,({','.join(product_ids)})))"
-            "&select=lines,parameters,subscriptions,subscriptions.lines,product,listing"
+        rql_filter = (
+            RQLQuery(id__in=agreement_ids)
+            & RQLQuery(status="Active")
+            & RQLQuery(product__id__in=product_ids)
         )
+        rql_query = f"{rql_filter}{select}"
 
     else:
-        rql_query = (
-            f"and(eq(status,Active),"
-            f"in(product.id,({','.join(product_ids)})))"
-            f"&select=lines,parameters,subscriptions,subscriptions.lines,product,listing"
-        )
+        rql_filter = RQLQuery(status="Active") & RQLQuery(product__id__in=product_ids)
+        rql_query = f"{rql_filter}{select}"
 
     agreements = get_agreements_by_query(mpt_client, rql_query)
+
     for agreement in agreements:
         try:
             mpa_account = agreement.get("externalIds", {}).get("vendor", "")
@@ -258,11 +260,11 @@ def _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run):
                 "parameters": {
                     "fulfillment": [
                         {
-                            "externalId": FulfillmentParametersEnum.ACCOUNT_EMAIL,
+                            "externalId": FulfillmentParametersEnum.ACCOUNT_EMAIL.value,
                             "value": account_email,
                         },
                         {
-                            "externalId": FulfillmentParametersEnum.ACCOUNT_NAME,
+                            "externalId": FulfillmentParametersEnum.ACCOUNT_NAME.value,
                             "value": account_name,
                         },
                     ]

@@ -31,7 +31,7 @@ def test_create_linked_account_phase_create_linked_account(
     create_account_status,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT.value)
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -59,7 +59,7 @@ def test_create_linked_account_phase_create_linked_account(
 
     assert (
         context.order["parameters"]["ordering"]
-        == set_phase(order, PhasesEnum.CREATE_ACCOUNT)["parameters"]["ordering"]
+        == set_phase(order, PhasesEnum.CREATE_ACCOUNT.value)["parameters"]["ordering"]
     )
     assert (
         context.order["parameters"]["fulfillment"]
@@ -82,7 +82,7 @@ def test_create_linked_account_phase_create_linked_account_fail(
     create_account_status,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT.value)
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -123,7 +123,7 @@ def test_create_linked_account_phase_check_linked_account_in_progress(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_ACCOUNT, account_request_id="account_request_id"
+            phase=PhasesEnum.CREATE_ACCOUNT.value, account_request_id="account_request_id"
         )
     )
 
@@ -138,7 +138,10 @@ def test_create_linked_account_phase_check_linked_account_in_progress(
     create_linked_account = CreateInitialLinkedAccountStep()
     create_linked_account(mpt_client_mock, context, next_step_mock)
 
-    assert context.order["parameters"] == set_phase(order, PhasesEnum.CREATE_ACCOUNT)["parameters"]
+    assert (
+        context.order["parameters"]
+        == set_phase(order, PhasesEnum.CREATE_ACCOUNT.value)["parameters"]
+    )
 
 
 def test_create_linked_account_phase_check_linked_account_succeed(
@@ -152,7 +155,7 @@ def test_create_linked_account_phase_check_linked_account_succeed(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_ACCOUNT, account_request_id="account_request_id"
+            phase=PhasesEnum.CREATE_ACCOUNT.value, account_request_id="account_request_id"
         )
     )
 
@@ -174,7 +177,7 @@ def test_create_linked_account_phase_check_linked_account_succeed(
 
     assert (
         context.order["parameters"]
-        == set_phase(order, PhasesEnum.CREATE_SUBSCRIPTIONS)["parameters"]
+        == set_phase(order, PhasesEnum.CREATE_SUBSCRIPTIONS.value)["parameters"]
     )
     mocked_update_order.assert_called_once_with(
         mpt_client_mock,
@@ -195,7 +198,7 @@ def test_create_linked_account_phase_check_linked_account_email_already_exist(
     mock_switch_order_status_to_query,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT.value)
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -214,7 +217,7 @@ def test_create_linked_account_phase_check_linked_account_email_already_exist(
 
     mock_switch_order_status_to_query.assert_called_once_with(
         mpt_client_mock,
-        OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE,
+        OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE.value,
     )
     assert context.order["parameters"]["ordering"][0]["error"] == ERR_EMAIL_ALREADY_EXIST.to_dict()
 
@@ -229,7 +232,7 @@ def test_create_linked_account_phase_check_linked_account_failed(
     account_creation_status_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT.value)
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -259,7 +262,9 @@ def test_create_linked_account_phase_empty_parameters(
     mock_switch_order_status_to_query,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT),
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_ACCOUNT.value
+        ),
         order_parameters=order_parameters_factory(account_name="", account_email=""),
     )
 
@@ -288,7 +293,9 @@ def test_create_linked_account_invalid_phase(
     order_parameters_factory,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_SUBSCRIPTIONS)
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_SUBSCRIPTIONS.value
+        )
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -313,7 +320,9 @@ def test_add_linked_account_phase_create_linked_account(
     create_account_status,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT),
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_ACCOUNT.value
+        ),
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -341,7 +350,7 @@ def test_add_linked_account_phase_create_linked_account(
 
     assert (
         context.order["parameters"]["ordering"]
-        == set_phase(order, PhasesEnum.CREATE_ACCOUNT)["parameters"]["ordering"]
+        == set_phase(order, PhasesEnum.CREATE_ACCOUNT.value)["parameters"]["ordering"]
     )
     assert (
         context.order["parameters"]["fulfillment"]
@@ -365,7 +374,7 @@ def test_add_linked_account_phase_check_linked_account_in_progress(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_ACCOUNT, account_request_id="account_request_id"
+            phase=PhasesEnum.CREATE_ACCOUNT.value, account_request_id="account_request_id"
         )
     )
 
@@ -380,7 +389,10 @@ def test_add_linked_account_phase_check_linked_account_in_progress(
     create_linked_account = AddLinkedAccountStep()
     create_linked_account(mpt_client_mock, context, next_step_mock)
 
-    assert context.order["parameters"] == set_phase(order, PhasesEnum.CREATE_ACCOUNT)["parameters"]
+    assert (
+        context.order["parameters"]
+        == set_phase(order, PhasesEnum.CREATE_ACCOUNT.value)["parameters"]
+    )
 
 
 def test_add_linked_account_phase_check_linked_account_succeed(
@@ -394,7 +406,7 @@ def test_add_linked_account_phase_check_linked_account_succeed(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_ACCOUNT, account_request_id="account_request_id"
+            phase=PhasesEnum.CREATE_ACCOUNT.value, account_request_id="account_request_id"
         )
     )
 
@@ -429,7 +441,7 @@ def test_add_linked_account_phase_check_linked_account_email_already_exist(
     mock_switch_order_status_to_query,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT.value)
     )
 
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -449,7 +461,7 @@ def test_add_linked_account_phase_check_linked_account_email_already_exist(
 
     mock_switch_order_status_to_query.assert_called_once_with(
         mpt_client_mock,
-        OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE,
+        OrderQueryingTemplateEnum.NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE.value,
     )
     assert context.order["parameters"]["ordering"][8]["error"] == ERR_EMAIL_ALREADY_EXIST.to_dict()
 
@@ -464,7 +476,9 @@ def test_add_linked_account_phase_empty_parameters(
     mock_switch_order_status_to_query,
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT),
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_ACCOUNT.value
+        ),
         order_parameters=order_parameters_factory(change_order_email="", change_order_name=""),
     )
 

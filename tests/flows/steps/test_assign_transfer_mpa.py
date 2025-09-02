@@ -24,12 +24,12 @@ def test_assign_transfer_mpa_first_run(
 
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION,
+            phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION.value,
         ),
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="123456789012",
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION.value,
         ),
     )
 
@@ -72,13 +72,13 @@ def test_assign_transfer_initialize_aws(
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION,
+            phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION.value,
         ),
         agreement=agreement_factory(vendor_id="123456789012"),
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="123456789012",
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION.value,
         ),
     )
     context = PurchaseContext.from_order_data(order)
@@ -111,13 +111,13 @@ def test_assign_transfer_failed_aws_access(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION,
+            phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION.value,
         ),
         agreement=agreement_factory(vendor_id="123456789012"),
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="123456789012",
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION.value,
         ),
     )
     context = PurchaseContext.from_order_data(order)
@@ -162,13 +162,13 @@ def test_skip_by_phase(
     )
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTIONS,
+            phase=PhasesEnum.CREATE_SUBSCRIPTIONS.value,
         ),
         agreement=agreement_factory(vendor_id="123456789012"),
         order_parameters=order_parameters_factory(
             account_id="",
             master_payer_id="123456789012",
-            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION,
+            transfer_type=TransferTypesEnum.TRANSFER_WITH_ORGANIZATION.value,
         ),
     )
     context = PurchaseContext(aws_client=None, order=order)
@@ -194,7 +194,7 @@ def test_skip_not_transfer(
     )
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION
+            phase=PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION.value
         ),
         agreement=agreement_factory(vendor_id="123456789012"),
         order_parameters=order_parameters_factory(

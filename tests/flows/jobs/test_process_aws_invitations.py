@@ -51,7 +51,7 @@ def test_check_invitation_links_step(mocker, order_factory, fulfillment_paramete
     step = CheckInvitationLinksStep()
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTIONS,
+            phase=PhasesEnum.CREATE_SUBSCRIPTIONS.value,
         )
     )
     context = PurchaseContext.from_order_data(order)
@@ -60,7 +60,7 @@ def test_check_invitation_links_step(mocker, order_factory, fulfillment_paramete
 
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.ASSIGN_MPA,
+            phase=PhasesEnum.ASSIGN_MPA.value,
         )
     )
     context = PurchaseContext.from_order_data(order)
@@ -83,12 +83,12 @@ def test_aws_invitation_processor_calls_pipeline(
                 order_type=ORDER_TYPE_PURCHASE,
                 status=MPT_ORDER_STATUS_QUERYING,
                 order_parameters=order_parameters_factory(
-                    account_type=AccountTypesEnum.EXISTING_ACCOUNT,
-                    transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
+                    account_type=AccountTypesEnum.EXISTING_ACCOUNT.value,
+                    transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value,
                     account_id="123456789012",
                 ),
                 fulfillment_parameters=fulfillment_parameters_factory(
-                    phase=PhasesEnum.CHECK_INVITATION_LINK
+                    phase=PhasesEnum.CHECK_INVITATION_LINK.value
                 ),
             ),
         ]
@@ -114,11 +114,11 @@ def test_aws_invitation_processor_skips_pipeline(
                 order_type=ORDER_TYPE_PURCHASE,
                 status=MPT_ORDER_STATUS_QUERYING,
                 order_parameters=order_parameters_factory(
-                    account_type=AccountTypesEnum.NEW_ACCOUNT,
-                    transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
+                    account_type=AccountTypesEnum.NEW_ACCOUNT.value,
+                    transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value,
                 ),
                 fulfillment_parameters=fulfillment_parameters_factory(
-                    phase=PhasesEnum.CHECK_INVITATION_LINK
+                    phase=PhasesEnum.CHECK_INVITATION_LINK.value
                 ),
             ),
         ]
@@ -140,11 +140,10 @@ def test_process_one_order_with_invitations_accepted(
     agreement_factory,
     handshake_data_factory,
     mpa_pool_factory,
-    mock_switch_order_status_to_process,
 ):
     order_parameters = order_parameters_factory(
-        account_type=AccountTypesEnum.EXISTING_ACCOUNT,
-        transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION,
+        account_type=AccountTypesEnum.EXISTING_ACCOUNT.value,
+        transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value,
         account_id="123456789012",
     )
     order = order_factory(
@@ -152,7 +151,7 @@ def test_process_one_order_with_invitations_accepted(
         status=MPT_ORDER_STATUS_QUERYING,
         order_parameters=order_parameters,
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CHECK_INVITATION_LINK
+            phase=PhasesEnum.CHECK_INVITATION_LINK.value
         ),
         agreement=agreement_factory(vendor_id="aws_mpa"),
     )
@@ -160,7 +159,7 @@ def test_process_one_order_with_invitations_accepted(
     aws_mock.list_handshakes_for_organization.return_value = {
         "Handshakes": [
             handshake_data_factory(
-                state=AwsHandshakeStateEnum.ACCEPTED,
+                state=AwsHandshakeStateEnum.ACCEPTED.value,
                 account_id="123456789012",
             )
         ]
@@ -191,7 +190,7 @@ def test_process_one_order_with_invitations_accepted(
 
     processor.process_aws_invitations()
     mock_switch_order_status_to_process.assert_called_once_with(
-        mocker.ANY, OrderProcessingTemplateEnum.TRANSFER_WITH_ORG_TICKET_CREATED
+        mocker.ANY, OrderProcessingTemplateEnum.TRANSFER_WITH_ORG_TICKET_CREATED.value
     )
 
 

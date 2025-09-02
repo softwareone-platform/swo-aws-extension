@@ -116,7 +116,7 @@ def test_check_pool_accounts_notifications_declined(
     mocked_master_payer_account_pool_model.all.return_value = [
         mpa_pool_factory(),
         mpa_pool_factory(country="ES"),
-        mpa_pool_factory(status=MPAStatusEnum.ASSIGNED),
+        mpa_pool_factory(status=MPAStatusEnum.ASSIGNED.value),
     ]
     mocked_pool_notification_model.all.side_effect = [
         [pool_notification],
@@ -155,7 +155,7 @@ def test_check_pool_accounts_notifications_create_empty_notification(
     )
     pool_notification = pool_notification_factory()
     new_pool_notification_empty = pool_notification_factory(
-        status=NotificationStatusEnum.NEW, notification_type=NotificationTypeEnum.EMPTY
+        status=NotificationStatusEnum.NEW, notification_type=NotificationTypeEnum.EMPTY.value
     )
     mocked_pool_notification_model.all.side_effect = [
         [pool_notification],
@@ -182,9 +182,9 @@ def test_check_pool_accounts_notifications_create_empty_notification(
     service_request = ServiceRequest(
         additional_info=CRM_EMPTY_ADDITIONAL_INFO,
         summary=CRM_EMPTY_SUMMARY.format(
-            type_of_support=SupportTypesEnum.PARTNER_LED_SUPPORT
+            type_of_support=SupportTypesEnum.PARTNER_LED_SUPPORT.value
             if pool_notification.pls_enabled
-            else SupportTypesEnum.RESOLD_SUPPORT,
+            else SupportTypesEnum.RESOLD_SUPPORT.value,
             seller_country=pool_notification.country,
         ),
         title=CRM_EMPTY_TITLE.format(region=pool_notification.country),
@@ -215,7 +215,8 @@ def test_check_pool_accounts_notifications_create_warning_notification(
     )
     pool_notification = pool_notification_factory()
     new_pool_notification_warning = pool_notification_factory(
-        status=NotificationStatusEnum.NEW, notification_type=NotificationTypeEnum.WARNING
+        status=NotificationStatusEnum.NEW.value,
+        notification_type=NotificationTypeEnum.WARNING.value,
     )
     mocked_pool_notification_model.all.side_effect = [
         [pool_notification],
@@ -242,9 +243,9 @@ def test_check_pool_accounts_notifications_create_warning_notification(
     service_request = ServiceRequest(
         additional_info=CRM_NOTIFICATION_ADDITIONAL_INFO,
         summary=CRM_NOTIFICATION_SUMMARY.format(
-            type_of_support=SupportTypesEnum.PARTNER_LED_SUPPORT
+            type_of_support=SupportTypesEnum.PARTNER_LED_SUPPORT.value
             if pool_notification.pls_enabled
-            else SupportTypesEnum.RESOLD_SUPPORT,
+            else SupportTypesEnum.RESOLD_SUPPORT.value,
             seller_country=pool_notification.country,
         ),
         title=CRM_NOTIFICATION_TITLE.format(region=pool_notification.country),
@@ -274,9 +275,9 @@ def test_check_pool_accounts_notifications_delete_duplicated_notification(
     mocked_master_payer_account_pool_model.all.return_value = [mpa_pool_factory()]
     mocked_pool_notification_model.all.side_effect = [
         [
-            pool_notification_factory(status=NotificationStatusEnum.NEW, country="FR"),
-            pool_notification_factory(status=NotificationStatusEnum.NEW, country="FR"),
-            pool_notification_factory(status=NotificationStatusEnum.NEW),
+            pool_notification_factory(status=NotificationStatusEnum.NEW.value, country="FR"),
+            pool_notification_factory(status=NotificationStatusEnum.NEW.value, country="FR"),
+            pool_notification_factory(status=NotificationStatusEnum.NEW.value),
             pool_notification_factory(),
         ],
         [],

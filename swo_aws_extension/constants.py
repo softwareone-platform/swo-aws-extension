@@ -3,31 +3,68 @@ from enum import StrEnum
 MPT_DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:00Z"
 
 SWO_EXTENSION_MANAGEMENT_ROLE = "swo/mpt/SWOExtensionManagementRole"
-AWS_USAGE_SKU = "AWS Usage"
-AWS_MARKETPLACE_SKU = "AWS Marketplace"
-AWS_USAGE_INCENTIVATE_SKU = "AWS Usage incentivate"
-AWS_OTHER_SERVICES_SKU = "AWS Other services"
-AWS_SUPPORT_ENTERPRISE_SKU = "AWS Support Enterprise"
-AWS_UPFROM_SKU = "Upfront"
-AWS_SUPPORT_SKU = "AWS Support"
-AWS_SAVING_PLANS_RECURRING_FEE_SKU = "Saving Plans Recurring Fee"
-AWS_ITEMS_SKUS = [
-    AWS_USAGE_SKU,
-    AWS_MARKETPLACE_SKU,
-    AWS_USAGE_INCENTIVATE_SKU,
-    AWS_OTHER_SERVICES_SKU,
-    AWS_SUPPORT_ENTERPRISE_SKU,
-    AWS_UPFROM_SKU,
-    AWS_SUPPORT_SKU,
-    AWS_SAVING_PLANS_RECURRING_FEE_SKU,
-]
-TAG_AGREEMENT_ID = "agreement_id"
+SWO_EXTENSION_BILLING_ROLE = "swo/mpt/SWOExtensionBillingRole"
 CRM_EXTERNAL_EMAIL = "marketplace@softwareone.com"
 CRM_EXTERNAL_USERNAME = "mpt@marketplace.com"
 CRM_SERVICE_TYPE = "MarketPlaceServiceActivation"
 CRM_GLOBAL_EXT_USER_ID = "globalacademicExtUserId"
 CRM_REQUESTER = "Supplier.Portal"
 CRM_SUB_SERVICE = "Service Activation"
+
+COST_EXPLORER_DATE_FORMAT = "%Y-%m-%d"
+
+AWS_MARKETPLACE = "AWS Marketplace"
+
+ERROR = "Error"
+DRAFT = "Draft"
+VALIDATED = "Validated"
+JOURNAL_PENDING_STATUS = [ERROR, DRAFT, VALIDATED]
+
+
+class UsageMetricTypeEnum(StrEnum):
+    MARKETPLACE = "MARKETPLACE"
+    USAGE = "USAGE"
+    PROVIDER_DISCOUNT = "PROVIDER_DISCOUNT"
+    SUPPORT = "SUPPORT"
+    REFUND = "REFUND"
+    SAVING_PLANS = "SAVING_PLANS"
+    RECURRING = "RECURRING"
+    SERVICE_INVOICE_ENTITY = "SERVICE_INVOICE_ENTITY"
+
+
+class AWSServiceEnum(StrEnum):
+    SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE = "Savings Plans for AWS Compute usage"
+    TAX = "Tax"
+    REFUND = "Refund"
+    SUPPORT = "Support"
+
+
+class AWSRecordTypeEnum(StrEnum):
+    USAGE = "Usage"
+    SOLUTION_PROVIDER_PROGRAM_DISCOUNT = "Solution Provider Program Discount"
+    SUPPORT = "Support"
+    REFUND = "Refund"
+    SAVING_PLAN_RECURRING_FEE = "SavingsPlanRecurringFee"
+    RECURRING = "Recurring"
+
+
+EXCLUDE_USAGE_SERVICES = [AWSServiceEnum.SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE]
+
+
+class ItemSkusEnum(StrEnum):
+    AWS_USAGE = "AWS Usage"
+    AWS_MARKETPLACE = "AWS Marketplace"
+    AWS_USAGE_INCENTIVATE = "AWS Usage incentivate"
+    AWS_OTHER_SERVICES = "AWS Other services"
+    AWS_SUPPORT_ENTERPRISE = "AWS Support Enterprise"
+    UPFRONT = "Upfront"
+    UPFRONT_INCENTIVATE = "Upfront incentivate"
+    AWS_SUPPORT = "AWS Support"
+    SAVING_PLANS_RECURRING_FEE = "Saving Plans Recurring Fee"
+    SAVING_PLANS_RECURRING_FEE_INCENTIVATE = "Saving Plans Recurring Fee incentivate"
+
+
+AWS_ITEMS_SKUS = [item.value for item in ItemSkusEnum]
 
 
 class AccountTypesEnum(StrEnum):
@@ -204,6 +241,11 @@ class AwsHandshakeStateEnum(StrEnum):
     EXPIRED = "EXPIRED"
 
 
+class AgreementStatusEnum(StrEnum):
+    ACTIVE = "Active"
+    UPDATING = "Updating"
+
+
 class SubscriptionStatusEnum(StrEnum):
     ACTIVE = "Active"
     CONFIGURING = "Configuring"
@@ -249,3 +291,18 @@ class OrderQueryingTemplateEnum(StrEnum):
 
 
 ORDER_DEFAULT_PROCESSING_TEMPLATE = "Order processing"
+COMMAND_INVALID_BILLING_DATE = (
+    "Invalid billing date. The billing date must be in the past. "
+    "You can't generate the billing of the current month until the 5th."
+)
+COMMAND_INVALID_BILLING_DATE_FUTURE = "Invalid billing date. Future months are not allowed."
+
+SYNCHRONIZATION_ERROR = "AWS Billing Journal Synchronization Error"
+AWS_BILLING_SUCCESS = "AWS Billing Journal Synchronization Success"
+
+
+class JournalAttachmentFilesNameEnum(StrEnum):
+    RECORD_TYPE_AND_SERVICE_COST = "Record type and service cost"
+    SERVICE_INVOICE_ENTITY = "Service invoice entity"
+    ORGANIZATION_INVOICES = "Organization invoices"
+    MARKETPLACE_USAGE_REPORT = "Marketplace usage report"

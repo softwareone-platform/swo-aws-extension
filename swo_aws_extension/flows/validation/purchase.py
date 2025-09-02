@@ -251,9 +251,9 @@ def is_split_billing_mpa_id_valid(context):
         is_valid = False
     else:
         support_type = (
-            SupportTypesEnum.PARTNER_LED_SUPPORT
+            SupportTypesEnum.PARTNER_LED_SUPPORT.value
             if context.airtable_mpa.pls_enabled
-            else SupportTypesEnum.RESOLD_SUPPORT
+            else SupportTypesEnum.RESOLD_SUPPORT.value
         )
         context.order = set_support_type(context.order, support_type)
 

@@ -13,7 +13,9 @@ def test_create_subscription_phase_invalid_phase(
     mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.PRECONFIGURATION_MPA)
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.PRECONFIGURATION_MPA.value
+        )
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
@@ -40,7 +42,7 @@ def test_create_subscription_new_account(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTIONS
+            phase=PhasesEnum.CREATE_SUBSCRIPTIONS.value
         ),
     )
     subscription = subscription_factory(
@@ -90,7 +92,7 @@ def test_create_subscription_phase_subscription_already_created(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTIONS
+            phase=PhasesEnum.CREATE_SUBSCRIPTIONS.value
         ),
         order_parameters=order_parameters_factory(account_id=""),
     )
@@ -130,7 +132,7 @@ def test_synchronize_agreement_subscriptions(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTIONS
+            phase=PhasesEnum.CREATE_SUBSCRIPTIONS.value
         ),
     )
     mock_agreement = agreement_factory()
@@ -172,10 +174,10 @@ def test_create_subscription_transfer_account(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTIONS
+            phase=PhasesEnum.CREATE_SUBSCRIPTIONS.value
         ),
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION
+            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value
         ),
     )
     subscription = subscription_factory(
@@ -229,10 +231,10 @@ def test_create_subscription_transfer_account_no_accounts(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTIONS
+            phase=PhasesEnum.CREATE_SUBSCRIPTIONS.value
         ),
         order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION
+            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value
         ),
     )
     subscription = subscription_factory(

@@ -29,7 +29,7 @@ class CompletePurchaseOrderStep(CompleteOrderStep):
         if get_phase(context.order) != PhasesEnum.COMPLETED:
             logger.info(
                 f"{context.order_id} - Skip - Current phase is '{get_phase(context.order)}', "
-                f"skipping as it is not '{PhasesEnum.COMPLETED}'"
+                f"skipping as it is not '{PhasesEnum.COMPLETED.value}'"
             )
             next_step(client, context)
             return

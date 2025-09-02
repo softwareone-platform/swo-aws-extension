@@ -1,19 +1,12 @@
-from django.core.management.base import BaseCommand
-
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.flows.jobs.pool_notifications import check_pool_accounts_notifications
+from swo_aws_extension.management.commands_helpers import StyledPrintCommand
 
 config = Config()
 
 
-class Command(BaseCommand):
+class Command(StyledPrintCommand):
     help = "Check Pool Account Notifications"
-
-    def success(self, message):
-        self.stdout.write(self.style.SUCCESS(message), ending="\n")
-
-    def info(self, message):
-        self.stdout.write(message, ending="\n")
 
     def handle(self, *args, **options):
         self.info("Start processing Check Pool Accounts Notifications...")
