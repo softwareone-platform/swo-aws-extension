@@ -12,6 +12,7 @@ RQLQuery = Annotated[str | None, "Query in RQL format"]
 
 class AttachmentsClient:
     """MPT API client to worj with journal attachments."""
+
     def __init__(self, client: MPTClient, journal_id: str):
         self._client = client
         self.journal_id = journal_id
@@ -75,6 +76,7 @@ class AttachmentsClient:
 
 class ChargesClient:
     """Journal charges client for MPT."""
+
     def __init__(self, client: MPTClient, journal_id: str):
         self._client = client
         self.journal_id = journal_id
@@ -100,6 +102,7 @@ class ChargesClient:
 
 class JournalClient:
     """Journal client for MPT."""
+
     def __init__(self, client: MPTClient):
         self._client = client
 

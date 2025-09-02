@@ -10,6 +10,7 @@ config = Config()
 
 class Command(StyledPrintCommand):
     """Sync agreements command."""
+
     help = "Synchronize Agreements"
 
     def add_arguments(self, parser):

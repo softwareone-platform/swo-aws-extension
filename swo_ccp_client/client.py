@@ -24,6 +24,7 @@ TIMEOUT = 60  # secs
 
 class CCPClient(Session):
     """A class to interact with the CCP API."""
+
     def __init__(self, config):
         super().__init__()
         self.config = config
