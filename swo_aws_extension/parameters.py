@@ -12,6 +12,7 @@ MAX_ACCOUNT_TRANSFER = 20
 
 class OrderParametersEnum(StrEnum):
     """Ordering parameters external Ids."""
+
     ACCOUNT_TYPE = "accountType"
     ROOT_ACCOUNT_EMAIL = "orderRootAccountEmail"
     ACCOUNT_NAME = "orderAccountName"
@@ -25,12 +26,14 @@ class OrderParametersEnum(StrEnum):
 
 class ChangeOrderParametersEnum(StrEnum):
     """Change parameters external Ids."""
+
     ACCOUNT_NAME = "changeOrderAccountName"
     ROOT_ACCOUNT_EMAIL = "changeOrderRootAccountEmail"
 
 
 class FulfillmentParametersEnum(StrEnum):
     """Change parameters external Ids."""
+
     PHASE = "phase"
     ACCOUNT_REQUEST_ID = "accountRequestId"
     ACCOUNT_EMAIL = "accountEmail"

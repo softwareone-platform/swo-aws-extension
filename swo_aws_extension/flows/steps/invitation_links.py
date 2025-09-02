@@ -50,9 +50,7 @@ def map_handshakes_account_state(handshakes: list[dict]) -> dict:
     Returns:
         Dictionary with account IDs and their states.
     """
-    return {
-        get_handshake_account_id(handshake): handshake["State"] for handshake in handshakes
-    }
+    return {get_handshake_account_id(handshake): handshake["State"] for handshake in handshakes}
 
 
 def map_handshakes_account_handshake_id(handshakes: list[dict]) -> dict:
@@ -65,13 +63,12 @@ def map_handshakes_account_handshake_id(handshakes: list[dict]) -> dict:
     Returns:
         Dictionary with account IDs and their states.
     """
-    return {
-        get_handshake_account_id(handshake): handshake["Id"] for handshake in handshakes
-    }
+    return {get_handshake_account_id(handshake): handshake["Id"] for handshake in handshakes}
 
 
 class SendInvitationLinksStep(Step):
     """Send invitation link to the customer."""
+
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step: NextStep):
         """
         Check invited accounts to the organization.
@@ -90,7 +87,9 @@ class SendInvitationLinksStep(Step):
         if phase not in expected_phases:
             logger.info(
                 "%s - Skip - Order is not in %s phase. Current phase is %s",
-                context.order_id, ", ".join(expected_phases), phase
+                context.order_id,
+                ", ".join(expected_phases),
+                phase,
             )
             next_step(client, context)
             return
@@ -115,7 +114,8 @@ class SendInvitationLinksStep(Step):
 
         if errors:
             logger.info(
-                "%s - Stop - Failed to send organization invitation links.", context.order_id,
+                "%s - Stop - Failed to send organization invitation links.",
+                context.order_id,
             )
             return
         context.order = set_phase(context.order, PhasesEnum.CHECK_INVITATION_LINK.value)
@@ -126,7 +126,9 @@ class SendInvitationLinksStep(Step):
             template=context.template,
         )
         logger.info(
-            "%s - Phase - Updated to %s", context.order_id, PhasesEnum.CHECK_INVITATION_LINK.value,
+            "%s - Phase - Updated to %s",
+            context.order_id,
+            PhasesEnum.CHECK_INVITATION_LINK.value,
         )
         logger.info("%s - Next - Invitation links sent to all accounts.", context.order_id)
         next_step(client, context)
@@ -147,20 +149,26 @@ class SendInvitationLinksStep(Step):
                 logger.info(
                     "%s - Skip - Invitation link already sent to account. "
                     "Invitation state='%s' for account_id=%s",
-                    context.order_id, account_state, account_id,
+                    context.order_id,
+                    account_state,
+                    account_id,
                 )
                 continue
             try:
                 context.aws_client.invite_account_to_organization(account_id, notes=notes)
                 logger.info(
                     "%s - Action - Invitation link sent to account %s state '%s'",
-                    context.order_id, account_id, account_state,
+                    context.order_id,
+                    account_id,
+                    account_state,
                 )
             except Exception as e:
                 errors.append(e)
                 logger.exception(
                     "%s - Action Failed - Invitation for `%s` failed.  state '%s'.",
-                    context.order_id, account_id, account_state,
+                    context.order_id,
+                    account_id,
+                    account_state,
                 )
 
     def cancel_invitations_for_removed_accounts(
@@ -174,7 +182,9 @@ class SendInvitationLinksStep(Step):
             logger.info(
                 "%s - Account %s not in transfer accounts "
                 "but found while listing handshakes with state `%s`",
-                context.order_id, account_id, state,
+                context.order_id,
+                account_id,
+                state,
             )
             if state not in cancellable_states:
                 if state == AwsHandshakeStateEnum.CANCELED:
@@ -183,7 +193,10 @@ class SendInvitationLinksStep(Step):
                     "%s - Action cancelled - Unable to cancel handshake for %s. Reason: "
                     "Current state `%s` is not cancelable. "
                     "Cancelable states are: %s",
-                    context.order_id, account_id, state, ",".join(cancellable_states),
+                    context.order_id,
+                    account_id,
+                    state,
+                    ",".join(cancellable_states),
                 )
                 continue
             handshake_id = account_handshake_id[account_id]
@@ -191,18 +204,23 @@ class SendInvitationLinksStep(Step):
                 context.aws_client.cancel_handshake(handshake_id)
                 logger.info(
                     "%s - Action - Cancel handshake `%s` for Account: %s",
-                    context.order_id, handshake_id, account_id,
+                    context.order_id,
+                    handshake_id,
+                    account_id,
                 )
             except Exception as e:
                 logger.exception(
                     "%s - Action failed - Cancel handshake `%s` for account_id `%s` failed.",
-                    context.order_id, handshake_id, account_id,
+                    context.order_id,
+                    handshake_id,
+                    account_id,
                 )
                 errors.append(e)
 
 
 class AwaitInvitationLinksStep(Step):
     """Wait for invitation link to be accepted."""
+
     def accounts_state_message_building(self, account_state):
         """
         Build a message with the accounts and their states.
@@ -246,7 +264,9 @@ class AwaitInvitationLinksStep(Step):
         if phase != PhasesEnum.CHECK_INVITATION_LINK:
             logger.info(
                 "%s - Skip - Reason: Expecting phase in %s, current phase=%s",
-                context.order_id, PhasesEnum.CHECK_INVITATION_LINK.value, phase,
+                context.order_id,
+                PhasesEnum.CHECK_INVITATION_LINK.value,
+                phase,
             )
             next_step(client, context)
             return
@@ -284,7 +304,8 @@ class AwaitInvitationLinksStep(Step):
                 )
             logger.info(
                 "%s - Querying - Awaiting account invitations to be accepted: %s",
-                context.order_id, str_accounts,
+                context.order_id,
+                str_accounts,
             )
             return
 

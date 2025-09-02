@@ -5,6 +5,7 @@ from mpt_extension_sdk.mpt_http.base import MPTClient
 
 class HttpQuery[T]:
     """MPT API Query wrapper."""
+
     def __init__(self, client: MPTClient, url: str, query=None):
         self._client = client
         self._url = url

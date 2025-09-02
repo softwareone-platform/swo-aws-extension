@@ -18,6 +18,7 @@ class FinOpsError(Exception):
 
 class FinOpsHttpError(FinOpsError):
     """General HTTP error from FinOps for Cloud."""
+
     def __init__(self, status_code: int, content: str):
         self.status_code = status_code
         self.content = content
@@ -26,12 +27,14 @@ class FinOpsHttpError(FinOpsError):
 
 class FinOpsNotFoundError(FinOpsHttpError):
     """FinOps entity is not found exception."""
+
     def __init__(self, content):
         super().__init__(404, content)
 
 
 def wrap_http_error(func):
     """Wraps http error and proxy it to FinOpsError."""
+
     @wraps(func)
     def _wrapper(*args, **kwargs):
         try:
@@ -49,6 +52,7 @@ TIMEOUT = 60
 
 class FinOpsClient:
     """Client for FinOps for Cloud."""
+
     def __init__(self, base_url, sub, secret):
         self._sub = sub
         self._secret = secret
@@ -115,7 +119,7 @@ class FinOpsClient:
         response = requests.post(
             urljoin(self._api_base_url, f"entitlements/{entitlement_id}/terminate"),
             headers=headers,
-            timeout=TIMEOUT
+            timeout=TIMEOUT,
         )
 
         response.raise_for_status()
@@ -136,7 +140,7 @@ class FinOpsClient:
         response = requests.get(
             urljoin(self._api_base_url, f"entitlements?datasource_id={datasource_id}&limit=1"),
             headers=headers,
-            timeout=TIMEOUT
+            timeout=TIMEOUT,
         )
         response.raise_for_status()
         result = response.json()

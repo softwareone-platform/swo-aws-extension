@@ -77,18 +77,23 @@ def add_subscription(
     context.subscriptions.append(subscription)
     logger.info(
         "%s - Action -  subscription for %s (%s) created",
-        context.order_id, account_id, subscription["id"],
+        context.order_id,
+        account_id,
+        subscription["id"],
     )
 
 
 class CreateSubscription(Step):
     """Create subscription on MPT."""
+
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         """Execute step."""
         if get_phase(context.order) != PhasesEnum.CREATE_SUBSCRIPTIONS:
             logger.info(
                 "%s - Skip - Current phase is '%s', skipping as it is not '%s'",
-                context.order_id, get_phase(context.order), PhasesEnum.CREATE_SUBSCRIPTIONS.value,
+                context.order_id,
+                get_phase(context.order),
+                PhasesEnum.CREATE_SUBSCRIPTIONS.value,
             )
             next_step(client, context)
             return
@@ -105,7 +110,8 @@ class CreateSubscription(Step):
             if not account:
                 logger.error(
                     "%s - Exception - Unable to find an active account: %s",
-                    context.order_id, accounts,
+                    context.order_id,
+                    accounts,
                 )
                 return
             account_id = account["Id"]
@@ -135,13 +141,16 @@ class CreateSubscription(Step):
 
         logger.info(
             "'%s - Action - %s' completed successfully. Proceeding to next phase '%s'",
-            context.order_id, PhasesEnum.CREATE_SUBSCRIPTIONS.value, next_phase,
+            context.order_id,
+            PhasesEnum.CREATE_SUBSCRIPTIONS.value,
+            next_phase,
         )
         next_step(client, context)
 
 
 class SynchronizeAgreementSubscriptionsStep(CreateSubscription):
     """Run agreement synchronization."""
+
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         """Execute step."""
         logger.info("%s - Start - Synchronize agreement subscriptions", context.order_id)
@@ -153,6 +162,7 @@ class SynchronizeAgreementSubscriptionsStep(CreateSubscription):
 
 class CreateChangeSubscriptionStep(Step):
     """Add subscription."""
+
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
         """Execute step."""
         account_id = context.account_creation_status.account_id
@@ -167,6 +177,7 @@ class CreateChangeSubscriptionStep(Step):
             )
 
         logger.info(
-            "%s - Action - Create Change Subscription completed successfully. ", context.order_id,
+            "%s - Action - Create Change Subscription completed successfully. ",
+            context.order_id,
         )
         next_step(client, context)

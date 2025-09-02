@@ -45,13 +45,11 @@ def test_create_entitlement(mocker, mock_jwt_encoder, ffc_client_settings):
                     "X-Request-Id": "uuid-1",
                 },
             ),
-            matchers.json_params_matcher(
-                {
-                    "name": "AWS",
-                    "affiliate_external_id": "aff123",
-                    "datasource_id": "ds123",
-                }
-            ),
+            matchers.json_params_matcher({
+                "name": "AWS",
+                "affiliate_external_id": "aff123",
+                "datasource_id": "ds123",
+            }),
         ],
     )
 
@@ -89,13 +87,11 @@ def test_create_entitlement_with_default_name(mocker, mock_jwt_encoder, ffc_clie
                     "X-Request-Id": "uuid-1",
                 },
             ),
-            matchers.json_params_matcher(
-                {
-                    "name": "AWS",
-                    "affiliate_external_id": "aff123",
-                    "datasource_id": "ds123",
-                }
-            ),
+            matchers.json_params_matcher({
+                "name": "AWS",
+                "affiliate_external_id": "aff123",
+                "datasource_id": "ds123",
+            }),
         ],
     )
 

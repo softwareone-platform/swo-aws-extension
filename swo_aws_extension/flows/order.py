@@ -50,6 +50,7 @@ def set_template(order: dict, template: dict) -> dict:
 
 class OrderStatusChangeError(RuntimeError):
     """Exception raised when the order status cannot be changed."""
+
     def __init__(self, target_status, current_status):
         message = (
             f"Order is already in `{current_status}` status. "
@@ -96,6 +97,7 @@ def reset_order_error(order: dict) -> dict:
 @dataclass
 class InitialAWSContext(BaseContext):
     """AWS order processing context."""
+
     validation_succeeded: bool = True
     aws_client: AWSClient | None = None
     airtable_mpa: Model | None = None
@@ -186,7 +188,10 @@ class InitialAWSContext(BaseContext):
                 "%s - Template error - Template template_name=`%s` not found for status `%s`. "
                 "Using template_name=`%s` instead. "
                 "Please check the template name and template setup in the MPT platform.",
-                self.order_id, template_name, status, found_template_name,
+                self.order_id,
+                template_name,
+                status,
+                found_template_name,
             )
         self.order = set_template(self.order, template)
         logger.info("%s - Action - Updated template to %s", self.order_id, template_name)
@@ -292,6 +297,7 @@ class InitialAWSContext(BaseContext):
 @dataclass
 class PurchaseContext(InitialAWSContext):
     """Order purchase context."""
+
     @property
     def order_master_payer_id(self):
         """Return the master payer id of the order."""
@@ -342,6 +348,7 @@ class PurchaseContext(InitialAWSContext):
 
 class TerminateContext(InitialAWSContext):
     """Terminate order processing context."""
+
     @property
     def terminating_subscriptions_aws_account_ids(self):
         """Return a list of aws account ids which subscriptions are terminating."""
@@ -365,6 +372,7 @@ class TerminateContext(InitialAWSContext):
 
 class ChangeContext(InitialAWSContext):
     """AWS Order change processing context."""
+
     @property
     def root_account_email(self):
         """Return the root account email of the order."""

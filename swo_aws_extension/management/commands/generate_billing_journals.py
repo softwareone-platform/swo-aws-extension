@@ -22,6 +22,7 @@ BILLING_JOURNAL_PROCESSORS = get_journal_processors(config)
 
 class Command(StyledPrintCommand):
     """Generate billing journals."""
+
     help = "Generate Journals for monthly billing"
     name = "generate_billing_journals"
 

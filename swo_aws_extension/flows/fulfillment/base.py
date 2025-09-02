@@ -57,7 +57,8 @@ def fulfill_order(client, context):  # noqa: C901
                 purchase_transfer_without_organization.run(client, context)
             elif context.is_split_billing():
                 logger.info(
-                    "%s - Pipeline - Starting: purchase split billing order", context.order_id,
+                    "%s - Pipeline - Starting: purchase split billing order",
+                    context.order_id,
                 )
                 purchase_split_billing.run(client, context)
             else:

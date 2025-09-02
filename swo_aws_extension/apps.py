@@ -7,6 +7,7 @@ from .extension import ext
 
 class ExtensionConfig(DjAppConfig):
     """Extension Django config."""
+
     name = "swo_aws_extension"
     verbose_name = "SWO AWS Extension"
     extension = ext
