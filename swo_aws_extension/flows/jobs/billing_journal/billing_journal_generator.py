@@ -39,8 +39,10 @@ from swo_aws_extension.constants import (
     UsageMetricTypeEnum,
 )
 from swo_aws_extension.file_builder.zip_builder import InMemoryZipBuilder
-from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingException
-from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import create_journal_line
+from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import (
+    calculate_service_amount,
+    create_journal_line,
+)
 from swo_aws_extension.notifications import Button, send_error, send_success
 from swo_aws_extension.parameters import get_transfer_type
 from swo_mpt_api import MPTAPIClient
@@ -332,6 +334,7 @@ class BillingJournalGenerator:
             return
 
         journal_file = "".join(entry.to_jsonl() for entry in self.journal_file_lines)
+
         final_file = BytesIO(journal_file.encode("utf-8"))
         self.mpt_api_client.billing.journal.upload(journal_id, final_file, "journal.jsonl")
         self._log(
@@ -343,6 +346,7 @@ class BillingJournalGenerator:
         report_file = "".join(
             entry.to_jsonl() for entry in self.journal_file_lines if not entry.is_valid()
         )
+
         if report_file:
             report_file_name = self._upload_failed_journal_report(journal_id, report_file)
             attachment_link = urljoin(
@@ -513,37 +517,19 @@ class BillingJournalGenerator:
         account_id = subscription.get("externalIds", {}).get("vendor", "")
         for line in subscription.get("lines", []):
             item_external_id = line.get("item", {}).get("externalIds", {}).get("vendor")
-            try:
-                processor = self.journal_line_processors.get(item_external_id)
-                if not processor:
-                    self._log("error", f"No processor found for item externalId {item_external_id}")
-                    continue
-                self.journal_file_lines.extend(
-                    processor.process(
-                        account_id,
-                        item_external_id,
-                        account_metrics,
-                        journal_details,
-                        account_invoices,
-                    )
-                )
-            except AWSBillingException as ex:
-                self._log(
-                    "exception",
-                    f"Failed to process subscription line {line.get('id')}: {ex}",
-                )
-                error_line = self._create_line_error(
+            processor = self.journal_line_processors.get(item_external_id)
+            if not processor:
+                self._log("error", f"No processor found for item externalId {item_external_id}")
+                continue
+            self.journal_file_lines.extend(
+                processor.process(
                     account_id,
                     item_external_id,
                     account_metrics,
                     journal_details,
                     account_invoices,
-                    ex.service_name,
-                    ex.amount,
-                    ex.message,
                 )
-
-                self.journal_file_lines.append(error_line)
+            )
 
     @staticmethod
     def _get_invoice_entity_by_service(service_invoice_entity_report):
@@ -669,9 +655,18 @@ class BillingJournalGenerator:
                 service_discount = partner_discount.get(service, 0)
                 partner_amount = amount - abs(service_discount)
                 discount = ((amount - partner_amount) / amount) * 100 if amount != 0 else 0
+                invoice_entity = account_metrics.get(
+                    UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY.value, {}
+                ).get(service, "")
+                invoice_details = account_invoices.get("invoice_entities", {}).get(
+                    invoice_entity, {}
+                )
+                payment_currency = invoice_details.get("payment_currency_code", "")
+                adjusted_amount = calculate_service_amount(invoice_details, amount)
                 error_msg = (
-                    f"{account_id} - Service {service} with amount {amount} and discount "
-                    f"{discount} did not match any subscription item."
+                    f"{account_id} - Service {service} with amount {adjusted_amount} "
+                    f"{payment_currency} and discount {discount} did not match any "
+                    f"subscription item."
                 )
                 self._log("error", error_msg)
                 error_line = self._create_line_error(
@@ -681,7 +676,7 @@ class BillingJournalGenerator:
                     journal_details,
                     account_invoices,
                     service,
-                    amount,
+                    adjusted_amount,
                     error_msg,
                 )
                 self.journal_file_lines.append(error_line)
