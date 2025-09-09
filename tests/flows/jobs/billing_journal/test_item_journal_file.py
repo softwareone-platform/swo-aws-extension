@@ -11,7 +11,6 @@ from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import (
     GenerateItemJournalLines,
     GenerateOtherServicesJournalLines,
     GenerateSavingPlansJournalLines,
-    GenerateSupportEnterpriseJournalLines,
     GenerateSupportJournalLines,
     GenerateUsageJournalLines,
 )
@@ -93,7 +92,11 @@ def test_generate_other_services_journal_lines_process(
         service_name="Other AWS services",
         item_external_id=external_id,
     )
-    assert result == [journal_line]
+    journal_line_support_development = mock_journal_line_factory(
+        service_name="AWS Support (Development)",
+        item_external_id=external_id,
+    )
+    assert result == [journal_line, journal_line_support_development]
 
 
 def test_generate_support_journal_lines_process(mock_journal_args, mock_journal_line_factory):
@@ -102,21 +105,25 @@ def test_generate_support_journal_lines_process(mock_journal_args, mock_journal_
     )
     external_id = ItemSkusEnum.AWS_SUPPORT.value
     args = mock_journal_args(external_id)
-    args["account_metrics"][UsageMetricTypeEnum.SUPPORT.value] = {"AWS Support (Business)": 100.0}
-    args["account_metrics"][UsageMetricTypeEnum.REFUND.value] = {"refund": 7}
-
+    args["account_metrics"][UsageMetricTypeEnum.SUPPORT.value] = {
+        "AWS Support (Business)": Decimal(100)
+    }
+    args["account_metrics"][UsageMetricTypeEnum.PROVIDER_DISCOUNT.value] = {
+        "AWS Support (Business)": Decimal(7)
+    }
     result = proc.process(**args)
     journal_line = mock_journal_line_factory(
         service_name="AWS Support (Business)",
         item_external_id=external_id,
     )
+
     assert result == [journal_line]
 
 
 def test_generate_support_enterprise_journal_lines_process(
     mock_journal_args, mock_journal_line_factory
 ):
-    proc = GenerateSupportEnterpriseJournalLines(
+    proc = GenerateSupportJournalLines(
         UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=35
     )
     item_external_id = ItemSkusEnum.AWS_SUPPORT_ENTERPRISE.value
@@ -220,25 +227,10 @@ def test_generate_support_journal_lines_no_support_metric(
     assert result == []
 
 
-def test_generate_support_journal_lines_no_refund_metric(
+def test_generate_support__journal_lines_no_provider_discount(
     mock_journal_args, mock_journal_line_factory
 ):
     proc = GenerateSupportJournalLines(
-        UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=7
-    )
-    external_id = ItemSkusEnum.AWS_SUPPORT.value
-    args = mock_journal_args(external_id)
-    args["account_metrics"][UsageMetricTypeEnum.SUPPORT.value] = {"AWS Support (Business)": 100.0}
-    args["account_metrics"][UsageMetricTypeEnum.REFUND.value] = {}
-
-    result = proc.process(**args)
-    assert result == []
-
-
-def test_generate_support_enterprise_journal_lines_no_provider_discount(
-    mock_journal_args, mock_journal_line_factory
-):
-    proc = GenerateSupportEnterpriseJournalLines(
         UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=35
     )
     item_external_id = ItemSkusEnum.AWS_SUPPORT_ENTERPRISE.value
@@ -253,7 +245,7 @@ def test_generate_support_enterprise_journal_lines_no_provider_discount(
 def test_generate_support_enterprise_journal_lines_no_support_metric(
     mock_journal_args, mock_journal_line_factory
 ):
-    proc = GenerateSupportEnterpriseJournalLines(
+    proc = GenerateSupportJournalLines(
         UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=35
     )
     item_external_id = ItemSkusEnum.AWS_SUPPORT_ENTERPRISE.value
@@ -266,30 +258,6 @@ def test_generate_support_enterprise_journal_lines_no_support_metric(
     result = proc.process(**args)
 
     assert result == []
-
-
-def test_support_two_charges_error(mock_journal_args, mock_journal_line_factory):
-    proc = GenerateSupportEnterpriseJournalLines(
-        UsageMetricTypeEnum.SUPPORT.value, billing_discount_tolerance_rate=1, discount=35
-    )
-    item_external_id = ItemSkusEnum.AWS_SUPPORT_ENTERPRISE.value
-    args = mock_journal_args(item_external_id)
-    args["account_metrics"][UsageMetricTypeEnum.SUPPORT.value] = {
-        "AWS Support (Enterprise)": 100.0,
-        "AWS Support (Business)": 100.0,
-    }
-    args["account_metrics"][UsageMetricTypeEnum.PROVIDER_DISCOUNT.value] = {
-        "AWS Support (Enterprise)": 35
-    }
-
-    with pytest.raises(AWSBillingException) as exc_info:
-        proc.process(**args)
-
-    assert (
-        exc_info.value.message
-        == "Multiple support metrics found: {'AWS Support (Enterprise)': 100.0,"
-        " 'AWS Support (Business)': 100.0} with discount 35. "
-    )
 
 
 def test_generate_journal_line_with_exchange_rate(mock_journal_args, mock_journal_line_factory):

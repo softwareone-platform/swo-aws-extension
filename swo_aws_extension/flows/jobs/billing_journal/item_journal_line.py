@@ -1,5 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
+from decimal import Decimal
 from typing import override
 
 from swo_aws_extension.constants import (
@@ -7,7 +8,6 @@ from swo_aws_extension.constants import (
     ItemSkusEnum,
     UsageMetricTypeEnum,
 )
-from swo_aws_extension.flows.jobs.billing_journal.error import AWSBillingException
 from swo_aws_extension.flows.jobs.billing_journal.models import (
     Description,
     ExternalIds,
@@ -49,7 +49,7 @@ def get_journal_processors(config):
         ItemSkusEnum.AWS_SUPPORT.value: GenerateSupportJournalLines(
             UsageMetricTypeEnum.SUPPORT.value, tolerance, config.billing_discount_base
         ),
-        ItemSkusEnum.AWS_SUPPORT_ENTERPRISE.value: GenerateSupportEnterpriseJournalLines(
+        ItemSkusEnum.AWS_SUPPORT_ENTERPRISE.value: GenerateSupportJournalLines(
             UsageMetricTypeEnum.SUPPORT.value, tolerance, config.billing_discount_support_enterprise
         ),
         ItemSkusEnum.SAVING_PLANS_RECURRING_FEE.value: GenerateSavingPlansJournalLines(
@@ -131,6 +131,16 @@ def create_journal_line(
     )
 
 
+def calculate_service_amount(invoice_details, amount):
+    """Calculate the service amount based on currency exchange rate."""
+    payment_currency = invoice_details.get("payment_currency_code", "")
+    base_currency = invoice_details.get("base_currency_code", "")
+    if payment_currency != base_currency:
+        exchange_rate = invoice_details.get("exchange_rate", Decimal(0))
+        return round(amount * exchange_rate, 6)
+    return amount
+
+
 class DiscountValidator(ABC):
     """Base class for discount validation."""
 
@@ -143,49 +153,20 @@ class DiscountValidator(ABC):
         partner_amount = amount - abs(discount)
         return ((amount - partner_amount) / amount) * 100 if amount != 0 else 0
 
-    def _get_support_discount(self, support_metrics, discount):
-        if len(support_metrics) > 1:
-            error_message = (
-                f"Multiple support metrics found: {support_metrics} with discount {discount}. "
-            )
-            logger.error(error_message)
-            error_payload = {
-                "service_name": AWSServiceEnum.SUPPORT.value,
-                "amount": 0,
-            }
-            raise AWSBillingException(error_message, error_payload)
-
-        support = next(iter(support_metrics.values()), 0)
-        support_discount = discount / support * 100 if support != 0 else 0
-        return round(abs(support_discount))
-
 
 class SupportDiscountValidator(DiscountValidator):
     """Discount validator for AWS support services."""
 
     @override
     def validate(self, discount, amount, service_name, account_metrics, tolerance_rate):
-        refund_metrics = account_metrics.get(UsageMetricTypeEnum.REFUND.value, {})
-        refund_discount = next(iter(refund_metrics.values()), 0)
-        support_discount = self._get_support_discount(
-            account_metrics.get(UsageMetricTypeEnum.SUPPORT.value, {}), refund_discount
-        )
-        return support_discount == discount
-
-
-class SupportEnterpriseDiscountValidator(DiscountValidator):
-    """Discount validator for AWS support enterprise services."""
-
-    @override
-    def validate(self, discount, amount, service_name, account_metrics, tolerance_rate):
-        support_metrics = account_metrics.get(UsageMetricTypeEnum.SUPPORT.value, {})
         provider_discount_metrics = account_metrics.get(
             UsageMetricTypeEnum.PROVIDER_DISCOUNT.value, {}
         )
-        support_name = next(iter(support_metrics.keys()), 0)
-        provider_discount = abs(provider_discount_metrics.get(support_name, 0))
-        support_discount = self._get_support_discount(support_metrics, provider_discount)
-        return support_discount == discount
+
+        service_discount = provider_discount_metrics.get(service_name, 0)
+        provider_discount = self._calculate_provider_discount(service_discount, amount)
+
+        return abs(provider_discount - discount) <= tolerance_rate
 
 
 class DefaultDiscountValidator(DiscountValidator):
@@ -233,6 +214,7 @@ class GenerateItemJournalLines:
 
     def __init__(self, metric_id, billing_discount_tolerance_rate, discount=None):
         self._metric_id = metric_id
+        self._dynamic_metric_ids = []
         self._billing_discount_tolerance_rate = billing_discount_tolerance_rate
         self._discount = discount
         self._exclude_services = []
@@ -248,12 +230,20 @@ class GenerateItemJournalLines:
 
         return exclude_services
 
+    def _get_metric_data(self, account_metrics):
+        metric_data = account_metrics.get(self._metric_id, {}).copy()
+        if not self._dynamic_metric_ids:
+            return metric_data
+        for dynamic_metric_id in self._dynamic_metric_ids:
+            metric_data.update(account_metrics.get(dynamic_metric_id, {}))
+        return metric_data
+
     def process(
         self, account_id, item_external_id, account_metrics, journal_details, account_invoices
     ):
         """Generate item journal lines."""
         journal_lines = []
-        metric_data = account_metrics.get(self._metric_id, {})
+        metric_data = self._get_metric_data(account_metrics)
 
         filtered_metrics = {
             s: a
@@ -273,15 +263,9 @@ class GenerateItemJournalLines:
                 UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY.value, {}
             ).get(service_name, "")
             invoice_details = account_invoices.get("invoice_entities", {}).get(invoice_entity, {})
-
             invoice_id = invoice_details.get("invoice_id", "")
-            payment_currency = invoice_details.get("payment_currency_code", "")
-            base_currency = invoice_details.get("base_currency_code", "")
-            if payment_currency != base_currency:
-                exchange_rate = invoice_details.get("exchange_rate", 0)
-                adjusted_amount = round(amount * exchange_rate, 6)
-            else:
-                adjusted_amount = amount
+            adjusted_amount = calculate_service_amount(invoice_details, amount)
+
             journal_lines.append(
                 create_journal_line(
                     service_name,
@@ -339,9 +323,11 @@ class GenerateOtherServicesJournalLines(GenerateItemJournalLines):
         ]
         self._dynamic_exclude_services = [
             UsageMetricTypeEnum.MARKETPLACE.value,
-            UsageMetricTypeEnum.SUPPORT.value,
         ]
         self._validator = DefaultDiscountValidator
+        self._dynamic_metric_ids = [
+            UsageMetricTypeEnum.SUPPORT.value,
+        ]
 
 
 class GenerateSupportJournalLines(GenerateItemJournalLines):
@@ -352,13 +338,3 @@ class GenerateSupportJournalLines(GenerateItemJournalLines):
 
         self._exclude_services = []
         self._validator = SupportDiscountValidator
-
-
-class GenerateSupportEnterpriseJournalLines(GenerateItemJournalLines):
-    """Generate journal lines for AWS support enterprise usage metrics."""
-
-    def __init__(self, metric_id, billing_discount_tolerance_rate, discount=None):
-        super().__init__(metric_id, billing_discount_tolerance_rate, discount=discount)
-
-        self._exclude_services = []
-        self._validator = SupportEnterpriseDiscountValidator

@@ -189,7 +189,7 @@ EXTENSION_CONFIG = {
     "AIRTABLE_BASES": "base_id",
     "CCP_OAUTH_SCOPE": "oauth_scope",
     "CCP_API_BASE_URL": "https://example.com",
-    "MINIMUM_MPA_THRESHOLD": 3,
+    "MINIMUM_MPA_THRESHOLD": 2,
     "CCP_SCOPE": "ccp-scope",
     "MPT_KEY_VAULT_NAME": "mpt-key-vault",
     "CCP_KEY_VAULT_SECRET_NAME": "ccp-openid-token-secret-name",

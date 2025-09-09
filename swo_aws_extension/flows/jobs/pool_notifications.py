@@ -1,6 +1,7 @@
 import logging
 
 from mpt_extension_sdk.mpt_http.utils import find_first
+from requests import HTTPError
 
 from swo_aws_extension.airtable.models import (
     MPAStatusEnum,
@@ -35,8 +36,16 @@ def process_pending_notification(crm_client, pending_notification):
         crm_client: The CRM client.
         pending_notification: The pending notification to process.
     """
-    logger.info(f"Processing pending notification {pending_notification.notification_id}")
-    ticket = crm_client.get_service_requests(None, pending_notification.ticket_id)
+    logger.info("Processing pending notification %s", pending_notification.notification_id)
+    try:
+        ticket = crm_client.get_service_requests(None, pending_notification.ticket_id)
+    except HTTPError:
+        logger.exception(
+            "Failed to fetch ticket %s for pending notification %s",
+            pending_notification.ticket_id,
+            pending_notification.notification_id,
+        )
+        return
     ticket_state = ticket.get("state", "")
 
     if ticket_state in CRM_TICKET_RESOLVED_STATE:

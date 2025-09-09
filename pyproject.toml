@@ -93,8 +93,8 @@ filterwarnings = [
 branch = true
 relative_files = true
 omit = [
-    "swo/**",
-    "tests/**"
+    "tests/**",
+    "swo_aws_extension/default.py",
 ]
 
 [tool.ruff]
