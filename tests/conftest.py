@@ -2189,13 +2189,19 @@ def get_usage_data(
             "service_name": "AWS Support (Business)",
             "record_type": AWSRecordTypeEnum.SUPPORT.value,
             "service_amount": "100",
+            "provider_discount_amount": "7",
+        },
+        {
+            "service_name": "AWS Support (Development)",
+            "record_type": AWSRecordTypeEnum.SUPPORT.value,
+            "service_amount": "100",
             "provider_discount_amount": "0",
         },
         {
             "service_name": "AWS Support (Enterprise)",
             "record_type": AWSRecordTypeEnum.SUPPORT.value,
             "service_amount": "100",
-            "provider_discount_amount": "0",
+            "provider_discount_amount": "35",
         },
         {
             "service_name": AWSServiceEnum.TAX.value,
