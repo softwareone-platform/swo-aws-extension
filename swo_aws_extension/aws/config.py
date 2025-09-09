@@ -96,7 +96,7 @@ class Config:
     @property
     def billing_discount_support_enterprise(self) -> int:
         """Get the billing discount for enterprise support."""
-        return settings.EXTENSION_CONFIG.get("BILLING_DISCOUNT_SUPPORT_ENTERPRISE", 35)
+        return int(settings.EXTENSION_CONFIG.get("BILLING_DISCOUNT_SUPPORT_ENTERPRISE", 35))
 
     @property
     def billing_discount_tolerance_rate(self) -> int:
