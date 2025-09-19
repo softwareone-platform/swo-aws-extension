@@ -176,13 +176,13 @@ CRM_KEEPER_SUMMARY = (
 
 CRM_TRANSFER_WITH_ORGANIZATION_TITLE = (
     "Action Required: New AWS Onboarding in Marketplace - Transfer with Organization MPA AWS"
-    " Transfer {master_payer_id} {email_address}"
+    " Transfer {master_payer_id} (SCU: {buyer_external_id})"
 )
 CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL_INFO = "AWS Transfer account with organization"
 CRM_TRANSFER_WITH_ORGANIZATION_SUMMARY = (
     "Dear MCoE Team,<br><br>A notification has been generated on the Marketplace Platform"
     " regarding Transfer request for AWS MPA Account with organization.<br>Details of transfer:"
-    " <br>MPA: {master_payer_id}<br>Contact: {email_address}<br>Order Id: {order_id}<br>"
+    " <br>MPA: {master_payer_id}<br>SCU: {buyer_external_id}<br>Order Id: {order_id}<br>"
     "<br>Thank you for your attention."
     " <br><br>Best Regards,<br>Marketplace Platform Team<br>"
 )
