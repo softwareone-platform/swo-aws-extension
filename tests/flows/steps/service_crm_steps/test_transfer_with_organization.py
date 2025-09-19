@@ -4,6 +4,9 @@ from requests import Response
 
 from swo_aws_extension.constants import (
     CRM_TICKET_RESOLVED_STATE,
+    CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL_INFO,
+    CRM_TRANSFER_WITH_ORGANIZATION_SUMMARY,
+    CRM_TRANSFER_WITH_ORGANIZATION_TITLE,
     OrderProcessingTemplateEnum,
     TransferTypesEnum,
 )
@@ -14,7 +17,9 @@ from swo_aws_extension.flows.steps.service_crm_steps import (
 )
 from swo_aws_extension.parameters import (
     get_crm_transfer_organization_ticket_id,
+    get_master_payer_id,
 )
+from swo_crm_service_client import ServiceRequest
 
 
 @pytest.fixture
@@ -97,8 +102,24 @@ def test_create_transfer_request_ticket_with_organization_step_creates_ticket(
     mock_update_processing_template.assert_called_once_with(
         mpt_client_mock, OrderProcessingTemplateEnum.TRANSFER_WITH_ORG_TICKET_CREATED.value
     )
+    master_payer_id = get_master_payer_id(context.order)
+    buyer_external_id = context.buyer.get("externalIds", {}).get("erpCustomer", "")
+    service_request = ServiceRequest(
+        additional_info=CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL_INFO,
+        title=CRM_TRANSFER_WITH_ORGANIZATION_TITLE.format(
+            master_payer_id=master_payer_id, buyer_external_id=buyer_external_id
+        ),
+        summary=CRM_TRANSFER_WITH_ORGANIZATION_SUMMARY.format(
+            master_payer_id=master_payer_id,
+            buyer_external_id=buyer_external_id,
+            order_id=context.order_id,
+        ),
+    )
+    assert service_client.create_service_request.call_args_list[0][0] == (
+        context.order_id,
+        service_request,
+    )
     assert get_crm_transfer_organization_ticket_id(context.order) == "CS0004721"
-    next_step_mock.assert_called_once()
 
 
 def test_create_transfer_request_ticket_raise_exception(

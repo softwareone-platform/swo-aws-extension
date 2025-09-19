@@ -208,22 +208,21 @@ class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
 
     def build_service_request(self, context: PurchaseContext) -> ServiceRequest:
         """Build CRM service request."""
-        email_address = context.buyer.get("contact", {}).get("email")
         master_payer_id = get_master_payer_id(context.order)
         if not master_payer_id:
             raise ValueError(
                 f"Unable to create a transfer service request ticket for order={context.order_id}. "
                 f"Reason: Missing master payer id."
             )
-
+        buyer_external_id = context.buyer.get("externalIds", {}).get("erpCustomer", "")
         return ServiceRequest(
             additional_info=CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL_INFO,
             title=CRM_TRANSFER_WITH_ORGANIZATION_TITLE.format(
-                master_payer_id=master_payer_id, email_address=email_address
+                master_payer_id=master_payer_id, buyer_external_id=buyer_external_id
             ),
             summary=CRM_TRANSFER_WITH_ORGANIZATION_SUMMARY.format(
                 master_payer_id=master_payer_id,
-                email_address=email_address,
+                buyer_external_id=buyer_external_id,
                 order_id=context.order_id,
             ),
         )
