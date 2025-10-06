@@ -98,6 +98,11 @@ omit = [
     "swo_aws_extension/default.py",
 ]
 
+[tool.coverage.report]
+exclude_also = [
+    "raise NotImplementedError",
+]
+
 [tool.ruff]
 # Ruff config: https://docs.astral.sh/ruff/settings
 preview = true
@@ -186,6 +191,8 @@ pydocstyle.convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = [
+  "D101", # missing docstring in public class
+  "D102", # missing docstring in public methods
   "D103", # missing docstring in public function
   "S101", # asserts
   "S105", # hardcoded passwords
