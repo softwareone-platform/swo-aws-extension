@@ -1,4 +1,5 @@
 from abc import ABC
+from typing import override
 
 from swo_aws_extension.constants import AWSServiceEnum, ItemSkusEnum, UsageMetricTypeEnum
 from swo_aws_extension.flows.jobs.billing_journal.line_processors.base_processor import (
@@ -19,54 +20,54 @@ class GenerateUsageDiscountJournalLines(GenerateItemJournalLines, ABC):
 class GenerateUsageJournalLines(GenerateUsageDiscountJournalLines):
     """Generate journal lines for AWS usage metrics."""
 
+    @override
     @property
     def item_sku(self):
-        """Return the item SKU associated with this processor."""
         return ItemSkusEnum.AWS_USAGE.value
 
+    @override
     @property
     def metric_id(self):
-        """Return the metric ID associated with this processor."""
         return UsageMetricTypeEnum.USAGE.value
 
 
 class GenerateUsageIncentivateJournalLines(GenerateUsageDiscountJournalLines):
     """Generate journal lines for AWS usage incentivate metrics."""
 
+    @override
     @property
     def item_sku(self):
-        """Return the item SKU associated with this processor."""
         return ItemSkusEnum.AWS_USAGE_INCENTIVATE.value
 
+    @override
     @property
     def metric_id(self):
-        """Return the metric ID associated with this processor."""
         return UsageMetricTypeEnum.USAGE.value
 
 
 class GenerateUpfrontJournalLines(GenerateUsageDiscountJournalLines):
     """Generate journal lines for AWS upfront/recurring metrics."""
 
+    @override
     @property
     def item_sku(self):
-        """Return the item SKU associated with this processor."""
         return ItemSkusEnum.UPFRONT.value
 
+    @override
     @property
     def metric_id(self):
-        """Return the metric ID associated with this processor."""
         return UsageMetricTypeEnum.RECURRING.value
 
 
 class GenerateUpfrontIncentivateJournalLines(GenerateUsageDiscountJournalLines):
     """Generate journal lines for AWS upfront/recurring incentivate metrics."""
 
+    @override
     @property
     def item_sku(self):
-        """Return the item SKU associated with this processor."""
         return ItemSkusEnum.UPFRONT_INCENTIVATE.value
 
+    @override
     @property
     def metric_id(self):
-        """Return the metric ID associated with this processor."""
         return UsageMetricTypeEnum.RECURRING.value
