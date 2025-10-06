@@ -12,12 +12,12 @@ from swo_aws_extension.constants import (
 from swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator import (
     BillingJournalGenerator,
 )
-from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import get_journal_processors
+from swo_aws_extension.flows.jobs.billing_journal.processor_dispatcher import (
+    JournalProcessorDispatcher,
+)
 from swo_aws_extension.management.commands_helpers import StyledPrintCommand
 
 config = Config()
-
-BILLING_JOURNAL_PROCESSORS = get_journal_processors(config)
 
 
 class Command(StyledPrintCommand):
@@ -138,7 +138,7 @@ class Command(StyledPrintCommand):
             year,
             month,
             settings.MPT_PRODUCTS_IDS,
-            BILLING_JOURNAL_PROCESSORS,
+            JournalProcessorDispatcher.build(config),
             authorizations,
         )
         generator.generate_billing_journals()

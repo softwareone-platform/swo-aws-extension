@@ -92,3 +92,51 @@ class JournalLine:
     def to_jsonl(self) -> str:
         """Export as a single JSONL line."""
         return json.dumps(self.to_dict(), default=str) + "\n"
+
+    @classmethod
+    def build(cls, item_external_id, journal_details, invoice_details, quantity=1, segment="COM"):
+        """
+        Create a new journal line dictionary for billing purposes.
+
+        Args:
+            item_external_id (str): External item ID.
+            journal_details (dict): Journal metadata.
+            invoice_details (InvoiceDetails): Invoice details .
+            quantity (int, optional): Quantity of the item. Defaults to 1.
+            segment (str, optional): Segment for the journal line. Defaults to "COM".
+
+        Returns:
+            dict: Journal line dictionary.
+        """
+        return cls(
+            description=Description(
+                value1=invoice_details.service_name,
+                value2=f"{invoice_details.account_id}/{invoice_details.invoice_entity}",
+            ),
+            external_ids=ExternalIds(
+                invoice=invoice_details.invoice_id,
+                reference=journal_details["agreement_id"],
+                vendor=journal_details["mpa_id"],
+            ),
+            period=Period(
+                start=journal_details["start_date"],
+                end=journal_details["end_date"],
+            ),
+            price=Price(
+                pp_x1=invoice_details.amount,
+                unit_pp=invoice_details.amount,
+            ),
+            quantity=quantity,
+            search=Search(
+                item=SearchItem(
+                    criteria="item.externalIds.vendor",
+                    value=item_external_id or "Item Not Found",
+                ),
+                subscription=SearchSubscription(
+                    criteria="subscription.externalIds.vendor",
+                    value=invoice_details.account_id,
+                ),
+            ),
+            segment=segment,
+            error=invoice_details.error,
+        )

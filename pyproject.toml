@@ -97,6 +97,11 @@ omit = [
     "swo_aws_extension/default.py",
 ]
 
+[tool.coverage.report]
+exclude_also = [
+    "raise NotImplementedError",
+]
+
 [tool.ruff]
 extend-exclude = [".vscode", ".devcontainer", "swo"]
 output-format = "full"
