@@ -1,3 +1,5 @@
+from typing import override
+
 from swo_aws_extension.constants import UsageMetricTypeEnum
 from swo_aws_extension.flows.jobs.billing_journal.line_processors.base_processor import (
     GenerateItemJournalLines,
@@ -27,12 +29,12 @@ class ErrorJournalLinesProcessor(GenerateItemJournalLines):
         super().__init__(billing_discount_tolerance_rate, discount)
         self._exclude_services = () if exclude_services is None else exclude_services
 
+    @override
     @property
     def item_sku(self):
-        """Return the item SKU associated with this processor."""
         return ""
 
+    @override
     @property
     def metric_id(self):
-        """Return the metric ID associated with this processor."""
         return ""

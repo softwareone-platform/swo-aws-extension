@@ -422,7 +422,7 @@ class BillingJournalGenerator:
         account_id = subscription.get("externalIds", {}).get("vendor")
         self._log("info", f"Processing subscription for account {account_id}")
 
-        account_metrics = self._get_account_metrics(aws_client, account_id)
+        account_metrics = self._get_account_metrics(aws_client, account_id, organization_invoices)
         account_journal_lines = self._get_journal_lines_by_account(
             subscription, account_metrics, journal_details, organization_invoices
         )
@@ -473,7 +473,7 @@ class BillingJournalGenerator:
 
         return [invoice for invoice in invoice_summaries if invoice.get("AccountId") == mpa_account]
 
-    def _get_account_metrics(self, aws_client, account_id):
+    def _get_account_metrics(self, aws_client, account_id, organization_invoices):
         service_invoice_entity = self._get_service_invoice_entity_by_account_id_report(
             aws_client, account_id
         )
@@ -484,6 +484,14 @@ class BillingJournalGenerator:
             JournalAttachmentFilesNameEnum.SERVICE_INVOICE_ENTITY.value: service_invoice_entity,
             JournalAttachmentFilesNameEnum.RECORD_TYPE_AND_SERVICE_COST.value: record_type_report,
         }
+        provider_discount = self._get_metrics_by_key(
+            record_type_report, AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT
+        )
+        report_credits = self._get_metrics_by_key(record_type_report, AWSRecordTypeEnum.CREDIT)
+        credit_provider_discounts = self._get_credit_provider_discounts(
+            provider_discount, report_credits, organization_invoices
+        )
+
         return {
             UsageMetricTypeEnum.MARKETPLACE.value: self._get_metrics_by_key(
                 self.organization_reports[UsageMetricTypeEnum.MARKETPLACE.value], account_id
@@ -503,12 +511,12 @@ class BillingJournalGenerator:
             UsageMetricTypeEnum.SAVING_PLANS.value: self._get_metrics_by_key(
                 record_type_report, AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE
             ),
-            UsageMetricTypeEnum.PROVIDER_DISCOUNT.value: self._get_metrics_by_key(
-                record_type_report, AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT
-            ),
+            UsageMetricTypeEnum.PROVIDER_DISCOUNT.value: provider_discount,
             UsageMetricTypeEnum.RECURRING.value: self._get_metrics_by_key(
                 record_type_report, AWSRecordTypeEnum.RECURRING
             ),
+            UsageMetricTypeEnum.CREDITS.value: report_credits,
+            UsageMetricTypeEnum.CREDITS_PROVIDER_DISCOUNT.value: credit_provider_discounts,
         }
 
     def _get_journal_lines_by_account(
@@ -589,7 +597,7 @@ class BillingJournalGenerator:
             )
             return
 
-        account_metrics = self._get_account_metrics(aws_client, mpa_account)
+        account_metrics = self._get_account_metrics(aws_client, mpa_account, organization_invoices)
 
         account_journal_lines = self._get_journal_lines_by_account(
             first_active_subscription,
@@ -715,6 +723,9 @@ class BillingJournalGenerator:
                     "payment_currency_code": payment_currency,
                     "exchange_rate": exchange_rate,
                 }
+        principal_invoice = self._find_invoice_by_breakdown_description(
+            "Discount (AWS SPP Discount)"
+        )
 
         invoices = {
             "invoice_entities": invoice_entities,
@@ -730,6 +741,11 @@ class BillingJournalGenerator:
             "payment_currency_total_amount_before_tax": self._sum_invoice_amounts(
                 organization_invoices, "PaymentCurrencyAmount", "TotalAmountBeforeTax"
             ),
+            "principal_invoice_amount": principal_invoice.get("BaseCurrencyAmount", {}).get(
+                "TotalAmount", 0
+            )
+            if principal_invoice
+            else None,
         }
         self._log(
             "info",
@@ -750,3 +766,29 @@ class BillingJournalGenerator:
             {},
         )
         return invoice_summary.get("PaymentCurrencyAmount", {}).get("CurrencyCode", "USD")
+
+    def _get_credit_provider_discounts(
+        self, provider_discount, report_credits, organization_invoices
+    ):
+        credit_provider_discounts = {}
+        principal_amount = organization_invoices.get("principal_invoice_amount")
+        if principal_amount is None or Decimal(principal_amount) > 0:
+            return credit_provider_discounts
+
+        return {
+            credit_name: provider_discount[credit_name]
+            for credit_name in report_credits
+            if credit_name in provider_discount
+        }
+
+    def _find_invoice_by_breakdown_description(self, description):
+        for invoice in self.organization_reports.get("invoices", []):
+            breakdowns = (
+                invoice.get("BaseCurrencyAmount", {})
+                .get("AmountBreakdown", {})
+                .get("Discounts", {})
+                .get("Breakdown", [])
+            )
+            if any(breakdown.get("Description") == description for breakdown in breakdowns):
+                return invoice
+        return None

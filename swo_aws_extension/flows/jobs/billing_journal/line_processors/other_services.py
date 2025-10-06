@@ -1,3 +1,5 @@
+from typing import override
+
 from swo_aws_extension.constants import AWSServiceEnum, ItemSkusEnum, UsageMetricTypeEnum
 from swo_aws_extension.flows.jobs.billing_journal.line_processors.base_processor import (
     GenerateItemJournalLines,
@@ -18,12 +20,12 @@ class GenerateOtherServicesJournalLines(GenerateItemJournalLines):
     _dynamic_exclude_services = (UsageMetricTypeEnum.MARKETPLACE.value,)
     _validator = DefaultDiscountValidator
 
+    @override
     @property
     def item_sku(self):
-        """Return the item SKU associated with this processor."""
         return ItemSkusEnum.AWS_OTHER_SERVICES.value
 
+    @override
     @property
     def metric_id(self):
-        """Return the metric ID associated with this processor."""
         return UsageMetricTypeEnum.USAGE.value
