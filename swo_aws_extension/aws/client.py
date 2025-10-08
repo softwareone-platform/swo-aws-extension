@@ -11,7 +11,7 @@ from swo_aws_extension.aws.errors import (
     wrap_boto3_error,
     wrap_http_error,
 )
-from swo_ccp_client.client import CCPClient
+from swo_aws_extension.swo_ccp.client import CCPClient
 
 logger = logging.getLogger(__name__)
 

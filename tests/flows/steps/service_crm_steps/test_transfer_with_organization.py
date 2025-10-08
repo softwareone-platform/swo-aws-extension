@@ -19,7 +19,7 @@ from swo_aws_extension.parameters import (
     get_crm_transfer_organization_ticket_id,
     get_master_payer_id,
 )
-from swo_crm_service_client import ServiceRequest
+from swo_aws_extension.swo_crm_service import ServiceRequest
 
 
 @pytest.fixture

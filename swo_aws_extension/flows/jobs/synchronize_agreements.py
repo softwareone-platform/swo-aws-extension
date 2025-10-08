@@ -21,7 +21,7 @@ from swo_aws_extension.constants import (
 from swo_aws_extension.flows.steps.finops import create_finops_entitlement
 from swo_aws_extension.notifications import send_error
 from swo_aws_extension.parameters import FulfillmentParametersEnum
-from swo_finops_client.client import get_ffc_client
+from swo_aws_extension.swo_finops.client import get_ffc_client
 from swo_rql import RQLQuery
 
 logger = logging.getLogger(__name__)

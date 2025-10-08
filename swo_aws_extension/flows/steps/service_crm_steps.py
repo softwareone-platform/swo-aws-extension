@@ -40,8 +40,8 @@ from swo_aws_extension.parameters import (
     set_crm_termination_ticket_id,
     set_crm_transfer_organization_ticket_id,
 )
-from swo_crm_service_client import ServiceRequest
-from swo_crm_service_client.client import get_service_client
+from swo_aws_extension.swo_crm_service import ServiceRequest
+from swo_aws_extension.swo_crm_service.client import get_service_client
 
 logger = logging.getLogger(__name__)
 

@@ -11,7 +11,7 @@ from swo_aws_extension.flows.steps.service_crm_steps import (
     CreateServiceRequestStep,
     CreateUpdateKeeperTicketStep,
 )
-from swo_crm_service_client.client import CRMServiceClient, ServiceRequest
+from swo_aws_extension.swo_crm_service.client import CRMServiceClient, ServiceRequest
 
 
 @pytest.fixture

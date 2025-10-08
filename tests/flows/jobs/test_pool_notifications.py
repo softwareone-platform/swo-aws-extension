@@ -15,7 +15,7 @@ from swo_aws_extension.constants import (
     SupportTypesEnum,
 )
 from swo_aws_extension.flows.jobs.pool_notifications import check_pool_accounts_notifications
-from swo_crm_service_client import ServiceRequest
+from swo_aws_extension.swo_crm_service import ServiceRequest
 
 
 def test_check_pool_accounts_notifications(

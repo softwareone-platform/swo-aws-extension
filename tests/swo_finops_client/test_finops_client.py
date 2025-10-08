@@ -6,7 +6,11 @@ import responses
 from freezegun import freeze_time
 from responses import matchers
 
-from swo_finops_client.client import FinOpsHttpError, FinOpsNotFoundError, get_ffc_client
+from swo_aws_extension.swo_finops.client import (
+    FinOpsHttpError,
+    FinOpsNotFoundError,
+    get_ffc_client,
+)
 
 
 def test_finops_http_error():
@@ -25,7 +29,7 @@ def test_finops_not_found_error():
 @responses.activate
 def test_create_entitlement(mocker, mock_jwt_encoder, ffc_client_settings):
     mocker.patch(
-        "swo_finops_client.client.uuid4",
+        "swo_aws_extension.swo_finops.client.uuid4",
         return_value="uuid-1",
     )
 
@@ -67,7 +71,7 @@ def test_create_entitlement(mocker, mock_jwt_encoder, ffc_client_settings):
 @responses.activate
 def test_create_entitlement_with_default_name(mocker, mock_jwt_encoder, ffc_client_settings):
     mocker.patch(
-        "swo_finops_client.client.uuid4",
+        "swo_aws_extension.swo_finops.client.uuid4",
         return_value="uuid-1",
     )
 
@@ -108,7 +112,7 @@ def test_create_entitlement_with_default_name(mocker, mock_jwt_encoder, ffc_clie
 @responses.activate
 def test_delete_entitlement(mocker, mock_jwt_encoder, ffc_client_settings):
     mocker.patch(
-        "swo_finops_client.client.uuid4",
+        "swo_aws_extension.swo_finops.client.uuid4",
         return_value="uuid-1",
     )
 
@@ -138,7 +142,7 @@ def test_delete_entitlement(mocker, mock_jwt_encoder, ffc_client_settings):
 @responses.activate
 def test_terminate_entitlement(mocker, mock_jwt_encoder, ffc_client_settings):
     mocker.patch(
-        "swo_finops_client.client.uuid4",
+        "swo_aws_extension.swo_finops.client.uuid4",
         return_value="uuid-1",
     )
 
@@ -171,7 +175,7 @@ def test_terminate_entitlement(mocker, mock_jwt_encoder, ffc_client_settings):
 @responses.activate
 def test_get_entitlement_by_datasource_id(mocker, mock_jwt_encoder, ffc_client_settings):
     mocker.patch(
-        "swo_finops_client.client.uuid4",
+        "swo_aws_extension.swo_finops.client.uuid4",
         return_value="uuid-1",
     )
 
@@ -204,7 +208,7 @@ def test_get_entitlement_by_datasource_id(mocker, mock_jwt_encoder, ffc_client_s
 @responses.activate
 def test_get_entitlement_by_datasource_id_not_found(mocker, mock_jwt_encoder, ffc_client_settings):
     mocker.patch(
-        "swo_finops_client.client.uuid4",
+        "swo_aws_extension.swo_finops.client.uuid4",
         return_value="uuid-1",
     )
 
@@ -237,7 +241,7 @@ def test_get_entitlement_by_datasource_id_not_found(mocker, mock_jwt_encoder, ff
 @responses.activate
 def test_http_error_handling(mocker, mock_jwt_encoder, ffc_client_settings):
     mocker.patch(
-        "swo_finops_client.client.uuid4",
+        "swo_aws_extension.swo_finops.client.uuid4",
         return_value="uuid-1",
     )
 
@@ -272,7 +276,7 @@ def test_http_error_handling(mocker, mock_jwt_encoder, ffc_client_settings):
 @responses.activate
 def test_not_found_error_handling(mocker, mock_jwt_encoder, ffc_client_settings):
     mocker.patch(
-        "swo_finops_client.client.uuid4",
+        "swo_aws_extension.swo_finops.client.uuid4",
         return_value="uuid-1",
     )
 
@@ -307,7 +311,7 @@ def test_not_found_error_handling(mocker, mock_jwt_encoder, ffc_client_settings)
 @responses.activate
 def test_token_expired_handling(mocker, mock_jwt_encoder, ffc_client_settings):
     mocker.patch(
-        "swo_finops_client.client.uuid4",
+        "swo_aws_extension.swo_finops.client.uuid4",
         return_value="uuid-1",
     )
 

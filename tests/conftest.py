@@ -53,8 +53,8 @@ from swo_aws_extension.parameters import (
     FulfillmentParametersEnum,
     OrderParametersEnum,
 )
-from swo_ccp_client.client import CCPClient
-from swo_crm_service_client import CRMServiceClient
+from swo_aws_extension.swo_ccp.client import CCPClient
+from swo_aws_extension.swo_crm_service import CRMServiceClient
 
 PARAM_COMPANY_NAME = "ACME Inc"
 AWESOME_PRODUCT = "Awesome product"
@@ -1572,7 +1572,8 @@ def service_client(mocker):
 @pytest.fixture
 def ccp_client(mocker, config, mock_key_vault_secret_value):
     mocker.patch(
-        "swo_ccp_client.client.get_openid_token", return_value={"access_token": "test_access_token"}
+        "swo_aws_extension.swo_ccp.client.get_openid_token",
+        return_value={"access_token": "test_access_token"},
     )
     mocker.patch.object(
         CCPClient,
@@ -1585,7 +1586,8 @@ def ccp_client(mocker, config, mock_key_vault_secret_value):
 @pytest.fixture
 def ccp_client_no_secret(mocker, config):
     mocker.patch(
-        "swo_ccp_client.client.get_openid_token", return_value={"access_token": "test_access_token"}
+        "swo_aws_extension.swo_ccp.client.get_openid_token",
+        return_value={"access_token": "test_access_token"},
     )
     mocker.patch.object(
         CCPClient,

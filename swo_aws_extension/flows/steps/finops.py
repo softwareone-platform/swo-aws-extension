@@ -4,7 +4,7 @@ from mpt_extension_sdk.flows.pipeline import Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.flows.order import InitialAWSContext, TerminateContext
-from swo_finops_client.client import get_ffc_client
+from swo_aws_extension.swo_finops.client import get_ffc_client
 
 logger = logging.getLogger(__name__)
 

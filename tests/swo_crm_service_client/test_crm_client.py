@@ -4,8 +4,12 @@ import pytest
 from requests import PreparedRequest
 from requests.models import Response
 
-from swo_aws_extension.crm_service_client.config import CRMConfig
-from swo_crm_service_client.client import CRMServiceClient, ServiceRequest, get_service_client
+from swo_aws_extension.swo_crm_service.client import (
+    CRMServiceClient,
+    ServiceRequest,
+    get_service_client,
+)
+from swo_aws_extension.swo_crm_service.config import CRMConfig
 
 
 @pytest.fixture
@@ -27,7 +31,7 @@ def service_request():
 def crm_client(mocker, mock_settings):
     openid_response = {"access_token": "test_token", "expires_in": 3600}
     mock_get_openid_token = mocker.patch(
-        "swo_crm_service_client.client.get_openid_token",
+        "swo_aws_extension.swo_crm_service.client.get_openid_token",
         return_value=openid_response,
     )
     mock_get_openid_token.return_value = openid_response
@@ -187,7 +191,7 @@ def test_create_service_request_json_decode_error(crm_client, service_request, m
 
 def test_get_service_client(crm_client, mocker, mock_settings):
     mocker.patch(
-        "swo_crm_service_client.client.get_service_client",
+        "swo_aws_extension.swo_crm_service.client.get_service_client",
         return_value="test_token",
     )
     client = get_service_client()

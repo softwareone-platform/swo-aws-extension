@@ -11,7 +11,7 @@ from swo_aws_extension.constants import (
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps import CCPOnboard
 from swo_aws_extension.parameters import set_ccp_engagement_id, set_phase
-from swo_crm_service_client import CRMServiceClient, ServiceRequest
+from swo_aws_extension.swo_crm_service import CRMServiceClient, ServiceRequest
 
 
 def test_onboard_ccp_customer(
@@ -34,7 +34,7 @@ def test_onboard_ccp_customer(
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
     mocked_onboard_customer = mocker.patch(
-        "swo_ccp_client.client.CCPClient.onboard_customer",
+        "swo_aws_extension.swo_ccp.client.CCPClient.onboard_customer",
         return_value=mock_onboard_customer_response,
     )
     updated_order = set_ccp_engagement_id(order, mock_onboard_customer_response[1]["id"])
@@ -80,7 +80,7 @@ def test_check_onboard_ccp_status_running(
         )
     )
     mocked_onboard_status = mocker.patch(
-        "swo_ccp_client.client.CCPClient.get_onboard_status",
+        "swo_aws_extension.swo_ccp.client.CCPClient.get_onboard_status",
         return_value=onboard_customer_status_factory(CCPOnboardStatusEnum.RUNNING.value),
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -110,7 +110,7 @@ def test_check_onboard_ccp_status_fail(
         )
     )
     mocked_onboard_status = mocker.patch(
-        "swo_ccp_client.client.CCPClient.get_onboard_status",
+        "swo_aws_extension.swo_ccp.client.CCPClient.get_onboard_status",
         return_value=onboard_customer_status_factory(CCPOnboardStatusEnum.FAILED.value),
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -166,7 +166,7 @@ def test_check_onboard_ccp_status_fail_ticket_already_created(
         )
     )
     mocked_onboard_status = mocker.patch(
-        "swo_ccp_client.client.CCPClient.get_onboard_status",
+        "swo_aws_extension.swo_ccp.client.CCPClient.get_onboard_status",
         return_value=onboard_customer_status_factory(CCPOnboardStatusEnum.FAILED.value),
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
@@ -207,7 +207,7 @@ def test_check_onboard_ccp_status_succeeded(
         )
     )
     mocked_onboard_status = mocker.patch(
-        "swo_ccp_client.client.CCPClient.get_onboard_status",
+        "swo_aws_extension.swo_ccp.client.CCPClient.get_onboard_status",
         return_value=onboard_customer_status_factory(CCPOnboardStatusEnum.SUCCEEDED.value),
     )
 
@@ -249,7 +249,7 @@ def test_check_onboard_ccp_http_error(
         )
     )
     mocked_onboard_status = mocker.patch(
-        "swo_ccp_client.client.CCPClient.get_onboard_status",
+        "swo_aws_extension.swo_ccp.client.CCPClient.get_onboard_status",
         side_effect=HTTPError(
             response=mocker.Mock(
                 status_code=500,
