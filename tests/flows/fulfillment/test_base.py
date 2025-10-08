@@ -19,7 +19,7 @@ from swo_aws_extension.flows.fulfillment import fulfill_order
 from swo_aws_extension.flows.fulfillment.base import setup_contexts
 from swo_aws_extension.flows.order import InitialAWSContext, TerminateContext
 from swo_aws_extension.parameters import set_crm_termination_ticket_id
-from swo_crm_service_client import ServiceRequest
+from swo_aws_extension.swo_crm_service import ServiceRequest
 
 
 def test_fulfill_order_exception(mocker, mpt_error_factory, order_factory):

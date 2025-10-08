@@ -13,7 +13,7 @@ from swo_aws_extension.flows.steps.setup_context import (
     SetupPurchaseContext,
 )
 from swo_aws_extension.parameters import get_phase
-from swo_ccp_client.client import CCPClient
+from swo_aws_extension.swo_ccp.client import CCPClient
 
 
 def test_setup_context_get_mpa_credentials(
@@ -27,7 +27,8 @@ def test_setup_context_get_mpa_credentials(
 ):
     monkeypatch.setenv("MPT_KEY_VAULT_NAME", mock_mpt_key_vault_name)
     mocker.patch(
-        "swo_ccp_client.client.CCPClient.get_secret_from_key_vault", return_value="client_secret"
+        "swo_aws_extension.swo_ccp.client.CCPClient.get_secret_from_key_vault",
+        return_value="client_secret",
     )
     mocker.patch.object(
         CCPClient,
@@ -148,7 +149,8 @@ def test_setup_context_get_account_creation_status(
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     mocker.patch(
-        "swo_ccp_client.client.CCPClient.get_secret_from_key_vault", return_value="client_secret"
+        "swo_aws_extension.swo_ccp.client.CCPClient.get_secret_from_key_vault",
+        return_value="client_secret",
     )
     mocker.patch.object(
         CCPClient,

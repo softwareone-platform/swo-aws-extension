@@ -15,8 +15,8 @@ from swo_aws_extension.constants import (
     CRM_SERVICE_TYPE,
     CRM_SUB_SERVICE,
 )
-from swo_aws_extension.crm_service_client.config import CRMConfig
 from swo_aws_extension.openid import get_openid_token
+from swo_aws_extension.swo_crm_service.config import CRMConfig
 
 logger = logging.getLogger(__name__)
 

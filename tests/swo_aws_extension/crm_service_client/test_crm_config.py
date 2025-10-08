@@ -1,4 +1,4 @@
-from swo_aws_extension.crm_service_client.config import CRMConfig
+from swo_aws_extension.swo_crm_service.config import CRMConfig
 
 
 def test_crm_config(mock_settings):

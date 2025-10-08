@@ -11,12 +11,12 @@ from swo_aws_extension.constants import (
     FAILED_TO_GET_SECRET,
     FAILED_TO_SAVE_SECRET_TO_KEY_VAULT,
 )
-from swo_ccp_client.client import CCPClient
+from swo_aws_extension.swo_ccp.client import CCPClient
 
 
 @pytest.fixture
 def mock_get_token(mocker, mock_token):
-    mock_get_token = mocker.patch("swo_ccp_client.client.get_openid_token")
+    mock_get_token = mocker.patch("swo_aws_extension.swo_ccp.client.get_openid_token")
     mock_get_token.return_value = {"access_token": mock_token}
     return mock_get_token
 
@@ -44,9 +44,9 @@ def test_get_ccp_access_token_with_no_access_token(
     mock_key_vault_secret_value,
     caplog,
 ):
-    with patch("swo_ccp_client.client.get_openid_token") as mock_get_token:
+    with patch("swo_aws_extension.swo_ccp.client.get_openid_token") as mock_get_token:
         mock_get_token.return_value = {}
-        mocked_send_error = mocker.patch("swo_ccp_client.client.send_error")
+        mocked_send_error = mocker.patch("swo_aws_extension.swo_ccp.client.send_error")
         token = ccp_client.get_ccp_access_token("oauth_scope")
         assert token is None
         mock_get_token.assert_called_once_with(
@@ -129,7 +129,7 @@ def test_get_secret_no_client_secret(
         mock_retrieve_secret_url,
         json={},
     )
-    mocked_send_error = mocker.patch("swo_ccp_client.client.send_error")
+    mocked_send_error = mocker.patch("swo_aws_extension.swo_ccp.client.send_error")
     secret = ccp_client.get_secret(mock_token)
     assert secret is None
     assert FAILED_TO_GET_SECRET in caplog.text
@@ -153,7 +153,7 @@ def test_get_secret_from_key_vault_not_found(mocker, config, mock_get_token):
         return_value=None,
     )
 
-    mock_send_error = mocker.patch("swo_ccp_client.client.send_error", return_value=None)
+    mock_send_error = mocker.patch("swo_aws_extension.swo_ccp.client.send_error", return_value=None)
 
     ccp_client = CCPClient(config)
 
@@ -184,7 +184,7 @@ def test_save_secret_to_key_vault_not_saved(
     mock_key_vault_secret_value,
     caplog,
 ):
-    mocked_send_error = mocker.patch("swo_ccp_client.client.send_error")
+    mocked_send_error = mocker.patch("swo_aws_extension.swo_ccp.client.send_error")
     mock_set_secret = mocker.patch(
         "mpt_extension_sdk.key_vault.base.KeyVault.set_secret",
         return_value=None,
@@ -207,12 +207,17 @@ def test_prepare_request(mocker):
     config.ccp_api_base_url = "https://localhost"
 
     parent_prepare_request = mocker.patch(
-        "swo_ccp_client.client.Session.prepare_request", return_value="https://localhost"
+        "swo_aws_extension.swo_ccp.client.Session.prepare_request",
+        return_value="https://localhost",
     )
     join_url = mocker.patch(
-        "swo_ccp_client.client.CCPClient._join_url", return_value="https://localhost"
+        "swo_aws_extension.swo_ccp.client.CCPClient._join_url",
+        return_value="https://localhost",
     )
-    mocker.patch("swo_ccp_client.client.CCPClient.get_ccp_access_token", return_value="auth-token")
+    mocker.patch(
+        "swo_aws_extension.swo_ccp.client.CCPClient.get_ccp_access_token",
+        return_value="auth-token",
+    )
     client = CCPClient(config)
     client.prepare_request(request)
     parent_prepare_request.assert_called_once()
@@ -220,7 +225,10 @@ def test_prepare_request(mocker):
 
 
 def test_request(mocker):
-    mocker.patch("swo_ccp_client.client.CCPClient.get_ccp_access_token", return_value="auth-token")
+    mocker.patch(
+        "swo_aws_extension.swo_ccp.client.CCPClient.get_ccp_access_token",
+        return_value="auth-token",
+    )
     config = mocker.Mock()
     config.ccp_api_base_url = "https://localhost"
     client = CCPClient(config)
@@ -228,15 +236,22 @@ def test_request(mocker):
     response = mocker.Mock(spec=Response)
     response.status_code = 200
     response.json.return_value = {"key": "value"}
-    request_mock = mocker.patch("swo_ccp_client.client.Session.request", return_value=response)
-    mocker.patch("swo_ccp_client.client.CCPClient.get_ccp_access_token", return_value="auth-token")
+    request_mock = mocker.patch(
+        "swo_aws_extension.swo_ccp.client.Session.request", return_value=response
+    )
+    mocker.patch(
+        "swo_aws_extension.swo_ccp.client.CCPClient.get_ccp_access_token",
+        return_value="auth-token",
+    )
     client.get_onboard_status("123")
     request_mock.assert_called_once()
 
 
 def test_request_fail(mocker):
     mocker.patch(
-        "swo_ccp_client.client.CCPClient.get_ccp_access_token", return_value="auth-token", spec=True
+        "swo_aws_extension.swo_ccp.client.CCPClient.get_ccp_access_token",
+        return_value="auth-token",
+        spec=True,
     )
     config = mocker.Mock()
     config.ccp_api_base_url = "https://localhost"
@@ -248,7 +263,11 @@ def test_request_fail(mocker):
     )
     response.status_code = 200
     response.json.return_value = {"statusCode": 404, "message": "Not Found"}
-    mocker.patch("swo_ccp_client.client.Session.request", return_value=response, spec=True)
+    mocker.patch(
+        "swo_aws_extension.swo_ccp.client.Session.request",
+        return_value=response,
+        spec=True,
+    )
     with pytest.raises(requests.exceptions.HTTPError) as exc_info:
         client.get_onboard_status("123")
     assert "404" in str(exc_info.value)
@@ -266,7 +285,10 @@ def test_request_fail(mocker):
     ],
 )
 def test_keyvault_url_parsing(url, expected_value, mocker, settings):
-    mocker.patch("swo_ccp_client.client.CCPClient.get_ccp_access_token", return_value="auth-token")
+    mocker.patch(
+        "swo_aws_extension.swo_ccp.client.CCPClient.get_ccp_access_token",
+        return_value="auth-token",
+    )
     config = Config()
     client = CCPClient(config)
 
@@ -305,7 +327,7 @@ def test_refresh_secret_no_access_token(
     mocker, ccp_client, mock_key_vault_secret_value, config, mock_get_token
 ):
     mock_get_token.return_value = {}
-    mocked_send_error = mocker.patch("swo_ccp_client.client.send_error")
+    mocked_send_error = mocker.patch("swo_aws_extension.swo_ccp.client.send_error")
 
     result = ccp_client.refresh_secret()
 
@@ -324,7 +346,7 @@ def test_refresh_secret_no_secret(
 ):
     mock_get_secret = mocker.patch.object(ccp_client, "get_secret")
     mock_get_secret.return_value = None
-    mocker.patch("swo_ccp_client.client.send_error")
+    mocker.patch("swo_aws_extension.swo_ccp.client.send_error")
 
     result = ccp_client.refresh_secret()
 
@@ -351,7 +373,7 @@ def test_refresh_secret_not_saved(
     mock_get_secret.return_value = mock_get_secret_response["clientSecret"]
     mock_save_secret = mocker.patch.object(ccp_client, "save_secret_to_key_vault")
     mock_save_secret.return_value = None
-    mocker.patch("swo_ccp_client.client.send_error")
+    mocker.patch("swo_aws_extension.swo_ccp.client.send_error")
 
     result = ccp_client.refresh_secret()
 
