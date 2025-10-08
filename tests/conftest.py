@@ -34,7 +34,6 @@ from swo_aws_extension.constants import (
 from swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator import (
     BillingJournalGenerator,
 )
-from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import get_journal_processors
 from swo_aws_extension.flows.jobs.billing_journal.models import (
     Description,
     ExternalIds,
@@ -44,6 +43,9 @@ from swo_aws_extension.flows.jobs.billing_journal.models import (
     Search,
     SearchItem,
     SearchSubscription,
+)
+from swo_aws_extension.flows.jobs.billing_journal.processor_dispatcher import (
+    JournalProcessorDispatcher,
 )
 from swo_aws_extension.notifications import MPTNotifier
 from swo_aws_extension.parameters import (
@@ -183,6 +185,28 @@ def order_parameters_factory(constraints):
         ]
 
     return _order_parameters
+
+
+@pytest.fixture
+def make_account_invoices():
+    def _factory(
+        *,
+        invoice_entity="entity-1",
+        payment_currency_code="USD",
+        base_currency_code="USD",
+        exchange_rate=None,
+        invoice_id="INV-001",
+    ):
+        details = {
+            "invoice_id": invoice_id,
+            "payment_currency_code": payment_currency_code,
+            "base_currency_code": base_currency_code,
+        }
+        if exchange_rate is not None:
+            details["exchange_rate"] = exchange_rate
+        return {"invoice_entities": {invoice_entity: details}}
+
+    return _factory
 
 
 @pytest.fixture
@@ -1243,7 +1267,7 @@ def data_aws_invoice_summary_factory():
         account_id="1234-1234-1234",
         billing_period_month=4,
         billing_period_year=2025,
-        total_amount="0.00",
+        total_amount="100.00",
         invoice_entity=INVOICE_ENTITY,
         payment_currency="USD",
         rate="0.88",
@@ -1257,8 +1281,15 @@ def data_aws_invoice_summary_factory():
             "InvoiceType": "INVOICE",
             "BaseCurrencyAmount": {
                 "TotalAmount": total_amount,
-                "TotalAmountBeforeTax": "0.00",
+                "TotalAmountBeforeTax": "90.00",
                 "CurrencyCode": "USD",
+                "AmountBreakdown": {
+                    "Discounts": {
+                        "Breakdown": [
+                            {"Amount": "1.19", "Description": "Discount (AWS SPP Discount)"}
+                        ]
+                    }
+                },
             },
             "TaxCurrencyAmount": {
                 "TotalAmount": "0.00",
@@ -2245,7 +2276,7 @@ def mock_journal_args(
     mock_invoice_by_service_report_group_factory,
     mock_invoice_by_service_report_factory,
 ):
-    def _journal_args(item_external_id):
+    def _journal_args():
         account_id = "1234567890"
         generator = BillingJournalGenerator(
             mpt_client,
@@ -2253,7 +2284,7 @@ def mock_journal_args(
             2024,
             5,
             ["prod1"],
-            billing_journal_processor=get_journal_processors(config),
+            journal_dispatcher=JournalProcessorDispatcher.build(config),
             authorizations=["AUTH-1"],
         )
         account_metrics, usage_invoice_report = get_usage_data(
@@ -2281,7 +2312,6 @@ def mock_journal_args(
         )
         return {
             "account_id": account_id,
-            "item_external_id": item_external_id,
             "account_metrics": account_metrics,
             "journal_details": {
                 "agreement_id": "AGR-2119-4550-8674-5962",
