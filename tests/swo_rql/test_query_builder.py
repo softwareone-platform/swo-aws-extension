@@ -3,12 +3,12 @@ from decimal import Decimal
 
 import pytest
 
-from swo_rql.query_builder import RQLQuery
+from swo_rql.query_builder import R, RQLQuery
 
 
 def test_create():
     q = RQLQuery()
-    assert q.op == RQLQuery.EXPR
+    assert q.op == RQLQuery.OP_EXPRESSION
     assert q.children == []
     assert q.negated is False
 
@@ -16,13 +16,13 @@ def test_create():
 def test_create_with_field():
     q = RQLQuery("field")
     q.eq("value")
-    assert q.op == RQLQuery.EXPR
+    assert q.op == RQLQuery.OP_EXPRESSION
     assert str(q) == "eq(field,value)"
 
 
 def test_create_single_kwarg():
     q = RQLQuery(id="ID")
-    assert q.op == RQLQuery.EXPR
+    assert q.op == RQLQuery.OP_EXPRESSION
     assert str(q) == "eq(id,ID)"
     assert q.children == []
     assert q.negated is False
@@ -33,13 +33,13 @@ def test_create_multiple_kwargs():
     assert q.op == RQLQuery.AND
     assert str(q) == "and(eq(id,ID),in(status,(a,b)),eq(ok,true))"
     assert len(q.children) == 3
-    assert q.children[0].op == RQLQuery.EXPR
+    assert q.children[0].op == RQLQuery.OP_EXPRESSION
     assert q.children[0].children == []
     assert str(q.children[0]) == "eq(id,ID)"
-    assert q.children[1].op == RQLQuery.EXPR
+    assert q.children[1].op == RQLQuery.OP_EXPRESSION
     assert q.children[1].children == []
     assert str(q.children[1]) == "in(status,(a,b))"
-    assert q.children[2].op == RQLQuery.EXPR
+    assert q.children[2].op == RQLQuery.OP_EXPRESSION
     assert q.children[2].children == []
     assert str(q.children[2]) == "eq(ok,true)"
 
@@ -340,3 +340,33 @@ def test_empty():
     assert str(RQLQuery("value").empty()) == "eq(value,empty())"
     assert str(RQLQuery("value").not_empty()) == "ne(value,empty())"
     assert RQLQuery("value").empty(value=False) == RQLQuery("value").not_empty()
+
+
+def test_in_and_namespaces():
+    products = ["PRD-1", "PRD-2"]
+    q1 = R().n("agreement").n("product").n("id").in_(products)
+    q2 = R().agreement.product.id.in_(products)
+    assert str(q1) == str(q2)
+
+
+def test_query_expression_get_querying_orders():
+    products = ["PRD-1", "PRD-2"]
+    products_str = ",".join(products)
+    expected_rql_query = f"and(in(agreement.product.id,({products_str})),eq(status,Querying))"
+    expected_url = (
+        f"/commerce/orders?{expected_rql_query}&select=audit,parameters,lines,subscriptions,"
+        f"subscriptions.lines,agreement,buyer&order=audit.created.at"
+    )
+    query = R().agreement.product.id.in_(products) & R(status="Querying")
+    url = (
+        f"/commerce/orders?{query}&select=audit,parameters,lines,subscriptions,"
+        f"subscriptions.lines,agreement,buyer&order=audit.created.at"
+    )
+    assert expected_rql_query == str(query)
+    assert expected_url == url
+
+
+def test_in():
+    product_ids = ["PRD-1", "PRD-2"]
+    q = R(product__id__in=product_ids)
+    assert str(q) == "in(product.id,(PRD-1,PRD-2))"
