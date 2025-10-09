@@ -90,7 +90,7 @@ def test_purchase_context_get_account_ids(
     assert context.get_account_ids() == {"123456789"}
 
 
-def test_update_template_missing_template_shows_error(
+def test_missing_template_shows_error(
     mocker, order_factory, template_factory, update_order_side_effect_factory
 ):
     mock_client = mocker.Mock()

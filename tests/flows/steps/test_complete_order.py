@@ -72,7 +72,7 @@ def test_complete_purchase_order_phase(
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
 
 
-def test_complete_purchase_order_phase_invalid_phase(
+def test_complete_purchase_order_phase_invalid(
     mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
 ):
     order = order_factory(

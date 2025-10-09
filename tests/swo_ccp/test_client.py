@@ -10,6 +10,8 @@ from swo_aws_extension.constants import (
     ACCESS_TOKEN_NOT_FOUND_IN_RESPONSE,
     FAILED_TO_GET_SECRET,
     FAILED_TO_SAVE_SECRET_TO_KEY_VAULT,
+    HTTP_STATUS_NOT_FOUND,
+    HTTP_STATUS_OK,
 )
 from swo_aws_extension.swo_ccp.client import CCPClient
 
@@ -37,7 +39,7 @@ def test_get_ccp_access_token_with_no_secret(mocker, ccp_client_no_secret, confi
     assert token is None
 
 
-def test_get_ccp_access_token_with_no_access_token(
+def test_get_ccp_access_token_with_empty_token(
     mocker,
     ccp_client,
     config,
@@ -64,7 +66,7 @@ def test_onboard_customer(
 ):
     mock_response = mocker.Mock(spec=Response)
     mock_response.json.return_value = mock_onboard_customer_response
-    mock_response.status_code = 200
+    mock_response.status_code = HTTP_STATUS_OK
     mocker.patch.object(ccp_client, "post", return_value=mock_response)
 
     response = ccp_client.onboard_customer(onboard_customer_factory())
@@ -80,7 +82,7 @@ def test_get_onboard_status(mocker, ccp_client, onboard_customer_status_factory)
     ccp_engagement_id = "73ae391e-69de-472c-8d05-2f7feb173207"
     mock_response = mocker.Mock(spec=Response)
     mock_response.json.return_value = onboard_customer_status_factory()
-    mock_response.status_code = 200
+    mock_response.status_code = HTTP_STATUS_OK
     mocker.patch.object(ccp_client, "get", return_value=mock_response)
 
     response = ccp_client.get_onboard_status(ccp_engagement_id)
@@ -234,7 +236,7 @@ def test_request(mocker):
     client = CCPClient(config)
 
     response = mocker.Mock(spec=Response)
-    response.status_code = 200
+    response.status_code = HTTP_STATUS_OK
     response.json.return_value = {"key": "value"}
     request_mock = mocker.patch(
         "swo_aws_extension.swo_ccp.client.Session.request", return_value=response
@@ -261,8 +263,8 @@ def test_request_fail(mocker):
     response.url = (
         "https://localhost/services/aws-essentials/customer/engagement/123?api-version=v2"
     )
-    response.status_code = 200
-    response.json.return_value = {"statusCode": 404, "message": "Not Found"}
+    response.status_code = HTTP_STATUS_OK
+    response.json.return_value = {"statusCode": HTTP_STATUS_NOT_FOUND, "message": "Not Found"}
     mocker.patch(
         "swo_aws_extension.swo_ccp.client.Session.request",
         return_value=response,
@@ -310,9 +312,9 @@ def test_refresh_secret_success(
     mock_save_secret = mocker.patch.object(ccp_client, "save_secret_to_key_vault")
     mock_save_secret.return_value = mock_key_vault_secret_value
 
-    result = ccp_client.refresh_secret()
+    secret = ccp_client.refresh_secret()
 
-    assert result == mock_key_vault_secret_value
+    assert secret == mock_key_vault_secret_value
     mock_get_token.assert_called_once_with(
         endpoint=ccp_client.config.ccp_oauth_url,
         client_id=ccp_client.config.ccp_client_id,
@@ -329,9 +331,9 @@ def test_refresh_secret_no_access_token(
     mock_get_token.return_value = {}
     mocked_send_error = mocker.patch("swo_aws_extension.swo_ccp.client.send_error")
 
-    result = ccp_client.refresh_secret()
+    secret = ccp_client.refresh_secret()
 
-    assert result is None
+    assert secret is None
     mock_get_token.assert_called_once_with(
         endpoint=config.ccp_oauth_url,
         client_id=config.ccp_client_id,
@@ -348,9 +350,9 @@ def test_refresh_secret_no_secret(
     mock_get_secret.return_value = None
     mocker.patch("swo_aws_extension.swo_ccp.client.send_error")
 
-    result = ccp_client.refresh_secret()
+    secret = ccp_client.refresh_secret()
 
-    assert result is None
+    assert secret is None
     mock_get_token.assert_called_once_with(
         endpoint=config.ccp_oauth_url,
         client_id=config.ccp_client_id,
@@ -375,9 +377,9 @@ def test_refresh_secret_not_saved(
     mock_save_secret.return_value = None
     mocker.patch("swo_aws_extension.swo_ccp.client.send_error")
 
-    result = ccp_client.refresh_secret()
+    secret = ccp_client.refresh_secret()
 
-    assert result is None
+    assert secret is None
     mock_get_token.assert_called_once_with(
         endpoint=config.ccp_oauth_url,
         client_id=config.ccp_client_id,

@@ -85,8 +85,8 @@ def reset_ordering_parameters_error(order):
     """
     updated_order = copy.deepcopy(order)
 
-    for param in updated_order["parameters"][PARAM_PHASE_ORDERING]:
-        param["error"] = None
+    for order_param in updated_order["parameters"][PARAM_PHASE_ORDERING]:
+        order_param["error"] = None
 
     return updated_order
 
@@ -105,12 +105,12 @@ def set_ordering_parameter_error(order, param_external_id, error, *, required=Tr
         dict: The order updated.
     """
     updated_order = copy.deepcopy(order)
-    param = get_ordering_parameter(
+    order_param = get_ordering_parameter(
         updated_order,
         param_external_id,
     )
-    param["error"] = error
-    param["constraints"] = {
+    order_param["error"] = error
+    order_param["constraints"] = {
         "hidden": False,
         "required": required,
     }
@@ -132,12 +132,12 @@ def update_ordering_parameter_constraints(order, param_external_id, hidden, requ
         dict: The order updated.
     """
     updated_order = copy.deepcopy(order)
-    param = get_ordering_parameter(
+    order_param = get_ordering_parameter(
         updated_order,
         param_external_id,
     )
 
-    param["constraints"] = {
+    order_param["constraints"] = {
         "hidden": hidden,
         "required": required,
         "readonly": readonly,
@@ -156,11 +156,11 @@ def get_phase(source):
     Returns:
         str: The phase of the order.
     """
-    param = get_fulfillment_parameter(
+    fulfillment_param = get_fulfillment_parameter(
         source,
         FulfillmentParametersEnum.PHASE,
     )
-    return param.get("value", None)
+    return fulfillment_param.get("value", None)
 
 
 def set_phase(order, phase):
@@ -175,11 +175,11 @@ def set_phase(order, phase):
         dict: The order updated.
     """
     updated_order = copy.deepcopy(order)
-    param = get_fulfillment_parameter(
+    fulfillment_param = get_fulfillment_parameter(
         updated_order,
         FulfillmentParametersEnum.PHASE,
     )
-    param["value"] = phase
+    fulfillment_param["value"] = phase
     return updated_order
 
 
@@ -194,11 +194,11 @@ def get_account_email(source):
     Returns:
         str: The email of the order.
     """
-    param = get_ordering_parameter(
+    order_param = get_ordering_parameter(
         source,
         OrderParametersEnum.ROOT_ACCOUNT_EMAIL,
     )
-    return param.get("value", None)
+    return order_param.get("value", None)
 
 
 def get_account_name(source):
@@ -212,11 +212,11 @@ def get_account_name(source):
     Returns:
         str: The account name of the order.
     """
-    param = get_ordering_parameter(
+    order_param = get_ordering_parameter(
         source,
         OrderParametersEnum.ACCOUNT_NAME,
     )
-    return param.get("value", None)
+    return order_param.get("value", None)
 
 
 def get_account_request_id(source):
@@ -230,11 +230,11 @@ def get_account_request_id(source):
     Returns:
         str: The account request id of the order.
     """
-    param = get_fulfillment_parameter(
+    fulfillment_param = get_fulfillment_parameter(
         source,
         FulfillmentParametersEnum.ACCOUNT_REQUEST_ID,
     )
-    return param.get("value", None)
+    return fulfillment_param.get("value", None)
 
 
 def set_account_request_id(order, account_request_id):
@@ -249,11 +249,11 @@ def set_account_request_id(order, account_request_id):
         dict: The order updated.
     """
     updated_order = copy.deepcopy(order)
-    param = get_fulfillment_parameter(
+    fulfillment_param = get_fulfillment_parameter(
         updated_order,
         FulfillmentParametersEnum.ACCOUNT_REQUEST_ID,
     )
-    param["value"] = account_request_id
+    fulfillment_param["value"] = account_request_id
     return updated_order
 
 
@@ -268,11 +268,11 @@ def get_account_type(source):
     Returns:
         str: The account type of the order.
     """
-    param = get_ordering_parameter(
+    order_param = get_ordering_parameter(
         source,
         OrderParametersEnum.ACCOUNT_TYPE,
     )
-    return param.get("value", None)
+    return order_param.get("value", None)
 
 
 def get_termination_type_parameter(order):
@@ -285,11 +285,11 @@ def get_termination_type_parameter(order):
     Returns:
         str: The termination flow provided by client or None if it isn't set.
     """
-    param = get_ordering_parameter(
+    order_param = get_ordering_parameter(
         order,
         OrderParametersEnum.TERMINATION,
     )
-    return param.get("value", None)
+    return order_param.get("value", None)
 
 
 def get_support_type(source):
@@ -303,11 +303,11 @@ def get_support_type(source):
     Returns:
         str: The support type of the order.
     """
-    param = get_ordering_parameter(
+    order_param = get_ordering_parameter(
         source,
         OrderParametersEnum.SUPPORT_TYPE,
     )
-    return param.get("value", None)
+    return order_param.get("value", None)
 
 
 def set_support_type(order, support_type):
@@ -322,11 +322,11 @@ def set_support_type(order, support_type):
         dict: The order updated.
     """
     updated_order = copy.deepcopy(order)
-    param = get_ordering_parameter(
+    order_param = get_ordering_parameter(
         updated_order,
         OrderParametersEnum.SUPPORT_TYPE,
     )
-    param["value"] = support_type
+    order_param["value"] = support_type
     return updated_order
 
 
@@ -341,11 +341,11 @@ def get_transfer_type(source):
     Returns:
         str: The transfer type of the order.
     """
-    param = get_ordering_parameter(
+    order_param = get_ordering_parameter(
         source,
         OrderParametersEnum.TRANSFER_TYPE,
     )
-    return param.get("value", None)
+    return order_param.get("value", None)
 
 
 def get_master_payer_id(source):
@@ -359,11 +359,11 @@ def get_master_payer_id(source):
     Returns:
         str: The master payer ID provided by client or None if it isn't set.
     """
-    param = get_ordering_parameter(
+    order_param = get_ordering_parameter(
         source,
         OrderParametersEnum.MASTER_PAYER_ID,
     )
-    return param.get("value", None)
+    return order_param.get("value", None)
 
 
 def get_crm_keeper_ticket_id(order):
@@ -376,11 +376,11 @@ def get_crm_keeper_ticket_id(order):
     Returns:
         str: The CRM ticket ID provided by client or None if it isn't set.
     """
-    param = get_fulfillment_parameter(
+    fulfillment_param = get_fulfillment_parameter(
         order,
         FulfillmentParametersEnum.CRM_KEEPER_TICKET_ID,
     )
-    return param.get("value", None)
+    return fulfillment_param.get("value", None)
 
 
 def set_crm_keeper_ticket_id(order, crm_ticket_id):
@@ -395,11 +395,11 @@ def set_crm_keeper_ticket_id(order, crm_ticket_id):
         dict: The order updated.
     """
     updated_order = copy.deepcopy(order)
-    param = get_fulfillment_parameter(
+    fulfillment_param = get_fulfillment_parameter(
         updated_order,
         FulfillmentParametersEnum.CRM_KEEPER_TICKET_ID,
     )
-    param["value"] = crm_ticket_id
+    fulfillment_param["value"] = crm_ticket_id
     return updated_order
 
 
@@ -413,11 +413,11 @@ def get_crm_termination_ticket_id(order):
     Returns:
         str: The CRM ticket ID provided by client or None if it isn't set.
     """
-    param = get_ordering_parameter(
+    order_param = get_ordering_parameter(
         order,
         OrderParametersEnum.CRM_TERMINATION_TICKET_ID,
     )
-    return param.get("value", None)
+    return order_param.get("value", None)
 
 
 def set_crm_termination_ticket_id(order, crm_ticket_id):
@@ -432,11 +432,11 @@ def set_crm_termination_ticket_id(order, crm_ticket_id):
         dict: The order updated.
     """
     updated_order = copy.deepcopy(order)
-    param = get_ordering_parameter(
+    order_param = get_ordering_parameter(
         updated_order,
         OrderParametersEnum.CRM_TERMINATION_TICKET_ID,
     )
-    param["value"] = crm_ticket_id
+    order_param["value"] = crm_ticket_id
     return updated_order
 
 
@@ -450,11 +450,11 @@ def get_crm_ccp_ticket_id(order):
     Returns:
         str: The CRM ticket ID provided by client or None if it isn't set.
     """
-    param = get_fulfillment_parameter(
+    fulfillment_param = get_fulfillment_parameter(
         order,
         FulfillmentParametersEnum.CRM_CCP_TICKET_ID,
     )
-    return param.get("value", None)
+    return fulfillment_param.get("value", None)
 
 
 def set_crm_ccp_ticket_id(order, crm_ticket_id):
@@ -469,11 +469,11 @@ def set_crm_ccp_ticket_id(order, crm_ticket_id):
         dict: The order updated.
     """
     updated_order = copy.deepcopy(order)
-    param = get_fulfillment_parameter(
+    fulfillment_param = get_fulfillment_parameter(
         updated_order,
         FulfillmentParametersEnum.CRM_CCP_TICKET_ID,
     )
-    param["value"] = crm_ticket_id
+    fulfillment_param["value"] = crm_ticket_id
     return updated_order
 
 
@@ -488,11 +488,11 @@ def get_crm_onboard_ticket_id(source):
     Returns:
         str: The link account service ticket ID provided by client or None if it isn't set.
     """
-    param = get_fulfillment_parameter(
+    fulfillment_param = get_fulfillment_parameter(
         source,
         FulfillmentParametersEnum.CRM_ONBOARD_TICKET_ID,
     )
-    return param.get("value", None)
+    return fulfillment_param.get("value", None)
 
 
 def set_crm_onboard_ticket_id(order, crm_ticket_id):
@@ -508,11 +508,11 @@ def set_crm_onboard_ticket_id(order, crm_ticket_id):
         str: The link account service ticket ID provided by client or None if it isn't set.
     """
     updated_order = copy.deepcopy(order)
-    param = get_fulfillment_parameter(
+    fulfillment_param = get_fulfillment_parameter(
         updated_order,
         FulfillmentParametersEnum.CRM_ONBOARD_TICKET_ID,
     )
-    param["value"] = crm_ticket_id
+    fulfillment_param["value"] = crm_ticket_id
     return updated_order
 
 
@@ -526,11 +526,11 @@ def get_ccp_engagement_id(source):
     Returns:
         str: The CCP engagement ID provided by client or None if it isn't set.
     """
-    param = get_fulfillment_parameter(
+    fulfillment_param = get_fulfillment_parameter(
         source,
         FulfillmentParametersEnum.CCP_ENGAGEMENT_ID,
     )
-    return param.get("value", None)
+    return fulfillment_param.get("value", None)
 
 
 def set_ccp_engagement_id(source, ccp_customer_url):
@@ -545,11 +545,11 @@ def set_ccp_engagement_id(source, ccp_customer_url):
         dict: The order updated.
     """
     updated_order = copy.deepcopy(source)
-    param = get_fulfillment_parameter(
+    fulfillment_param = get_fulfillment_parameter(
         updated_order,
         FulfillmentParametersEnum.CCP_ENGAGEMENT_ID,
     )
-    param["value"] = ccp_customer_url
+    fulfillment_param["value"] = ccp_customer_url
     return updated_order
 
 
@@ -564,31 +564,31 @@ def get_account_id(source):
     Returns:
         str: The account ID of the order.
     """
-    param = get_ordering_parameter(
+    order_param = get_ordering_parameter(
         source,
         OrderParametersEnum.ACCOUNT_ID,
     )
-    return param.get("value", None)
+    return order_param.get("value", None)
 
 
-def set_parameter_value(order, parameter_id, value):
+def set_parameter_value(order, parameter_id, parameter_value):
     """
     Set the value of a parameter in the order.
 
     Args:
         order (dict): The order that contains the parameter.
         parameter_id (str): The external identifier of the parameter.
-        value (any): The value to set for the parameter.
+        parameter_value (any): The value to set for the parameter.
 
     Returns:
         dict: The order updated.
     """
     updated_order = copy.deepcopy(order)
-    param = get_ordering_parameter(
+    order_param = get_ordering_parameter(
         updated_order,
         parameter_id,
     )
-    param["value"] = value
+    order_param["value"] = parameter_value
     return updated_order
 
 
@@ -603,11 +603,11 @@ def get_parameter_value(order, parameter_id):
     Returns:
         any: The value of the parameter.
     """
-    param = get_ordering_parameter(
+    order_param = get_ordering_parameter(
         order,
         parameter_id,
     )
-    return param.get("value", None)
+    return order_param.get("value", None)
 
 
 def reset_ordering_parameters(order, list_parameters):
@@ -648,9 +648,9 @@ def list_ordering_parameters_with_errors(order) -> list[str]:
         list: List of parameter external IDs with errors.
     """
     return [
-        param.get("externalId")
-        for param in order["parameters"][PARAM_PHASE_ORDERING]
-        if param.get("error")
+        order_param.get("externalId")
+        for order_param in order["parameters"][PARAM_PHASE_ORDERING]
+        if order_param.get("error")
     ]
 
 
@@ -664,25 +664,25 @@ def prepare_parameters_for_querying(order, ignore: list[str]):
     """
     updated_order = copy.deepcopy(order)
 
-    for param in updated_order["parameters"][PARAM_PHASE_ORDERING]:
-        if "constraints" not in param or not param["constraints"]:
-            param["constraints"] = {}
+    for order_param in updated_order["parameters"][PARAM_PHASE_ORDERING]:
+        if "constraints" not in order_param or not order_param["constraints"]:
+            order_param["constraints"] = {}
 
-        if param.get("externalId") in ignore:
-            param["constraints"]["hidden"] = False
-            param["constraints"]["readonly"] = False
+        if order_param.get("externalId") in ignore:
+            order_param["constraints"]["hidden"] = False
+            order_param["constraints"]["readonly"] = False
             continue
-        if param.get("error"):
-            param["constraints"]["hidden"] = False
-            param["constraints"]["readonly"] = False
+        if order_param.get("error"):
+            order_param["constraints"]["hidden"] = False
+            order_param["constraints"]["readonly"] = False
             continue
-        if param.get("value"):
-            param["constraints"]["hidden"] = False
-            param["constraints"]["readonly"] = True
+        if order_param.get("value"):
+            order_param["constraints"]["hidden"] = False
+            order_param["constraints"]["readonly"] = True
             continue
 
-        param["constraints"]["hidden"] = True
-        param["constraints"]["readonly"] = True
+        order_param["constraints"]["hidden"] = True
+        order_param["constraints"]["readonly"] = True
     return updated_order
 
 
@@ -696,11 +696,11 @@ def get_mpa_email(order):
     Returns:
         str: The MPA email provided by client or None if it isn't set.
     """
-    param = get_fulfillment_parameter(
+    fulfillment_param = get_fulfillment_parameter(
         order,
         FulfillmentParametersEnum.MPA_EMAIL,
     )
-    return param.get("value", None)
+    return fulfillment_param.get("value", None)
 
 
 def set_mpa_email(order, mpa_email):
@@ -715,11 +715,11 @@ def set_mpa_email(order, mpa_email):
         dict: The order updated.
     """
     updated_order = copy.deepcopy(order)
-    param = get_fulfillment_parameter(
+    fulfillment_param = get_fulfillment_parameter(
         updated_order,
         FulfillmentParametersEnum.MPA_EMAIL,
     )
-    param["value"] = mpa_email
+    fulfillment_param["value"] = mpa_email
     return updated_order
 
 
@@ -733,11 +733,11 @@ def get_crm_transfer_organization_ticket_id(order):
     Returns:
         str: The CRM ticket ID provided by client or None if it isn't set.
     """
-    param = get_fulfillment_parameter(
+    fulfillment_param = get_fulfillment_parameter(
         order,
         FulfillmentParametersEnum.CRM_TRANSFER_ORGANIZATION_TICKET_ID,
     )
-    return param.get("value", None)
+    return fulfillment_param.get("value", None)
 
 
 def set_crm_transfer_organization_ticket_id(order, crm_ticket_id):
@@ -752,9 +752,9 @@ def set_crm_transfer_organization_ticket_id(order, crm_ticket_id):
         dict: The order updated.
     """
     updated_order = copy.deepcopy(order)
-    param = get_fulfillment_parameter(
+    fulfillment_param = get_fulfillment_parameter(
         updated_order,
         FulfillmentParametersEnum.CRM_TRANSFER_ORGANIZATION_TICKET_ID,
     )
-    param["value"] = crm_ticket_id
+    fulfillment_param["value"] = crm_ticket_id
     return updated_order

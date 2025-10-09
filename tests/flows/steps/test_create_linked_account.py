@@ -22,7 +22,7 @@ def mocked_send_mpt_notification(mocker):
     return mocker.patch.object(MPTNotifier, "notify_re_order", spec=True)
 
 
-def test_create_linked_account_phase_create_linked_account(
+def test_create_acc_phase_create_linked_account(
     mocker,
     order_factory,
     config,
@@ -73,7 +73,7 @@ def test_create_linked_account_phase_create_linked_account(
     )
 
 
-def test_create_linked_account_phase_create_linked_account_fail(
+def test_create_account_fail(
     mocker,
     order_factory,
     config,
@@ -113,7 +113,7 @@ def test_create_linked_account_phase_create_linked_account_fail(
     )
 
 
-def test_create_linked_account_phase_check_linked_account_in_progress(
+def test_create_account_in_progress(
     mocker,
     order_factory,
     config,
@@ -145,7 +145,7 @@ def test_create_linked_account_phase_check_linked_account_in_progress(
     )
 
 
-def test_create_linked_account_phase_check_linked_account_succeed(
+def test_create_acc_account_succeed(
     mocker,
     order_factory,
     config,
@@ -188,7 +188,7 @@ def test_create_linked_account_phase_check_linked_account_succeed(
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
 
 
-def test_create_linked_account_phase_check_linked_account_email_already_exist(
+def test_create_acc_email_already_exist(
     mocker,
     order_factory,
     config,
@@ -223,7 +223,7 @@ def test_create_linked_account_phase_check_linked_account_email_already_exist(
     assert context.order["parameters"]["ordering"][0]["error"] == ERR_EMAIL_ALREADY_EXIST.to_dict()
 
 
-def test_create_linked_account_phase_check_linked_account_failed(
+def test_create_acc_check_linked_account_failed(
     mocker,
     order_factory,
     config,
@@ -253,7 +253,7 @@ def test_create_linked_account_phase_check_linked_account_failed(
     next_step_mock.assert_not_called()
 
 
-def test_create_linked_account_phase_empty_parameters(
+def test_create_acc_phase_empty_parameters(
     mocker,
     order_factory,
     config,
@@ -285,7 +285,7 @@ def test_create_linked_account_phase_empty_parameters(
     assert context.order["parameters"]["ordering"][1]["error"] == ERR_ACCOUNT_NAME_EMPTY.to_dict()
 
 
-def test_create_linked_account_invalid_phase(
+def test_create_acc_invalid_phase(
     mocker,
     order_factory,
     config,
@@ -311,7 +311,7 @@ def test_create_linked_account_invalid_phase(
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
 
 
-def test_add_linked_account_phase_create_linked_account(
+def test_add_acc_phase_create_linked_account(
     mocker,
     order_factory,
     config,
@@ -364,7 +364,7 @@ def test_add_linked_account_phase_create_linked_account(
     )
 
 
-def test_add_linked_account_phase_check_linked_account_in_progress(
+def test_add_acc_check_laccount_in_progress(
     mocker,
     order_factory,
     config,
@@ -396,7 +396,7 @@ def test_add_linked_account_phase_check_linked_account_in_progress(
     )
 
 
-def test_add_linked_account_phase_check_linked_account_succeed(
+def test_add_acc_check_linked_account_succeed(
     mocker,
     order_factory,
     config,
@@ -430,7 +430,7 @@ def test_add_linked_account_phase_check_linked_account_succeed(
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
 
 
-def test_add_linked_account_phase_check_linked_account_email_already_exist(
+def test_add_acc_email_already_exist(
     mocker,
     order_factory,
     config,
@@ -467,7 +467,7 @@ def test_add_linked_account_phase_check_linked_account_email_already_exist(
     assert context.order["parameters"]["ordering"][8]["error"] == ERR_EMAIL_ALREADY_EXIST.to_dict()
 
 
-def test_add_linked_account_phase_empty_parameters(
+def test_add_acc_phase_empty_parameters(
     mocker,
     order_factory,
     config,

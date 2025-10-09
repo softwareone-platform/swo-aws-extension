@@ -80,7 +80,7 @@ def test_create_subscription_new_account(
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
 
 
-def test_create_subscription_phase_subscription_already_created(
+def test_phase_subscription_already_created(
     mocker,
     order_factory,
     config,
@@ -218,7 +218,7 @@ def test_create_subscription_transfer_account(
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
 
 
-def test_create_subscription_transfer_account_no_accounts(
+def test_transfer_account_no_accounts(
     mocker,
     order_factory,
     config,
@@ -321,7 +321,7 @@ def test_create_change_subscription(
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
 
 
-def test_create_change_subscription_already_exists(
+def test_change_subscription_already_exists(
     mocker,
     order_factory,
     config,

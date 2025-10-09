@@ -34,7 +34,7 @@ def is_list_of_aws_accounts(multiline_account_id: str) -> bool:
     return re.fullmatch(pattern, multiline_account_id) is not None
 
 
-class ValidatePurchaseTransferWithoutOrganizationStep(Step):
+class ValidatePurchaseTransferWithoutOrgStep(Step):
     """Validate if the transfer without organization is possible."""
 
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):

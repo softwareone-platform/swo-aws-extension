@@ -6,6 +6,8 @@ from mpt_extension_sdk.flows.pipeline import Pipeline
 from requests import RequestException, Response
 
 from swo_aws_extension.constants import (
+    HTTP_STATUS_BAD_REQUEST,
+    HTTP_STATUS_OK,
     AccountTypesEnum,
     AwsHandshakeStateEnum,
     OrderProcessingTemplateEnum,
@@ -122,7 +124,7 @@ def test_aws_invitation_processor_skips_pipeline(
     pipeline.run.assert_not_called()
 
 
-def test_process_one_order_with_invitations_accepted(
+def test_process_one_order_invitations_accepted(
     mocker,
     config,
     aws_client_factory,
@@ -187,10 +189,10 @@ def test_process_one_order_with_invitations_accepted(
     )
 
 
-def response_factory(status_code, data):
+def response_factory(status_code, response_data):
     response = Response()
     response.status_code = status_code
-    response._content = json.dumps(data).encode("utf-8")  # noqa: SLF001
+    response._content = json.dumps(response_data).encode("utf-8")  # noqa: SLF001
     return response
 
 
@@ -200,8 +202,8 @@ def test_get_quering_orders(mocker, aws_invitation_processor, order_factory):
 
     mock_client.get.side_effect = [
         response_factory(
-            status_code=200,
-            data={
+            status_code=HTTP_STATUS_OK,
+            response_data={
                 "data": [
                     order_factory(),
                     order_factory(),
@@ -216,8 +218,8 @@ def test_get_quering_orders(mocker, aws_invitation_processor, order_factory):
             },
         ),
         response_factory(
-            status_code=200,
-            data={
+            status_code=HTTP_STATUS_OK,
+            response_data={
                 "data": [
                     order_factory(),
                     order_factory(),
@@ -242,8 +244,8 @@ def test_get_quering_orders_exceptions(mocker, aws_invitation_processor, order_f
 
     mock_client.get.side_effect = [
         response_factory(
-            status_code=400,
-            data={
+            status_code=HTTP_STATUS_BAD_REQUEST,
+            response_data={
                 "data": [
                     order_factory(),
                     order_factory(),

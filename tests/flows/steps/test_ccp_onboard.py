@@ -149,7 +149,7 @@ def test_check_onboard_ccp_status_fail(
     next_step_mock.assert_called_once()
 
 
-def test_check_onboard_ccp_status_fail_ticket_already_created(
+def test_check_ccp_status_fail_ticket_created(
     mocker,
     order_factory,
     config,

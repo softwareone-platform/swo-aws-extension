@@ -6,7 +6,7 @@ from swo_aws_extension.flows.steps.mpa_pre_configuration import MPAPreConfigurat
 from swo_aws_extension.parameters import set_phase
 
 
-def test_mpa_pre_configuration_phase_preconfig_mpa(
+def test_phase_preconfig_mpa(
     mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory, roots_factory
 ):
     order = order_factory(
@@ -19,15 +19,12 @@ def test_mpa_pre_configuration_phase_preconfig_mpa(
     mock_client.create_organization.return_value = {"Organization": {"Id": "test_organization"}}
     mock_client.list_roots.return_value = roots_factory()
     mock_client.enable_policy_type.return_value = roots_factory()
-
     context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
-
     mocked_update_order = mocker.patch(
         "swo_aws_extension.flows.steps.mpa_pre_configuration.update_order",
     )
-
     mpa_pre_config = MPAPreConfiguration()
 
     mpa_pre_config(mpt_client_mock, context, next_step_mock)
@@ -42,7 +39,6 @@ def test_mpa_pre_configuration_phase_preconfig_mpa(
         context.order["parameters"]
         == set_phase(order, PhasesEnum.CREATE_ACCOUNT.value)["parameters"]
     )
-
     mocked_update_order.assert_called_once_with(
         mpt_client_mock,
         context.order["id"],
@@ -51,26 +47,22 @@ def test_mpa_pre_configuration_phase_preconfig_mpa(
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
 
 
-def test_mpa_pre_configuration_phase_not_preconfig_mpa(
-    mocker, order_factory, config, aws_client_factory
-):
+def test_phase_not_preconfig_mpa(mocker, order_factory, config, aws_client_factory):
     order = order_factory()
-
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-
     context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
-
     mpa_pre_config = MPAPreConfiguration()
+
     mpa_pre_config(mpt_client_mock, context, next_step_mock)
 
     mock_client.create_organization.assert_not_called()
     next_step_mock.assert_called_once_with(mpt_client_mock, context)
 
 
-def test_mpa_pre_configuration_phase_preconfig_mpa_next_step_transfer(
+def test_phase_preconfig_mpa_next_step_transfer(
     mocker,
     order_factory,
     config,
@@ -92,15 +84,12 @@ def test_mpa_pre_configuration_phase_preconfig_mpa_next_step_transfer(
     mock_client.create_organization.return_value = {"Organization": {"Id": "test_organization"}}
     mock_client.list_roots.return_value = roots_factory()
     mock_client.enable_policy_type.return_value = roots_factory()
-
     context = PurchaseContext.from_order_data(order)
     context.aws_client = aws_client
     next_step_mock = mocker.Mock()
-
     mocked_update_order = mocker.patch(
         "swo_aws_extension.flows.steps.mpa_pre_configuration.update_order",
     )
-
     mpa_pre_config = MPAPreConfiguration()
 
     mpa_pre_config(mpt_client_mock, context, next_step_mock)

@@ -130,11 +130,11 @@ class ValidateNewAccount(Step):
             get_account_email(context.order),
             get_account_name(context.order),
         ]
-        if any(not value for value in required_values):
-            for param in required_parameters:
+        if any(not required_value for required_value in required_values):
+            for required_param in required_parameters:
                 context.order = update_ordering_parameter_constraints(
                     context.order,
-                    param,
+                    required_param,
                     hidden=False,
                     required=True,
                     readonly=False,
@@ -308,11 +308,11 @@ class ValidateSplitBillingStep(Step):
             get_account_email(context.order),
             get_account_name(context.order),
         ]
-        if any(not value for value in required_values):
-            for param in required_parameters:
+        if any(not required_value for required_value in required_values):
+            for required_param in required_parameters:
                 context.order = update_ordering_parameter_constraints(
                     context.order,
-                    param,
+                    required_param,
                     hidden=False,
                     required=True,
                     readonly=False,

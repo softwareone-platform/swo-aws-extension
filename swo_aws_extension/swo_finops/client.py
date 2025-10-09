@@ -9,6 +9,8 @@ import requests
 from django.conf import settings
 from requests import HTTPError
 
+from swo_aws_extension.constants import HTTP_STATUS_NOT_FOUND
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,17 +21,17 @@ class FinOpsError(Exception):
 class FinOpsHttpError(FinOpsError):
     """General HTTP error from FinOps for Cloud."""
 
-    def __init__(self, status_code: int, content: str):
+    def __init__(self, status_code: int, response_content: str):
         self.status_code = status_code
-        self.content = content
-        super().__init__(f"{self.status_code} - {self.content}")
+        self.response_content = response_content
+        super().__init__(f"{self.status_code} - {self.response_content}")
 
 
 class FinOpsNotFoundError(FinOpsHttpError):
     """FinOps entity is not found exception."""
 
-    def __init__(self, content):
-        super().__init__(404, content)
+    def __init__(self, response_content):
+        super().__init__(HTTP_STATUS_NOT_FOUND, response_content)
 
 
 def wrap_http_error(func):
@@ -40,7 +42,7 @@ def wrap_http_error(func):
         try:
             return func(*args, **kwargs)
         except HTTPError as e:
-            if e.response.status_code == 404:
+            if e.response.status_code == HTTP_STATUS_NOT_FOUND:
                 raise FinOpsNotFoundError(e.response.json())
             raise FinOpsHttpError(e.response.status_code, e.response.json())
 
@@ -143,8 +145,8 @@ class FinOpsClient:
             timeout=TIMEOUT,
         )
         response.raise_for_status()
-        result = response.json()
-        return result["items"][0] if result["total"] > 0 else None
+        entitlements = response.json()
+        return entitlements["items"][0] if entitlements["total"] > 0 else None
 
     def _get_headers(self):
         return {

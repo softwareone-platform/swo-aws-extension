@@ -56,7 +56,7 @@ def test_check_pool_accounts_notifications(
     assert mocked_pool_notification_model.all.call_count == 2
 
 
-def test_check_pool_accounts_notifications_resolved(
+def test_check_pool_notifications_resolved(
     mocker,
     pool_notification_factory,
     service_request_ticket_factory,
@@ -96,7 +96,7 @@ def test_check_pool_accounts_notifications_resolved(
     assert mocked_pool_notification_model.all.call_count == 2
 
 
-def test_check_pool_accounts_notifications_declined(
+def test_check_pool_notifications_declined(
     mocker,
     pool_notification_factory,
     service_request_ticket_factory,
@@ -139,7 +139,7 @@ def test_check_pool_accounts_notifications_declined(
     assert mocked_pool_notification_model.all.call_count == 2
 
 
-def test_check_pool_accounts_notifications_create_empty_notification(
+def test_check_pool_notifications_create_empty(
     mocker, pool_notification_factory, service_request_ticket_factory, config, service_client
 ):
     mocked_master_payer_account_pool_model = mocker.MagicMock()
@@ -194,7 +194,7 @@ def test_check_pool_accounts_notifications_create_empty_notification(
     assert service_client.create_service_request.mock_calls[0].args == (None, service_request)
 
 
-def test_check_pool_accounts_notifications_create_warning_notification(
+def test_check_pool_notifications_create_warning(
     mocker,
     pool_notification_factory,
     service_request_ticket_factory,
@@ -255,7 +255,7 @@ def test_check_pool_accounts_notifications_create_warning_notification(
     assert service_client.create_service_request.mock_calls[0].args == (None, service_request)
 
 
-def test_check_pool_accounts_notifications_delete_duplicated_notification(
+def test_check_pool_notifications_del_duplicated(
     mocker,
     pool_notification_factory,
     service_request_ticket_factory,
@@ -297,7 +297,7 @@ def test_check_pool_accounts_notifications_delete_duplicated_notification(
     assert mocked_pool_notification_model.return_value.save.call_count == 1
 
 
-def test_process_pending_notification_handle_http_error(
+def test_process_pending_notification_http_error(
     mocker,
     pool_notification_factory,
     service_request_ticket_factory,

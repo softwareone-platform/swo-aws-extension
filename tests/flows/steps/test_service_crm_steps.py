@@ -6,26 +6,27 @@ from requests import Response
 
 from swo_aws_extension.constants import (
     CRM_TICKET_RESOLVED_STATE,
-    CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL_INFO,
+    CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL,
     CRM_TRANSFER_WITH_ORGANIZATION_SUMMARY,
     CRM_TRANSFER_WITH_ORGANIZATION_TITLE,
+    HTTP_STATUS_OK,
     OrderProcessingTemplateEnum,
     TransferTypesEnum,
 )
 from swo_aws_extension.flows.order import PurchaseContext, TerminateContext
 from swo_aws_extension.flows.steps.service_crm_steps import (
     AwaitCRMTicketStatusStep,
-    AwaitTransferRequestTicketWithOrganizationStep,
+    AwaitTransferWithOrgStep,
     CreateOnboardTicketStep,
     CreateServiceRequestStep,
-    CreateTransferRequestTicketWithOrganizationStep,
     CreateUpdateKeeperTicketStep,
+    RequestTransferWithOrgStep,
 )
 from swo_aws_extension.parameters import (
     get_crm_transfer_organization_ticket_id,
     get_master_payer_id,
 )
-from swo_aws_extension.swo_crm_service.client import CRMServiceClient, ServiceRequest
+from swo_aws_extension.swo_crm_service import CRMServiceClient, ServiceRequest
 
 
 @pytest.fixture
@@ -87,21 +88,18 @@ def test_create_transfer_request_ticket_with_organization_step_creates_ticket(
     context = PurchaseContext.from_order_data(order_transfer_with_organization)
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
-
     template_response = Response()
     template_response._content = b'{"data": ["template"]}'  # noqa: SLF001
-    template_response.status_code = 200
+    template_response.status_code = HTTP_STATUS_OK
     mpt_client_mock.get = mocker.Mock(return_value=template_response)
-
     service_client.create_service_request.return_value = {"id": "CS0004721"}
-
     template = {"id": "TPL-964-112", "name": "template-name"}
     mocker.patch(
         "swo_aws_extension.flows.order.get_product_template_or_default",
         return_value=template,
     )
+    step = RequestTransferWithOrgStep()
 
-    step = CreateTransferRequestTicketWithOrganizationStep()
     step(mpt_client_mock, context, next_step_mock)
 
     service_client.create_service_request.assert_called_once()
@@ -111,7 +109,7 @@ def test_create_transfer_request_ticket_with_organization_step_creates_ticket(
     master_payer_id = get_master_payer_id(context.order)
     buyer_external_id = context.buyer.get("externalIds", {}).get("erpCustomer", "")
     service_request = ServiceRequest(
-        additional_info=CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL_INFO,
+        additional_info=CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL,
         title=CRM_TRANSFER_WITH_ORGANIZATION_TITLE.format(
             master_payer_id=master_payer_id, buyer_external_id=buyer_external_id
         ),
@@ -138,19 +136,18 @@ def test_create_transfer_request_ticket_raise_exception(
     )
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
-
     service_client.create_service_request.return_value = {"id": "CS0004721"}
     update_order_mock = mocker.patch(
         "swo_aws_extension.flows.steps.service_crm_steps.update_order",
     )
 
-    step = CreateTransferRequestTicketWithOrganizationStep()
+    step = RequestTransferWithOrgStep()
+
     with pytest.raises(ValueError):
         step(mpt_client_mock, context, next_step_mock)
 
     service_client.create_service_request.assert_not_called()
     update_order_mock.assert_not_called()
-
     next_step_mock.assert_not_called()
 
 
@@ -162,25 +159,24 @@ def test_create_transfer_request_ticket_with_organization_step_ticket_exist(
     context = PurchaseContext.from_order_data(order_transfer_with_organization_and_ticket)
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
-    assert get_crm_transfer_organization_ticket_id(context.order) == "CS0004728"
     update_order_mock = mocker.patch("swo_aws_extension.flows.steps.service_crm_steps.update_order")
+    step = RequestTransferWithOrgStep()
 
-    step = CreateTransferRequestTicketWithOrganizationStep()
     step(mpt_client_mock, context, next_step_mock)
 
     service_client.create_service_request.assert_not_called()
     update_order_mock.assert_not_called()
     next_step_mock.assert_called_once()
+    assert get_crm_transfer_organization_ticket_id(context.order) == "CS0004728"
 
 
 def test_create_transfer_request_ticket_skipped(mocker, mock_order, service_client):
     context = PurchaseContext.from_order_data(mock_order)
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
-
     update_order_mock = mocker.patch("swo_aws_extension.flows.steps.service_crm_steps.update_order")
+    step = RequestTransferWithOrgStep()
 
-    step = CreateTransferRequestTicketWithOrganizationStep()
     step(mpt_client_mock, context, next_step_mock)
 
     service_client.create_service_request.assert_not_called()
@@ -192,13 +188,14 @@ def test_await_ticket(mocker, order_transfer_with_organization_and_ticket, servi
     context = PurchaseContext.from_order_data(order_transfer_with_organization_and_ticket)
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
-
     service_client.get_service_requests.return_value = {
         "id": "CS0004728",
         "state": "New",
     }
-    step = AwaitTransferRequestTicketWithOrganizationStep()
+    step = AwaitTransferWithOrgStep()
+
     step(mpt_client_mock, context, next_step_mock)
+
     next_step_mock.assert_not_called()
 
 
@@ -208,13 +205,14 @@ def test_await_ticket_continue_if_completed(
     context = PurchaseContext.from_order_data(order_transfer_with_organization_and_ticket)
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
-
     service_client.get_service_requests.return_value = {
         "id": "CS0004728",
         "state": CRM_TICKET_RESOLVED_STATE,
     }
-    step = AwaitTransferRequestTicketWithOrganizationStep()
+    step = AwaitTransferWithOrgStep()
+
     step(mpt_client_mock, context, next_step_mock)
+
     next_step_mock.assert_called_once()
 
 
@@ -222,9 +220,10 @@ def test_skip_await_ticket(mocker, mock_order):
     context = PurchaseContext.from_order_data(mock_order)
     mpt_client_mock = mocker.Mock(spec=MPTClient)
     next_step_mock = mocker.Mock()
+    step = AwaitTransferWithOrgStep()
 
-    step = AwaitTransferRequestTicketWithOrganizationStep()
     step(mpt_client_mock, context, next_step_mock)
+
     next_step_mock.assert_called_once()
 
 
@@ -294,7 +293,6 @@ def test_create_service_crm_ticket_meets_criteria(
 ):
     client = Mock(spec=MPTClient)
     context.order_id = "test_order_id"
-
     crm_client.create_service_request.return_value = {"id": "12345"}
     service_request = Mock()
     service_request_factory.return_value = service_request
@@ -475,6 +473,7 @@ def test_create_keeper_ticket(
     context = PurchaseContext.from_order_data(mock_order)
     context.airtable_mpa = mpa_pool_factory()
     step = CreateUpdateKeeperTicketStep()
+
     step(client, context, next_step)
 
     crm_client.create_service_request.assert_called_once()
@@ -489,6 +488,7 @@ def test_create_keeper_ticket_fail_if_not_mpa_pool(
     context = PurchaseContext.from_order_data(mock_order)
     context.airtable_mpa = None
     step = CreateUpdateKeeperTicketStep()
+
     with pytest.raises(RuntimeError):
         step(client, context, next_step)
 
@@ -505,6 +505,7 @@ def test_create_keeper_ticket_fail_it_no_ticket_id(
     context = PurchaseContext.from_order_data(mock_order)
     context.airtable_mpa = mpa_pool_factory()
     step = CreateUpdateKeeperTicketStep()
+
     with pytest.raises(ValueError):
         step(client, context, next_step)
 
@@ -521,6 +522,7 @@ def test_create_onboard_ticket(
     context = PurchaseContext.from_order_data(mock_order)
     context.airtable_mpa = mpa_pool_factory()
     step = CreateOnboardTicketStep()
+
     step(client, context, next_step)
 
     crm_client.create_service_request.assert_called_once()
@@ -540,6 +542,7 @@ def test_create_onboard_ticket_fail_it_no_ticket_id(
     context = PurchaseContext.from_order_data(mock_order)
     context.airtable_mpa = mpa_pool_factory()
     step = CreateOnboardTicketStep()
+
     with pytest.raises(ValueError):
         step(client, context, next_step)
 
@@ -552,6 +555,7 @@ def test_create_onboard_ticket_fail_if_not_mpa_pool(
     context = PurchaseContext.from_order_data(mock_order)
     context.airtable_mpa = None
     step = CreateUpdateKeeperTicketStep()
+
     with pytest.raises(RuntimeError):
         step(client, context, next_step)
 
@@ -577,6 +581,7 @@ def test_create_onboard_require_attention_ticket(
     context = PurchaseContext.from_order_data(order)
     context.airtable_mpa = mpa_pool_factory()
     step = CreateOnboardTicketStep()
+
     step(client, context, next_step)
 
     crm_client.create_service_request.assert_called_once()

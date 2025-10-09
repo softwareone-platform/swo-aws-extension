@@ -5,7 +5,6 @@ from json import JSONDecodeError
 from urllib.parse import urljoin
 
 from requests import Session
-from requests.adapters import HTTPAdapter, Retry
 
 from swo_aws_extension.constants import (
     CRM_EXTERNAL_EMAIL,
@@ -63,18 +62,7 @@ class CRMServiceClient(Session):
         token = self.get_crm_token()
         self.api_token = token["access_token"]
         self.token_expiry = time.time() + token["expires_in"]
-        retries = Retry(
-            total=5,
-            backoff_factor=0.1,
-            status_forcelist=[500, 502, 503, 504],
-        )
-        self.mount(
-            "http://",
-            HTTPAdapter(
-                max_retries=retries,
-                pool_maxsize=36,
-            ),
-        )
+
         self.headers.update(
             {
                 "User-Agent": "swo-extensions/1.0",
@@ -140,10 +128,10 @@ class CRMServiceClient(Session):
         Returns:
             Dictionary with created service request id {"id": "CS0004728"}
         """
-        data = service_request.to_api_dict()
+        service_request_data = service_request.to_api_dict()
         response = self.post(
             url="/ticketing/ServiceRequests",
-            json=data,
+            json=service_request_data,
             headers=self._prepare_headers(order_id),
             timeout=TIMEOUT,
         )
