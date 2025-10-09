@@ -1,3 +1,7 @@
+from swo_aws_extension.flows.jobs.billing_journal.line_processors.credits import (
+    GenerateCreditProviderDiscountJournalLines,
+    GenerateCreditsJournalLines,
+)
 from swo_aws_extension.flows.jobs.billing_journal.line_processors.marketplace import (
     GenerateMarketplaceJournalLines,
 )
@@ -47,6 +51,8 @@ class JournalProcessorDispatcher:
                 tolerance, config.billing_discount_support_enterprise
             ),
             GenerateSupportDevelopmentJournalLines(tolerance, 0),
+            GenerateCreditsJournalLines(tolerance, 0),
+            GenerateCreditProviderDiscountJournalLines(tolerance, 0),
         ]
         return cls(processors)
 

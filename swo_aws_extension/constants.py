@@ -32,6 +32,8 @@ class UsageMetricTypeEnum(StrEnum):
     SAVING_PLANS = "SAVING_PLANS"
     RECURRING = "RECURRING"
     SERVICE_INVOICE_ENTITY = "SERVICE_INVOICE_ENTITY"
+    CREDITS = "CREDITS"
+    CREDITS_PROVIDER_DISCOUNT = "CREDITS_PROVIDER_DISCOUNT"
 
 
 class AWSServiceEnum(StrEnum):
@@ -52,6 +54,7 @@ class AWSRecordTypeEnum(StrEnum):
     REFUND = "Refund"
     SAVING_PLAN_RECURRING_FEE = "SavingsPlanRecurringFee"
     RECURRING = "Recurring"
+    CREDIT = "Credit"
 
 
 EXCLUDE_USAGE_SERVICES = [AWSServiceEnum.SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE]

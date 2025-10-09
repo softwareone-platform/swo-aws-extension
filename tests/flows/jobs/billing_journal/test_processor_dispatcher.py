@@ -5,7 +5,7 @@ from swo_aws_extension.flows.jobs.billing_journal.processor_dispatcher import (
     JournalProcessorDispatcher,
 )
 
-EXPECTED_PROCESSOR_COUNT = 11
+EXPECTED_PROCESSOR_COUNT = 13
 
 
 class ProcessorMatch(GenerateItemJournalLines):

@@ -1,3 +1,5 @@
+from typing import override
+
 from swo_aws_extension.constants import ItemSkusEnum, UsageMetricTypeEnum
 from swo_aws_extension.flows.jobs.billing_journal.line_processors.base_processor import (
     GenerateItemJournalLines,
@@ -12,14 +14,14 @@ class GenerateSavingPlansJournalLines(GenerateItemJournalLines):
 
     _validator = DefaultDiscountValidator
 
+    @override
     @property
     def item_sku(self):
-        """Return the item SKU associated with this processor."""
         return ItemSkusEnum.SAVING_PLANS_RECURRING_FEE.value
 
+    @override
     @property
     def metric_id(self):
-        """Return the metric ID associated with this processor."""
         return UsageMetricTypeEnum.SAVING_PLANS.value
 
 
@@ -29,12 +31,12 @@ class GenerateSavingPlansIncentivateJournalLines(GenerateItemJournalLines):
     _validator = DefaultDiscountValidator
     _exclude_services = ()
 
+    @override
     @property
     def item_sku(self):
-        """Return the item SKU associated with this processor."""
         return ItemSkusEnum.SAVING_PLANS_RECURRING_FEE_INCENTIVATE.value
 
+    @override
     @property
     def metric_id(self):
-        """Return the metric ID associated with this processor."""
         return UsageMetricTypeEnum.SAVING_PLANS.value

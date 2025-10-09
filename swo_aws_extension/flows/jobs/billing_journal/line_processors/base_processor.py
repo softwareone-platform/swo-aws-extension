@@ -2,9 +2,7 @@ from abc import ABC, abstractmethod
 
 from swo_aws_extension.constants import UsageMetricTypeEnum
 from swo_aws_extension.flows.jobs.billing_journal.invoice_details import InvoiceDetails
-from swo_aws_extension.flows.jobs.billing_journal.models import (
-    JournalLine,
-)
+from swo_aws_extension.flows.jobs.billing_journal.models import JournalLine
 
 
 class GenerateItemJournalLines(ABC):
@@ -14,6 +12,8 @@ class GenerateItemJournalLines(ABC):
     _exclude_services = ()
     _dynamic_exclude_services = ()
     _dynamic_metric_ids = ()
+    _prefix_name = ""
+    _suffix_name = ""
 
     def __init__(self, billing_discount_tolerance_rate, discount=None):
         self._billing_discount_tolerance_rate = billing_discount_tolerance_rate
@@ -55,9 +55,11 @@ class GenerateItemJournalLines(ABC):
             ):
                 continue
 
+            service_name_affixed = self._get_service_name_affixed(service_name)
+
             invoice_details = InvoiceDetails(
                 self.item_sku,
-                service_name,
+                service_name_affixed,
                 amount,
                 account_id,
                 account_invoices,
@@ -93,3 +95,10 @@ class GenerateItemJournalLines(ABC):
             if service_name not in self._get_exclude_services(account_metrics)
         }
         return filtered_metrics.items()
+
+    def _get_service_name_affixed(self, service_name):
+        if self._prefix_name:
+            service_name = f"{self._prefix_name}{service_name}"
+        if self._suffix_name:
+            service_name = f"{service_name}{self._suffix_name}"
+        return service_name
