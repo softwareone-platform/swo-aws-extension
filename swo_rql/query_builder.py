@@ -112,10 +112,17 @@ class RQLQuery:
 
     AND = "and"
     OR = "or"
-    EXPR = "expr"
+    OP_EXPRESSION = "expr"
 
     def __init__(
-        self, _field=None, *, _op=EXPR, _children=None, _negated=False, _expr=None, **kwargs
+        self,
+        _field=None,
+        *,
+        _op=OP_EXPRESSION,
+        _children=None,
+        _negated=False,
+        _expr=None,
+        **kwargs,
     ):
         self.op = _op
         self.children = _children or []
@@ -126,7 +133,7 @@ class RQLQuery:
         if _field:
             self.n(_field)
         if len(kwargs) == 1:
-            self.op = self.EXPR
+            self.op = self.OP_EXPRESSION
             self.expr = parse_kwargs(kwargs)[0]
         if len(kwargs) > 1:
             self.op = self.AND
@@ -134,7 +141,7 @@ class RQLQuery:
                 self.children.append(RQLQuery(_expr=token))
 
     def __len__(self):
-        if self.op == self.EXPR:
+        if self.op == self.OP_EXPRESSION:
             if self.expr:
                 return 1
             return 0
@@ -157,7 +164,7 @@ class RQLQuery:
         )
 
     def __repr__(self):
-        if self.op == self.EXPR:
+        if self.op == self.OP_EXPRESSION:
             return f"<R({self.op}) {self.expr}>"
         return f"<R({self.op})>"
 
@@ -380,7 +387,7 @@ class RQLQuery:
             return other
 
         if (
-            other.op == self.op or (len(other) == 1 and other.op != self.EXPR)
+            other.op == self.op or (len(other) == 1 and other.op != self.OP_EXPRESSION)
         ) and not other.negated:
             self.children.extend(other.children)
             return self
