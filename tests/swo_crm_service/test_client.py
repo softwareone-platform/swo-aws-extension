@@ -4,11 +4,9 @@ import pytest
 from requests import PreparedRequest
 from requests.models import Response
 
-from swo_aws_extension.swo_crm_service.client import (
-    CRMServiceClient,
-    ServiceRequest,
-    get_service_client,
-)
+from swo_aws_extension.constants import HTTP_STATUS_OK
+from swo_aws_extension.swo_crm_service import CRMServiceClient, ServiceRequest
+from swo_aws_extension.swo_crm_service.client import get_service_client
 from swo_aws_extension.swo_crm_service.config import CRMConfig
 
 
@@ -55,7 +53,9 @@ def test_to_api_dict(service_request):
 
 def test_preapre_headers(crm_client):
     order_id = "ORD-0000-0000"
+
     headers = crm_client._prepare_headers(order_id)  # noqa: SLF001
+
     assert headers["x-correlation-id"] == order_id
 
 
@@ -82,20 +82,20 @@ def test_service_request_model():
         "title": "title",
         "serviceType": "serviceType",
     }
+
     assert service_request.to_api_dict() == expected_data
 
 
 def test_create_service_request(crm_client, service_request, mocker):
     mock_response = mocker.Mock(spec=Response)
     mock_response.json.return_value = {"id": "12345"}
-    mock_response.status_code = 200
+    mock_response.status_code = HTTP_STATUS_OK
     mocker.patch.object(crm_client, "post", return_value=mock_response)
-
     order_id = "ORD-0000-0000"
+
     response = crm_client.create_service_request(order_id, service_request)
 
     assert response == {"id": "12345"}
-
     expected_json = {
         "additionalInfo": "additionalInfo",
         "externalUserEmail": "user@example.com",
@@ -119,10 +119,10 @@ def test_get_service_request(crm_client, mocker):
     mock_response = mocker.Mock(spec=Response)
     service_request_response = {"id": "12345", "status": "new"}
     mock_response.json.return_value = service_request_response
-    mock_response.status_code = 200
+    mock_response.status_code = HTTP_STATUS_OK
     mocker.patch.object(crm_client, "get", return_value=mock_response)
-
     order_id = "ORD-0000-0000"
+
     response = crm_client.get_service_requests(order_id, "12345")
 
     assert response == service_request_response
@@ -136,13 +136,13 @@ def test_get_service_request(crm_client, mocker):
 def test_client_headers(crm_client, service_request, mocker):
     mock_response = mocker.Mock(spec=Response)
     mock_response.json.return_value = {"id": "12345"}
-    mock_response.status_code = 200
+    mock_response.status_code = HTTP_STATUS_OK
     mocker.patch.object(crm_client, "send", return_value=mock_response)
-
     order_id = "ORD-0000-0000"
-    response = crm_client.create_service_request(order_id, service_request)
-    assert response == {"id": "12345"}
 
+    response = crm_client.create_service_request(order_id, service_request)
+
+    assert response == {"id": "12345"}
     create_service_request: PreparedRequest = crm_client.send.call_args[0][0]
     csr_expected_headers = {
         "User-Agent": "swo-extensions/1.0",
@@ -161,12 +161,12 @@ def test_client_headers(crm_client, service_request, mocker):
 
 def test_create_service_request_json_decode_error(crm_client, service_request, mocker):
     mock_response = mocker.Mock(spec=Response)
-    mock_response.status_code = 200
+    mock_response.status_code = HTTP_STATUS_OK
     mock_response.content = b"invalid json"
     mock_response.json.side_effect = JSONDecodeError("Expecting value", "invalid json", 0)
     mock_post = mocker.patch.object(crm_client, "post", return_value=mock_response)
-
     order_id = "ORD-0000-0000"
+
     with pytest.raises(JSONDecodeError):
         crm_client.create_service_request(order_id, service_request)
 
@@ -194,10 +194,14 @@ def test_get_service_client(crm_client, mocker, mock_settings):
         "swo_aws_extension.swo_crm_service.client.get_service_client",
         return_value="test_token",
     )
+
     client = get_service_client()
+
     assert client.base_url == "https://api.example.com/"
     assert client.api_token == "test_token"
+
     another_client = get_service_client()
+
     assert client == another_client
 
 
@@ -205,13 +209,13 @@ def test_client_token_expired(crm_client, service_request, mocker):
     crm_client.token_expiry = 0
     mock_response = mocker.Mock(spec=Response)
     mock_response.json.return_value = {"id": "12345"}
-    mock_response.status_code = 200
+    mock_response.status_code = HTTP_STATUS_OK
     mocker.patch.object(crm_client, "send", return_value=mock_response)
-
     order_id = "ORD-0000-0000"
-    response = crm_client.create_service_request(order_id, service_request)
-    assert response == {"id": "12345"}
 
+    response = crm_client.create_service_request(order_id, service_request)
+
+    assert response == {"id": "12345"}
     create_service_request: PreparedRequest = crm_client.send.call_args[0][0]
     csr_expected_headers = {
         "User-Agent": "swo-extensions/1.0",
@@ -233,13 +237,13 @@ def test_client_token_expired_none(crm_client, service_request, mocker):
     crm_client.token_expiry = None
     mock_response = mocker.Mock(spec=Response)
     mock_response.json.return_value = {"id": "12345"}
-    mock_response.status_code = 200
+    mock_response.status_code = HTTP_STATUS_OK
     mocker.patch.object(crm_client, "send", return_value=mock_response)
-
     order_id = "ORD-0000-0000"
-    response = crm_client.create_service_request(order_id, service_request)
-    assert response == {"id": "12345"}
 
+    response = crm_client.create_service_request(order_id, service_request)
+
+    assert response == {"id": "12345"}
     create_service_request: PreparedRequest = crm_client.send.call_args[0][0]
     csr_expected_headers = {
         "User-Agent": "swo-extensions/1.0",

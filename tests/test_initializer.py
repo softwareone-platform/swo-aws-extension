@@ -11,7 +11,7 @@ def clear_initializer_env(monkeypatch):
     monkeypatch.delenv("MPT_INITIALIZER", raising=False)
 
 
-def make_mock_settings(app_config_name, handler="console", *, use_app_insights=False):
+def make_mock_settings(app_config_name, logging_handler="console", *, use_app_insights=False):
     class MockSettings:
         def __init__(self):
             self.USE_APPLICATIONINSIGHTS = use_app_insights
@@ -38,9 +38,9 @@ def make_mock_settings(app_config_name, handler="console", *, use_app_insights=F
                         "formatter": "verbose",
                     },
                 },
-                "root": {"handlers": [handler], "level": "INFO"},
+                "root": {"handlers": [logging_handler], "level": "INFO"},
                 "loggers": {
-                    "swo.mpt": {"handlers": [handler], "level": "INFO", "propagate": False},
+                    "swo.mpt": {"handlers": [logging_handler], "level": "INFO", "propagate": False},
                 },
             }
             if use_app_insights:
@@ -65,7 +65,7 @@ def test_initializer_sets_env(monkeypatch):
 
 
 def test_initialize_basic(monkeypatch, mocker):
-    mock_settings = make_mock_settings("myext.app", handler="rich", use_app_insights=False)
+    mock_settings = make_mock_settings("myext.app", logging_handler="rich", use_app_insights=False)
 
     monkeypatch.setitem(sys.modules, "django.conf", types.SimpleNamespace(settings=mock_settings))
 
@@ -108,7 +108,9 @@ def test_initialize_with_app_insights(monkeypatch, mocker, mock_app_insights_ins
         autospec=True,
     )
 
-    mock_settings = make_mock_settings("myext.app", handler="console", use_app_insights=True)
+    mock_settings = make_mock_settings(
+        "myext.app", logging_handler="console", use_app_insights=True
+    )
 
     monkeypatch.setitem(
         sys.modules,

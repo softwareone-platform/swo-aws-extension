@@ -8,21 +8,19 @@ from swo_aws_extension.flows.validation.steps import (
 
 def test_initialize_item_step(mocker, mpt_client, aws_client_factory, order_factory, items_factory):
     order = order_factory(order_type=ORDER_TYPE_CHANGE)
-    items = items_factory()
+    product_items = items_factory()
     get_product_items_by_skus = mocker.patch(
         "swo_aws_extension.flows.validation.steps.get_product_items_by_skus",
-        return_value=items,
+        return_value=product_items,
     )
-
     context = InitialAWSContext.from_order_data(order)
     next_step = mocker.MagicMock()
-
     step = InitializeItemStep()
+
     step(mpt_client, context, next_step)
 
     next_step.assert_called_once()
     get_product_items_by_skus.assert_called_once()
-
     order_lines = [
         {
             "item": {

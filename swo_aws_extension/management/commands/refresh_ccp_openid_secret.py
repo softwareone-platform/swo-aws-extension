@@ -8,7 +8,7 @@ class Command(StyledPrintCommand):
 
     help = "Refresh CCP OpenID Secret"
 
-    def handle(self, *args, **options):  # pragma: no cover
+    def handle(self, *args, **options):  # noqa: WPS110  # pragma: no cover
         """Run command."""
         self.info("Start refreshing CCP OpenID Token Secret...")
         config = get_config()

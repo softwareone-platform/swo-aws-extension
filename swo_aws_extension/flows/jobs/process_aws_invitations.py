@@ -4,13 +4,18 @@ import requests
 from django.conf import settings
 from mpt_extension_sdk.flows.pipeline import Pipeline, Step
 
-from swo_aws_extension.constants import SWO_EXTENSION_MANAGEMENT_ROLE, AccountTypesEnum, PhasesEnum
+from swo_aws_extension.constants import (
+    HTTP_STATUS_OK,
+    SWO_EXTENSION_MANAGEMENT_ROLE,
+    AccountTypesEnum,
+    PhasesEnum,
+)
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps import (
     AwaitInvitationLinksStep,
     SendInvitationLinksStep,
-    SetupContextPurchaseTransferWithoutOrganizationStep,
-    ValidatePurchaseTransferWithoutOrganizationStep,
+    SetupContextPurchaseTransferWithoutOrgStep,
+    ValidatePurchaseTransferWithoutOrgStep,
 )
 from swo_aws_extension.parameters import get_account_type, get_phase
 from swo_rql import RQLQuery
@@ -61,7 +66,7 @@ class AWSInvitationsProcessor:
                 logger.exception("Cannot retrieve orders")
                 return []
 
-            if response.status_code == 200:
+            if response.status_code == HTTP_STATUS_OK:
                 page = response.json()
                 orders.extend(page["data"])
             else:
@@ -87,10 +92,8 @@ class AWSInvitationsProcessor:
         """Returns pipeline."""
         return Pipeline(
             CheckInvitationLinksStep(),
-            ValidatePurchaseTransferWithoutOrganizationStep(),
-            SetupContextPurchaseTransferWithoutOrganizationStep(
-                self.config, SWO_EXTENSION_MANAGEMENT_ROLE
-            ),
+            ValidatePurchaseTransferWithoutOrgStep(),
+            SetupContextPurchaseTransferWithoutOrgStep(self.config, SWO_EXTENSION_MANAGEMENT_ROLE),
             SendInvitationLinksStep(),
             AwaitInvitationLinksStep(),
         )

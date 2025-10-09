@@ -1,18 +1,13 @@
 import copy
 import datetime as dt
-import json
-import signal
 from decimal import Decimal
 
 import jwt
 import pytest
 import responses
-from django.conf import settings
 from django.test import override_settings
-from mpt_extension_sdk.core.events.dataclasses import Event
 from mpt_extension_sdk.flows.context import ORDER_TYPE_TERMINATION
 from mpt_extension_sdk.runtime.djapp.conf import get_for_product
-from rich.highlighter import ReprHighlighter as _ReprHighlighter
 
 from swo_aws_extension.airtable.models import (
     AirTableBaseInfo,
@@ -23,6 +18,7 @@ from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
 from swo_aws_extension.aws.config import get_config
 from swo_aws_extension.constants import (
     AWS_ITEMS_SKUS,
+    HTTP_STATUS_OK,
     AccountTypesEnum,
     AWSRecordTypeEnum,
     AWSServiceEnum,
@@ -47,7 +43,7 @@ from swo_aws_extension.flows.jobs.billing_journal.models import (
 from swo_aws_extension.flows.jobs.billing_journal.processor_dispatcher import (
     JournalProcessorDispatcher,
 )
-from swo_aws_extension.notifications import MPTNotifier
+from swo_aws_extension.notifications import Button, FactsSection, MPTNotifier, send_notification
 from swo_aws_extension.parameters import (
     ChangeOrderParametersEnum,
     FulfillmentParametersEnum,
@@ -285,7 +281,7 @@ def fulfillment_parameters_factory():
 
 @pytest.fixture
 def items_factory():
-    def _items(
+    def _factory(
         item_id=1,
         name=AWESOME_PRODUCT,
         external_vendor_id="65304578CA",
@@ -300,37 +296,14 @@ def items_factory():
             },
         ]
 
-    return _items
-
-
-@pytest.fixture
-def pricelist_items_factory():
-    def _items(
-        item_id=1,
-        external_vendor_id="65304578CA",
-        unit_purchase_price=1234.55,
-    ):
-        return [
-            {
-                "id": f"PRI-1234-1234-1234-{item_id:04d}",
-                "item": {
-                    "id": f"ITM-1234-1234-1234-{item_id:04d}",
-                    "externalIds": {
-                        "vendor": external_vendor_id,
-                    },
-                },
-                "unitPP": unit_purchase_price,
-            },
-        ]
-
-    return _items
+    return _factory
 
 
 @pytest.fixture
 def lines_factory(agreement, deployment_id=None):
     agreement_id = agreement["id"].split("-", 1)[1]
 
-    def _items(
+    def _lines(
         line_id=1,
         item_id=1,
         name=AWESOME_PRODUCT,
@@ -360,7 +333,7 @@ def lines_factory(agreement, deployment_id=None):
             line["deploymentId"] = deployment_id
         return [line]
 
-    return _items
+    return _lines
 
 
 @pytest.fixture
@@ -526,14 +499,6 @@ def listing(buyer):
             "id": "ACC-1234-vendor-id",
             "name": "Vendor Name",
         },
-    }
-
-
-@pytest.fixture
-def template():
-    return {
-        "id": "TPL-1234-1234-4321",
-        "name": "Default Template",
     }
 
 
@@ -801,32 +766,6 @@ def mpt_error_factory():
 
 
 @pytest.fixture
-def airtable_error_factory():
-    def _airtable_error(
-        message,
-        error_type="INVALID_REQUEST_UNKNOWN",
-    ):
-        return {
-            "error": {
-                "type": error_type,
-                "message": message,
-            }
-        }
-
-    return _airtable_error
-
-
-@pytest.fixture
-def mpt_list_response():
-    def _wrap_response(objects_list):
-        return {
-            "data": objects_list,
-        }
-
-    return _wrap_response
-
-
-@pytest.fixture
 def jwt_token(settings):
     iat = nbf = int(dt.datetime.now(tz=dt.UTC).timestamp())
     exp = nbf + 300
@@ -857,282 +796,10 @@ def extension_settings(settings):
 
 
 @pytest.fixture
-def mocked_setup_master_signal_handler():
-    signal_handler = signal.getsignal(signal.SIGINT)
-
-    def handler(signum, frame):
-        print("Signal handler called with signal", signum)
-        signal.signal(signal.SIGINT, signal_handler)
-
-    signal.signal(signal.SIGINT, handler)
-
-
-@pytest.fixture
-def mock_gradient_result():
-    return [
-        "#00C9CD",
-        "#07B7D2",
-        "#0FA5D8",
-        "#1794DD",
-        "#1F82E3",
-        "#2770E8",
-        "#2F5FEE",
-        "#374DF3",
-        "#3F3BF9",
-        "#472AFF",
-    ]
-
-
-@pytest.fixture
-def mock_runtime_master_options():
-    return {
-        "color": True,
-        "debug": False,
-        "reload": True,
-        "component": "all",
-    }
-
-
-@pytest.fixture
-def mock_swoext_commands():
-    return (
-        "mpt_extension_sdk.runtime.commands.run.run",
-        "mpt_extension_sdk.runtime.commands.django.django",
-    )
-
-
-@pytest.fixture
-def mock_dispatcher_event():
-    return {
-        "type": "event",
-        "id": "event-id",
-    }
-
-
-@pytest.fixture
-def mock_workers_options():
-    return {
-        "color": False,
-        "debug": False,
-        "reload": False,
-        "component": "all",
-    }
-
-
-@pytest.fixture
-def mock_gunicorn_logging_config():
-    return {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "verbose": {
-                "format": "{asctime} {name} {levelname} (pid: {process}) {message}",
-                "style": "{",
-            },
-            "rich": {
-                "format": "%(message)s",
-            },
-        },
-        "handlers": {
-            "console": {
-                "class": "logging.StreamHandler",
-                "formatter": "verbose",
-            },
-            "rich": {
-                "class": "rich.logging.RichHandler",
-                "formatter": "rich",
-                "log_time_format": lambda x: x.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-                "rich_tracebacks": True,
-            },
-        },
-        "root": {
-            "handlers": ["rich"],
-            "level": "INFO",
-        },
-        "loggers": {
-            "gunicorn.access": {
-                "handlers": ["rich"],
-                "level": "INFO",
-                "propagate": False,
-            },
-            "gunicorn.error": {
-                "handlers": ["rich"],
-                "level": "INFO",
-                "propagate": False,
-            },
-            "swo.mpt": {
-                "handlers": ["rich"],
-                "level": "INFO",
-                "propagate": False,
-            },
-        },
-    }
-
-
-@pytest.fixture
-def mock_wrap_event():
-    return Event("evt-id", "orders", {"id": "ORD-1111-1111-1111"})
-
-
-@pytest.fixture
-def mock_meta_with_pagination_has_more_pages():
-    return {
-        META: {
-            "pagination": {
-                "offset": 0,
-                "limit": 10,
-                "total": 12,
-            },
-        },
-    }
-
-
-@pytest.fixture
-def mock_meta_with_pagination_has_no_more_pages():
-    return {
-        META: {
-            "pagination": {
-                "offset": 0,
-                "limit": 10,
-                "total": 4,
-            },
-        },
-    }
-
-
-@pytest.fixture
-def mock_logging_account_prefixes():
-    return ("ACC", "BUY", "LCE", "MOD", "SEL", "USR", "AUSR", "UGR")
-
-
-@pytest.fixture
-def mock_logging_catalog_prefixes():
-    return (
-        "PRD",
-        "ITM",
-        "IGR",
-        "PGR",
-        "MED",
-        "DOC",
-        "TCS",
-        "TPL",
-        "WHO",
-        "PRC",
-        "LST",
-        "AUT",
-        "UNT",
-    )
-
-
-@pytest.fixture
-def mock_logging_commerce_prefixes():
-    return ("AGR", "ORD", "SUB", "REQ")
-
-
-@pytest.fixture
-def mock_logging_aux_prefixes():
-    return ("FIL", "MSG")
-
-
-@pytest.fixture
-def mock_logging_all_prefixes(
-    mock_logging_account_prefixes,
-    mock_logging_catalog_prefixes,
-    mock_logging_commerce_prefixes,
-    mock_logging_aux_prefixes,
-):
-    return (
-        *mock_logging_account_prefixes,
-        *mock_logging_catalog_prefixes,
-        *mock_logging_commerce_prefixes,
-        *mock_logging_aux_prefixes,
-    )
-
-
-@pytest.fixture
-def mock_highlights(mock_logging_all_prefixes):
-    return [
-        *_ReprHighlighter.highlights,
-        rf"(?P<mpt_id>(?:{'|'.join(mock_logging_all_prefixes)})(?:-\d{{4}})*)",
-    ]
-
-
-@pytest.fixture
-def mock_settings_product_ids():
-    return ",".join(settings.MPT_PRODUCTS_IDS)
-
-
-@pytest.fixture
-def mock_ext_expected_environment_values(
-    mock_env_webhook_secret,
-):
-    return {
-        "WEBHOOKS_SECRETS": json.loads(mock_env_webhook_secret),
-    }
-
-
-@pytest.fixture
-def mock_env_webhook_secret():
-    return '{ "webhook_secret": "WEBHOOK_SECRET" }'
-
-
-@pytest.fixture
-def mock_env_airtable_bases():
-    return '{ "airtable_base": "AIRTABLE_BASE" }'
-
-
-@pytest.fixture
-def mock_json_ext_variables():
-    return {
-        "EXT_WEBHOOKS_SECRETS",
-    }
-
-
-@pytest.fixture
-def mock_valid_env_values(
-    mock_env_webhook_secret,
-    mock_env_airtable_bases,
-):
-    return {
-        "EXT_WEBHOOKS_SECRETS": mock_env_webhook_secret,
-        "EXT_AIRTABLE_BASES": mock_env_airtable_bases,
-    }
-
-
-@pytest.fixture
-def mock_worker_call_command_path():
-    return "mpt_extension_sdk.runtime.workers.call_command"
-
-
-@pytest.fixture
-def mock_initialize_extension_path():
-    return "swo_aws_extension.initializer.initialize"
-
-
-@pytest.fixture
-def mock_get_wsgi_application_path():
-    return "mpt_extension_sdk.runtime.workers.get_wsgi_application"
-
-
-@pytest.fixture
-def mock_get_order_for_producer(mock_order, order_factory):
-    return {
-        "data": [mock_order],
-        META: {
-            "pagination": {
-                "offset": 0,
-                "limit": 10,
-                "total": 1,
-            },
-        },
-    }
-
-
-@pytest.fixture
 def aws_client_factory(mocker, settings, requests_mocker):
     def _aws_client(config, mpa_account_id, role_name):
         requests_mocker.post(
-            config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=200
+            config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=HTTP_STATUS_OK
         )
 
         mock_boto3_client = mocker.patch("boto3.client")
@@ -1386,40 +1053,6 @@ def order_unlink_account(order_factory, order_parameters_factory, subscriptions_
             account_email=ACCOUNT_EMAIL,
             account_id="1234-5678",
             termination_type=TerminationParameterChoices.UNLINK_ACCOUNT,
-        ),
-        subscriptions=subscriptions_factory(
-            vendor_id="1234-5678",
-            status="Terminating",
-        ),
-    )
-
-
-@pytest.fixture
-def order_terminate_without_type(order_factory, order_parameters_factory, subscriptions_factory):
-    return order_factory(
-        order_type=ORDER_TYPE_TERMINATION,
-        order_parameters=order_parameters_factory(
-            account_email=ACCOUNT_EMAIL,
-            account_id="1234-5678",
-            termination_type="",
-        ),
-        subscriptions=subscriptions_factory(
-            vendor_id="1234-5678",
-            status="Terminating",
-        ),
-    )
-
-
-@pytest.fixture
-def order_terminate_with_invalid_terminate_type(
-    order_factory, order_parameters_factory, subscriptions_factory
-):
-    return order_factory(
-        order_type=ORDER_TYPE_TERMINATION,
-        order_parameters=order_parameters_factory(
-            account_email=ACCOUNT_EMAIL,
-            account_id="1234-5678",
-            termination_type="invalid_type",
         ),
         subscriptions=subscriptions_factory(
             vendor_id="1234-5678",
@@ -1759,16 +1392,6 @@ def mock_mpt_key_vault_name():
 
 
 @pytest.fixture
-def mock_valid_access_token_response():
-    return {"access_token": "access-token"}
-
-
-@pytest.fixture
-def mock_oauth_post_url():
-    return "https://example.com/oauth2/token"
-
-
-@pytest.fixture
 def mock_get_secret_response(mock_key_vault_secret_value):
     return {"clientSecret": mock_key_vault_secret_value}
 
@@ -1864,13 +1487,6 @@ def mock_switch_order_status_to_complete(mocker):
 def mock_switch_order_status_to_query(mocker):
     return mocker.patch(
         "swo_aws_extension.flows.order.InitialAWSContext.switch_order_status_to_query"
-    )
-
-
-@pytest.fixture
-def mock_switch_order_status_to_process(mocker):
-    return mocker.patch(
-        "swo_aws_extension.flows.order.InitialAWSContext.switch_order_status_to_process"
     )
 
 
@@ -2393,8 +2009,44 @@ def mock_app_insights_instrumentation_key():
 
 
 @pytest.fixture
-def mock_app_insights_connection_string(mock_app_insights_instrumentation_key):
-    return (
-        f"InstrumentationKey={mock_app_insights_instrumentation_key};"
-        "IngestionEndpoint=https://test.applicationinsights.azure.com/"
+def webhook_url():
+    return {"MSTEAMS_WEBHOOK_URL": "https://teams.webhook"}
+
+
+@pytest.fixture
+def button():
+    return Button("button-label", "button-url")
+
+
+@pytest.fixture
+def facts_section():
+    return FactsSection("section-title", {"key": "value"})
+
+
+@pytest.fixture
+def connector_card_patch(mocker):
+    mocked_message = mocker.MagicMock()
+    patcher = mocker.patch(
+        "swo_aws_extension.notifications.pymsteams.connectorcard",
+        return_value=mocked_message,
     )
+    return mocked_message, patcher
+
+
+@pytest.fixture
+def send_notification_helper():
+    def _send_notification(*args, **kwargs):
+        return send_notification(*args, **kwargs)
+
+    return _send_notification
+
+
+@pytest.fixture
+def default_notification_args(button, facts_section):
+    return {
+        "title": "not-title",
+        "text": "not-text",
+        "color": "not-color",
+        "button": button,
+        "facts": facts_section,
+    }

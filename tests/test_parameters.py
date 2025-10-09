@@ -15,7 +15,6 @@ from swo_aws_extension.parameters import (
 )
 
 
-# TODO: make one assert
 def test_prepare_parameters_for_querying(order_factory, order_parameters_factory):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -31,43 +30,71 @@ def test_prepare_parameters_for_querying(order_factory, order_parameters_factory
     order = set_ordering_parameter_error(
         order, OrderParametersEnum.ROOT_ACCOUNT_EMAIL.value, ERR_EMAIL_ALREADY_EXIST.to_dict()
     )
-    assert get_account_type(order) == AccountTypesEnum.NEW_ACCOUNT.value
-    error_parameters = [OrderParametersEnum.ROOT_ACCOUNT_EMAIL.value]
 
-    order = prepare_parameters_for_querying(order, ignore=error_parameters)
+    order = prepare_parameters_for_querying(
+        order, ignore=[OrderParametersEnum.ROOT_ACCOUNT_EMAIL.value]
+    )
 
-    # Check order paramters is not hidden and not readonly
+    account_type_value = get_account_type(order)
     root_account_email_param = get_ordering_parameter(
         order, OrderParametersEnum.ROOT_ACCOUNT_EMAIL.value
     )
-    assert root_account_email_param["error"] == ERR_EMAIL_ALREADY_EXIST.to_dict()
-    assert root_account_email_param["constraints"] == {
-        "hidden": False,
-        "readonly": False,
-        "required": True,
-    }
 
-    # Check hidden parameter is not hiding parameters with errors
-    account_name_parameter = get_ordering_parameter(order, OrderParametersEnum.ACCOUNT_NAME.value)
-    assert account_name_parameter["constraints"] == {
-        "hidden": False,
-        "readonly": False,
-        "required": True,
+    actual = {
+        "account_type": account_type_value,
+        "root_account_email": {
+            "error": root_account_email_param.get("error"),
+            "constraints": root_account_email_param.get("constraints"),
+        },
+        "account_name_constraints": get_ordering_parameter(
+            order, OrderParametersEnum.ACCOUNT_NAME.value
+        ).get("constraints"),
+        "account_type_value_constraints": {
+            "value": get_ordering_parameter(order, OrderParametersEnum.ACCOUNT_TYPE.value).get(
+                "value"
+            ),
+            "constraints": get_ordering_parameter(
+                order, OrderParametersEnum.ACCOUNT_TYPE.value
+            ).get("constraints"),
+        },
+        "termination_value_constraints": {
+            "value": get_ordering_parameter(order, OrderParametersEnum.TERMINATION.value).get(
+                "value"
+            ),
+            "constraints": get_ordering_parameter(order, OrderParametersEnum.TERMINATION.value).get(
+                "constraints"
+            ),
+        },
     }
-
-    # Check set paramter is not hidden but readonly
-    account_type_parameter = get_ordering_parameter(order, OrderParametersEnum.ACCOUNT_TYPE.value)
-    assert account_type_parameter["value"] == AccountTypesEnum.NEW_ACCOUNT.value
-    assert account_type_parameter["constraints"] == {
-        "hidden": False,
-        "required": False,
-        "readonly": True,
+    expected = {
+        "account_type": AccountTypesEnum.NEW_ACCOUNT.value,
+        "root_account_email": {
+            "error": ERR_EMAIL_ALREADY_EXIST.to_dict(),
+            "constraints": {
+                "hidden": False,
+                "readonly": False,
+                "required": True,
+            },
+        },
+        "account_name_constraints": {
+            "hidden": False,
+            "readonly": False,
+            "required": True,
+        },
+        "account_type_value_constraints": {
+            "value": AccountTypesEnum.NEW_ACCOUNT.value,
+            "constraints": {
+                "hidden": False,
+                "required": False,
+                "readonly": True,
+            },
+        },
+        "termination_value_constraints": {
+            "value": "",
+            "constraints": {"hidden": True, "readonly": True},
+        },
     }
-
-    # Check empty parameter is hidden
-    termination_parameter = get_ordering_parameter(order, OrderParametersEnum.TERMINATION.value)
-    assert not termination_parameter["value"]
-    assert termination_parameter["constraints"] == {"hidden": True, "readonly": True}
+    assert actual == expected
 
 
 def test_get_parameter_found():
@@ -79,8 +106,10 @@ def test_get_parameter_found():
             ]
         }
     }
-    param = get_parameter(PARAM_PHASE_ORDERING, source, "param_1")
-    assert param == {"externalId": "param_1", "value": "value_1"}
+
+    parameter = get_parameter(PARAM_PHASE_ORDERING, source, "param_1")
+
+    assert parameter == {"externalId": "param_1", "value": "value_1"}
 
 
 def test_get_parameter_not_found():
@@ -92,22 +121,28 @@ def test_get_parameter_not_found():
             ]
         }
     }
-    param = get_parameter(PARAM_PHASE_ORDERING, source, "param_3")
-    assert param == {}
+
+    parameter = get_parameter(PARAM_PHASE_ORDERING, source, "param_3")
+
+    assert parameter == {}
 
 
 def test_get_parameter_empty_source():
     source = {"parameters": {PARAM_PHASE_ORDERING: []}}
-    param = get_parameter(PARAM_PHASE_ORDERING, source, "param_1")
-    assert param == {}
+
+    parameter = get_parameter(PARAM_PHASE_ORDERING, source, "param_1")
+
+    assert parameter == {}
 
 
 def test_get_parameter_fulfillment_phase():
     source = {
         "parameters": {PARAM_PHASE_FULFILLMENT: [{"externalId": "param_1", "value": "value_1"}]}
     }
-    param = get_parameter(PARAM_PHASE_FULFILLMENT, source, "param_1")
-    assert param == {"externalId": "param_1", "value": "value_1"}
+
+    parameter = get_parameter(PARAM_PHASE_FULFILLMENT, source, "param_1")
+
+    assert parameter == {"externalId": "param_1", "value": "value_1"}
 
 
 def test_set_ordering_parameter_error():
@@ -115,19 +150,29 @@ def test_set_ordering_parameter_error():
     error = {"id": "error_1", "message": "Error message"}
     updated_order = set_ordering_parameter_error(order, "param_1", error)
 
-    param = get_ordering_parameter(updated_order, "param_1")
-    assert param["error"] == error
-    assert param["constraints"] == {"hidden": False, "required": True}
+    parameter = get_ordering_parameter(updated_order, "param_1")
+
+    assert parameter == {
+        "externalId": "param_1",
+        "value": "value_1",
+        "error": error,
+        "constraints": {"hidden": False, "required": True},
+    }
 
 
-def test_set_ordering_parameter_error_with_required_false():
+def test_set_order_param_error_with_req_false():
     order = {"parameters": {"ordering": [{"externalId": "param_1", "value": "value_1"}]}}
     error = {"id": "error_1", "message": "Error message"}
+
     updated_order = set_ordering_parameter_error(order, "param_1", error, required=False)
 
-    param = get_ordering_parameter(updated_order, "param_1")
-    assert param["error"] == error
-    assert param["constraints"] == {"hidden": False, "required": False}
+    parameter = get_ordering_parameter(updated_order, "param_1")
+    assert parameter == {
+        "externalId": "param_1",
+        "value": "value_1",
+        "error": error,
+        "constraints": {"hidden": False, "required": False},
+    }
 
 
 def test_get_termination_ticket_id():
@@ -141,11 +186,13 @@ def test_get_termination_ticket_id():
             ]
         }
     }
+
     assert get_crm_termination_ticket_id(order) == "ticket_123"
 
 
 def test_get_crm_termination_ticket_id_not_set():
     order = {"parameters": {"ordering": []}}
+
     assert get_crm_termination_ticket_id(order) is None
 
 
@@ -160,7 +207,9 @@ def test_set_crm_termination_ticket_id():
             ]
         }
     }
+
     updated_order = set_crm_termination_ticket_id(order, "new_ticket")
+
     assert updated_order["parameters"]["ordering"][0]["value"] == "new_ticket"
 
 
@@ -182,11 +231,15 @@ def test_get_termination_parameter_found(mocker):
             ]
         }
     }
-    result = get_termination_type_parameter(order)
-    assert result == "termination_flow"
-    mock_get_fulfillment_parameter.assert_called_once_with(
-        order, OrderParametersEnum.TERMINATION.value
+
+    termination_type = get_termination_type_parameter(order)
+
+    actual = (termination_type, mock_get_fulfillment_parameter.call_args.args)
+    expected = (
+        "termination_flow",
+        (order, OrderParametersEnum.TERMINATION.value),
     )
+    assert actual == expected
 
 
 def test_get_termination_parameter_not_set(mocker):
@@ -194,8 +247,12 @@ def test_get_termination_parameter_not_set(mocker):
         "swo_aws_extension.parameters.get_ordering_parameter", return_value={}
     )
     order = {"parameters": {"fulfillment": []}}
-    result = get_termination_type_parameter(order)
-    assert result is None
-    mock_get_fulfillment_parameter.assert_called_once_with(
-        order, OrderParametersEnum.TERMINATION.value
+
+    termination_type = get_termination_type_parameter(order)
+
+    actual = (termination_type, mock_get_fulfillment_parameter.call_args.args)
+    expected = (
+        None,
+        (order, OrderParametersEnum.TERMINATION.value),
     )
+    assert actual == expected

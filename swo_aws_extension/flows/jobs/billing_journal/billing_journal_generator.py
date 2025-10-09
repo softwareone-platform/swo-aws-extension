@@ -192,12 +192,12 @@ class BillingJournalGenerator:
         return get_agreements_by_query(self.mpt_client, rql_query)
 
     @contextmanager
-    def _temp_context(self, key, value):
-        self.logger_context[key] = value
+    def _temp_context(self, context_key, context_value):
+        self.logger_context[context_key] = context_value
         try:
             yield
         finally:
-            self.logger_context.pop(key, None)
+            self.logger_context.pop(context_key, None)
 
     @dynamic_trace_span(lambda *args: f"Agreement {args[1]['id']}")
     def _generate_agreement_journal_lines(self, agreement, journal_id):  # noqa: C901
@@ -450,7 +450,7 @@ class BillingJournalGenerator:
         filter_by = {"Dimensions": {"Key": "BILLING_ENTITY", "Values": [AWS_MARKETPLACE]}}
         return aws_client.get_cost_and_usage(self.start_date, self.end_date, group_by, filter_by)
 
-    def _get_record_type_and_service_cost_by_account_report(self, aws_client, account_id):
+    def _get_record_and_service_by_account_report(self, aws_client, account_id):
         group_by = [
             {"Type": "DIMENSION", "Key": "RECORD_TYPE"},
             {"Type": "DIMENSION", "Key": "SERVICE"},
@@ -458,7 +458,7 @@ class BillingJournalGenerator:
         filter_by = {"Dimensions": {"Key": "LINKED_ACCOUNT", "Values": [account_id]}}
         return aws_client.get_cost_and_usage(self.start_date, self.end_date, group_by, filter_by)
 
-    def _get_service_invoice_entity_by_account_id_report(self, aws_client, account_id):
+    def _get_service_invoice_entity_by_account_report(self, aws_client, account_id):
         group_by = [
             {"Type": "DIMENSION", "Key": "SERVICE"},
             {"Type": "DIMENSION", "Key": "INVOICING_ENTITY"},
@@ -474,12 +474,10 @@ class BillingJournalGenerator:
         return [invoice for invoice in invoice_summaries if invoice.get("AccountId") == mpa_account]
 
     def _get_account_metrics(self, aws_client, account_id, organization_invoices):
-        service_invoice_entity = self._get_service_invoice_entity_by_account_id_report(
+        service_invoice_entity = self._get_service_invoice_entity_by_account_report(
             aws_client, account_id
         )
-        record_type_report = self._get_record_type_and_service_cost_by_account_report(
-            aws_client, account_id
-        )
+        record_type_report = self._get_record_and_service_by_account_report(aws_client, account_id)
         self.organization_reports["accounts"][account_id] = {
             JournalAttachmentFilesNameEnum.SERVICE_INVOICE_ENTITY.value: service_invoice_entity,
             JournalAttachmentFilesNameEnum.RECORD_TYPE_AND_SERVICE_COST.value: record_type_report,
@@ -551,15 +549,15 @@ class BillingJournalGenerator:
 
     @staticmethod
     def _get_invoice_entity_by_service(service_invoice_entity_report):
-        result = {}
+        invoice_entity_by_service = {}
         for result_by_time in service_invoice_entity_report:
             for group in result_by_time["Groups"]:
-                result[group["Keys"][0]] = group["Keys"][1]
-        return result
+                invoice_entity_by_service[group["Keys"][0]] = group["Keys"][1]
+        return invoice_entity_by_service
 
     @staticmethod
     def _get_metrics_by_key(report, key):
-        result = {}
+        metrics_by_key = {}
         for result_by_time in report:
             groups = result_by_time.get("Groups", [])
             for group in groups:
@@ -571,10 +569,10 @@ class BillingJournalGenerator:
 
                 if amount == 0:
                     continue
-                if group["Keys"][1] not in result:
-                    result[group["Keys"][1]] = {}
-                result[group["Keys"][1]] = amount
-        return result
+                if group["Keys"][1] not in metrics_by_key:
+                    metrics_by_key[group["Keys"][1]] = {}
+                metrics_by_key[group["Keys"][1]] = amount
+        return metrics_by_key
 
     def _generate_mpa_journal_lines(
         self,
@@ -622,15 +620,13 @@ class BillingJournalGenerator:
 
         accounts = self.organization_reports.get("accounts", {})
         for account_id, reports in accounts.items():
-            for key, value in reports.items():
+            for key, report in reports.items():
                 filename = f"{account_id} - {key}.json"
-                zip_builder.write(filename, json.dumps(value, indent=2))
+                zip_builder.write(filename, json.dumps(report, indent=2))
 
         return zip_builder.get_file_content()
 
-    def _get_exchange_rate_by_invoice_entity_and_currency(
-        self, organization_invoices, invoice_entity
-    ):
+    def _get_exchange_rate_by_inv_entity_and_currency(self, organization_invoices, invoice_entity):
         """
         Gets the maximum exchange rate for a specific invoicing entity and currency.
 
@@ -707,7 +703,7 @@ class BillingJournalGenerator:
             invoice_id = invoice_summary.get("InvoiceId")
             base_currency = invoice_summary.get("BaseCurrencyAmount", {}).get("CurrencyCode")
 
-            exchange_rate = self._get_exchange_rate_by_invoice_entity_and_currency(
+            exchange_rate = self._get_exchange_rate_by_inv_entity_and_currency(
                 organization_invoices, invoice_entity
             )
             payment_currency = self._get_payment_currency_by_exchange_rate(

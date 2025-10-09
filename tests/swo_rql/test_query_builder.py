@@ -8,7 +8,7 @@ from swo_rql.query_builder import R, RQLQuery
 
 def test_create():
     q = RQLQuery()
-    assert q.op == RQLQuery.OP_EXPRESSION
+    assert q.op == RQLQuery.OP_EXPR
     assert q.children == []
     assert q.negated is False
 
@@ -16,13 +16,15 @@ def test_create():
 def test_create_with_field():
     q = RQLQuery("field")
     q.eq("value")
-    assert q.op == RQLQuery.OP_EXPRESSION
+
+    assert q.op == RQLQuery.OP_EXPR
     assert str(q) == "eq(field,value)"
 
 
 def test_create_single_kwarg():
     q = RQLQuery(id="ID")
-    assert q.op == RQLQuery.OP_EXPRESSION
+
+    assert q.op == RQLQuery.OP_EXPR
     assert str(q) == "eq(id,ID)"
     assert q.children == []
     assert q.negated is False
@@ -33,13 +35,13 @@ def test_create_multiple_kwargs():
     assert q.op == RQLQuery.AND
     assert str(q) == "and(eq(id,ID),in(status,(a,b)),eq(ok,true))"
     assert len(q.children) == 3
-    assert q.children[0].op == RQLQuery.OP_EXPRESSION
+    assert q.children[0].op == RQLQuery.OP_EXPR
     assert q.children[0].children == []
     assert str(q.children[0]) == "eq(id,ID)"
-    assert q.children[1].op == RQLQuery.OP_EXPRESSION
+    assert q.children[1].op == RQLQuery.OP_EXPR
     assert q.children[1].children == []
     assert str(q.children[1]) == "in(status,(a,b))"
-    assert q.children[2].op == RQLQuery.OP_EXPRESSION
+    assert q.children[2].op == RQLQuery.OP_EXPR
     assert q.children[2].children == []
     assert str(q.children[2]) == "eq(ok,true)"
 

@@ -1,3 +1,4 @@
+from swo_aws_extension.constants import HTTP_STATUS_NO_CONTENT
 from swo_mpt_api import MPTAPIClient
 
 
@@ -21,8 +22,10 @@ def test_list_attachments(requests_mock, mpt_client):
         f"https://localhost/v1/billing/journals/{journal_id}/attachments", json=response_data
     )
     api = MPTAPIClient(mpt_client)
-    result = api.billing.journal.attachments(journal_id).all()
-    assert result == attachments_data
+
+    response = api.billing.journal.attachments(journal_id).all()
+
+    assert response == attachments_data
 
 
 def test_upload_attachment(requests_mock, mpt_client, tmp_path):
@@ -31,18 +34,19 @@ def test_upload_attachment(requests_mock, mpt_client, tmp_path):
     file_path = tmp_path / "test.pdf"
     file_path.write_bytes(file_content)
     response_data = {"id": "attachment-1", "filename": "test.pdf"}
-
     requests_mock.post(
         f"https://localhost/v1/billing/journals/{journal_id}/attachments",
         json=response_data,
         status_code=201,
     )
     api = MPTAPIClient(mpt_client)
+
     with file_path.open("rb") as f:
-        result = api.billing.journal.attachments(journal_id).upload(
+        response = api.billing.journal.attachments(journal_id).upload(
             f, "application/pdf", "test.pdf"
         )
-    assert result == response_data
+
+    assert response == response_data
 
 
 def test_get_attachment(requests_mock, mpt_client):
@@ -55,8 +59,10 @@ def test_get_attachment(requests_mock, mpt_client):
         json=response_data,
     )
     api = MPTAPIClient(mpt_client)
-    result = api.billing.journal.attachments(journal_id).get(attachment_id)
-    assert result == response_data
+
+    response = api.billing.journal.attachments(journal_id).get(attachment_id)
+
+    assert response == response_data
 
 
 def test_delete_attachment(requests_mock, mpt_client):
@@ -64,10 +70,13 @@ def test_delete_attachment(requests_mock, mpt_client):
     attachment_id = "attachment-1"
     requests_mock.delete(
         f"https://localhost/v1/billing/journals/{journal_id}/attachments/{attachment_id}",
-        status_code=204,
+        status_code=HTTP_STATUS_NO_CONTENT,
     )
     api = MPTAPIClient(mpt_client)
-    api.billing.journal.attachments(journal_id).delete(attachment_id)
+
+    response = api.billing.journal.attachments(journal_id).delete(attachment_id)
+
+    assert response.status_code == HTTP_STATUS_NO_CONTENT
 
 
 def test_all_charges(requests_mock, mpt_client):
@@ -90,8 +99,10 @@ def test_all_charges(requests_mock, mpt_client):
         f"https://localhost/v1/billing/journals/{journal_id}/charges", json=response_mock
     )
     api = MPTAPIClient(mpt_client)
-    result = api.billing.journal.charges(journal_id).all()
-    assert result == charges_data
+
+    response = api.billing.journal.charges(journal_id).all()
+
+    assert response == charges_data
 
 
 def test_download_charges(requests_mock, mpt_client):
@@ -102,6 +113,8 @@ def test_download_charges(requests_mock, mpt_client):
         url, content=csv_content.encode("utf-8"), headers={"Content-Type": "text/csv"}
     )
     api = MPTAPIClient(mpt_client)
+
     response = api.billing.journal.charges(journal_id).download()
+
     assert response.content.decode("utf-8") == csv_content
     assert response.headers["Content-Type"] == "text/csv"

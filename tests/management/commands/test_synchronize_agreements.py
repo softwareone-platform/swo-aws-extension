@@ -3,7 +3,7 @@ from django.core.management import call_command
 
 
 @pytest.mark.parametrize("dry_run", [True, False])
-def test_check_pool_account_notifications_agreements_ids(mocker, dry_run):
+def test_check_pool_notifications_agreements_ids(mocker, dry_run):
     mocked_handle = mocker.patch(
         "swo_aws_extension.management.commands.synchronize_agreements.synchronize_agreements"
     )
@@ -19,7 +19,7 @@ def test_check_pool_account_notifications_agreements_ids(mocker, dry_run):
 
 
 @pytest.mark.parametrize("dry_run", [True, False])
-def test_check_pool_account_notifications_all_agreements(mocker, dry_run):
+def test_check_pool_notifications_all_agreements(mocker, dry_run):
     mocked_handle = mocker.patch(
         "swo_aws_extension.management.commands.synchronize_agreements.synchronize_agreements"
     )

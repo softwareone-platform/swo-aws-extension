@@ -75,7 +75,7 @@ class ItemSkusEnum(StrEnum):
     SAVING_PLANS_RECURRING_FEE_INCENTIVATE = "Saving Plans Recurring Fee incentivate"
 
 
-AWS_ITEMS_SKUS = [item.value for item in ItemSkusEnum]
+AWS_ITEMS_SKUS = [item_sku.value for item_sku in ItemSkusEnum]
 
 
 class AccountTypesEnum(StrEnum):
@@ -181,7 +181,7 @@ CRM_TRANSFER_WITH_ORGANIZATION_TITLE = (
     "Action Required: New AWS Onboarding in Marketplace - Transfer with Organization MPA AWS"
     " Transfer {master_payer_id} (SCU: {buyer_external_id})"
 )
-CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL_INFO = "AWS Transfer account with organization"
+CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL = "AWS Transfer account with organization"
 CRM_TRANSFER_WITH_ORGANIZATION_SUMMARY = (
     "Dear MCoE Team,<br><br>A notification has been generated on the Marketplace Platform"
     " regarding Transfer request for AWS MPA Account with organization.<br>Details of transfer:"
@@ -200,7 +200,7 @@ CRM_NEW_ACCOUNT_SUMMARY = (
 )
 
 CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_TITLE = "New AWS Onboarding in Marketplace requires attention"
-CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_ADDITIONAL_INFO = (
+CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_ADDITIONAL = (
     "AWS New AWS linked account created but onboarding requires attention"
 )
 CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_SUMMARY = (
@@ -347,3 +347,11 @@ class JournalAttachmentFilesNameEnum(StrEnum):
     SERVICE_INVOICE_ENTITY = "Service invoice entity"
     ORGANIZATION_INVOICES = "Organization invoices"
     MARKETPLACE_USAGE_REPORT = "Marketplace usage report"
+
+
+HTTP_STATUS_OK = 200
+HTTP_STATUS_NO_CONTENT = 204
+HTTP_STATUS_BAD_REQUEST = 400
+HTTP_STATUS_UNAUTHORIZED = 401
+HTTP_STATUS_NOT_FOUND = 404
+HTTP_STATUS_INTERNAL_SERVER_ERROR = 500

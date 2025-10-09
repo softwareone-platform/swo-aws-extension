@@ -7,7 +7,7 @@ from typing import ParamSpec, TypeVar
 import botocore.exceptions
 from requests import HTTPError, JSONDecodeError, RequestException
 
-Param = ParamSpec("Param")
+FuncParams = ParamSpec("FuncParams")
 RetType = TypeVar("RetType")
 
 logger = logging.getLogger(__name__)
@@ -20,10 +20,10 @@ class AWSError(Exception):
 class AWSHttpError(AWSError):
     """AWS http error."""
 
-    def __init__(self, status_code: int, content: str):
+    def __init__(self, status_code: int, response_content: str):
         self.status_code = status_code
-        self.content = content
-        super().__init__(f"{self.status_code} - {self.content}")
+        self.response_content = response_content
+        super().__init__(f"{self.status_code} - {self.response_content}")
 
 
 class AWSOpenIdError(AWSHttpError):
@@ -43,11 +43,11 @@ class AWSOpenIdError(AWSHttpError):
         return message
 
 
-def wrap_http_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]:  # noqa: UP047
+def wrap_http_error(func: Callable[FuncParams, RetType]) -> Callable[FuncParams, RetType]:  # noqa: UP047
     """Wraps http error to internal."""
 
     @wraps(func)
-    def _wrapper(*args: Param.args, **kwargs: Param.kwargs) -> RetType:
+    def _wrapper(*args: FuncParams.args, **kwargs: FuncParams.kwargs) -> RetType:
         try:
             return func(*args, **kwargs)
         except HTTPError as e:
@@ -63,11 +63,11 @@ def wrap_http_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]:
     return _wrapper
 
 
-def wrap_boto3_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]:  # noqa: UP047
+def wrap_boto3_error(func: Callable[FuncParams, RetType]) -> Callable[FuncParams, RetType]:  # noqa: UP047
     """Wraps boto3 error to internal extension errors."""
 
     @wraps(func)
-    def _wrapper(*args: Param.args, **kwargs: Param.kwargs) -> RetType:
+    def _wrapper(*args: FuncParams.args, **kwargs: FuncParams.kwargs) -> RetType:
         try:
             return func(*args, **kwargs)
         except AWSError as e:

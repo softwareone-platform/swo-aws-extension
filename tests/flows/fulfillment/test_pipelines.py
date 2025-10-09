@@ -38,11 +38,11 @@ def test_purchase_split_billing_pipeline_steps():
     assert actual_step_classes == expected_step_classes
 
 
-def test_purchase_transfer_with_organization_pipeline_steps():
+def test_purchase_transfer_with_org_pipeline():
     expected_step_classes = [
-        "SetupContextPurchaseTransferWithOrganizationStep",
-        "CreateTransferRequestTicketWithOrganizationStep",
-        "AwaitTransferRequestTicketWithOrganizationStep",
+        "SetupContextPurchaseTransferWithOrgStep",
+        "RequestTransferWithOrgStep",
+        "AwaitTransferWithOrgStep",
         "AssignTransferMPAStep",
         "MPAPreConfiguration",
         "RegisterTransferredMPAToAirtableStep",
@@ -62,10 +62,10 @@ def test_purchase_transfer_with_organization_pipeline_steps():
     assert actual_step_classes == expected_step_classes
 
 
-def test_purchase_transfer_without_organization_pipeline_steps():
+def test_purchase_transfer_without_org_pipeline():
     expected_step_classes = [
-        "ValidatePurchaseTransferWithoutOrganizationStep",
-        "SetupContextPurchaseTransferWithoutOrganizationStep",
+        "ValidatePurchaseTransferWithoutOrgStep",
+        "SetupContextPurchaseTransferWithoutOrgStep",
         "AssignMPA",
         "MPAPreConfiguration",
         "SendInvitationLinksStep",

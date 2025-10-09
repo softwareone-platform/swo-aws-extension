@@ -130,7 +130,7 @@ def test_assign_mpa_phase_assign_mpa(
     assert context.airtable_mpa.scu == context.buyer.get("externalIds", {}).get("erpCustomer", "")
 
 
-def test_assign_mpa_phase_assign_mpa_credentials_error(
+def test_assign_mpa_credentials_error(
     mocker,
     order_factory,
     config,
@@ -218,7 +218,7 @@ def test_assign_mpa_phase_not_mpa_account(
     mocked_update_order.assert_not_called()
 
 
-def test_assign_mpa_phase_not_mpa_account_notification_already_created(
+def test_assign_mpa_phase_not_mpa_notification(
     mocker,
     order_factory,
     config,
@@ -402,7 +402,7 @@ def test_assign_mpa_empty_country(
     assert f"{context.order_id} - Seller country is not included in the order." in str(e.value)
 
 
-def test_assign_split_billing_mpa_phase_not_assign_mpa(
+def test_assign_split_billing_mpa_phase_not_mpa(
     mocker,
     order_factory,
     config,

@@ -32,21 +32,21 @@ from swo_aws_extension.flows.steps.mpa_pre_configuration import MPAPreConfigurat
 from swo_aws_extension.flows.steps.service_crm_steps import (
     AwaitCRMTicketStatusStep,
     AwaitTerminationServiceRequestStep,
-    AwaitTransferRequestTicketWithOrganizationStep,
+    AwaitTransferWithOrgStep,
     CreateServiceRequestStep,
     CreateTerminationServiceRequestStep,
-    CreateTransferRequestTicketWithOrganizationStep,
     CreateUpdateKeeperTicketStep,
+    RequestTransferWithOrgStep,
 )
 from swo_aws_extension.flows.steps.setup_context import (
     SetupChangeContext,
     SetupContext,
-    SetupContextPurchaseTransferWithOrganizationStep,
-    SetupContextPurchaseTransferWithoutOrganizationStep,
+    SetupContextPurchaseTransferWithOrgStep,
+    SetupContextPurchaseTransferWithoutOrgStep,
     SetupPurchaseContext,
     SetupTerminateContextStep,
 )
-from swo_aws_extension.flows.steps.validate import ValidatePurchaseTransferWithoutOrganizationStep
+from swo_aws_extension.flows.steps.validate import ValidatePurchaseTransferWithoutOrgStep
 
 __all__ = [
     "AddLinkedAccountStep",
@@ -56,7 +56,7 @@ __all__ = [
     "AwaitCRMTicketStatusStep",
     "AwaitInvitationLinksStep",
     "AwaitTerminationServiceRequestStep",
-    "AwaitTransferRequestTicketWithOrganizationStep",
+    "AwaitTransferWithOrgStep",
     "CCPOnboard",
     "CompleteChangeOrderStep",
     "CompleteOrderStep",
@@ -69,17 +69,17 @@ __all__ = [
     "CreateServiceRequestStep",
     "CreateSubscription",
     "CreateTerminationServiceRequestStep",
-    "CreateTransferRequestTicketWithOrganizationStep",
     "CreateUpdateKeeperTicketStep",
     "DeleteFinOpsEntitlementsStep",
     "MPAPreConfiguration",
+    "RequestTransferWithOrgStep",
     "SendInvitationLinksStep",
     "SetupChangeContext",
     "SetupContext",
-    "SetupContextPurchaseTransferWithOrganizationStep",
-    "SetupContextPurchaseTransferWithoutOrganizationStep",
+    "SetupContextPurchaseTransferWithOrgStep",
+    "SetupContextPurchaseTransferWithoutOrgStep",
     "SetupPurchaseContext",
     "SetupTerminateContextStep",
     "SynchronizeAgreementSubscriptionsStep",
-    "ValidatePurchaseTransferWithoutOrganizationStep",
+    "ValidatePurchaseTransferWithoutOrgStep",
 ]

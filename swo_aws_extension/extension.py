@@ -11,6 +11,7 @@ from mpt_extension_sdk.mpt_http.mpt import get_webhook
 from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 from ninja import Body
 
+from swo_aws_extension.constants import HTTP_STATUS_BAD_REQUEST, HTTP_STATUS_OK
 from swo_aws_extension.flows.fulfillment import fulfill_order
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.validation import validate_order
@@ -37,8 +38,8 @@ def process_order_fulfillment(client, event):
 @ext.api.post(
     "/v1/orders/validate",
     response={
-        200: dict,
-        400: Error,
+        HTTP_STATUS_OK: dict,
+        HTTP_STATUS_BAD_REQUEST: Error,
     },
     auth=JWTAuth(jwt_secret_callback),
 )
@@ -50,9 +51,9 @@ def process_order_validation(request, order: Annotated[dict | None, Body()] = No
         logger.debug("Validated order: %s", pformat(validated_order))
     except Exception as e:
         logger.exception("Unexpected error during validation")
-        return 400, Error(
+        return HTTP_STATUS_BAD_REQUEST, Error(
             id="AWS001",
             message=f"Unexpected error during validation: {e}.",
         )
     else:
-        return 200, validated_order
+        return HTTP_STATUS_OK, validated_order

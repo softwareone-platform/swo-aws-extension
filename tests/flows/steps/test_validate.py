@@ -1,8 +1,9 @@
+import pytest
 from mpt_extension_sdk.flows.context import ORDER_TYPE_CHANGE, ORDER_TYPE_PURCHASE
 
 from swo_aws_extension.constants import TransferTypesEnum
 from swo_aws_extension.flows.order import PurchaseContext
-from swo_aws_extension.flows.steps import ValidatePurchaseTransferWithoutOrganizationStep
+from swo_aws_extension.flows.steps import ValidatePurchaseTransferWithoutOrgStep
 from swo_aws_extension.flows.steps.validate import is_list_of_aws_accounts
 
 
@@ -16,9 +17,10 @@ def test_validate_with_all_ok(mocker, order_factory, order_parameters_factory):
     )
     context = PurchaseContext.from_order_data(order)
     mocker.patch("swo_aws_extension.flows.steps.validate.set_ordering_parameter_error")
-    step = ValidatePurchaseTransferWithoutOrganizationStep()
+    step = ValidatePurchaseTransferWithoutOrgStep()
     next_step = mocker.Mock()
     client = mocker.Mock()
+
     step(client, context, next_step)
 
     next_step.assert_called_once()
@@ -33,11 +35,13 @@ def test_is_not_purchase_order(mocker, order_factory, order_parameters_factory):
         order_type=ORDER_TYPE_CHANGE,
     )
     context = PurchaseContext.from_order_data(order)
-    step = ValidatePurchaseTransferWithoutOrganizationStep()
+    step = ValidatePurchaseTransferWithoutOrgStep()
     next_step = mocker.Mock()
     client = mocker.Mock()
     step(client, context, next_step)
+
     next_step.assert_called_once_with(client, context)
+
     assert logger_mock.info.mock_calls[0] == mocker.call(
         "%s - Skip - Order is not a purchase",
         "ORD-0792-5000-2253-4210",
@@ -53,12 +57,13 @@ def test_is_not_transfer_without_organization(mocker, order_factory, order_param
         order_type=ORDER_TYPE_PURCHASE,
     )
     context = PurchaseContext.from_order_data(order)
-    assert context.is_purchase_order() is True
-    step = ValidatePurchaseTransferWithoutOrganizationStep()
+    step = ValidatePurchaseTransferWithoutOrgStep()
     next_step = mocker.Mock()
     client = mocker.Mock()
     step(client, context, next_step)
+
     next_step.assert_called_once_with(client, context)
+
     assert logger_mock.info.mock_calls[0] == mocker.call(
         "%s - Skip - Order is not a transfer without organization",
         "ORD-0792-5000-2253-4210",
@@ -77,11 +82,12 @@ def test_invalid_account_ids(
     )
     context = PurchaseContext.from_order_data(order)
     mocker.patch("swo_aws_extension.flows.steps.validate.set_ordering_parameter_error")
-
-    step = ValidatePurchaseTransferWithoutOrganizationStep()
+    step = ValidatePurchaseTransferWithoutOrgStep()
     next_step = mocker.Mock()
     client = mocker.Mock()
+
     step(client, context, next_step)
+
     mock_switch_order_status_to_query.assert_called_once_with(client)
     next_step.assert_not_called()
 
@@ -98,11 +104,12 @@ def test_no_account_ids(
     )
     context = PurchaseContext.from_order_data(order)
     mocker.patch("swo_aws_extension.flows.steps.validate.set_ordering_parameter_error")
-
-    step = ValidatePurchaseTransferWithoutOrganizationStep()
+    step = ValidatePurchaseTransferWithoutOrgStep()
     next_step = mocker.Mock()
     client = mocker.Mock()
+
     step(client, context, next_step)
+
     mock_switch_order_status_to_query.assert_called_once_with(client)
     next_step.assert_not_called()
 
@@ -123,11 +130,12 @@ def test_too_many_accounts(
     mocker.patch(
         "swo_aws_extension.flows.steps.validate.set_ordering_parameter_error", return_value=order
     )
-
-    step = ValidatePurchaseTransferWithoutOrganizationStep()
+    step = ValidatePurchaseTransferWithoutOrgStep()
     next_step = mocker.Mock()
     client = mocker.Mock()
+
     step(client, context, next_step)
+
     mock_switch_order_status_to_query.assert_called_once_with(client)
     next_step.assert_not_called()
     assert logger_mock.info.mock_calls[0] == mocker.call(
@@ -136,33 +144,24 @@ def test_too_many_accounts(
     )
 
 
-def test_validate_account_id():
-    # Test with valid account IDs
-    valid_account_ids = "123456789012\n123456789013"
-    assert is_list_of_aws_accounts(valid_account_ids) is True, (
-        "Two 12 digits separated by new line is a valid list of accounts"
-    )
-
-    # Additional \n should be considered
-    invalid_account_ids = "123456789012\n\n123456789013\n"
-    assert is_list_of_aws_accounts(invalid_account_ids) is True, (
-        "Accept multiple new lines (including empty and trailing new lines)"
-    )
-
-    # Only numeric digits are valid
-    invalid_account_ids = "12345678901A\n123456789013"
-    assert is_list_of_aws_accounts(invalid_account_ids) is False, (
-        "Account IDs does not have letters"
-    )
-
-    # Test with a 13-digit account ID
-    invalid_account_ids = "12345678901\n1234567890134"
-    assert is_list_of_aws_accounts(invalid_account_ids) is False, "13 digits account ID is invalid"
-
-    # Test with empty account IDs
-    empty_account_ids = ""
-    assert is_list_of_aws_accounts(empty_account_ids) is False
-
-    # Test with None account IDs
-    none_account_ids = None
-    assert is_list_of_aws_accounts(none_account_ids) is False
+@pytest.mark.parametrize(
+    ("account_ids", "expected", "description"),
+    [
+        (
+            "123456789012\n123456789013",
+            True,
+            "Two 12 digits separated by new line is a valid list of accounts",
+        ),
+        (
+            "123456789012\n\n123456789013\n",
+            True,
+            "Accept multiple new lines (including empty and trailing new lines)",
+        ),
+        ("12345678901A\n123456789013", False, "Account IDs does not have letters"),
+        ("12345678901\n1234567890134", False, "13 digits account ID is invalid"),
+        ("", False, "Empty account IDs"),
+        (None, False, "None account IDs"),
+    ],
+)
+def test_validate_account_id(account_ids, expected, description):
+    assert is_list_of_aws_accounts(account_ids) is expected, description

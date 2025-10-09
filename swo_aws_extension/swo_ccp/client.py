@@ -5,7 +5,6 @@ import requests
 from django.conf import settings
 from mpt_extension_sdk.key_vault.base import KeyVault
 from requests import HTTPError, Session
-from requests.adapters import HTTPAdapter, Retry
 
 from swo_aws_extension.constants import (
     ACCESS_TOKEN_NOT_FOUND_IN_RESPONSE,
@@ -29,19 +28,7 @@ class CCPClient(Session):
         super().__init__()
         self.config = config
         self.access_token = self.get_ccp_access_token(self.config.ccp_oauth_scope)
-        retries = Retry(
-            total=5,
-            backoff_factor=0.1,
-            status_forcelist=[500, 502, 503, 504],
-        )
 
-        self.mount(
-            "http://",
-            HTTPAdapter(
-                max_retries=retries,
-                pool_maxsize=36,
-            ),
-        )
         self.headers.update(
             {"User-Agent": "swo-extensions/1.0", "Authorization": f"Bearer {self.access_token}"},
         )
@@ -112,11 +99,12 @@ class CCPClient(Session):
         This method checks the body for the status code and raises an error if it is 404 or 500.
         """
         response.raise_for_status()
-        data = response.json()
-        status_code = data.get("statusCode")
+        response_data = response.json()
+        status_code = response_data.get("statusCode")
         if status_code in {requests.codes.not_found, requests.codes.internal_server_error}:
             http_error_msg = (
-                f"{status_code} Client Error: {data.get('message')} for url: {response.url}"
+                f"{status_code} Client Error: {response_data.get('message')} "
+                f"for url: {response.url}"
             )
             raise HTTPError(http_error_msg, response=response)
 
@@ -253,6 +241,6 @@ class CCPClient(Session):
                 text=error,
                 button=None,
             )
-            return saved_secret
+            return None
         logger.info("Access token stored in key vault")
         return saved_secret

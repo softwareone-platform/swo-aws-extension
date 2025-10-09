@@ -43,7 +43,7 @@ class SearchItem:
     """Billing charge search item."""
 
     criteria: str
-    value: str
+    value: str  # noqa: WPS110
 
 
 @dataclass
@@ -51,14 +51,14 @@ class SearchSubscription:
     """Billing charge search subscription."""
 
     criteria: str
-    value: str
+    value: str  # noqa: WPS110
 
 
 @dataclass
 class Search:
     """Billing charge search."""
 
-    item: SearchItem
+    item: SearchItem  # noqa: WPS110
     subscription: SearchSubscription
 
 
@@ -77,14 +77,14 @@ class JournalLine:
 
     def to_dict(self) -> dict[str, Any]:
         """Custom dict serialization."""
-        data = asdict(self)
-        data["externalIds"] = data.pop("external_ids")
-        data["price"]["PPx1"] = data["price"].pop("pp_x1")
-        data["price"]["UnitPP"] = data["price"].pop("unit_pp")
+        journal_line = asdict(self)
+        journal_line["externalIds"] = journal_line.pop("external_ids")
+        journal_line["price"]["PPx1"] = journal_line["price"].pop("pp_x1")
+        journal_line["price"]["UnitPP"] = journal_line["price"].pop("unit_pp")
 
         if self.error is None:
-            data.pop("error")
-        return data
+            journal_line.pop("error")
+        return journal_line
 
     def is_valid(self) -> bool:
         """Check if the journal line is valid (no error)."""

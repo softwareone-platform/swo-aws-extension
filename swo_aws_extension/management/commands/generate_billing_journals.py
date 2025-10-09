@@ -98,7 +98,7 @@ class Command(StyledPrintCommand):
         if failed_authorizations:
             raise ValueError(f"Invalid authorizations id: {', '.join(failed_authorizations)}")
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options):  # noqa: WPS110
         """Run command."""
         year = options["year"]
         month = options["month"]

@@ -115,7 +115,7 @@ class SetupChangeContext(SetupContext):
         next_step(client, context)
 
 
-class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
+class SetupContextPurchaseTransferWithOrgStep(SetupContext):
     """Setups context for purchase case with organization."""
 
     def __call__(self, client, context: PurchaseContext, next_step):  # noqa: C901
@@ -184,7 +184,7 @@ class SetupContextPurchaseTransferWithOrganizationStep(SetupContext):
         next_step(client, context)
 
 
-class SetupContextPurchaseTransferWithoutOrganizationStep(SetupContext):
+class SetupContextPurchaseTransferWithoutOrgStep(SetupContext):
     """Setup context for purchases to transfer without organization."""
 
     def __call__(self, client: MPTClient, context: InitialAWSContext, next_step):
