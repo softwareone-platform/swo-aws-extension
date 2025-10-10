@@ -39,9 +39,8 @@ from swo_aws_extension.constants import (
     UsageMetricTypeEnum,
 )
 from swo_aws_extension.file_builder.zip_builder import InMemoryZipBuilder
-from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import (
-    calculate_service_amount,
-    create_journal_line,
+from swo_aws_extension.flows.jobs.billing_journal.line_processors.error import (
+    ErrorJournalLinesProcessor,
 )
 from swo_aws_extension.notifications import Button, send_error, send_success
 from swo_aws_extension.parameters import get_transfer_type
@@ -94,7 +93,7 @@ class BillingJournalGenerator:
         year,
         month,
         product_ids,
-        billing_journal_processor,
+        journal_dispatcher,
         authorizations=None,
     ):
         """
@@ -106,7 +105,7 @@ class BillingJournalGenerator:
             year (int): Billing year.
             month (int): Billing month.
             product_ids (list): List of product IDs to process.
-            billing_journal_processor: billing journal processor
+            journal_dispatcher: billing journal processor
             authorizations (list, optional): List of authorization IDs to filter.
         """
         self.mpt_client = mpt_client
@@ -118,7 +117,7 @@ class BillingJournalGenerator:
         self.start_date, self.end_date = self._get_billing_period(year, month)
         self.mpt_api_client = MPTAPIClient(mpt_client)
         self.logger_context = {}
-        self.journal_line_processors = billing_journal_processor
+        self.journal_dispatcher = journal_dispatcher
         self.journal_file_lines = []
         self.organization_reports = {}
         self.authorization_currency = None
@@ -421,13 +420,12 @@ class BillingJournalGenerator:
         account_id = subscription.get("externalIds", {}).get("vendor")
         self._log("info", f"Processing subscription for account {account_id}")
 
-        account_metrics = self._get_account_metrics(aws_client, account_id)
-        self._get_journal_lines_by_account(
+        account_metrics = self._get_account_metrics(aws_client, account_id, organization_invoices)
+        account_journal_lines = self._get_journal_lines_by_account(
             subscription, account_metrics, journal_details, organization_invoices
         )
-        self._manage_invalid_services_by_account(
-            account_metrics, journal_details, organization_invoices, account_id
-        )
+        self.journal_file_lines.extend(account_journal_lines)
+
         total_amount = self._calculate_amount_by_account_id(account_id)
         self._log(
             "info",
@@ -473,7 +471,7 @@ class BillingJournalGenerator:
 
         return [invoice for invoice in invoice_summaries if invoice.get("AccountId") == mpa_account]
 
-    def _get_account_metrics(self, aws_client, account_id):
+    def _get_account_metrics(self, aws_client, account_id, organization_invoices):
         service_invoice_entity = self._get_service_invoice_entity_by_account_id_report(
             aws_client, account_id
         )
@@ -484,6 +482,14 @@ class BillingJournalGenerator:
             JournalAttachmentFilesNameEnum.SERVICE_INVOICE_ENTITY.value: service_invoice_entity,
             JournalAttachmentFilesNameEnum.RECORD_TYPE_AND_SERVICE_COST.value: record_type_report,
         }
+        provider_discount = self._get_metrics_by_key(
+            record_type_report, AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT
+        )
+        report_credits = self._get_metrics_by_key(record_type_report, AWSRecordTypeEnum.CREDIT)
+        credit_provider_discounts = self._get_credit_provider_discounts(
+            provider_discount, report_credits, organization_invoices
+        )
+
         return {
             UsageMetricTypeEnum.MARKETPLACE.value: self._get_metrics_by_key(
                 self.organization_reports[UsageMetricTypeEnum.MARKETPLACE.value], account_id
@@ -503,33 +509,43 @@ class BillingJournalGenerator:
             UsageMetricTypeEnum.SAVING_PLANS.value: self._get_metrics_by_key(
                 record_type_report, AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE
             ),
-            UsageMetricTypeEnum.PROVIDER_DISCOUNT.value: self._get_metrics_by_key(
-                record_type_report, AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT
-            ),
+            UsageMetricTypeEnum.PROVIDER_DISCOUNT.value: provider_discount,
             UsageMetricTypeEnum.RECURRING.value: self._get_metrics_by_key(
                 record_type_report, AWSRecordTypeEnum.RECURRING
             ),
+            UsageMetricTypeEnum.CREDITS.value: report_credits,
+            UsageMetricTypeEnum.CREDITS_PROVIDER_DISCOUNT.value: credit_provider_discounts,
         }
 
     def _get_journal_lines_by_account(
         self, subscription, account_metrics, journal_details, account_invoices
     ):
         account_id = subscription.get("externalIds", {}).get("vendor", "")
+        account_journal_lines = []
         for line in subscription.get("lines", []):
             item_external_id = line.get("item", {}).get("externalIds", {}).get("vendor")
-            processor = self.journal_line_processors.get(item_external_id)
-            if not processor:
-                self._log("error", f"No processor found for item externalId {item_external_id}")
-                continue
-            self.journal_file_lines.extend(
-                processor.process(
-                    account_id,
-                    item_external_id,
-                    account_metrics,
-                    journal_details,
-                    account_invoices,
-                )
+            lines = self.journal_dispatcher.process(
+                item_external_id,
+                account_id,
+                account_metrics,
+                journal_details,
+                account_invoices,
             )
+            account_journal_lines.extend(lines)
+
+        processed_services = [
+            journal_line.description.value1 for journal_line in account_journal_lines
+        ]
+        processed_services.extend((
+            AWSServiceEnum.TAX,
+            AWSServiceEnum.SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE,
+            AWSServiceEnum.REFUND,
+        ))
+        error_journal_lines = ErrorJournalLinesProcessor(0, 0, processed_services).process(
+            account_id, account_metrics, journal_details, account_invoices
+        )
+        account_journal_lines.extend(error_journal_lines)
+        return account_journal_lines
 
     @staticmethod
     def _get_invoice_entity_by_service(service_invoice_entity_report):
@@ -579,46 +595,15 @@ class BillingJournalGenerator:
             )
             return
 
-        account_metrics = self._get_account_metrics(aws_client, mpa_account)
+        account_metrics = self._get_account_metrics(aws_client, mpa_account, organization_invoices)
 
-        self._get_journal_lines_by_account(
+        account_journal_lines = self._get_journal_lines_by_account(
             first_active_subscription,
             account_metrics,
             journal_details,
             organization_invoices,
         )
-        self._manage_invalid_services_by_account(
-            account_metrics, journal_details, organization_invoices, mpa_account
-        )
-
-    @staticmethod
-    def _create_line_error(
-        account_id,
-        item_external_id,
-        account_metrics,
-        journal_details,
-        account_invoices,
-        service_name,
-        amount,
-        error,
-    ):
-        invoice_entity = account_metrics.get(
-            UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY.value, {}
-        ).get(service_name, "")
-        invoice_id = (
-            account_invoices.get("invoice_entities", {}).get(invoice_entity, {}).get("invoice_id")
-        )
-
-        return create_journal_line(
-            service_name,
-            amount,
-            item_external_id,
-            account_id,
-            journal_details,
-            invoice_id,
-            invoice_entity,
-            error=error,
-        )
+        self.journal_file_lines.extend(account_journal_lines)
 
     def _generate_zip(self):
         zip_builder = InMemoryZipBuilder()
@@ -640,75 +625,6 @@ class BillingJournalGenerator:
                 zip_builder.write(filename, json.dumps(value, indent=2))
 
         return zip_builder.get_file_content()
-
-    def _manage_invalid_services_by_account(
-        self, account_metrics, journal_details, account_invoices, account_id
-    ):
-        account_reports = self.organization_reports["accounts"].get(account_id, {})
-        if not account_reports:
-            return
-        services_by_account = self._get_services_amounts_by_account(account_reports)
-        partner_discount = account_metrics.get(UsageMetricTypeEnum.PROVIDER_DISCOUNT.value, {})
-
-        for service, amount in services_by_account.items():
-            if not self._service_exists_in_journal_lines(service, account_id):
-                service_discount = partner_discount.get(service, 0)
-                partner_amount = amount - abs(service_discount)
-                discount = ((amount - partner_amount) / amount) * 100 if amount != 0 else 0
-                invoice_entity = account_metrics.get(
-                    UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY.value, {}
-                ).get(service, "")
-                invoice_details = account_invoices.get("invoice_entities", {}).get(
-                    invoice_entity, {}
-                )
-                payment_currency = invoice_details.get("payment_currency_code", "")
-                adjusted_amount = calculate_service_amount(invoice_details, amount)
-                error_msg = (
-                    f"{account_id} - Service {service} with amount {adjusted_amount} "
-                    f"{payment_currency} and discount {discount} did not match any "
-                    f"subscription item."
-                )
-                self._log("error", error_msg)
-                error_line = self._create_line_error(
-                    account_id,
-                    "Item not found",
-                    account_metrics,
-                    journal_details,
-                    account_invoices,
-                    service,
-                    adjusted_amount,
-                    error_msg,
-                )
-                self.journal_file_lines.append(error_line)
-
-    def _service_exists_in_journal_lines(self, service, account_id):
-        for line in self.journal_file_lines:
-            service_name = line.description.value1
-            service_account_id = line.description.value2.split("/")[0]
-            mpa_account_id = line.external_ids.vendor
-            if service_name == service and account_id in {service_account_id, mpa_account_id}:
-                return True
-        return False
-
-    @staticmethod
-    def _get_services_amounts_by_account(account_reports):
-        services_by_account = {}
-        record_type = account_reports.get(
-            JournalAttachmentFilesNameEnum.RECORD_TYPE_AND_SERVICE_COST.value
-        )
-        for result_by_time in record_type:
-            for group in result_by_time.get("Groups", []):
-                service_name = group["Keys"][1]
-                if service_name == AWSServiceEnum.TAX:
-                    continue
-
-                amount = get_report_amount(
-                    group.get("Metrics", {}).get("UnblendedCost", {}).get("Amount", "0")
-                )
-                if amount > 0:
-                    services_by_account[service_name] = amount
-
-        return services_by_account
 
     def _get_exchange_rate_by_invoice_entity_and_currency(
         self, organization_invoices, invoice_entity
@@ -805,6 +721,9 @@ class BillingJournalGenerator:
                     "payment_currency_code": payment_currency,
                     "exchange_rate": exchange_rate,
                 }
+        principal_invoice = self._find_invoice_by_breakdown_description(
+            "Discount (AWS SPP Discount)"
+        )
 
         invoices = {
             "invoice_entities": invoice_entities,
@@ -820,6 +739,11 @@ class BillingJournalGenerator:
             "payment_currency_total_amount_before_tax": self._sum_invoice_amounts(
                 organization_invoices, "PaymentCurrencyAmount", "TotalAmountBeforeTax"
             ),
+            "principal_invoice_amount": principal_invoice.get("BaseCurrencyAmount", {}).get(
+                "TotalAmount", 0
+            )
+            if principal_invoice
+            else None,
         }
         self._log(
             "info",
@@ -840,3 +764,29 @@ class BillingJournalGenerator:
             {},
         )
         return invoice_summary.get("PaymentCurrencyAmount", {}).get("CurrencyCode", "USD")
+
+    def _get_credit_provider_discounts(
+        self, provider_discount, report_credits, organization_invoices
+    ):
+        credit_provider_discounts = {}
+        principal_amount = organization_invoices.get("principal_invoice_amount")
+        if principal_amount is None or Decimal(principal_amount) > 0:
+            return credit_provider_discounts
+
+        return {
+            credit_name: provider_discount[credit_name]
+            for credit_name in report_credits
+            if credit_name in provider_discount
+        }
+
+    def _find_invoice_by_breakdown_description(self, description):
+        for invoice in self.organization_reports.get("invoices", []):
+            breakdowns = (
+                invoice.get("BaseCurrencyAmount", {})
+                .get("AmountBreakdown", {})
+                .get("Discounts", {})
+                .get("Breakdown", [])
+            )
+            if any(breakdown.get("Description") == description for breakdown in breakdowns):
+                return invoice
+        return None
