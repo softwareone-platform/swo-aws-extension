@@ -8,7 +8,7 @@ class StyledPrintCommand(BaseCommand):
         """Shortcut for writing message to stdout with success style."""
         self.stdout.write(self.style.SUCCESS(message), ending="\n")
 
-    def info(self, message: str) -> None:
+    def info(self, message: str) -> None:  # noqa: WPS110
         """Shortcut for writing message to stdout with info style."""
         self.stdout.write(message, ending="\n")
 

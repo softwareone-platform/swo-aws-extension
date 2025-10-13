@@ -10,7 +10,7 @@ from swo_aws_extension.constants import (
     CRM_KEEPER_SUMMARY,
     CRM_KEEPER_TITLE,
     CRM_NEW_ACCOUNT_ADDITIONAL_INFO,
-    CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_ADDITIONAL_INFO,
+    CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_ADDITIONAL,
     CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_SUMMARY,
     CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_TITLE,
     CRM_NEW_ACCOUNT_SUMMARY,
@@ -19,7 +19,7 @@ from swo_aws_extension.constants import (
     CRM_TERMINATION_SUMMARY,
     CRM_TERMINATION_TITLE,
     CRM_TICKET_RESOLVED_STATE,
-    CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL_INFO,
+    CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL,
     CRM_TRANSFER_WITH_ORGANIZATION_SUMMARY,
     CRM_TRANSFER_WITH_ORGANIZATION_TITLE,
     OrderProcessingTemplateEnum,
@@ -40,8 +40,8 @@ from swo_aws_extension.parameters import (
     set_crm_termination_ticket_id,
     set_crm_transfer_organization_ticket_id,
 )
-from swo_crm_service_client import ServiceRequest
-from swo_crm_service_client.client import get_service_client
+from swo_aws_extension.swo_crm_service import ServiceRequest
+from swo_aws_extension.swo_crm_service.client import get_service_client
 
 logger = logging.getLogger(__name__)
 
@@ -196,7 +196,7 @@ class AwaitTerminationServiceRequestStep(AwaitCRMTicketStatusStep):
         return get_crm_termination_ticket_id(context.order)
 
 
-class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
+class RequestTransferWithOrgStep(CreateServiceRequestStep):
     """Create transfer request ticket for CRM system (without organization)."""
 
     def __init__(self):
@@ -216,7 +216,7 @@ class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
             )
         buyer_external_id = context.buyer.get("externalIds", {}).get("erpCustomer", "")
         return ServiceRequest(
-            additional_info=CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL_INFO,
+            additional_info=CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL,
             title=CRM_TRANSFER_WITH_ORGANIZATION_TITLE.format(
                 master_payer_id=master_payer_id, buyer_external_id=buyer_external_id
             ),
@@ -326,7 +326,7 @@ class CreateOnboardTicketStep(CreateServiceRequestStep):
         ccp_ticket_id = get_crm_ccp_ticket_id(context.order)
         if ccp_ticket_id:
             title = CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_TITLE
-            additional_info = CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_ADDITIONAL_INFO
+            additional_info = CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_ADDITIONAL
             summary = CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_SUMMARY.format(
                 customer_name=context.airtable_mpa.account_name,
                 buyer_external_id=context.airtable_mpa.buyer_id,
@@ -358,7 +358,7 @@ class CreateOnboardTicketStep(CreateServiceRequestStep):
         update_order(client, context.order_id, parameters=context.order["parameters"])
 
 
-class AwaitTransferRequestTicketWithOrganizationStep(AwaitCRMTicketStatusStep):
+class AwaitTransferWithOrgStep(AwaitCRMTicketStatusStep):
     """Wait for CRM transfer request be completed."""
 
     def __init__(self):

@@ -22,9 +22,9 @@ from swo_aws_extension.parameters import (
     set_crm_ccp_ticket_id,
     set_phase,
 )
-from swo_ccp_client.client import CCPClient
-from swo_crm_service_client import ServiceRequest
-from swo_crm_service_client.client import get_service_client
+from swo_aws_extension.swo_ccp.client import CCPClient
+from swo_aws_extension.swo_crm_service import ServiceRequest
+from swo_aws_extension.swo_crm_service.client import get_service_client
 
 logger = logging.getLogger(__name__)
 

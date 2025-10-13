@@ -10,7 +10,7 @@ class Command(StyledPrintCommand):
 
     help = "Check Pool Account Notifications"
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options):  # noqa: WPS110
         """Run command."""
         self.info("Start processing Check Pool Accounts Notifications...")
         check_pool_accounts_notifications(config)

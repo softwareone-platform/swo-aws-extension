@@ -21,7 +21,7 @@ from swo_aws_extension.constants import (
 from swo_aws_extension.flows.steps.finops import create_finops_entitlement
 from swo_aws_extension.notifications import send_error
 from swo_aws_extension.parameters import FulfillmentParametersEnum
-from swo_finops_client.client import get_ffc_client
+from swo_aws_extension.swo_finops.client import get_ffc_client
 from swo_rql import RQLQuery
 
 logger = logging.getLogger(__name__)
@@ -102,13 +102,13 @@ def _get_active_accounts(aws_client, agreement_id, mpa_account_id):
     return active_accounts
 
 
-def check_existing_subscription_items(mpt_client, items, subscription, agreement_id):
+def check_existing_subscription_items(mpt_client, subs_items, subscription, agreement_id):
     """
     Check and update the items in an existing subscription.
 
     Args:
         mpt_client: The MPT client.
-        items: List of items to check.
+        subs_items: List of items to check.
         subscription: The subscription to check.
         agreement_id: The agreement ID.
     """
@@ -121,8 +121,8 @@ def check_existing_subscription_items(mpt_client, items, subscription, agreement
         for sku_to_add in skus_to_add:
             subscription["lines"].append({
                 "item": find_first(
-                    lambda item, sku=sku_to_add: item["externalIds"]["vendor"] == sku,
-                    items,
+                    lambda subs_item, sku=sku_to_add: subs_item["externalIds"]["vendor"] == sku,
+                    subs_items,
                 ),
                 "quantity": 1,
             })
@@ -216,11 +216,11 @@ def _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run): 
                 and sub.get("status") == "Active",
                 agreement["subscriptions"],
             )
-            items = get_product_items_by_skus(
+            product_items = get_product_items_by_skus(
                 mpt_client, agreement.get("product").get("id"), AWS_ITEMS_SKUS
             )
 
-            if not items:
+            if not product_items:
                 logger.error(
                     "%s - Failed to get product items with skus %s",
                     agreement.get("id"),
@@ -230,7 +230,7 @@ def _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run): 
 
             if existing_subscription:
                 check_existing_subscription_items(
-                    mpt_client, items, existing_subscription, agreement.get("id")
+                    mpt_client, product_items, existing_subscription, agreement.get("id")
                 )
                 logger.info(
                     "%s - Next - Subscription for %s (%s) synchronized",
@@ -295,7 +295,7 @@ def _synchronize_new_accounts(mpt_client, agreement, active_accounts, dry_run): 
                 "commitmentDate": renewal_date,
                 "autoRenew": True,
                 "agreement": {"id": agreement["id"]},
-                "lines": [{"item": item, "quantity": 1} for item in items],
+                "lines": [{"item": product_item, "quantity": 1} for product_item in product_items],
             }
 
             if dry_run:

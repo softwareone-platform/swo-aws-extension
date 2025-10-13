@@ -28,15 +28,14 @@ def test_map_handhsakes_account_state():
         },
     ]
 
+    handshakes_account_state = map_handshakes_account_state(handshakes)
+
     expected_output = {
         "123456789012": AwsHandshakeStateEnum.REQUESTED.value,
         "987654321098": AwsHandshakeStateEnum.ACCEPTED.value,
         "567890123456": AwsHandshakeStateEnum.DECLINED.value,
     }
-
-    result = map_handshakes_account_state(handshakes)
-
-    assert result == expected_output
+    assert handshakes_account_state == expected_output
 
 
 def test_all_accounts_are_accepted(
@@ -52,7 +51,6 @@ def test_all_accounts_are_accepted(
             phase=PhasesEnum.TRANSFER_ACCOUNT.value,
         )
     )
-
     aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.list_handshakes_for_organization.return_value = {
         "Handshakes": [
@@ -66,14 +64,13 @@ def test_all_accounts_are_accepted(
     )
     mock_client.cancel_handshake.return_value = None
     next_step_mock = mocker.MagicMock()
-
     context = mocker.MagicMock()
     context.aws_client = aws_client
     context.get_account_ids.return_value = ["111111111111", "222222222222", "333333333333"]
     context.order_id = "test-order-id"
     context.order = order
-
     step_instance = SendInvitationLinksStep()
+
     step_instance(
         client=mocker.MagicMock(),
         context=context,
@@ -110,7 +107,6 @@ def test_error_handling_for_cancel_handshakes(
     )
     mock_client.cancel_handshake.side_effect = [AWSError("Error", "Error cancelling handshake")]
     next_step_mock = mocker.MagicMock()
-
     context = mocker.MagicMock()
     context.aws_client = aws_client
     context.get_account_ids.return_value = ["222222222222", "333333333333"]
@@ -120,13 +116,14 @@ def test_error_handling_for_cancel_handshakes(
             phase=PhasesEnum.TRANSFER_ACCOUNT.value
         )
     )
-
     step_instance = SendInvitationLinksStep()
+
     step_instance(
         client=mocker.MagicMock(),
         context=context,
         next_step=next_step_mock,
     )
+
     mock_client.cancel_handshake.assert_called_once_with(HandshakeId="h-444444444444")
     mock_client.invite_account_to_organization.assert_not_called()
     next_step_mock.assert_not_called()
@@ -148,7 +145,6 @@ def test_error_handling_for_invite_accounts(
     ]
 
     next_step_mock = mocker.MagicMock()
-
     context = mocker.MagicMock()
     context.aws_client = aws_client
     context.get_account_ids.return_value = ["111111111111", "222222222222"]
@@ -158,8 +154,8 @@ def test_error_handling_for_invite_accounts(
             phase=PhasesEnum.TRANSFER_ACCOUNT.value
         )
     )
-
     step_instance = SendInvitationLinksStep()
+
     step_instance(
         client=mocker.MagicMock(),
         context=context,
@@ -179,7 +175,7 @@ def test_error_handling_for_invite_accounts(
     next_step_mock.assert_not_called(), "Next step should not be called as there is errors"
 
 
-def test_await_invitation_link_step_skipped(
+def test_validate_result_step_skipped(
     mocker, config, order_factory, fulfillment_parameters_factory, aws_client_factory
 ):
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
@@ -194,15 +190,17 @@ def test_await_invitation_link_step_skipped(
     context.order_id = "test-order-id"
     next_step = mocker.MagicMock()
     step_instance = AwaitInvitationLinksStep()
+
     step_instance(
         client=mocker.MagicMock(),
         context=context,
         next_step=next_step,
     )
+
     next_step.assert_called_once()
 
 
-def test_send_invitation_link_step_skipped_by_phase(
+def test_step_skipped_by_phase(
     mocker, config, order_factory, fulfillment_parameters_factory, aws_client_factory
 ):
     aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
@@ -217,15 +215,17 @@ def test_send_invitation_link_step_skipped_by_phase(
     context.order_id = "test-order-id"
     next_step = mocker.MagicMock()
     step_instance = SendInvitationLinksStep()
+
     step_instance(
         client=mocker.MagicMock(),
         context=context,
         next_step=next_step,
     )
+
     next_step.assert_called_once()
 
 
-def test_await_invitation_link_step_all_accepted(
+def test_validate_results_tep_all_accepted(
     mocker,
     config,
     order_factory,
@@ -248,8 +248,8 @@ def test_await_invitation_link_step_all_accepted(
         ),
     )
 
-    def update_order(mpt, order_id, parameters, template=None):
-        order["parameters"] = parameters
+    def update_order(mpt, order_id, order_params, template=None):
+        order["parameters"] = order_params
         if not template:
             template = order.get("template", None)
         order["template"] = template
@@ -267,16 +267,18 @@ def test_await_invitation_link_step_all_accepted(
     context.get_account_ids.return_value = ["111111111111", "222222222222"]
     next_step = mocker.MagicMock()
     step_instance = AwaitInvitationLinksStep()
+
     step_instance(
         client=mocker.MagicMock(),
         context=context,
         next_step=next_step,
     )
+
     assert get_phase(context.order) == PhasesEnum.CREATE_SUBSCRIPTIONS.value
     next_step.assert_called_once()
 
 
-def test_await_invitation_link_step_await_accepted(
+def test_validate_result_step_await_accepted(
     mocker,
     config,
     order_factory,
@@ -300,7 +302,6 @@ def test_await_invitation_link_step_await_accepted(
             phase=PhasesEnum.CHECK_INVITATION_LINK.value
         ),
     )
-
     mocker.patch(
         "swo_aws_extension.flows.order.PurchaseContext.get_account_ids",
         return_value=["111111111111", "222222222222"],
@@ -310,11 +311,13 @@ def test_await_invitation_link_step_await_accepted(
     next_step = mocker.MagicMock()
     client = mocker.MagicMock()
     step_instance = AwaitInvitationLinksStep()
+
     step_instance(
         client=client,
         context=context,
         next_step=next_step,
     )
+
     mock_switch_order_status_to_query.assert_called_once_with(
         client, OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS.value
     )

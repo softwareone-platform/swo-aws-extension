@@ -51,7 +51,7 @@ class FactsSection:
     """MS Teams facts section."""
 
     title: str
-    data: dict
+    data: dict  # noqa: WPS110
 
 
 def send_notification(
@@ -71,8 +71,8 @@ def send_notification(
     if facts:
         facts_section = pymsteams.cardsection()
         facts_section.title(facts.title)
-        for key, value in facts.data.items():
-            facts_section.addFact(key, value)
+        for key, facts_data in facts.data.items():
+            facts_section.addFact(key, facts_data)
         message.addSection(facts_section)
 
     try:

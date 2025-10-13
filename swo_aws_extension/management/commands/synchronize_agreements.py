@@ -30,7 +30,7 @@ class Command(StyledPrintCommand):
             help="Test synchronization without making changes",
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options):  # noqa: WPS110
         """Run command."""
         self.info("Start synchronizing agreements...")
         synchronize_agreements(
