@@ -9,7 +9,7 @@ resources:
     - repository: templates
       type: git
       name: MPT/ops-build-templates-aks-releases
-      ref: releases/v15
+      ref: feature/mpt-14435-python-dtrack-template
       
 variables:
   - name: appName
@@ -44,7 +44,6 @@ stages:
               sourceBuild: $(buildVersion)
               Dockerfile: prod.Dockerfile 
               skipImagePush: ${{ eq(variables['Build.Reason'], 'PullRequest') }}
-
       - job: BuildHelmChart
         displayName: Build Helm Chart
         variables:
@@ -58,7 +57,11 @@ stages:
                   repository: $(appName)
                   workingDirectory: helm/$(appName)
                   skipImagePush: ${{ eq(variables['Build.Reason'], 'PullRequest') }}
-
+  - template: aks-tests-templates/stages/sbom-python-stage.yaml@templates
+    parameters:
+      projectName: $(appName)
+      pythonVersion: 3.x
+      dependsOn: build
   - stage: publish
     displayName: Publish
     dependsOn:
