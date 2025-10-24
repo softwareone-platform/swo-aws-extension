@@ -1,0 +1,51 @@
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+cliVersion: 2.4.0
+owner: turing
+git:
+  repository: swo-extension-aws
+image:
+  repository: /swo-extensions-aws
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+
+accessPolicy: public
+accessPolicyAudience: any
+  # Type of app: test, product, infra
+type: product
+applicationGroup: pyra-cli
+
+ingress:
+  hosts:
+   - customer-api.domain.global     
+   - extensions-api.domain.global
+  gateways:
+   - pyra/ops-pyc-cluster-gateway
+  forward:
+    - match: /mpt-extension-aws-api/
+      rewrite: /
+   
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
