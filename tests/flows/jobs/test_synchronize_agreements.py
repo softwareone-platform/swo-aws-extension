@@ -6,14 +6,14 @@ from swo_aws_extension.constants import (
     SWO_EXTENSION_MANAGEMENT_ROLE,
 )
 from swo_aws_extension.flows.jobs.synchronize_agreements import (
-    _synchronize_new_accounts,
+    _synchronize_new_accounts,  # noqa: PLC2701
     sync_agreement_subscriptions,
     synchronize_agreements,
 )
 from swo_aws_extension.parameters import FulfillmentParametersEnum
 
 
-def test_synchronize_agreement_with_specific_ids(
+def test_sync_agreement_with_specific_ids(
     mocker, mpt_client, config, agreement_factory, aws_client_factory
 ):
     mock_agreement = agreement_factory(vendor_id="123456789012")
@@ -29,11 +29,11 @@ def test_synchronize_agreement_with_specific_ids(
     mock_sync = mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.sync_agreement_subscriptions"
     )
-    synchronize_agreements(mpt_client, config, ["AGR-123-456"], False, "PROD-123-456")
-    mock_sync.assert_called_once_with(mpt_client, aws_client, mock_agreement, False)
+    synchronize_agreements(mpt_client, config, ["AGR-123-456"], "PROD-123-456", dry_run=False)
+    mock_sync.assert_called_once_with(mpt_client, aws_client, mock_agreement, dry_run=False)
 
 
-def test_synchronize_agreement_without_ids(
+def test_sync_agreement_without_ids(
     mocker, mpt_client, config, agreement_factory, aws_client_factory
 ):
     mock_agreement = agreement_factory(vendor_id="123456789012")
@@ -49,11 +49,11 @@ def test_synchronize_agreement_without_ids(
     mock_sync = mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.sync_agreement_subscriptions"
     )
-    synchronize_agreements(mpt_client, config, None, False, "PROD-123-456")
-    mock_sync.assert_called_once_with(mpt_client, aws_client, mock_agreement, False)
+    synchronize_agreements(mpt_client, config, None, "PROD-123-456", dry_run=False)
+    mock_sync.assert_called_once_with(mpt_client, aws_client, mock_agreement, dry_run=False)
 
 
-def test_synchronize_agreement_without_mpa(
+def test_sync_agreement_without_mpa(
     mocker, mpt_client, config, agreement_factory, aws_client_factory
 ):
     mock_agreement = agreement_factory(vendor_id="")
@@ -69,11 +69,11 @@ def test_synchronize_agreement_without_mpa(
     mock_sync = mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.sync_agreement_subscriptions"
     )
-    synchronize_agreements(mpt_client, config, None, False, "PROD-123-456")
+    synchronize_agreements(mpt_client, config, None, "PROD-123-456", dry_run=False)
     mock_sync.assert_not_called()
 
 
-def test_sync_agreement_accounts_with_processing_subscriptions(
+def test_sync_agreement_processing_subs(
     mocker, mpt_client, aws_client_factory, config, agreement_factory
 ):
     aws_client, mock_client = aws_client_factory(
@@ -87,11 +87,11 @@ def test_sync_agreement_accounts_with_processing_subscriptions(
         ]
     )
     mock_client.list_accounts.return_value = {"Accounts": []}
-    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, False)
+    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, dry_run=False)
     mock_client.list_accounts.assert_not_called()
 
 
-def test_sync_agreement_accounts_without_processing_subscriptions(
+def test_sync_agreement_no_processing_subs(
     mocker,
     mpt_client,
     aws_client_factory,
@@ -116,11 +116,11 @@ def test_sync_agreement_accounts_without_processing_subscriptions(
         "swo_aws_extension.flows.jobs.synchronize_agreements.create_agreement_subscription",
         return_value={"id": "SUB-123-456"},
     )
-    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, False)
+    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, dry_run=False)
     mock_client.list_accounts.assert_called_once()
 
 
-def test_sync_agreement_accounts_with_no_accounts(
+def test_sync_agreement_with_no_accounts(
     mocker, mpt_client, aws_client_factory, config, agreement_factory, mpa_pool_factory
 ):
     aws_client, mock_client = aws_client_factory(
@@ -128,11 +128,11 @@ def test_sync_agreement_accounts_with_no_accounts(
     )
 
     mock_client.list_accounts.return_value = {"Accounts": []}
-    sync_agreement_subscriptions(mpt_client, aws_client, agreement_factory(), False)
+    sync_agreement_subscriptions(mpt_client, aws_client, agreement_factory(), dry_run=False)
     mock_client.list_accounts.assert_called_once()
 
 
-def test_sync_agreement_accounts_with_dry_run(
+def test_sync_agreement_with_dry_run(
     mocker,
     mpt_client,
     aws_client_factory,
@@ -161,11 +161,11 @@ def test_sync_agreement_accounts_with_dry_run(
         "swo_aws_extension.flows.jobs.synchronize_agreements.create_agreement_subscription",
         return_value={"id": "SUB-123-456"},
     )
-    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, True)
+    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, dry_run=True)
     mock_client.list_accounts.assert_called_once()
 
 
-def test_sync_agreement_accounts_with_inactive_account(
+def test_sync_agreement_with_inactive_account(
     mocker,
     mpt_client,
     aws_client_factory,
@@ -180,11 +180,11 @@ def test_sync_agreement_accounts_with_inactive_account(
 
     mock_agreement = agreement_factory()
     mock_client.list_accounts.return_value = aws_accounts_factory(status="SUSPENDED")
-    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, False)
+    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, dry_run=False)
     mock_client.list_accounts.assert_called_once()
 
 
-def test_sync_agreement_accounts_with_split_billing(
+def test_sync_agreement_with_split_billing(
     mocker,
     mpt_client,
     aws_client_factory,
@@ -220,13 +220,13 @@ def test_sync_agreement_accounts_with_split_billing(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_subscription_by_external_id",
         return_value=None,
     )
-    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, False)
+    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, dry_run=False)
     mock_client.list_accounts.assert_called_once()
     mock_send_error.assert_called_once()
     mocked_get_subscription_by_external_id.assert_called_once()
 
 
-def test_sync_agreement_accounts_with_split_billing_skip_subscriptions(
+def test_sync_agreement_with_split_billing_skip(
     mocker,
     mpt_client,
     aws_client_factory,
@@ -268,13 +268,13 @@ def test_sync_agreement_accounts_with_split_billing_skip_subscriptions(
         "swo_aws_extension.flows.jobs.synchronize_agreements.send_error",
         return_value=None,
     )
-    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, False)
+    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, dry_run=False)
     mock_client.list_accounts.assert_called_once()
     mock_send_error.assert_not_called()
     mocked_get_subscription_by_external_id.assert_called_once()
 
 
-def test_sync_agreement_accounts_subscription_already_exist(
+def test_sync_agreement_subscription_exist(
     mocker,
     mpt_client,
     aws_client_factory,
@@ -297,11 +297,11 @@ def test_sync_agreement_accounts_subscription_already_exist(
         return_value=product_items,
     )
 
-    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, True)
+    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, dry_run=True)
     mock_client.list_accounts.assert_called_once()
 
 
-def test_sync_agreement_accounts_no_aws_item_found(
+def test_sync_agreement_no_aws_item_found(
     mocker,
     mpt_client,
     aws_client_factory,
@@ -320,11 +320,11 @@ def test_sync_agreement_accounts_no_aws_item_found(
         return_value=[],
     )
 
-    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, True)
+    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, dry_run=True)
     mock_client.list_accounts.assert_called_once()
 
 
-def test_sync_agreement_accounts_subscription_already_exist_add_items(
+def test_sync_agreement_subscription_add_items(
     mocker,
     mpt_client,
     aws_client_factory,
@@ -351,7 +351,7 @@ def test_sync_agreement_accounts_subscription_already_exist_add_items(
         "swo_aws_extension.flows.jobs.synchronize_agreements.update_agreement_subscription"
     )
 
-    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, True)
+    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, dry_run=True)
     mock_client.list_accounts.assert_called_once()
 
     subscription = subscription_factory(
@@ -373,7 +373,7 @@ def test_sync_agreement_accounts_subscription_already_exist_add_items(
     )
 
 
-def test_sync_agreement_accounts_subscription_already_exist_delete_items(
+def test_sync_agreement_subscription_delete_items(
     mocker,
     mpt_client,
     aws_client_factory,
@@ -409,7 +409,7 @@ def test_sync_agreement_accounts_subscription_already_exist_delete_items(
         "swo_aws_extension.flows.jobs.synchronize_agreements.update_agreement_subscription"
     )
 
-    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, True)
+    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, dry_run=True)
     mock_client.list_accounts.assert_called_once()
 
     mock_agreement["subscriptions"][0]["lines"].pop()
@@ -420,9 +420,7 @@ def test_sync_agreement_accounts_subscription_already_exist_delete_items(
     )
 
 
-def test_synchronize_agreement_with_specific_ids_exception(
-    mocker, mpt_client, config, agreement_factory
-):
+def test_sync_agreement_with_ids_exception(mocker, mpt_client, config, agreement_factory):
     mock_agreement = agreement_factory(vendor_id="123456789012")
     mocker.patch(
         "swo_aws_extension.flows.jobs.synchronize_agreements.get_agreements_by_query",
@@ -441,7 +439,7 @@ def test_synchronize_agreement_with_specific_ids_exception(
         "swo_aws_extension.flows.jobs.synchronize_agreements.send_error",
         return_value=None,
     )
-    synchronize_agreements(mpt_client, config, ["AGR-123-456"], False, "PROD-123-456")
+    synchronize_agreements(mpt_client, config, ["AGR-123-456"], "PROD-123-456", dry_run=False)
     mock_sync.assert_not_called()
     mock_send_error.assert_called_once_with(
         "Synchronize AWS agreement subscriptions",
@@ -577,7 +575,7 @@ def test_synchronize_new_accounts_dry_run(
     mock_create_agreement_subscription.assert_not_called()
 
 
-def test_sync_agreement_accounts_skip_management_account(
+def test_sync_agreement_skip_management_account(
     mocker,
     mpt_client,
     aws_client_factory,
@@ -615,7 +613,7 @@ def test_sync_agreement_accounts_skip_management_account(
         },
     ]
     mock_client.list_accounts.return_value = aws_accounts_factory(accounts=accounts)
-    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, False)
+    sync_agreement_subscriptions(mpt_client, aws_client, mock_agreement, dry_run=False)
     mock_client.list_accounts.assert_called_once()
 
 
@@ -642,7 +640,7 @@ def test_synchronize_agreements_exception(
     mocker.patch("swo_aws_extension.flows.jobs.synchronize_agreements.AWSClient")
     caplog.set_level("ERROR", logger="swo_aws_extension.flows.jobs.synchronize_agreements")
     agreement_ids = [mock_agreement["id"]]
-    synchronize_agreements(mpt_client, config, agreement_ids, False, "PROD-123-456")
+    synchronize_agreements(mpt_client, config, agreement_ids, "PROD-123-456", dry_run=False)
     assert "Traceback (most recent call last):" in caplog.text
     assert "Exception: Test exception" in caplog.text
     send_error.assert_called_once()

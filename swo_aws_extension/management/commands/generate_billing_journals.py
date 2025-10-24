@@ -1,5 +1,5 @@
+import datetime as dt
 import re
-from datetime import datetime
 
 from django.conf import settings
 
@@ -11,22 +11,25 @@ from swo_aws_extension.constants import (
 from swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator import (
     BillingJournalGenerator,
 )
-from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import get_journal_processors
+from swo_aws_extension.flows.jobs.billing_journal.processor_dispatcher import (
+    JournalProcessorDispatcher,
+)
 from swo_aws_extension.management.commands_helpers import StyledPrintCommand
 from swo_aws_extension.shared import mpt_client
 
 config = Config()
 
-BILLING_JOURNAL_PROCESSORS = get_journal_processors(config)
-
 
 class Command(StyledPrintCommand):
+    """Generate billing journals."""
+
     help = "Generate Journals for monthly billing"
     name = "generate_billing_journals"
 
     def add_arguments(self, parser):
+        """Add required arguments."""
         # Calculate last month's date
-        today = datetime.now()
+        today = dt.datetime.now(tz=dt.UTC)
         year = today.year
         month = today.month
 
@@ -58,15 +61,9 @@ class Command(StyledPrintCommand):
             help="list of specific authorizations to synchronize separated by space",
         )
 
-    def info(self, message):
-        self.stdout.write(message, ending="\n")
-
-    def error(self, message):
-        self.stderr.write(self.style.ERROR(message), ending="\n")
-
-    @staticmethod
-    def raise_for_invalid_date(year, month):
-        current_date = datetime.now()
+    def raise_for_invalid_date(self, year, month):  # noqa: C901
+        """Checks invalid combination of year/month."""
+        current_date = dt.datetime.now(tz=dt.UTC)
         current_year, current_month, current_day = (
             current_date.year,
             current_date.month,
@@ -93,16 +90,16 @@ class Command(StyledPrintCommand):
         if (year > current_year) or (year == current_year and month > current_month):
             raise ValueError(COMMAND_INVALID_BILLING_DATE_FUTURE)
 
-    def raise_for_invalid_authorizations(self, authorization):
+    # TODO: not sure that we need this check
+    def raise_for_invalid_authorizations(self, authorizations):
+        """Checks for valid authorization id."""
         pattern = r"^AUT-(?:\d+-)*\d+$"
-        failed_authorizations = []
-        for a in authorization:
-            if re.match(pattern, a) is None:
-                failed_authorizations.append(a)
+        failed_authorizations = [auth for auth in authorizations if not re.match(pattern, auth)]
         if failed_authorizations:
             raise ValueError(f"Invalid authorizations id: {', '.join(failed_authorizations)}")
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options):  # noqa: WPS110
+        """Run command."""
         year = options["year"]
         month = options["month"]
         try:
@@ -129,15 +126,15 @@ class Command(StyledPrintCommand):
             f"for authorizations {' '.join(authorizations)}"
         )
 
-    @staticmethod
-    def process(year, month, authorizations):
+    def process(self, year, month, authorizations):
+        """Start billing journal processing."""
         generator = BillingJournalGenerator(
             mpt_client,
             config,
             year,
             month,
             settings.MPT_PRODUCTS_IDS,
-            BILLING_JOURNAL_PROCESSORS,
+            JournalProcessorDispatcher.build(config),
             authorizations,
         )
         generator.generate_billing_journals()

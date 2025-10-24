@@ -1,3 +1,5 @@
+from requests import HTTPError
+
 from swo_aws_extension.airtable.models import (
     MPAStatusEnum,
     NotificationStatusEnum,
@@ -13,7 +15,7 @@ from swo_aws_extension.constants import (
     SupportTypesEnum,
 )
 from swo_aws_extension.flows.jobs.pool_notifications import check_pool_accounts_notifications
-from swo_crm_service_client import ServiceRequest
+from swo_aws_extension.swo_crm_service import ServiceRequest
 
 
 def test_check_pool_accounts_notifications(
@@ -54,7 +56,7 @@ def test_check_pool_accounts_notifications(
     assert mocked_pool_notification_model.all.call_count == 2
 
 
-def test_check_pool_accounts_notifications_resolved(
+def test_check_pool_notifications_resolved(
     mocker,
     pool_notification_factory,
     service_request_ticket_factory,
@@ -94,7 +96,7 @@ def test_check_pool_accounts_notifications_resolved(
     assert mocked_pool_notification_model.all.call_count == 2
 
 
-def test_check_pool_accounts_notifications_declined(
+def test_check_pool_notifications_declined(
     mocker,
     pool_notification_factory,
     service_request_ticket_factory,
@@ -137,7 +139,7 @@ def test_check_pool_accounts_notifications_declined(
     assert mocked_pool_notification_model.all.call_count == 2
 
 
-def test_check_pool_accounts_notifications_create_empty_notification(
+def test_check_pool_notifications_create_empty(
     mocker, pool_notification_factory, service_request_ticket_factory, config, service_client
 ):
     mocked_master_payer_account_pool_model = mocker.MagicMock()
@@ -192,7 +194,7 @@ def test_check_pool_accounts_notifications_create_empty_notification(
     assert service_client.create_service_request.mock_calls[0].args == (None, service_request)
 
 
-def test_check_pool_accounts_notifications_create_warning_notification(
+def test_check_pool_notifications_create_warning(
     mocker,
     pool_notification_factory,
     service_request_ticket_factory,
@@ -253,7 +255,7 @@ def test_check_pool_accounts_notifications_create_warning_notification(
     assert service_client.create_service_request.mock_calls[0].args == (None, service_request)
 
 
-def test_check_pool_accounts_notifications_delete_duplicated_notification(
+def test_check_pool_notifications_del_duplicated(
     mocker,
     pool_notification_factory,
     service_request_ticket_factory,
@@ -293,3 +295,43 @@ def test_check_pool_accounts_notifications_delete_duplicated_notification(
 
     assert mocked_pool_notification_model.all.call_count == 2
     assert mocked_pool_notification_model.return_value.save.call_count == 1
+
+
+def test_process_pending_notification_http_error(
+    mocker,
+    pool_notification_factory,
+    service_request_ticket_factory,
+    config,
+    mpa_pool_factory,
+    service_client,
+):
+    mocked_pool_notification_model = mocker.MagicMock()
+    mocker.patch(
+        "swo_aws_extension.airtable.models.get_pool_notification_model",
+        return_value=mocked_pool_notification_model,
+    )
+    mocked_master_payer_account_pool_model = mocker.MagicMock()
+    mocker.patch(
+        "swo_aws_extension.airtable.models.get_master_payer_account_pool_model",
+        return_value=mocked_master_payer_account_pool_model,
+    )
+
+    mocked_master_payer_account_pool_model.all.return_value = [
+        mpa_pool_factory(),
+        mpa_pool_factory(),
+        mpa_pool_factory(pls_enabled=False),
+        mpa_pool_factory(pls_enabled=False),
+    ]
+
+    mocked_pool_notification_model.all.side_effect = [
+        [pool_notification_factory(), pool_notification_factory(pls_enabled=False)],
+        [],
+    ]
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.pool_notifications.get_service_client",
+        return_value=service_client,
+    )
+    service_client.get_service_requests.side_effect = HTTPError("Test error")
+    check_pool_accounts_notifications(config)
+
+    assert mocked_pool_notification_model.return_value.save.call_count == 0

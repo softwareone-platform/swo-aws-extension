@@ -1,6 +1,4 @@
-import functools
 import logging
-from datetime import UTC, datetime
 
 from mpt_extension_sdk.flows.pipeline import NextStep, Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
@@ -35,8 +33,9 @@ from swo_aws_extension.parameters import (
 logger = logging.getLogger(__name__)
 
 
-def coppy_context_data_to_mpa_pool_model(context, airtable_mpa, status=None):
-    if status is None:
+def copy_context_data_to_mpa_pool_model(context, airtable_mpa, status=None):
+    """Copy order processing context to Airtable MPA."""
+    if status is None:  # TODO: why not default value???
         status = MPAStatusEnum.ASSIGNED.value
     scu = context.buyer.get("externalIds", {}).get("erpCustomer", "")
     airtable_mpa.status = status
@@ -49,31 +48,31 @@ def coppy_context_data_to_mpa_pool_model(context, airtable_mpa, status=None):
 
 
 def setup_agreement_external_id(client, context, account_id):
+    """Update agreement vendor external id with AWS account id."""
     context.agreement = update_agreement(
         client,
         context.agreement["id"],
         externalIds={"vendor": account_id},
     )
-    logger.info(f"Updating agreement {context.agreement['id']} external id to {account_id}")
-
-
-@functools.cache
-def notify_no_available_mpa(order_id, seller_country, error, date):
-    title = f"{order_id} - No MPA available in the pool for country {seller_country}"
-    send_error(title, error)
+    logger.info("Updating agreement %s external id to %s", context.agreement["id"], account_id)
 
 
 class AssignMPA(Step):
+    """Assign Master payer account to the agreement."""
+
     def __init__(self, config, role_name):
         self._config = config
         self._role_name = role_name
 
-    def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+    def __call__(self, client: MPTClient, context: PurchaseContext, next_step):  # noqa: C901
+        """Execute step."""
         phase = get_phase(context.order)
         if phase and phase != PhasesEnum.ASSIGN_MPA:
             logger.info(
-                f"{context.order_id} - Next - Current phase is '{phase}', "
-                f"skipping as it is not '{PhasesEnum.ASSIGN_MPA.value}'"
+                "%s - Next - Current phase is '%s', skipping as it is not '%s'",
+                context.order_id,
+                phase,
+                PhasesEnum.ASSIGN_MPA.value,
             )
             next_step(client, context)
             return
@@ -84,8 +83,10 @@ class AssignMPA(Step):
                 client, context.order_id, parameters=context.order["parameters"]
             )
             logger.info(
-                f"{context.order_id} - Next - MPA account {context.mpa_account} "
-                f"already assigned to order {context.order_id}. Continue"
+                "%s - Next - MPA account %s already assigned to order %s. Continue",
+                context.order_id,
+                context.mpa_account,
+                context.order_id,
             )
             next_step(client, context)
             return
@@ -96,12 +97,11 @@ class AssignMPA(Step):
                 f" {context.seller_country} with PLS enabled: {context.pls_enabled}"
             )
             logger.error(error)
-            notify_no_available_mpa(
-                context.order_id,
-                context.seller_country,
-                error,
-                datetime.now(UTC).strftime("%Y:%m:%d"),
+            title = (
+                f"{context.order_id} - No MPA available in "
+                f"the pool for country {context.seller_country}"
             )
+            send_error(title, error)
 
             if not has_open_notification(context.seller_country, context.pls_enabled):
                 new_notification = {
@@ -112,8 +112,10 @@ class AssignMPA(Step):
                 }
                 create_pool_notification(new_notification)
                 logger.info(
-                    f"{context.order_id} - Action - Created new empty notification for "
-                    f"{context.seller_country} with PLS status: {context.pls_enabled}"
+                    "%s - Action - Created new empty notification for %s with PLS status: %s",
+                    context.order_id,
+                    context.seller_country,
+                    context.pls_enabled,
                 )
             return
 
@@ -126,9 +128,10 @@ class AssignMPA(Step):
             )
             context.aws_client.get_caller_identity()
         except AWSError as e:
-            logger.error(
-                f"{context.order_id} - Error - Failed to retrieve MPA credentials for "
-                f"{context.airtable_mpa.account_id}: {e}"
+            logger.exception(
+                "%s - Error - Failed to retrieve MPA credentials for %s.",
+                context.order_id,
+                context.airtable_mpa.account_id,
             )
             are_credentials_valid = False
             credentials_error = str(e)
@@ -147,11 +150,12 @@ class AssignMPA(Step):
             )
             return
         logger.info(
-            f"{context.order_id} - Action - MPA credentials for {context.airtable_mpa.account_id} "
-            f"retrieved successfully"
+            "%s - Action - MPA credentials for %s retrieved successfully",
+            context.order_id,
+            context.airtable_mpa.account_id,
         )
         airtable_mpa = context.airtable_mpa
-        airtable_mpa = coppy_context_data_to_mpa_pool_model(context, airtable_mpa)
+        airtable_mpa = copy_context_data_to_mpa_pool_model(context, airtable_mpa)
         airtable_mpa.save()
 
         context.airtable_mpa = airtable_mpa
@@ -164,22 +168,29 @@ class AssignMPA(Step):
         )
 
         logger.info(
-            f"{context.order_id} - Next - Master Payer Account {context.mpa_account} assigned."
+            "%s - Next - Master Payer Account %s assigned.",
+            context.order_id,
+            context.mpa_account,
         )
         next_step(client, context)
 
 
 class AssignSplitBillingMPA(Step):
+    """Assign Split billing MPA to the agreement."""
+
     def __init__(self, config, role_name):
         self._config = config
         self._role_name = role_name
 
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+        """Execute step."""
         phase = get_phase(context.order)
         if phase and phase != PhasesEnum.ASSIGN_MPA:
             logger.info(
-                f"{context.order_id} - Next - Current phase is '{phase}', "
-                f"skipping as it is not '{PhasesEnum.ASSIGN_MPA.value}'"
+                "%s - Next - Current phase is '%s', skipping as it is not '%s'",
+                context.order_id,
+                context.order_id,
+                PhasesEnum.ASSIGN_MPA.value,
             )
             next_step(client, context)
             return
@@ -191,7 +202,7 @@ class AssignSplitBillingMPA(Step):
                 context.order, ignore=parameter_ids_with_errors
             )
             context.switch_order_status_to_query(client)
-            logger.error(f"{context.order_id} - Querying - MPA Invalid. Order switched to query")
+            logger.error("%s - Querying - MPA Invalid. Order switched to query", context.order_id)
             return
 
         context.aws_client = AWSClient(
@@ -199,8 +210,9 @@ class AssignSplitBillingMPA(Step):
         )
 
         logger.info(
-            f"{context.order_id} - Action - MPA credentials for {context.airtable_mpa.account_id} "
-            f"retrieved successfully"
+            "%s - Action - MPA credentials for %s retrieved successfully",
+            context.order_id,
+            context.airtable_mpa.account_id,
         )
 
         context.order = set_mpa_email(context.order, context.airtable_mpa.account_email)
@@ -212,26 +224,33 @@ class AssignSplitBillingMPA(Step):
         )
 
         logger.info(
-            f"{context.order_id} - Next - Split Billing Master Payer Account "
-            f"{context.mpa_account} assigned."
+            "%s - Next - Split Billing Master Payer Account %s assigned.",
+            context.order_id,
+            context.mpa_account,
         )
         next_step(client, context)
 
 
 class AssignTransferMPAStep(Step):
+    """Assign MPA for transfered AWS accounts."""
+
     def __init__(self, config, role_name):
         self._config = config
         self._role_name = role_name
 
     def setup_aws(self, context: PurchaseContext):
+        """Setup AWS client."""
         context.aws_client = AWSClient(self._config, context.mpa_account, self._role_name)
 
     @staticmethod
     def validate_mpa_credentials(context: PurchaseContext):
+        """Validate MPA credentials."""
         context.aws_client.describe_organization()
 
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step: NextStep):
         """
+        Execute step.
+
         If is a transfer account in phase ASSIGN_MPA:
         - Copy the master payer id to fulfillment mpa account id
         - Check access to the account
@@ -241,22 +260,25 @@ class AssignTransferMPAStep(Step):
             context.is_type_transfer_with_organization() and context.is_purchase_order()
         )
         if not is_transfer_with_organization:
-            logger.info(f"{context.order_id} - Skipping - It is not a transfer with organization")
+            logger.info("%s - Skipping - It is not a transfer with organization", context.order_id)
             next_step(client, context)
             return
 
         if get_phase(context.order) != PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION:
             logger.info(
-                f"{context.order_id} - Skipping - Current phase is '{get_phase(context.order)}',"
-                f" skipping as it is not '{PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION.value}'"
+                "%s - Skipping - Current phase is '%s', skipping as it is not '%s'",
+                context.order_id,
+                get_phase(context.order),
+                PhasesEnum.TRANSFER_ACCOUNT_WITH_ORGANIZATION.value,
             )
             next_step(client, context)
             return
 
         if not context.mpa_account:
             logger.info(
-                f"{context.order_id} - Action - MPA account is not set in context. "
-                f"Setting to {context.order_master_payer_id}"
+                "%s - Action - MPA account is not set in context. Setting to %s",
+                context.order_id,
+                context.order_master_payer_id,
             )
             setup_agreement_external_id(client, context, context.order_master_payer_id)
         try:
@@ -265,19 +287,21 @@ class AssignTransferMPAStep(Step):
             self.validate_mpa_credentials(context)
             context.order = set_phase(context.order, PhasesEnum.PRECONFIGURATION_MPA.value)
             logger.info(
-                f"{context.order_id} - Action - Update phase to "
-                f"{PhasesEnum.CREATE_SUBSCRIPTIONS.value}"
+                "%s - Action - Update phase to %s",
+                context.order_id,
+                PhasesEnum.CREATE_SUBSCRIPTIONS.value,
             )
             update_order(client, context.order_id, parameters=context.order["parameters"])
             logger.info(
-                f"{context.order_id} - Next - Validated Linked MPA account done."
-                f" Proceeding to next step"
+                "%s - Next - Validated Linked MPA account done. Proceeding to next step",
+                context.order_id,
             )
             next_step(client, context)
         except AWSError as e:
             logger.exception(
-                f"{context.order_id} - Error- Failed to retrieve MPA credentials for "
-                f"{context.mpa_account}: {e}"
+                "%s - Error- Failed to retrieve MPA credentials for %s.",
+                context.order_id,
+                context.mpa_account,
             )
             credentials_error = str(e)
             title = (

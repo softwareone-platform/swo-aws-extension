@@ -3,6 +3,7 @@ import json
 from mpt_extension_sdk.core.events.dataclasses import Event
 from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 
+from swo_aws_extension.constants import HTTP_STATUS_BAD_REQUEST, HTTP_STATUS_OK
 from swo_aws_extension.extension import (
     ext,
     jwt_secret_callback,
@@ -55,7 +56,7 @@ def test_process_order_validation(client, mocker, order_factory, jwt_token, webh
         },
         data=json.dumps(order),
     )
-    assert resp.status_code == 200
+    assert resp.status_code == HTTP_STATUS_OK
     assert resp.json() == order
     context = InitialAWSContext.from_order_data(order)
     m_validate.assert_called_once_with(mocker.ANY, context)
@@ -79,7 +80,7 @@ def test_process_order_validation_error(client, mocker, jwt_token, webhook):
         },
         data={"whatever": "order"},
     )
-    assert resp.status_code == 400
+    assert resp.status_code == HTTP_STATUS_BAD_REQUEST
     assert resp.json() == {
         "id": "AWS001",
         "message": "Unexpected error during validation: A super duper error.",

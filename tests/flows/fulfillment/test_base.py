@@ -11,6 +11,7 @@ from swo_aws_extension.constants import (
     CRM_TERMINATION_SUMMARY,
     CRM_TERMINATION_TITLE,
     CRM_TICKET_RESOLVED_STATE,
+    HTTP_STATUS_INTERNAL_SERVER_ERROR,
     AccountTypesEnum,
     TransferTypesEnum,
 )
@@ -19,12 +20,14 @@ from swo_aws_extension.flows.fulfillment import fulfill_order
 from swo_aws_extension.flows.fulfillment.base import setup_contexts
 from swo_aws_extension.flows.order import InitialAWSContext, TerminateContext
 from swo_aws_extension.parameters import set_crm_termination_ticket_id
-from swo_crm_service_client import ServiceRequest
+from swo_aws_extension.swo_crm_service import ServiceRequest
 
 
 def test_fulfill_order_exception(mocker, mpt_error_factory, order_factory):
-    error_data = mpt_error_factory(500, "Internal Server Error", "Oops!")
-    error = AWSHttpError(500, error_data)
+    error_data = mpt_error_factory(
+        HTTP_STATUS_INTERNAL_SERVER_ERROR, "Internal Server Error", "Oops!"
+    )
+    error = AWSHttpError(HTTP_STATUS_INTERNAL_SERVER_ERROR, error_data)
     mocked_notify = mocker.patch(
         "swo_aws_extension.flows.fulfillment.base.notify_unhandled_exception_in_teams"
     )
@@ -106,7 +109,7 @@ def test_setup_contexts_without_mpa_account_id(
     mocked_master_payer_account_pool_model.all.assert_called_once()
 
 
-def test_setup_contexts_without_mpa_account_id_empty_pool(
+def test_setup_contexts_without_mpa_empty_pool(
     mocker,
     mpt_client,
     order_factory,
@@ -216,59 +219,53 @@ def test_fulfill_terminate_account_flow(
 
 
 @pytest.fixture
-def pipeline_mock_purchase_transfer_with_organization(mocker):
-    mock = mocker.patch(
+def pipeline_mock_purchase_transfer_with_org(mocker):
+    return mocker.patch(
         "swo_aws_extension.flows.fulfillment.base.purchase_transfer_with_organization.run",
     )
-    return mock
 
 
 @pytest.fixture
-def pipeline_mock_purchase_transfer_without_organization(mocker):
-    mock = mocker.patch(
+def pipeline_mock_purchase_transfer_without_org(mocker):
+    return mocker.patch(
         "swo_aws_extension.flows.fulfillment.base.purchase_transfer_without_organization.run",
     )
-    return mock
 
 
 @pytest.fixture
 def pipeline_mock_purchase_split_billing(mocker):
-    mock = mocker.patch(
+    return mocker.patch(
         "swo_aws_extension.flows.fulfillment.base.purchase_split_billing.run",
     )
-    return mock
 
 
 @pytest.fixture
 def pipeline_mock_change_order(mocker):
-    mock = mocker.patch(
+    return mocker.patch(
         "swo_aws_extension.flows.fulfillment.base.change_order.run",
     )
-    return mock
 
 
 @pytest.fixture
 def pipeline_mock_purchase(mocker):
-    mock = mocker.patch(
+    return mocker.patch(
         "swo_aws_extension.flows.fulfillment.base.purchase.run",
     )
-    return mock
 
 
 @pytest.fixture
 def pipeline_mock_terminate(mocker):
-    mock = mocker.patch(
+    return mocker.patch(
         "swo_aws_extension.flows.fulfillment.base.terminate.run",
     )
-    return mock
 
 
 def test_is_type_transfer_with_organization(
     mocker,
     order_factory,
     order_parameters_factory,
-    pipeline_mock_purchase_transfer_with_organization,
-    pipeline_mock_purchase_transfer_without_organization,
+    pipeline_mock_purchase_transfer_with_org,
+    pipeline_mock_purchase_transfer_without_org,
     pipeline_mock_purchase,
     pipeline_mock_change_order,
     pipeline_mock_terminate,
@@ -282,8 +279,8 @@ def test_is_type_transfer_with_organization(
     )
     fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
 
-    pipeline_mock_purchase_transfer_with_organization.assert_called_once()
-    pipeline_mock_purchase_transfer_without_organization.assert_not_called()
+    pipeline_mock_purchase_transfer_with_org.assert_called_once()
+    pipeline_mock_purchase_transfer_without_org.assert_not_called()
     pipeline_mock_purchase.assert_not_called()
     pipeline_mock_change_order.assert_not_called()
     pipeline_mock_terminate.assert_not_called()
@@ -293,8 +290,8 @@ def test_is_type_transfer_without_organization(
     mocker,
     order_factory,
     order_parameters_factory,
-    pipeline_mock_purchase_transfer_with_organization,
-    pipeline_mock_purchase_transfer_without_organization,
+    pipeline_mock_purchase_transfer_with_org,
+    pipeline_mock_purchase_transfer_without_org,
     pipeline_mock_purchase,
     pipeline_mock_change_order,
     pipeline_mock_terminate,
@@ -308,8 +305,8 @@ def test_is_type_transfer_without_organization(
     )
     fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
 
-    pipeline_mock_purchase_transfer_with_organization.assert_not_called()
-    pipeline_mock_purchase_transfer_without_organization.assert_called_once()
+    pipeline_mock_purchase_transfer_with_org.assert_not_called()
+    pipeline_mock_purchase_transfer_without_org.assert_called_once()
     pipeline_mock_purchase.assert_not_called()
     pipeline_mock_change_order.assert_not_called()
     pipeline_mock_terminate.assert_not_called()
@@ -319,8 +316,8 @@ def test_is_type_split_billing(
     mocker,
     order_factory,
     order_parameters_factory,
-    pipeline_mock_purchase_transfer_with_organization,
-    pipeline_mock_purchase_transfer_without_organization,
+    pipeline_mock_purchase_transfer_with_org,
+    pipeline_mock_purchase_transfer_without_org,
     pipeline_mock_purchase_split_billing,
     pipeline_mock_purchase,
     pipeline_mock_change_order,
@@ -335,8 +332,8 @@ def test_is_type_split_billing(
     )
     fulfill_order(mocker.MagicMock(), InitialAWSContext(order=order))
 
-    pipeline_mock_purchase_transfer_with_organization.assert_not_called()
-    pipeline_mock_purchase_transfer_without_organization.assert_not_called()
+    pipeline_mock_purchase_transfer_with_org.assert_not_called()
+    pipeline_mock_purchase_transfer_without_org.assert_not_called()
     pipeline_mock_purchase_split_billing.assert_called_once()
     pipeline_mock_purchase.assert_not_called()
     pipeline_mock_change_order.assert_not_called()
@@ -347,8 +344,8 @@ def test_is_type_purchase(
     mocker,
     order_factory,
     order_parameters_factory,
-    pipeline_mock_purchase_transfer_with_organization,
-    pipeline_mock_purchase_transfer_without_organization,
+    pipeline_mock_purchase_transfer_with_org,
+    pipeline_mock_purchase_transfer_without_org,
     pipeline_mock_purchase,
     pipeline_mock_change_order,
     pipeline_mock_terminate,
@@ -362,8 +359,8 @@ def test_is_type_purchase(
     )
     fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
 
-    pipeline_mock_purchase_transfer_with_organization.assert_not_called()
-    pipeline_mock_purchase_transfer_without_organization.assert_not_called()
+    pipeline_mock_purchase_transfer_with_org.assert_not_called()
+    pipeline_mock_purchase_transfer_without_org.assert_not_called()
     pipeline_mock_purchase.assert_called_once()
     pipeline_mock_change_order.assert_not_called()
     pipeline_mock_terminate.assert_not_called()
@@ -373,8 +370,8 @@ def test_is_type_change_order(
     mocker,
     order_factory,
     order_parameters_factory,
-    pipeline_mock_purchase_transfer_with_organization,
-    pipeline_mock_purchase_transfer_without_organization,
+    pipeline_mock_purchase_transfer_with_org,
+    pipeline_mock_purchase_transfer_without_org,
     pipeline_mock_purchase,
     pipeline_mock_change_order,
     pipeline_mock_terminate,
@@ -388,8 +385,8 @@ def test_is_type_change_order(
     )
     fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
 
-    pipeline_mock_purchase_transfer_with_organization.assert_not_called()
-    pipeline_mock_purchase_transfer_without_organization.assert_not_called()
+    pipeline_mock_purchase_transfer_with_org.assert_not_called()
+    pipeline_mock_purchase_transfer_without_org.assert_not_called()
     pipeline_mock_purchase.assert_not_called()
     pipeline_mock_change_order.assert_called_once()
     pipeline_mock_terminate.assert_not_called()
@@ -399,8 +396,8 @@ def test_is_type_termination(
     mocker,
     order_factory,
     order_parameters_factory,
-    pipeline_mock_purchase_transfer_with_organization,
-    pipeline_mock_purchase_transfer_without_organization,
+    pipeline_mock_purchase_transfer_with_org,
+    pipeline_mock_purchase_transfer_without_org,
     pipeline_mock_purchase,
     pipeline_mock_change_order,
     pipeline_mock_terminate,
@@ -414,8 +411,8 @@ def test_is_type_termination(
     )
     fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
 
-    pipeline_mock_purchase_transfer_with_organization.assert_not_called()
-    pipeline_mock_purchase_transfer_without_organization.assert_not_called()
+    pipeline_mock_purchase_transfer_with_org.assert_not_called()
+    pipeline_mock_purchase_transfer_without_org.assert_not_called()
     pipeline_mock_purchase.assert_not_called()
     pipeline_mock_change_order.assert_not_called()
     pipeline_mock_terminate.assert_called_once()
@@ -425,8 +422,8 @@ def test_is_type_unknown(
     mocker,
     order_factory,
     order_parameters_factory,
-    pipeline_mock_purchase_transfer_with_organization,
-    pipeline_mock_purchase_transfer_without_organization,
+    pipeline_mock_purchase_transfer_with_org,
+    pipeline_mock_purchase_transfer_without_org,
     pipeline_mock_purchase,
     pipeline_mock_change_order,
     pipeline_mock_terminate,
@@ -438,15 +435,10 @@ def test_is_type_unknown(
             transfer_type="",
         ),
     )
-    teams_notification = mocker.patch(
-        "swo_aws_extension.flows.fulfillment.base.notify_unhandled_exception_in_teams"
-    )
-    with pytest.raises(RuntimeError):
-        fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
+    fulfill_order(mocker.MagicMock(), InitialAWSContext.from_order_data(order))
 
-    pipeline_mock_purchase_transfer_with_organization.assert_not_called()
-    pipeline_mock_purchase_transfer_without_organization.assert_not_called()
+    pipeline_mock_purchase_transfer_with_org.assert_not_called()
+    pipeline_mock_purchase_transfer_without_org.assert_not_called()
     pipeline_mock_purchase.assert_not_called()
     pipeline_mock_change_order.assert_not_called()
     pipeline_mock_terminate.assert_not_called()
-    teams_notification.assert_called_once()

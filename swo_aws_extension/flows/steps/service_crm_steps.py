@@ -10,7 +10,7 @@ from swo_aws_extension.constants import (
     CRM_KEEPER_SUMMARY,
     CRM_KEEPER_TITLE,
     CRM_NEW_ACCOUNT_ADDITIONAL_INFO,
-    CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_ADDITIONAL_INFO,
+    CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_ADDITIONAL,
     CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_SUMMARY,
     CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_TITLE,
     CRM_NEW_ACCOUNT_SUMMARY,
@@ -19,7 +19,7 @@ from swo_aws_extension.constants import (
     CRM_TERMINATION_SUMMARY,
     CRM_TERMINATION_TITLE,
     CRM_TICKET_RESOLVED_STATE,
-    CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL_INFO,
+    CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL,
     CRM_TRANSFER_WITH_ORGANIZATION_SUMMARY,
     CRM_TRANSFER_WITH_ORGANIZATION_TITLE,
     OrderProcessingTemplateEnum,
@@ -40,27 +40,32 @@ from swo_aws_extension.parameters import (
     set_crm_termination_ticket_id,
     set_crm_transfer_organization_ticket_id,
 )
-from swo_crm_service_client import ServiceRequest
-from swo_crm_service_client.client import get_service_client
+from swo_aws_extension.swo_crm_service import ServiceRequest
+from swo_aws_extension.swo_crm_service.client import get_service_client
 
 logger = logging.getLogger(__name__)
 
 
 class AwaitCRMTicketStatusStep(Step):
+    """Await for a CRM ticket to reach any of the target status before proceeding."""
+
     def __init__(
         self,
         get_ticket_id: callable(InitialAWSContext),
-        target_status=None,
-        skip_if_no_ticket=True,
+        target_status: str | list[str] | None = None,
+        *,
+        skip_if_no_ticket: bool = True,
     ):
         """
-        Await for a CRM ticket to reach any of the target status before proceeding.
-        :param get_ticket_id: Callable[[CloseAccountContext], str|None] - Get ticket ID from context
-        :param target_status: Optional[str | List[str]]
-            Example: ["Completed", "Closed"] Default: [CRM_TICKET_RESOLVED_STATE]
-        :param skip_if_no_ticket: bool - Skip if no ticket ID is found
+        Initialize CRM ticket step.
 
-        :raise ValueError: If ticket ID is required and not found
+        Args:
+            get_ticket_id: get ticket ID from context
+            target_status: status to switch to, default [CRM_TICKET_RESOLVED_STATE]
+            skip_if_no_ticket: Skip if no ticket ID is found
+
+        Raises:
+            ValueError: If ticket ID is required and not found
         """
         self.get_ticket_id = get_ticket_id
         target_status = target_status or [CRM_TICKET_RESOLVED_STATE]
@@ -69,12 +74,8 @@ class AwaitCRMTicketStatusStep(Step):
         self.target_status = target_status
         self.skip_if_no_ticket = skip_if_no_ticket
 
-    def __call__(
-        self,
-        client: MPTClient,
-        context: InitialAWSContext,
-        next_step: NextStep,
-    ) -> None:
+    def __call__(self, client: MPTClient, context: InitialAWSContext, next_step: NextStep) -> None:
+        """Execute step."""
         ticket_id = self.get_ticket_id(context)
         if not ticket_id and not self.skip_if_no_ticket:
             raise ValueError("Ticket ID is required.")
@@ -85,36 +86,39 @@ class AwaitCRMTicketStatusStep(Step):
         ticket = crm_service_client.get_service_requests(context.order_id, ticket_id)
         if ticket["state"] not in self.target_status:
             logger.info(
-                f"{context.order_id} - Stopping - Awaiting for ticket_id={ticket_id} "
-                f"to move from state={ticket['state']} to any of {self.target_status}"
+                "%s - Stopping - Awaiting for ticket_id=%s to move from state=%s to any of %s",
+                context.order_id,
+                ticket_id,
+                ticket["state"],
+                self.target_status,
             )
             return
         next_step(client, context)
 
 
 class CreateServiceRequestStep(Step):
+    """Create CRM ticket request."""
+
     def __init__(
         self,
         service_request_factory: Callable[[InitialAWSContext], ServiceRequest],
         ticket_id_saver: Callable[[MPTClient, InitialAWSContext, str], None],
-        criteria: Callable[[InitialAWSContext], bool] = None,
+        criteria: Callable[[InitialAWSContext], bool] | None = None,
     ):
         self.service_request_factory = service_request_factory
         self.ticket_id_saver = ticket_id_saver
-        self.criteria = criteria or (lambda context: True)
-
-    def meets_criteria(self, context):
-        return self.criteria(context)
+        self.criteria = criteria or (lambda _: True)
 
     def __call__(
         self,
         client: MPTClient,
-        context,
+        context: InitialAWSContext,
         next_step: NextStep,
     ) -> None:
-        if not self.meets_criteria(context):
+        """Execute step."""
+        if not self.criteria(context):
             logger.info(
-                f"{context.order_id} - Skipping - Criteria not met to Create a Service ticket."
+                "%s - Skipping - Criteria not met to Create a Service ticket.", context.order_id
             )
             next_step(client, context)
             return
@@ -127,16 +131,23 @@ class CreateServiceRequestStep(Step):
 
 
 class CreateTerminationServiceRequestStep(CreateServiceRequestStep):
-    @staticmethod
-    def should_create_ticket_criteria(context: InitialAWSContext) -> bool:
-        """
-        :param context:
-        :return:
-        """
+    """Create CRM ticket for Termination order."""
+
+    def __init__(self):
+        # TODO: what's the point to pass functions via constructor if you are already
+        # has inheritance? Just override them here
+        super().__init__(
+            service_request_factory=self.build_service_request,
+            ticket_id_saver=self.save_ticket,
+            criteria=self.should_create_ticket_criteria,
+        )
+
+    def should_create_ticket_criteria(self, context: InitialAWSContext) -> bool:
+        """Should ticket be created."""
         return not get_crm_termination_ticket_id(context.order)
 
-    @staticmethod
-    def build_service_request(context) -> ServiceRequest:
+    def build_service_request(self, context: InitialAWSContext) -> ServiceRequest:
+        """Build CRM service request to send."""
         if not context.mpa_account:
             raise RuntimeError(
                 "Unable to create a service request ticket for an order missing an "
@@ -157,29 +168,21 @@ class CreateTerminationServiceRequestStep(CreateServiceRequestStep):
             summary=summary,
         )
 
-    @staticmethod
-    def save_ticket(client, context, crm_ticket_id):
+    def save_ticket(self, client: MPTClient, context: InitialAWSContext, crm_ticket_id: str):
+        """Savet ticket to the CRM system."""
         if not crm_ticket_id:
             raise ValueError("Updating crm service ticket id - Ticket id is required.")
         logger.info(
-            f"{context.order_id} - Action - Ticket created for terminate account "
-            f"with id={crm_ticket_id}"
+            "%s - Action - Ticket created for terminate account with id=%s",
+            context.order_id,
+            crm_ticket_id,
         )
         context.order = set_crm_termination_ticket_id(context.order, crm_ticket_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])
 
-    def __init__(self):
-        super().__init__(
-            service_request_factory=self.build_service_request,
-            ticket_id_saver=self.save_ticket,
-            criteria=self.should_create_ticket_criteria,
-        )
-
 
 class AwaitTerminationServiceRequestStep(AwaitCRMTicketStatusStep):
-    @staticmethod
-    def get_crm_ticket(context: InitialAWSContext):
-        return get_crm_termination_ticket_id(context.order)
+    """Wait for CRM service request."""
 
     def __init__(self):
         super().__init__(
@@ -188,56 +191,13 @@ class AwaitTerminationServiceRequestStep(AwaitCRMTicketStatusStep):
             skip_if_no_ticket=True,
         )
 
+    def get_crm_ticket(self, context: InitialAWSContext) -> str:
+        """Returns CRM ticket by id."""
+        return get_crm_termination_ticket_id(context.order)
 
-class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
-    @staticmethod
-    def build_service_request(context: PurchaseContext):
-        email_address = context.buyer.get("contact", {}).get("email")
-        master_payer_id = get_master_payer_id(context.order)
-        if not master_payer_id:
-            raise ValueError(
-                f"Unable to create a transfer service request ticket for order={context.order_id}. "
-                f"Reason: Missing master payer id."
-            )
 
-        return ServiceRequest(
-            additional_info=CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL_INFO,
-            title=CRM_TRANSFER_WITH_ORGANIZATION_TITLE.format(
-                master_payer_id=master_payer_id, email_address=email_address
-            ),
-            summary=CRM_TRANSFER_WITH_ORGANIZATION_SUMMARY.format(
-                master_payer_id=master_payer_id,
-                email_address=email_address,
-                order_id=context.order_id,
-            ),
-        )
-
-    @staticmethod
-    def save_ticket(client, context, crm_ticket_id):
-        if not crm_ticket_id:
-            raise ValueError("Updating crm service ticket id - Ticket id is required.")
-        logger.info(
-            f"{context.order_id} - Action - Ticket created for transfer organization "
-            f"with id={crm_ticket_id}"
-        )
-        context.order = set_crm_transfer_organization_ticket_id(context.order, crm_ticket_id)
-        context.update_processing_template(
-            client,
-            OrderProcessingTemplateEnum.TRANSFER_WITH_ORG_TICKET_CREATED,
-        )
-        logger.info(
-            f"{context.order_id} - Action - Created transfer service request ticket with "
-            f"id={crm_ticket_id}"
-        )
-
-    @staticmethod
-    def should_create_ticket_criteria(context):
-        """
-        :param context:
-        :return:
-        """
-        has_ticket = bool(get_crm_transfer_organization_ticket_id(context.order))
-        return not has_ticket and context.is_type_transfer_with_organization()
+class RequestTransferWithOrgStep(CreateServiceRequestStep):
+    """Create transfer request ticket for CRM system (without organization)."""
 
     def __init__(self):
         super().__init__(
@@ -246,18 +206,69 @@ class CreateTransferRequestTicketWithOrganizationStep(CreateServiceRequestStep):
             criteria=self.should_create_ticket_criteria,
         )
 
+    def build_service_request(self, context: PurchaseContext) -> ServiceRequest:
+        """Build CRM service request."""
+        master_payer_id = get_master_payer_id(context.order)
+        if not master_payer_id:
+            raise ValueError(
+                f"Unable to create a transfer service request ticket for order={context.order_id}. "
+                f"Reason: Missing master payer id."
+            )
+        buyer_external_id = context.buyer.get("externalIds", {}).get("erpCustomer", "")
+        return ServiceRequest(
+            additional_info=CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL,
+            title=CRM_TRANSFER_WITH_ORGANIZATION_TITLE.format(
+                master_payer_id=master_payer_id, buyer_external_id=buyer_external_id
+            ),
+            summary=CRM_TRANSFER_WITH_ORGANIZATION_SUMMARY.format(
+                master_payer_id=master_payer_id,
+                buyer_external_id=buyer_external_id,
+                order_id=context.order_id,
+            ),
+        )
+
+    def save_ticket(self, client: MPTClient, context: PurchaseContext, crm_ticket_id: str):
+        """Save ticket to the CRM system."""
+        if not crm_ticket_id:
+            raise ValueError("Updating crm service ticket id - Ticket id is required.")
+        logger.info(
+            "%s - Action - Ticket created for transfer organization with id=%s",
+            context.order_id,
+            crm_ticket_id,
+        )
+        context.order = set_crm_transfer_organization_ticket_id(context.order, crm_ticket_id)
+        context.update_processing_template(
+            client,
+            OrderProcessingTemplateEnum.TRANSFER_WITH_ORG_TICKET_CREATED,
+        )
+        logger.info(
+            "%s - Action - Created transfer service request ticket with id=%s",
+            context.order_id,
+            crm_ticket_id,
+        )
+
+    def should_create_ticket_criteria(self, context: PurchaseContext) -> bool:
+        """Criteria if ticket should be created."""
+        has_ticket = bool(get_crm_transfer_organization_ticket_id(context.order))
+        return not has_ticket and context.is_type_transfer_with_organization()
+
 
 class CreateUpdateKeeperTicketStep(CreateServiceRequestStep):
-    @staticmethod
-    def should_create_ticket_criteria(context: InitialAWSContext) -> bool:
-        """
-        :param context:
-        :return:
-        """
+    """Create ticket to CRM to update Keeper."""
+
+    def __init__(self):
+        super().__init__(
+            service_request_factory=self.build_service_request,
+            ticket_id_saver=self.save_ticket,
+            criteria=self.should_create_ticket_criteria,
+        )
+
+    def should_create_ticket_criteria(self, context: InitialAWSContext) -> bool:
+        """Criteria if the ticket should be created."""
         return not get_crm_keeper_ticket_id(context.order)
 
-    @staticmethod
-    def build_service_request(context: PurchaseContext) -> ServiceRequest:
+    def build_service_request(self, context: PurchaseContext) -> ServiceRequest:
+        """Build service request for CRM."""
         if not context.airtable_mpa:
             raise RuntimeError(
                 "Unable to create a service request ticket for an order missing airtable_mpa"
@@ -279,16 +290,21 @@ class CreateUpdateKeeperTicketStep(CreateServiceRequestStep):
             ),
         )
 
-    @staticmethod
-    def save_ticket(client, context, crm_ticket_id):
+    def save_ticket(self, client: MPTClient, context: PurchaseContext, crm_ticket_id: str):
+        """Save ticket to the CRM system."""
         if not crm_ticket_id:
             raise ValueError("Ticket id is required.")
         logger.info(
-            f"{context.order_id} - Action - Ticket created for keeper shared credentials "
-            f"with id={crm_ticket_id}"
+            "%s - Action - Ticket created for keeper shared credentials with id=%s",
+            context.order_id,
+            crm_ticket_id,
         )
         context.order = set_crm_keeper_ticket_id(context.order, crm_ticket_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])
+
+
+class CreateOnboardTicketStep(CreateServiceRequestStep):
+    """Create onboard ticket."""
 
     def __init__(self):
         super().__init__(
@@ -297,18 +313,12 @@ class CreateUpdateKeeperTicketStep(CreateServiceRequestStep):
             criteria=self.should_create_ticket_criteria,
         )
 
-
-class CreateOnboardTicketStep(CreateServiceRequestStep):
-    @staticmethod
-    def should_create_ticket_criteria(context: InitialAWSContext) -> bool:
-        """
-        :param context:
-        :return:
-        """
+    def should_create_ticket_criteria(self, context: InitialAWSContext) -> bool:
+        """Criteria if ticket should be created."""
         return not get_crm_onboard_ticket_id(context.order)
 
-    @staticmethod
-    def build_service_request(context: PurchaseContext) -> ServiceRequest:
+    def build_service_request(self, context: PurchaseContext) -> ServiceRequest:
+        """Build service request."""
         if not context.airtable_mpa:
             raise RuntimeError(
                 "Unable to create a service request ticket for an order missing airtable_mpa"
@@ -316,7 +326,7 @@ class CreateOnboardTicketStep(CreateServiceRequestStep):
         ccp_ticket_id = get_crm_ccp_ticket_id(context.order)
         if ccp_ticket_id:
             title = CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_TITLE
-            additional_info = CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_ADDITIONAL_INFO
+            additional_info = CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_ADDITIONAL
             summary = CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_SUMMARY.format(
                 customer_name=context.airtable_mpa.account_name,
                 buyer_external_id=context.airtable_mpa.buyer_id,
@@ -335,29 +345,21 @@ class CreateOnboardTicketStep(CreateServiceRequestStep):
             )
         return ServiceRequest(additional_info=additional_info, title=title, summary=summary)
 
-    @staticmethod
-    def save_ticket(client, context, crm_ticket_id):
+    def save_ticket(self, client: MPTClient, context: PurchaseContext, crm_ticket_id: str):
+        """Save ticket to the CRM system."""
         if not crm_ticket_id:
             raise ValueError("Ticket id is required.")
         logger.info(
-            f"{context.order_id} - Action - Ticket created for onboard account "
-            f"with id={crm_ticket_id}"
+            "%s - Action - Ticket created for onboard account with id=%s",
+            context.order_id,
+            crm_ticket_id,
         )
         context.order = set_crm_onboard_ticket_id(context.order, crm_ticket_id)
         update_order(client, context.order_id, parameters=context.order["parameters"])
 
-    def __init__(self):
-        super().__init__(
-            service_request_factory=self.build_service_request,
-            ticket_id_saver=self.save_ticket,
-            criteria=self.should_create_ticket_criteria,
-        )
 
-
-class AwaitTransferRequestTicketWithOrganizationStep(AwaitCRMTicketStatusStep):
-    @staticmethod
-    def get_crm_ticket(context: InitialAWSContext):
-        return get_crm_transfer_organization_ticket_id(context.order)
+class AwaitTransferWithOrgStep(AwaitCRMTicketStatusStep):
+    """Wait for CRM transfer request be completed."""
 
     def __init__(self):
         super().__init__(
@@ -365,3 +367,7 @@ class AwaitTransferRequestTicketWithOrganizationStep(AwaitCRMTicketStatusStep):
             target_status=CRM_TICKET_RESOLVED_STATE,
             skip_if_no_ticket=True,
         )
+
+    def get_crm_ticket(self, context: InitialAWSContext) -> str:
+        """Returns transfer CRM ticket id."""
+        return get_crm_transfer_organization_ticket_id(context.order)

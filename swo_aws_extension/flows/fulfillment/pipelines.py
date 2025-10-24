@@ -9,7 +9,7 @@ from swo_aws_extension.flows.steps import (
     AssignTransferMPAStep,
     AwaitInvitationLinksStep,
     AwaitTerminationServiceRequestStep,
-    AwaitTransferRequestTicketWithOrganizationStep,
+    AwaitTransferWithOrgStep,
     CompleteChangeOrderStep,
     CompletePurchaseOrderStep,
     CompleteTerminationOrderStep,
@@ -19,18 +19,18 @@ from swo_aws_extension.flows.steps import (
     CreateInitialLinkedAccountStep,
     CreateSubscription,
     CreateTerminationServiceRequestStep,
-    CreateTransferRequestTicketWithOrganizationStep,
     CreateUpdateKeeperTicketStep,
     DeleteFinOpsEntitlementsStep,
     MPAPreConfiguration,
+    RequestTransferWithOrgStep,
     SendInvitationLinksStep,
     SetupChangeContext,
-    SetupContextPurchaseTransferWithOrganizationStep,
-    SetupContextPurchaseTransferWithoutOrganizationStep,
+    SetupContextPurchaseTransferWithOrgStep,
+    SetupContextPurchaseTransferWithoutOrgStep,
     SetupPurchaseContext,
     SetupTerminateContextStep,
     SynchronizeAgreementSubscriptionsStep,
-    ValidatePurchaseTransferWithoutOrganizationStep,
+    ValidatePurchaseTransferWithoutOrgStep,
 )
 from swo_aws_extension.flows.steps.ccp_onboard import CCPOnboard
 from swo_aws_extension.flows.steps.register_transfered_mpa_airtable import (
@@ -65,9 +65,9 @@ purchase_split_billing = Pipeline(
 )
 
 purchase_transfer_with_organization = Pipeline(
-    SetupContextPurchaseTransferWithOrganizationStep(config, SWO_EXTENSION_MANAGEMENT_ROLE),
-    CreateTransferRequestTicketWithOrganizationStep(),
-    AwaitTransferRequestTicketWithOrganizationStep(),
+    SetupContextPurchaseTransferWithOrgStep(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    RequestTransferWithOrgStep(),
+    AwaitTransferWithOrgStep(),
     AssignTransferMPAStep(config, SWO_EXTENSION_MANAGEMENT_ROLE),
     MPAPreConfiguration(),
     RegisterTransferredMPAToAirtableStep(),
@@ -81,8 +81,8 @@ purchase_transfer_with_organization = Pipeline(
 )
 
 purchase_transfer_without_organization = Pipeline(
-    ValidatePurchaseTransferWithoutOrganizationStep(),
-    SetupContextPurchaseTransferWithoutOrganizationStep(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    ValidatePurchaseTransferWithoutOrgStep(),
+    SetupContextPurchaseTransferWithoutOrgStep(config, SWO_EXTENSION_MANAGEMENT_ROLE),
     AssignMPA(config, SWO_EXTENSION_MANAGEMENT_ROLE),
     MPAPreConfiguration(),
     SendInvitationLinksStep(),

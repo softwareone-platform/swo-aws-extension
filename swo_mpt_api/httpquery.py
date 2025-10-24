@@ -1,11 +1,11 @@
-from typing import Annotated, Generic, Self, TypeVar
+from typing import Annotated, Self
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
-T = TypeVar("T")
 
+class HttpQuery[T]:
+    """MPT API Query wrapper."""
 
-class HttpQuery(Generic[T]):
     def __init__(self, client: MPTClient, url: str, query=None):
         self._client = client
         self._url = url
@@ -28,23 +28,27 @@ class HttpQuery(Generic[T]):
         return items
 
     def all(self) -> list[T]:
+        """Paginate over all entries and return whole list from the API."""
         return self._paginated()
 
     def one(self) -> T:
+        """Get only one entry from the API."""
         response_data = self._call(self._url)
         if len(response_data.get("data")) != 1:
             raise ValueError(f"Expected 1 item, got {len(response_data.get('data', []))}")
         return response_data.get("data", [])[0]
 
     def first(self) -> T:
+        """Get first entry from the API."""
         response_data = self._call(self._url)
         return response_data.get("data", [])[0]
 
     def page(self, offset=0, limit=10) -> dict:
-        response_data = self._call(f"offset={offset}&limit={limit}")
-        return response_data
+        """Retrieve particular page from the MPT API."""
+        return self._call(f"offset={offset}&limit={limit}")
 
     def query(self, query: Annotated[str, None, "Query in RQL format"]) -> Self:
+        """Apply RQL query to the HTTP query."""
         if self._query and query:
             query = f"{self._query}&{query}"
         elif self._query or query:
@@ -64,5 +68,4 @@ class HttpQuery(Generic[T]):
         else:
             response = self._client.get(url)
         response.raise_for_status()
-        response_data = response.json()
-        return response_data
+        return response.json()

@@ -22,22 +22,26 @@ from swo_aws_extension.parameters import (
     set_crm_ccp_ticket_id,
     set_phase,
 )
-from swo_ccp_client.client import CCPClient
-from swo_crm_service_client import ServiceRequest
-from swo_crm_service_client.client import get_service_client
+from swo_aws_extension.swo_ccp.client import CCPClient
+from swo_aws_extension.swo_crm_service import ServiceRequest
+from swo_aws_extension.swo_crm_service.client import get_service_client
 
 logger = logging.getLogger(__name__)
 
 
 class CCPOnboard(Step):
+    """Onboard account for CCP."""
+
     def __init__(self, config):
         self.config = config
 
     def __call__(self, mpt_client: MPTClient, context: PurchaseContext, next_step):
+        """Execute step."""
         if get_phase(context.order) != PhasesEnum.CCP_ONBOARD:
             logger.info(
-                f"Current phase is '{get_phase(context.order)}', "
-                f"skipping as it is not '{PhasesEnum.CCP_ONBOARD.value}'"
+                "Current phase is '%s', skipping as it is not '%s'",
+                get_phase(context.order),
+                PhasesEnum.CCP_ONBOARD.value,
             )
             next_step(mpt_client, context)
             return
@@ -49,11 +53,11 @@ class CCPOnboard(Step):
             else:
                 self._onboard_customer(mpt_client, ccp_client, context)
         except HTTPError as e:
-            logger.error(f"HTTP error occurred: CCP - {str(e)}")
+            logger.exception("HTTP error occurred: CCP Error.")
             title = f"CCP onboard failed: {context.ccp_engagement_id} "
             message = (
                 f"CCP onboard for order {context.order_id} with engagement id"
-                f" {context.ccp_engagement_id} is failing with error: {str(e)}"
+                f" {context.ccp_engagement_id} is failing with error: {e}"
             )
             send_error(title, message)
 
@@ -69,15 +73,16 @@ class CCPOnboard(Step):
 
         """
         logger.info(
-            f"{context.order_id} - Action - Checking CCP onboarding status for "
-            f"ccp_engagement_id={context.ccp_engagement_id}"
+            "%s - Action - Checking CCP onboarding status for ccp_engagement_id=%s",
+            context.order_id,
+            context.ccp_engagement_id,
         )
 
         onboard_status = ccp_client.get_onboard_status(context.ccp_engagement_id)
-        logger.info(f"CCP Onboarding status: {onboard_status}")
+        logger.info("CCP Onboarding status: %s", onboard_status)
 
         if onboard_status["engagementState"] == CCPOnboardStatusEnum.RUNNING:
-            logger.info(f"{context.order_id} - Stop - CCP Onboarding is still in progress.")
+            logger.info("%s - Stop - CCP Onboarding is still in progress.", context.order_id)
             return
         if onboard_status["engagementState"] == CCPOnboardStatusEnum.SUCCEEDED:
             context.order = set_phase(context.order, PhasesEnum.COMPLETED.value)
@@ -85,12 +90,13 @@ class CCPOnboard(Step):
                 mpt_client, context.order_id, parameters=context.order["parameters"]
             )
 
-            logger.info(f"{context.order_id} - Next - CCP Onboarding completed successfully.")
+            logger.info("%s - Next - CCP Onboarding completed successfully.", context.order_id)
             next_step(mpt_client, context)
             return
         logger.info(
-            f"{context.order_id} - CCP Onboarding is in status {onboard_status['engagementState']}."
-            f" Notify the failure and continue"
+            "%s - CCP Onboarding is in status %s. Notify the failure and continue",
+            context.order_id,
+            onboard_status["engagementState"],
         )
         self._notify_ccp_onboard_failure(context, onboard_status)
         context.order = set_phase(context.order, PhasesEnum.COMPLETED.value)
@@ -99,10 +105,10 @@ class CCPOnboard(Step):
         )
         next_step(mpt_client, context)
 
-    @staticmethod
-    def _onboard_customer(mpt_client, ccp_client, context):
+    def _onboard_customer(self, mpt_client, ccp_client, context):
         """
         Onboard a customer using the CCP API.
+
         Args:
             mpt_client: MPT client instance.
             ccp_client: CCP client instance.
@@ -123,9 +129,9 @@ class CCPOnboard(Step):
             "featurePLS": ("enabled" if mpa_account.pls_enabled else "disabled"),
         }
         response = ccp_client.onboard_customer(customer)
-        engagement = list(filter(lambda x: "engagement" in x, response))[0]
+        engagement = next(iter(filter(lambda x: "engagement" in x, response)))
 
-        logger.info(f"CCP Onboarding engagement: {engagement.get('id', '')}")
+        logger.info("CCP Onboarding engagement: %s", engagement.get("id", ""))
 
         context.order = set_ccp_engagement_id(context.order, engagement.get("id", ""))
         context.order = update_order(
@@ -134,16 +140,17 @@ class CCPOnboard(Step):
 
         logger.info("- Action - CCP Customer created. Waiting for onboarding")
 
-    @staticmethod
-    def _notify_ccp_onboard_failure(context, onboard_status):
+    def _notify_ccp_onboard_failure(self, context, onboard_status):
         """
         Create a fail ticket notification.
+
         Args:
             context: PurchaseContext object containing order details.
+            onboard_status: CCP onboard status.
         """
         ccp_ticket_id = get_crm_ccp_ticket_id(context.order)
         if ccp_ticket_id:
-            logger.info(f"CCP Onboard failure ticket already created ({ccp_ticket_id}). Skip.")
+            logger.info("CCP Onboard failure ticket already created (%s). Skip.", ccp_ticket_id)
             return
 
         crm_client = get_service_client()
@@ -162,6 +169,6 @@ class CCPOnboard(Step):
         ticket = crm_client.create_service_request(context.order_id, service_request)
         context.order = set_crm_ccp_ticket_id(context.order, ticket.get("id", ""))
         logger.info(
-            f"Service request ticket created with id: {ticket.get('id', '')}. Continue purchase"
+            "Service request ticket created with id: %s. Continue purchase", ticket.get("id", "")
         )
         send_error(title, summary)

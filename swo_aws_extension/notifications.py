@@ -1,9 +1,9 @@
+import datetime as dt
 import functools
 import logging
-import os
 from dataclasses import dataclass
-from datetime import datetime
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pymsteams
@@ -26,16 +26,12 @@ logger = logging.getLogger(__name__)
 
 
 def dateformat(date_string):
-    return datetime.fromisoformat(date_string).strftime("%-d %B %Y") if date_string else ""
+    """Formats date for notification format."""
+    return dt.datetime.fromisoformat(date_string).strftime("%-d %B %Y") if date_string else ""
 
 
 env = Environment(
-    loader=FileSystemLoader(
-        os.path.join(
-            os.path.abspath(os.path.dirname(__file__)),
-            "templates",
-        ),
-    ),
+    loader=FileSystemLoader(Path(__file__).resolve().parent / "templates"),
     autoescape=select_autoescape(),
 )
 
@@ -44,14 +40,18 @@ env.filters["dateformat"] = dateformat
 
 @dataclass
 class Button:
+    """MS Teams button."""
+
     label: str
     url: str
 
 
 @dataclass
 class FactsSection:
+    """MS Teams facts section."""
+
     title: str
-    data: dict
+    data: dict  # noqa: WPS110
 
 
 def send_notification(
@@ -61,6 +61,7 @@ def send_notification(
     button: Button | None = None,
     facts: FactsSection | None = None,
 ) -> None:
+    """Sends ms teams notification."""
     message = pymsteams.connectorcard(settings.EXTENSION_CONFIG["MSTEAMS_WEBHOOK_URL"])
     message.color(color)
     message.title(title)
@@ -70,8 +71,8 @@ def send_notification(
     if facts:
         facts_section = pymsteams.cardsection()
         facts_section.title(facts.title)
-        for key, value in facts.data.items():
-            facts_section.addFact(key, value)
+        for key, facts_data in facts.data.items():
+            facts_section.addFact(key, facts_data)
         message.addSection(facts_section)
 
     try:
@@ -86,6 +87,7 @@ def send_warning(
     button: Button | None = None,
     facts: FactsSection | None = None,
 ) -> None:
+    """Sends ms teams warning notification."""
     send_notification(
         f"\u2622 {title}",
         text,
@@ -101,6 +103,7 @@ def send_success(
     button: Button | None = None,
     facts: FactsSection | None = None,
 ) -> None:
+    """Sends ms teams success notifications."""
     send_notification(
         f"\u2705 {title}",
         text,
@@ -116,6 +119,7 @@ def send_error(
     button: Button | None = None,
     facts: FactsSection | None = None,
 ) -> None:
+    """Sends ms teams error notifications."""
     send_notification(
         f"\U0001f4a3 {title}",
         text,
@@ -131,6 +135,7 @@ def send_exception(
     button: Button | None = None,
     facts: FactsSection | None = None,
 ) -> None:
+    """Sends ms teams exception notifications."""
     send_notification(
         f"\U0001f525 {title}",
         text,
@@ -140,14 +145,16 @@ def send_exception(
     )
 
 
-@dataclass
 class MPTNotifier:  # TODO: Consider moving some of the functionality to SDK
-    mpt_client: MPTClient
+    """Email notification using MPT API."""
+
+    def __init__(self, mpt_client: MPTClient):
+        self.mpt_client = mpt_client
 
     def notify_re_order(self, order_context: type["InitialAWSContext"]) -> None:
         """
-        Send an MPT notification to the customer according to the
-        current order status.
+        Send an MPT notification to the customer according to the current order status.
+
         It embeds the current order template into the body.
         """
         template_context = {
@@ -185,12 +192,9 @@ class MPTNotifier:  # TODO: Consider moving some of the functionality to SDK
         """
         Sends a notification through the MPT API using a specified template and context.
 
-        Raises:
-        Exception
-            Logs the exception if there is an issue during the notification process,
+        Raises: Exception Logs the exception if there is an issue during the notification process,
             including the category, subject, and the rendered message.
         """
-
         try:
             notify(
                 self.mpt_client,
@@ -201,25 +205,36 @@ class MPTNotifier:  # TODO: Consider moving some of the functionality to SDK
                 rendered_template,
             )
             logger.debug(
-                f"Sent MPT API notification:"
-                f" Category: '{NotifyCategories.ORDERS.value}',"
-                f" Account ID: '{account_id}',"
-                f" Buyer ID: '{buyer_id}',"
-                f" Subject: '{subject}',"
-                f" Message: '{rendered_template}'"
+                "Sent MPT API notification:"
+                " Category: '%s',"
+                " Account ID: '%s',"
+                " Buyer ID: '%s',"
+                " Subject: '%s',"
+                " Message: '%s'",
+                NotifyCategories.ORDERS.value,
+                account_id,
+                buyer_id,
+                subject,
+                rendered_template,
             )
         except Exception:
             logger.exception(
-                f"Cannot send MPT API notification:"
-                f" Category: '{notify_category}',"
-                f" Account ID: '{account_id}',"
-                f" Buyer ID: '{buyer_id}',"
-                f" Subject: '{subject}',"
-                f" Message: '{rendered_template}'"
+                "Cannot send MPT API notification:"
+                " Category: '%s',"
+                " Account ID: '%s',"
+                " Buyer ID: '%s',"
+                " Subject: '%s',"
+                " Message: '%s'",
+                notify_category,
+                account_id,
+                buyer_id,
+                subject,
+                rendered_template,
             )
 
 
 def md2html(template):
+    """Converts markdown to html."""
     md = MarkdownIt("commonmark", {"breaks": True, "html": True})
 
     def custom_h1_renderer(tokens, idx, options, env):
@@ -233,6 +248,7 @@ def md2html(template):
 
 @functools.cache
 def notify_unhandled_exception_in_teams(process, order_id, traceback):
+    """Sends unhandled exceptions to ms teams."""
     send_exception(
         f"Order {process} unhandled exception!",
         f"An unhandled exception has been raised while performing {process} "

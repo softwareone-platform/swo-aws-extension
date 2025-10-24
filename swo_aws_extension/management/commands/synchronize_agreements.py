@@ -9,9 +9,12 @@ config = Config()
 
 
 class Command(StyledPrintCommand):
+    """Sync agreements command."""
+
     help = "Synchronize Agreements"
 
     def add_arguments(self, parser):
+        """Add required arguments."""
         mutex_group = parser.add_mutually_exclusive_group()
         mutex_group.add_argument(
             "--agreements",
@@ -27,9 +30,14 @@ class Command(StyledPrintCommand):
             help="Test synchronization without making changes",
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options):  # noqa: WPS110
+        """Run command."""
         self.info("Start synchronizing agreements...")
         synchronize_agreements(
-            mpt_client, config, options["agreements"], options["dry_run"], settings.MPT_PRODUCTS_IDS
+            mpt_client,
+            config,
+            options["agreements"],
+            settings.MPT_PRODUCTS_IDS,
+            dry_run=options["dry_run"],
         )
         self.success("Synchronizing agreements completed.")

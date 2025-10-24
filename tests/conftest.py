@@ -1,17 +1,13 @@
 import copy
-import json
-import signal
-from datetime import UTC, datetime, timedelta
+import datetime as dt
+from decimal import Decimal
 
 import jwt
 import pytest
 import responses
-from django.conf import settings
 from django.test import override_settings
-from mpt_extension_sdk.core.events.dataclasses import Event
 from mpt_extension_sdk.flows.context import ORDER_TYPE_TERMINATION
 from mpt_extension_sdk.runtime.djapp.conf import get_for_product
-from rich.highlighter import ReprHighlighter as _ReprHighlighter
 
 from swo_aws_extension.airtable.models import (
     AirTableBaseInfo,
@@ -22,6 +18,7 @@ from swo_aws_extension.aws.client import AccountCreationStatus, AWSClient
 from swo_aws_extension.aws.config import get_config
 from swo_aws_extension.constants import (
     AWS_ITEMS_SKUS,
+    HTTP_STATUS_OK,
     AccountTypesEnum,
     AWSRecordTypeEnum,
     AWSServiceEnum,
@@ -33,7 +30,6 @@ from swo_aws_extension.constants import (
 from swo_aws_extension.flows.jobs.billing_journal.billing_journal_generator import (
     BillingJournalGenerator,
 )
-from swo_aws_extension.flows.jobs.billing_journal.item_journal_line import get_journal_processors
 from swo_aws_extension.flows.jobs.billing_journal.models import (
     Description,
     ExternalIds,
@@ -44,14 +40,17 @@ from swo_aws_extension.flows.jobs.billing_journal.models import (
     SearchItem,
     SearchSubscription,
 )
-from swo_aws_extension.notifications import MPTNotifier
+from swo_aws_extension.flows.jobs.billing_journal.processor_dispatcher import (
+    JournalProcessorDispatcher,
+)
+from swo_aws_extension.notifications import Button, FactsSection, MPTNotifier, send_notification
 from swo_aws_extension.parameters import (
     ChangeOrderParametersEnum,
     FulfillmentParametersEnum,
     OrderParametersEnum,
 )
-from swo_ccp_client.client import CCPClient
-from swo_crm_service_client import CRMServiceClient
+from swo_aws_extension.swo_ccp.client import CCPClient
+from swo_aws_extension.swo_crm_service import CRMServiceClient
 
 PARAM_COMPANY_NAME = "ACME Inc"
 AWESOME_PRODUCT = "Awesome product"
@@ -65,18 +64,12 @@ INVOICE_ENTITY = "Amazon Web Services EMEA SARL"
 
 @pytest.fixture(autouse=True)
 def force_test_settings():
-    """
-    Force the use of test settings for test execution stability.
-    """
     with override_settings(DJANGO_SETTINGS_MODULE="tests.django.settings"):
         yield
 
 
 @pytest.fixture
 def requests_mocker():
-    """
-    Allow mocking of http calls made with requests.
-    """
     with responses.RequestsMock() as rsps:
         yield rsps
 
@@ -191,6 +184,28 @@ def order_parameters_factory(constraints):
 
 
 @pytest.fixture
+def make_account_invoices():
+    def _factory(
+        *,
+        invoice_entity="entity-1",
+        payment_currency_code="USD",
+        base_currency_code="USD",
+        exchange_rate=None,
+        invoice_id="INV-001",
+    ):
+        details = {
+            "invoice_id": invoice_id,
+            "payment_currency_code": payment_currency_code,
+            "base_currency_code": base_currency_code,
+        }
+        if exchange_rate is not None:
+            details["exchange_rate"] = exchange_rate
+        return {"invoice_entities": {invoice_entity: details}}
+
+    return _factory
+
+
+@pytest.fixture
 def fulfillment_parameters_factory():
     def _fulfillment_parameters(
         phase="",
@@ -266,7 +281,7 @@ def fulfillment_parameters_factory():
 
 @pytest.fixture
 def items_factory():
-    def _items(
+    def _factory(
         item_id=1,
         name=AWESOME_PRODUCT,
         external_vendor_id="65304578CA",
@@ -281,37 +296,14 @@ def items_factory():
             },
         ]
 
-    return _items
+    return _factory
 
 
 @pytest.fixture
-def pricelist_items_factory():
-    def _items(
-        item_id=1,
-        external_vendor_id="65304578CA",
-        unit_purchase_price=1234.55,
-    ):
-        return [
-            {
-                "id": f"PRI-1234-1234-1234-{item_id:04d}",
-                "item": {
-                    "id": f"ITM-1234-1234-1234-{item_id:04d}",
-                    "externalIds": {
-                        "vendor": external_vendor_id,
-                    },
-                },
-                "unitPP": unit_purchase_price,
-            },
-        ]
-
-    return _items
-
-
-@pytest.fixture
-def lines_factory(agreement, deployment_id: str = None):
+def lines_factory(agreement, deployment_id=None):
     agreement_id = agreement["id"].split("-", 1)[1]
 
-    def _items(
+    def _lines(
         line_id=1,
         item_id=1,
         name=AWESOME_PRODUCT,
@@ -341,7 +333,7 @@ def lines_factory(agreement, deployment_id: str = None):
             line["deploymentId"] = deployment_id
         return [line]
 
-    return _items
+    return _lines
 
 
 @pytest.fixture
@@ -355,7 +347,8 @@ def subscriptions_factory(lines_factory):
         lines=None,
         status="Terminating",
     ):
-        start_date = start_date.isoformat() if start_date else datetime.now(UTC).isoformat()
+        now = dt.datetime.now(tz=dt.UTC).isoformat()
+        start_date = start_date.isoformat() if start_date else now
         if lines is None:
             lines = []
             for sku in AWS_ITEMS_SKUS:
@@ -384,12 +377,13 @@ def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_fa
         licensee_name="My beautiful licensee",
         licensee_address=None,
         licensee_contact=None,
-        use_buyer_address=False,
         subscriptions=None,
         fulfillment_parameters=None,
         ordering_parameters=None,
         lines=None,
         vendor_id="",
+        *,
+        use_buyer_address=False,
     ):
         if not subscriptions:
             subscriptions = [
@@ -509,14 +503,6 @@ def listing(buyer):
 
 
 @pytest.fixture
-def template():
-    return {
-        "id": "TPL-1234-1234-4321",
-        "name": "Default Template",
-    }
-
-
-@pytest.fixture
 def agreement(buyer, licensee, listing, seller):
     return {
         "id": "AGR-2119-4550-8674-5962",
@@ -586,9 +572,9 @@ def agreement(buyer, licensee, listing, seller):
 
 @pytest.fixture
 def buyer_factory():
-    def _factory(id=None, name=None, email=None):
+    def _factory(buyer_id=None, name=None, email=None):
         return {
-            "id": id or "BUY-1111-1111",
+            "id": buyer_id or "BUY-1111-1111",
             "name": name or "A buyer",
             "email": email or "buyer@example.com",
         }
@@ -606,10 +592,6 @@ def order_factory(
     seller,
     template_factory,
 ):
-    """
-    Marketplace platform order for tests.
-    """
-
     def _order(
         order_id="ORD-0792-5000-2253-4210",
         order_type="Purchase",
@@ -754,21 +736,14 @@ def webhook(settings):
 
 @pytest.fixture
 def mpt_client(settings):
-    """
-    Create an instance of the MPT client used by the extension.
-    """
     settings.MPT_API_BASE_URL = "https://localhost"
-    from mpt_extension_sdk.core.utils import setup_client
+    from mpt_extension_sdk.core.utils import setup_client  # noqa: PLC0415
 
     return setup_client()
 
 
 @pytest.fixture
 def mpt_error_factory():
-    """
-    Generate an error message returned by the Marketplace platform.
-    """
-
     def _mpt_error(
         status,
         title,
@@ -791,40 +766,8 @@ def mpt_error_factory():
 
 
 @pytest.fixture
-def airtable_error_factory():
-    """
-    Generate an error message returned by the Airtable API.
-    """
-
-    def _airtable_error(
-        message,
-        error_type="INVALID_REQUEST_UNKNOWN",
-    ):
-        error = {
-            "error": {
-                "type": error_type,
-                "message": message,
-            }
-        }
-
-        return error
-
-    return _airtable_error
-
-
-@pytest.fixture
-def mpt_list_response():
-    def _wrap_response(objects_list):
-        return {
-            "data": objects_list,
-        }
-
-    return _wrap_response
-
-
-@pytest.fixture
 def jwt_token(settings):
-    iat = nbf = int(datetime.now().timestamp())
+    iat = nbf = int(dt.datetime.now(tz=dt.UTC).timestamp())
     exp = nbf + 300
     return jwt.encode(
         {
@@ -853,281 +796,10 @@ def extension_settings(settings):
 
 
 @pytest.fixture
-def mocked_setup_master_signal_handler():
-    signal_handler = signal.getsignal(signal.SIGINT)
-
-    def handler(signum, frame):
-        print("Signal handler called with signal", signum)
-        signal.signal(signal.SIGINT, signal_handler)
-
-    signal.signal(signal.SIGINT, handler)
-
-
-@pytest.fixture
-def mock_gradient_result():
-    return [
-        "#00C9CD",
-        "#07B7D2",
-        "#0FA5D8",
-        "#1794DD",
-        "#1F82E3",
-        "#2770E8",
-        "#2F5FEE",
-        "#374DF3",
-        "#3F3BF9",
-        "#472AFF",
-    ]
-
-
-@pytest.fixture
-def mock_runtime_master_options():
-    return {
-        "color": True,
-        "debug": False,
-        "reload": True,
-        "component": "all",
-    }
-
-
-@pytest.fixture
-def mock_swoext_commands():
-    return (
-        "mpt_extension_sdk.runtime.commands.run.run",
-        "mpt_extension_sdk.runtime.commands.django.django",
-    )
-
-
-@pytest.fixture
-def mock_dispatcher_event():
-    return {
-        "type": "event",
-        "id": "event-id",
-    }
-
-
-@pytest.fixture
-def mock_workers_options():
-    return {
-        "color": False,
-        "debug": False,
-        "reload": False,
-        "component": "all",
-    }
-
-
-@pytest.fixture
-def mock_gunicorn_logging_config():
-    return {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "verbose": {
-                "format": "{asctime} {name} {levelname} (pid: {process}) {message}",
-                "style": "{",
-            },
-            "rich": {
-                "format": "%(message)s",
-            },
-        },
-        "handlers": {
-            "console": {
-                "class": "logging.StreamHandler",
-                "formatter": "verbose",
-            },
-            "rich": {
-                "class": "rich.logging.RichHandler",
-                "formatter": "rich",
-                "log_time_format": lambda x: x.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-                "rich_tracebacks": True,
-            },
-        },
-        "root": {
-            "handlers": ["rich"],
-            "level": "INFO",
-        },
-        "loggers": {
-            "gunicorn.access": {
-                "handlers": ["rich"],
-                "level": "INFO",
-                "propagate": False,
-            },
-            "gunicorn.error": {
-                "handlers": ["rich"],
-                "level": "INFO",
-                "propagate": False,
-            },
-            "swo.mpt": {
-                "handlers": ["rich"],
-                "level": "INFO",
-                "propagate": False,
-            },
-        },
-    }
-
-
-@pytest.fixture
-def mock_wrap_event():
-    return Event("evt-id", "orders", {"id": "ORD-1111-1111-1111"})
-
-
-@pytest.fixture
-def mock_meta_with_pagination_has_more_pages():
-    return {
-        META: {
-            "pagination": {
-                "offset": 0,
-                "limit": 10,
-                "total": 12,
-            },
-        },
-    }
-
-
-@pytest.fixture
-def mock_meta_with_pagination_has_no_more_pages():
-    return {
-        META: {
-            "pagination": {
-                "offset": 0,
-                "limit": 10,
-                "total": 4,
-            },
-        },
-    }
-
-
-@pytest.fixture
-def mock_logging_account_prefixes():
-    return ("ACC", "BUY", "LCE", "MOD", "SEL", "USR", "AUSR", "UGR")
-
-
-@pytest.fixture
-def mock_logging_catalog_prefixes():
-    return (
-        "PRD",
-        "ITM",
-        "IGR",
-        "PGR",
-        "MED",
-        "DOC",
-        "TCS",
-        "TPL",
-        "WHO",
-        "PRC",
-        "LST",
-        "AUT",
-        "UNT",
-    )
-
-
-@pytest.fixture
-def mock_logging_commerce_prefixes():
-    return ("AGR", "ORD", "SUB", "REQ")
-
-
-@pytest.fixture
-def mock_logging_aux_prefixes():
-    return ("FIL", "MSG")
-
-
-@pytest.fixture
-def mock_logging_all_prefixes(
-    mock_logging_account_prefixes,
-    mock_logging_catalog_prefixes,
-    mock_logging_commerce_prefixes,
-    mock_logging_aux_prefixes,
-):
-    return (
-        *mock_logging_account_prefixes,
-        *mock_logging_catalog_prefixes,
-        *mock_logging_commerce_prefixes,
-        *mock_logging_aux_prefixes,
-    )
-
-
-@pytest.fixture
-def mock_highlights(mock_logging_all_prefixes):
-    return _ReprHighlighter.highlights + [
-        rf"(?P<mpt_id>(?:{'|'.join(mock_logging_all_prefixes)})(?:-\d{{4}})*)"
-    ]
-
-
-@pytest.fixture
-def mock_settings_product_ids():
-    return ",".join(settings.MPT_PRODUCTS_IDS)
-
-
-@pytest.fixture
-def mock_ext_expected_environment_values(
-    mock_env_webhook_secret,
-):
-    return {
-        "WEBHOOKS_SECRETS": json.loads(mock_env_webhook_secret),
-    }
-
-
-@pytest.fixture
-def mock_env_webhook_secret():
-    return '{ "webhook_secret": "WEBHOOK_SECRET" }'
-
-
-@pytest.fixture
-def mock_env_airtable_bases():
-    return '{ "airtable_base": "AIRTABLE_BASE" }'
-
-
-@pytest.fixture
-def mock_json_ext_variables():
-    return {
-        "EXT_WEBHOOKS_SECRETS",
-    }
-
-
-@pytest.fixture
-def mock_valid_env_values(
-    mock_env_webhook_secret,
-    mock_env_airtable_bases,
-):
-    return {
-        "EXT_WEBHOOKS_SECRETS": mock_env_webhook_secret,
-        "EXT_AIRTABLE_BASES": mock_env_airtable_bases,
-    }
-
-
-@pytest.fixture
-def mock_worker_call_command_path():
-    return "mpt_extension_sdk.runtime.workers.call_command"
-
-
-@pytest.fixture
-def mock_initialize_extension_path():
-    return "swo_aws_extension.initializer.initialize"
-
-
-@pytest.fixture
-def mock_get_wsgi_application_path():
-    return "mpt_extension_sdk.runtime.workers.get_wsgi_application"
-
-
-@pytest.fixture
-def mock_get_order_for_producer(mock_order, order_factory):
-    return {
-        "data": [mock_order],
-        META: {
-            "pagination": {
-                "offset": 0,
-                "limit": 10,
-                "total": 1,
-            },
-        },
-    }
-
-
-@pytest.fixture
 def aws_client_factory(mocker, settings, requests_mocker):
     def _aws_client(config, mpa_account_id, role_name):
         requests_mocker.post(
-            config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=200
+            config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=HTTP_STATUS_OK
         )
 
         mock_boto3_client = mocker.patch("boto3.client")
@@ -1226,7 +898,7 @@ def account_creation_status_factory(lines_factory):
 def data_aws_account_factory():
     def create_aws_account(
         status="ACTIVE",
-        id="1234-1234-1234",
+        aws_id="1234-1234-1234",
         arn="arn",
         email="test@example.com",
         join_method="CREATED",
@@ -1244,13 +916,13 @@ def data_aws_account_factory():
         :return:
         """
         return {
-            "Id": id,
+            "Id": aws_id,
             "Arn": arn,
             "Email": email,
             "Name": name,
             "Status": status,
             "JoinedMethod": join_method,
-            "JoinedTimestamp": datetime(2015, 1, 1),
+            "JoinedTimestamp": dt.datetime(2015, 1, 1, tzinfo=dt.UTC),
         }
 
     return create_aws_account
@@ -1262,19 +934,29 @@ def data_aws_invoice_summary_factory():
         account_id="1234-1234-1234",
         billing_period_month=4,
         billing_period_year=2025,
-        total_amount="0.00",
+        total_amount="100.00",
         invoice_entity=INVOICE_ENTITY,
+        payment_currency="USD",
+        rate="0.88",
+        invoice_id="EUINGB25-2163550",
     ):
         return {
             "AccountId": account_id,
-            "InvoiceId": "EUINGB25-2163550",
+            "InvoiceId": invoice_id,
             "Entity": {"InvoicingEntity": invoice_entity},
             "BillingPeriod": {"Month": billing_period_month, "Year": billing_period_year},
             "InvoiceType": "INVOICE",
             "BaseCurrencyAmount": {
                 "TotalAmount": total_amount,
-                "TotalAmountBeforeTax": "0.00",
+                "TotalAmountBeforeTax": "90.00",
                 "CurrencyCode": "USD",
+                "AmountBreakdown": {
+                    "Discounts": {
+                        "Breakdown": [
+                            {"Amount": "1.19", "Description": "Discount (AWS SPP Discount)"}
+                        ]
+                    }
+                },
             },
             "TaxCurrencyAmount": {
                 "TotalAmount": "0.00",
@@ -1289,7 +971,12 @@ def data_aws_invoice_summary_factory():
             "PaymentCurrencyAmount": {
                 "TotalAmount": "0.00",
                 "TotalAmountBeforeTax": "0.00",
-                "CurrencyCode": "USD",
+                "CurrencyCode": payment_currency,
+                "CurrencyExchangeDetails": {
+                    "SourceCurrencyCode": "USD",
+                    "TargetCurrencyCode": payment_currency,
+                    "Rate": rate,
+                },
             },
         }
 
@@ -1342,7 +1029,7 @@ def order_close_account(
     subscriptions_factory,
     agreement_factory,
 ):
-    order = order_factory(
+    return order_factory(
         order_type=ORDER_TYPE_TERMINATION,
         order_parameters=order_parameters_factory(
             account_email=ACCOUNT_EMAIL,
@@ -1356,12 +1043,11 @@ def order_close_account(
         ),
         agreement=agreement_factory(vendor_id="123456789012"),
     )
-    return order
 
 
 @pytest.fixture
 def order_unlink_account(order_factory, order_parameters_factory, subscriptions_factory):
-    order = order_factory(
+    return order_factory(
         order_type=ORDER_TYPE_TERMINATION,
         order_parameters=order_parameters_factory(
             account_email=ACCOUNT_EMAIL,
@@ -1373,43 +1059,6 @@ def order_unlink_account(order_factory, order_parameters_factory, subscriptions_
             status="Terminating",
         ),
     )
-    return order
-
-
-@pytest.fixture
-def order_terminate_without_type(order_factory, order_parameters_factory, subscriptions_factory):
-    order = order_factory(
-        order_type=ORDER_TYPE_TERMINATION,
-        order_parameters=order_parameters_factory(
-            account_email=ACCOUNT_EMAIL,
-            account_id="1234-5678",
-            termination_type="",
-        ),
-        subscriptions=subscriptions_factory(
-            vendor_id="1234-5678",
-            status="Terminating",
-        ),
-    )
-    return order
-
-
-@pytest.fixture
-def order_terminate_with_invalid_terminate_type(
-    order_factory, order_parameters_factory, subscriptions_factory
-):
-    order = order_factory(
-        order_type=ORDER_TYPE_TERMINATION,
-        order_parameters=order_parameters_factory(
-            account_email=ACCOUNT_EMAIL,
-            account_id="1234-5678",
-            termination_type="invalid_type",
-        ),
-        subscriptions=subscriptions_factory(
-            vendor_id="1234-5678",
-            status="Terminating",
-        ),
-    )
-    return order
 
 
 @pytest.fixture
@@ -1450,42 +1099,33 @@ def service_request_ticket_factory():
 
 @pytest.fixture
 def order_termination_close_account_multiple(order_close_account, subscriptions_factory):
-    order_close_account["subscriptions"] = []
-    order_close_account["subscriptions"].append(
+    order_close_account["subscriptions"] = [
         subscriptions_factory(
             subscription_id="SUB-1000-2000-3001",
             vendor_id="000000001",
             status="Terminating",
         )[0],
-    )
-    order_close_account["subscriptions"].append(
         subscriptions_factory(
             subscription_id="SUB-1000-2000-3002",
             vendor_id="000000002",
             status="Terminating",
         )[0],
-    )
-    order_close_account["subscriptions"].append(
         subscriptions_factory(
             subscription_id="SUB-1000-2000-3003",
             vendor_id="000000003",
             status="Terminating",
         )[0],
-    )
-    order_close_account["subscriptions"].append(
         subscriptions_factory(
             subscription_id="SUB-1000-2000-3004",
             vendor_id="000000004",
             status="Active",
         )[0],
-    )
-    order_close_account["subscriptions"].append(
         subscriptions_factory(
             subscription_id="SUB-1000-2000-3005",
             vendor_id="000000005",
             status="Terminated",
         )[0],
-    )
+    ]
     return order_close_account
 
 
@@ -1500,13 +1140,14 @@ def mpa_pool_factory(mocker):
         account_id="Account Id",
         account_email="test@email.com",
         account_name=ACCOUNT_NAME,
-        pls_enabled=True,
         status="Ready",
         agreement_id="",
         client_id="client_id",
         scu="XX-SCU-200500",
         buyer_id="",
         country="US",
+        *,
+        pls_enabled=True,
     ):
         mpa_pool = mocker.MagicMock()
         mpa_pool.account_id = account_id
@@ -1530,11 +1171,12 @@ def pool_notification_factory(mocker):
     def _pool_notification(
         notification_id=1,
         notification_type=NotificationTypeEnum.WARNING.value,
-        pls_enabled=True,
         ticket_id="Ticket Id",
         ticket_state="New",
         status=NotificationStatusEnum.PENDING.value,
         country="US",
+        *,
+        pls_enabled=True,
     ):
         pool_notification = mocker.MagicMock()
         pool_notification.notification_id = notification_id
@@ -1563,7 +1205,8 @@ def service_client(mocker):
 @pytest.fixture
 def ccp_client(mocker, config, mock_key_vault_secret_value):
     mocker.patch(
-        "swo_ccp_client.client.get_openid_token", return_value={"access_token": "test_access_token"}
+        "swo_aws_extension.swo_ccp.client.get_openid_token",
+        return_value={"access_token": "test_access_token"},
     )
     mocker.patch.object(
         CCPClient,
@@ -1576,7 +1219,8 @@ def ccp_client(mocker, config, mock_key_vault_secret_value):
 @pytest.fixture
 def ccp_client_no_secret(mocker, config):
     mocker.patch(
-        "swo_ccp_client.client.get_openid_token", return_value={"access_token": "test_access_token"}
+        "swo_aws_extension.swo_ccp.client.get_openid_token",
+        return_value={"access_token": "test_access_token"},
     )
     mocker.patch.object(
         CCPClient,
@@ -1748,16 +1392,6 @@ def mock_mpt_key_vault_name():
 
 
 @pytest.fixture
-def mock_valid_access_token_response():
-    return {"access_token": "access-token"}
-
-
-@pytest.fixture
-def mock_oauth_post_url():
-    return "https://example.com/oauth2/token"
-
-
-@pytest.fixture
 def mock_get_secret_response(mock_key_vault_secret_value):
     return {"clientSecret": mock_key_vault_secret_value}
 
@@ -1790,13 +1424,14 @@ def roots_factory():
 @pytest.fixture
 def handshake_data_factory():
     def _factory(account_id, state):
+        now = dt.datetime.now(tz=dt.UTC)
         return {
             "Id": f"h-{account_id}",
             "Arn": f"arn:aws:organizations::123456789012:handshake/h-{account_id}",
             "Parties": [{"Id": account_id, "Type": "ACCOUNT"}],
             "State": state,
-            "RequestedTimestamp": datetime.now(),
-            "ExpirationTimestamp": datetime.now() + timedelta(days=15),
+            "RequestedTimestamp": now,
+            "ExpirationTimestamp": now + dt.timedelta(days=15),
             "Action": "INVITE",
             "Resources": [
                 {"Type": "MASTER_EMAIL", "Value": "diego@example.com"},
@@ -1856,13 +1491,6 @@ def mock_switch_order_status_to_query(mocker):
 
 
 @pytest.fixture
-def mock_switch_order_status_to_process(mocker):
-    return mocker.patch(
-        "swo_aws_extension.flows.order.InitialAWSContext.switch_order_status_to_process"
-    )
-
-
-@pytest.fixture
 def mock_update_processing_template(mocker):
     return mocker.patch(
         "swo_aws_extension.flows.order.InitialAWSContext.update_processing_template"
@@ -1875,7 +1503,7 @@ def template_factory():
         "# Sample Template\n\nUse this input box to define your message "
         "against a given order or request type. Think about how you message "
         "can be succinct but informative, think about the tone you would like "
-        "to use and the information that’s key for the consumer of such "
+        "to use and the information that's key for the consumer of such "
         "information in the given context.\n\n## Formatting\n\nMarkdown allows "
         "you to control various aspects of formatting such as:\n\n* Bullets and"
         " numbering\n* Italics and Bold\n* Titles\n* Link embedding\n\n"
@@ -1890,17 +1518,18 @@ def template_factory():
 
     def _template(
         name=None,
-        id=None,
+        template_id=None,
         content=None,
-        type=None,
-        default=False,
+        template_type=None,
         product=None,
+        *,
+        default=False,
     ):
         return {
-            "id": id or "TPL-1975-5250-0018",
+            "id": template_id or "TPL-1975-5250-0018",
             "name": name or "New Linked account",
             "content": content or sample_content,
-            "type": type or "OrderCompleted",
+            "type": template_type or "OrderCompleted",
             "default": default,
             "product": product
             or {
@@ -1946,11 +1575,10 @@ def mock_get_rendered_template(mocker):
     mocked_jinja_env = mocker.MagicMock()
     mocked_jinja_env.get_template.return_value = mocked_template
     mocker.patch("swo_aws_extension.notifications.env", mocked_jinja_env)
-    mock_get_rendered_template = mocker.patch(
+    return mocker.patch(
         "swo_aws_extension.notifications.get_rendered_template",
         return_value="rendered-template",
     )
-    return mock_get_rendered_template
 
 
 @pytest.fixture
@@ -1968,7 +1596,7 @@ def mock_jwt_encoder(ffc_client_settings):
         return jwt.encode(
             {
                 "sub": ffc_client_settings.EXTENSION_CONFIG["FFC_SUB"],
-                "exp": now + timedelta(minutes=5),
+                "exp": now + dt.timedelta(minutes=5),
                 "nbf": now,
                 "iat": now,
             },
@@ -2022,7 +1650,7 @@ def mock_marketplace_report_group_factory():
 @pytest.fixture
 def mock_marketplace_report_factory(mock_marketplace_report_group_factory):
     def _marketplace_report(groups=None):
-        groups = groups or mock_marketplace_report_group_factory()
+        groups = groups if groups is not None else mock_marketplace_report_group_factory()
         return {
             "GroupDefinitions": [
                 {"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"},
@@ -2109,7 +1737,7 @@ def mock_report_type_and_usage_report_group_factory():
 @pytest.fixture
 def mock_report_type_and_usage_report_factory(mock_report_type_and_usage_report_group_factory):
     def _report_type_and_usage_report(groups=None):
-        groups = groups or mock_report_type_and_usage_report_group_factory()
+        groups = groups if groups is not None else mock_report_type_and_usage_report_group_factory()
         return {
             "GroupDefinitions": [
                 {"Type": "DIMENSION", "Key": "RECORD_TYPE"},
@@ -2130,22 +1758,22 @@ def mock_report_type_and_usage_report_factory(mock_report_type_and_usage_report_
 
 def build_usage_metrics(generator, report):
     return {
-        UsageMetricTypeEnum.USAGE.value: generator._get_metrics_by_key(
+        UsageMetricTypeEnum.USAGE.value: generator._get_metrics_by_key(  # noqa: SLF001
             report, AWSRecordTypeEnum.USAGE.value
         ),
-        UsageMetricTypeEnum.SAVING_PLANS.value: generator._get_metrics_by_key(
+        UsageMetricTypeEnum.SAVING_PLANS.value: generator._get_metrics_by_key(  # noqa: SLF001
             report, AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE.value
         ),
-        UsageMetricTypeEnum.PROVIDER_DISCOUNT.value: generator._get_metrics_by_key(
+        UsageMetricTypeEnum.PROVIDER_DISCOUNT.value: generator._get_metrics_by_key(  # noqa: SLF001
             report, AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT.value
         ),
-        UsageMetricTypeEnum.REFUND.value: generator._get_metrics_by_key(
+        UsageMetricTypeEnum.REFUND.value: generator._get_metrics_by_key(  # noqa: SLF001
             report, AWSRecordTypeEnum.REFUND.value
         ),
-        UsageMetricTypeEnum.SUPPORT.value: generator._get_metrics_by_key(
+        UsageMetricTypeEnum.SUPPORT.value: generator._get_metrics_by_key(  # noqa: SLF001
             report, AWSRecordTypeEnum.SUPPORT.value
         ),
-        UsageMetricTypeEnum.RECURRING.value: generator._get_metrics_by_key(
+        UsageMetricTypeEnum.RECURRING.value: generator._get_metrics_by_key(  # noqa: SLF001
             report, AWSRecordTypeEnum.RECURRING.value
         ),
     }
@@ -2210,13 +1838,19 @@ def get_usage_data(
             "service_name": "AWS Support (Business)",
             "record_type": AWSRecordTypeEnum.SUPPORT.value,
             "service_amount": "100",
+            "provider_discount_amount": "7",
+        },
+        {
+            "service_name": "AWS Support (Development)",
+            "record_type": AWSRecordTypeEnum.SUPPORT.value,
+            "service_amount": "100",
             "provider_discount_amount": "0",
         },
         {
             "service_name": "AWS Support (Enterprise)",
             "record_type": AWSRecordTypeEnum.SUPPORT.value,
             "service_amount": "100",
-            "provider_discount_amount": "0",
+            "provider_discount_amount": "35",
         },
         {
             "service_name": AWSServiceEnum.TAX.value,
@@ -2260,7 +1894,7 @@ def mock_journal_args(
     mock_invoice_by_service_report_group_factory,
     mock_invoice_by_service_report_factory,
 ):
-    def _journal_args(item_external_id):
+    def _journal_args():
         account_id = "1234567890"
         generator = BillingJournalGenerator(
             mpt_client,
@@ -2268,7 +1902,7 @@ def mock_journal_args(
             2024,
             5,
             ["prod1"],
-            billing_journal_processor=get_journal_processors(config),
+            journal_dispatcher=JournalProcessorDispatcher.build(config),
             authorizations=["AUTH-1"],
         )
         account_metrics, usage_invoice_report = get_usage_data(
@@ -2282,7 +1916,7 @@ def mock_journal_args(
             account_id=account_id, service_name="Marketplace service"
         )
         report = mock_marketplace_report_factory(groups=groups)["ResultsByTime"]
-        account_metrics[UsageMetricTypeEnum.MARKETPLACE.value] = generator._get_metrics_by_key(
+        account_metrics[UsageMetricTypeEnum.MARKETPLACE.value] = generator._get_metrics_by_key(  # noqa: SLF001
             report, account_id
         )
         marketplace_invoice_report = mock_invoice_by_service_report_group_factory(SERVICE_NAME)
@@ -2292,11 +1926,10 @@ def mock_journal_args(
         )["ResultsByTime"]
 
         account_metrics[UsageMetricTypeEnum.SERVICE_INVOICE_ENTITY.value] = (
-            generator._get_invoice_entity_by_service(service_invoice_entity)
+            generator._get_invoice_entity_by_service(service_invoice_entity)  # noqa: SLF001
         )
         return {
             "account_id": account_id,
-            "item_external_id": item_external_id,
             "account_metrics": account_metrics,
             "journal_details": {
                 "agreement_id": "AGR-2119-4550-8674-5962",
@@ -2304,7 +1937,20 @@ def mock_journal_args(
                 "start_date": "2025-01-01",
                 "end_date": "2025-02-01",
             },
-            "account_invoices": {INVOICE_ENTITY: {"invoice_id": "EUINGB25-2163550"}},
+            "account_invoices": {
+                "base_total_amount": Decimal("11.34"),
+                "base_total_amount_before_tax": Decimal("10.49"),
+                "invoice_entities": {
+                    INVOICE_ENTITY: {
+                        "base_currency_code": "USD",
+                        "exchange_rate": Decimal("0.0"),
+                        "invoice_id": "EUINGB25-2163550",
+                        "payment_currency_code": "USD",
+                    }
+                },
+                "payment_currency_total_amount": Decimal("11.34"),
+                "payment_currency_total_amount_before_tax": Decimal("10.49"),
+            },
         }
 
     return _journal_args
@@ -2319,14 +1965,14 @@ def mock_journal_line_factory():
         invoice_id="EUINGB25-2163550",
         item_external_id="",
         error=None,
-        price=100.0,
+        price=Decimal(100),
     ):
         return JournalLine(
             description=Description(
                 value1=service_name,
                 value2=f"{account_id}/{invoice_entity}",
             ),
-            externalIds=ExternalIds(
+            external_ids=ExternalIds(
                 invoice=invoice_id,
                 reference="AGR-2119-4550-8674-5962",
                 vendor="mpa_id",
@@ -2336,8 +1982,8 @@ def mock_journal_line_factory():
                 end="2025-02-01",
             ),
             price=Price(
-                PPx1=price,
-                unitPP=price,
+                pp_x1=price,
+                unit_pp=price,
             ),
             quantity=1,
             search=Search(
@@ -2363,8 +2009,44 @@ def mock_app_insights_instrumentation_key():
 
 
 @pytest.fixture
-def mock_app_insights_connection_string(mock_app_insights_instrumentation_key):
-    return (
-        f"InstrumentationKey={mock_app_insights_instrumentation_key};"
-        "IngestionEndpoint=https://test.applicationinsights.azure.com/"
+def webhook_url():
+    return {"MSTEAMS_WEBHOOK_URL": "https://teams.webhook"}
+
+
+@pytest.fixture
+def button():
+    return Button("button-label", "button-url")
+
+
+@pytest.fixture
+def facts_section():
+    return FactsSection("section-title", {"key": "value"})
+
+
+@pytest.fixture
+def connector_card_patch(mocker):
+    mocked_message = mocker.MagicMock()
+    patcher = mocker.patch(
+        "swo_aws_extension.notifications.pymsteams.connectorcard",
+        return_value=mocked_message,
     )
+    return mocked_message, patcher
+
+
+@pytest.fixture
+def send_notification_helper():
+    def _send_notification(*args, **kwargs):
+        return send_notification(*args, **kwargs)
+
+    return _send_notification
+
+
+@pytest.fixture
+def default_notification_args(button, facts_section):
+    return {
+        "title": "not-title",
+        "text": "not-text",
+        "color": "not-color",
+        "button": button,
+        "facts": facts_section,
+    }

@@ -12,11 +12,20 @@ logger = logging.getLogger(__name__)
 
 
 class MPAPreConfiguration(Step):
+    """
+    Preconfiguration step for MPA.
+
+    It configures master payer account, create organization, activate access and enables SCP.
+    """
+
     def __call__(self, client: MPTClient, context: PurchaseContext, next_step):
+        """Execute step."""
         if get_phase(context.order) != PhasesEnum.PRECONFIGURATION_MPA:
             logger.info(
-                f"{context.order_id} - Skip - Current phase is '{get_phase(context.order)}', "
-                f"skipping as it is not '{PhasesEnum.PRECONFIGURATION_MPA.value}'"
+                "%s - Skip - Current phase is '{get_phase(context.order)}', "
+                "skipping as it is not '%s'",
+                context.order_id,
+                PhasesEnum.PRECONFIGURATION_MPA.value,
             )
             next_step(client, context)
             return
@@ -37,8 +46,9 @@ class MPAPreConfiguration(Step):
         context.order = set_phase(context.order, next_phase)
         update_order(client, context.order_id, parameters=context.order["parameters"])
         logger.info(
-            f"{context.order_id} - Action - '{PhasesEnum.PRECONFIGURATION_MPA.value}' completed "
-            f"successfully. "
-            f"Proceeding to next phase '{next_phase}'"
+            "%s - Action - '%s' completed successfully. Proceeding to next phase '%s'",
+            context.order_id,
+            PhasesEnum.PRECONFIGURATION_MPA.value,
+            next_phase,
         )
         next_step(client, context)

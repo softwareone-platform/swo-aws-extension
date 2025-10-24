@@ -7,10 +7,13 @@ config = Config()
 
 
 class Command(StyledPrintCommand):
+    """Check AWS invitation state."""
+
     help = "Check AWS invitation states"
     name = "order_process_aws_invitations"
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options):  # noqa: WPS110
+        """Run command."""
         self.info(f"Start processing {self.name}")
         aws_processor = AWSInvitationsProcessor(mpt_client, config)
         aws_processor.process_aws_invitations()

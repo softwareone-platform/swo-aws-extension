@@ -23,7 +23,6 @@ def test_create_finops_entitlement_existing(ffc_client):
     buyer_id = "test_buyer_id"
     logger_header = "test_header"
     existing_entitlement = {"id": "existing_entitlement_id"}
-
     ffc_client.get_entitlement_by_datasource_id.return_value = existing_entitlement
 
     create_finops_entitlement(ffc_client, account_id, buyer_id, logger_header)
@@ -37,7 +36,6 @@ def test_create_finops_entitlement_new(ffc_client):
     buyer_id = "test_buyer_id"
     logger_header = "test_header"
     new_entitlement = {"id": "new_entitlement_id"}
-
     ffc_client.get_entitlement_by_datasource_id.return_value = None
     ffc_client.create_entitlement.return_value = new_entitlement
 
@@ -71,6 +69,7 @@ def test_create_finops_entitlement_step(
         "status": "new",
     }
     step = CreateFinOpsEntitlementStep()
+
     step(Mock(), context, next_step)
 
     assert ffc_client.get_entitlement_by_datasource_id.call_count == 2
@@ -101,6 +100,7 @@ def test_create_finops_mpa_entitlement_step(
         "status": "new",
     }
     step = CreateFinOpsMPAEntitlementStep()
+
     step(Mock(), context, next_step)
 
     ffc_client.get_entitlement_by_datasource_id.assert_called_once_with("mpa_account_id")
@@ -117,15 +117,15 @@ def test_have_active_accounts(
     mpa_account_id = "mpa_account_id"
     mock_client.list_accounts.return_value = aws_accounts_factory(
         accounts=[
-            data_aws_account_factory(id=mpa_account_id),
-            data_aws_account_factory(id="account_1"),
-            data_aws_account_factory(id="account_2", status="SUSPENDED"),
+            data_aws_account_factory(aws_id=mpa_account_id),
+            data_aws_account_factory(aws_id="account_1"),
+            data_aws_account_factory(aws_id="account_2", status="SUSPENDED"),
         ]
     )
 
-    result = have_active_accounts(aws_client, mpa_account_id)
+    active_accounts = have_active_accounts(aws_client, mpa_account_id)
 
-    assert result is True
+    assert active_accounts is True
     mock_client.list_accounts.assert_called_once()
 
 
@@ -136,13 +136,13 @@ def test_have_active_accounts_no_active(mocker, aws_client_factory, config, aws_
     mpa_account_id = "mpa_account_id"
     mock_client.list_accounts.return_value = aws_accounts_factory(status="SUSPENDED")
 
-    result = have_active_accounts(aws_client, mpa_account_id)
+    active_accounts = have_active_accounts(aws_client, mpa_account_id)
 
-    assert result is False
+    assert active_accounts is False
     mock_client.list_accounts.assert_called_once()
 
 
-def test_delete_finops_entitlements_step_new_status(
+def test_delete_entitlements_step_new_status(
     mocker,
     ffc_client,
     next_step,
@@ -165,6 +165,7 @@ def test_delete_finops_entitlements_step_new_status(
     order = order_factory(subscriptions=[subscription_factory(status="Terminating")])
     terminate_context = TerminateContext.from_order_data(order)
     terminate_context.aws_client = aws_client
+
     step(Mock(), terminate_context, next_step)
 
     assert ffc_client.get_entitlement_by_datasource_id.call_count == 1
@@ -173,7 +174,7 @@ def test_delete_finops_entitlements_step_new_status(
     next_step.assert_called_once()
 
 
-def test_delete_finops_entitlements_step_active_status(
+def test_delete_entitlements_step_active_status(
     mocker,
     ffc_client,
     next_step,
@@ -196,6 +197,7 @@ def test_delete_finops_entitlements_step_active_status(
     order = order_factory(subscriptions=[subscription_factory(status="Terminating")])
     terminate_context = TerminateContext.from_order_data(order)
     terminate_context.aws_client = aws_client
+
     step(Mock(), terminate_context, next_step)
 
     assert ffc_client.get_entitlement_by_datasource_id.call_count == 1
@@ -204,7 +206,7 @@ def test_delete_finops_entitlements_step_active_status(
     next_step.assert_called_once()
 
 
-def test_delete_finops_entitlements_step_no_entitlement(
+def test_delete_entitlements_step_no_entitlement(
     mocker,
     ffc_client,
     next_step,
@@ -224,6 +226,7 @@ def test_delete_finops_entitlements_step_no_entitlement(
     order = order_factory(subscriptions=[subscription_factory(status="Terminating")])
     terminate_context = TerminateContext.from_order_data(order)
     terminate_context.aws_client = aws_client
+
     step(Mock(), terminate_context, next_step)
 
     assert ffc_client.get_entitlement_by_datasource_id.call_count == 1

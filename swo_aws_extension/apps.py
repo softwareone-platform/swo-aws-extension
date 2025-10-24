@@ -6,11 +6,14 @@ from .extension import ext
 
 
 class ExtensionConfig(DjAppConfig):
+    """Extension Django config."""
+
     name = "swo_aws_extension"
     verbose_name = "SWO AWS Extension"
     extension = ext
 
     def extension_ready(self):
+        """Checks if webhook and product ids is configured properly."""
         error_msgs = []
 
         for product_id in settings.MPT_PRODUCTS_IDS:
