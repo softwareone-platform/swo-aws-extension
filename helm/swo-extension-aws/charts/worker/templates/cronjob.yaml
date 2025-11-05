@@ -1,13 +1,13 @@
-{{- range .Values.global.cronjobs }}
+{{- range $name, $config := .Values.global.cronjobs }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   namespace: {{ $.Release.Namespace }}
-  name: {{ include "common.fullname" $ }}-cronjob-{{ .name }}
+  name: {{ include "common.fullname" $ }}-cronjob-{{ $name }}
   labels:
     {{- include "common.labels" $ | nindent 4 }}
 spec:
-  schedule: "{{ .schedule }}"
+  schedule: "{{ $config.schedule }}"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
@@ -28,7 +28,7 @@ spec:
               secret:
                 secretName: ops-pyc-cluster-teamsetup-pyra-keyvault-certificate
           containers:
-            - name: {{ .name }}
+            - name: {{ $name }}
               securityContext:
                 {{- toYaml $.Values.securityContext | nindent 16 }}
               image: "{{ $.Values.global.repositoryUrl }}{{ $.Values.image.repository }}:{{ $.Chart.AppVersion }}"
@@ -36,7 +36,7 @@ spec:
                 - swoext
               args:
                 - django
-                - {{ .command }}
+                - {{ $config.command }}
               env:
                 - name: "AZURE_CLIENT_CERTIFICATE_PASSWORD"
                   valueFrom:
