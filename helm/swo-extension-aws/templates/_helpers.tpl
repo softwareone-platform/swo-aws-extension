@@ -45,7 +45,7 @@ app.pyracloud.com/canary: "false"
 app.pyracloud.com/owner: {{ .Values.owner }}
 app.pyracloud.com/type: {{ .Values.type }}
 app.pyracloud.com/cli-version: "{{ .Values.cliVersion }}"
-app.pyracloud.com/repository: "{{ .Values.git.repository | replace "/" "-" }}"
+app.pyracloud.com/repository: "{{ .Values.git.repository }}"
 {{- end -}}
 
 {{/*
