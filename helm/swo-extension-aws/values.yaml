@@ -4,7 +4,7 @@ global:
   ServiceName: default
   MpPortalBaseUrl: default
   MpBaseUrl: default
-  MpApiToken: default
+  MpApiToken: ZGVmYXVsdA==
   ConfigJson: ZGVmYXVsdA==
   DjangoSecretKey: ZGVmYXVsdA==
   MpProductsIds: default
