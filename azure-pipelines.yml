@@ -55,6 +55,7 @@ stages:
               - template: aks-docker-templates/helm-build-steps.yaml@templates
                 parameters:
                   buildNumber: $(buildVersion)
+                  gitRepositoryName: swo-aws-extension
                   repository: $(appName)
                   workingDirectory: helm/$(appName)
                   skipImagePush: ${{ eq(variables['Build.Reason'], 'PullRequest') }}
