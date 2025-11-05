@@ -13,7 +13,7 @@ resources:
       
 variables:
   - name: appName
-    value: mpt-extension-aws
+    value: swo-extension-aws
 
 stages:
   - stage: prepare
