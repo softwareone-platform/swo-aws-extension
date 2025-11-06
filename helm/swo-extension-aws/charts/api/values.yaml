@@ -6,7 +6,7 @@ owner: turing
 git:
   repository: swo-extension-aws
 image:
-  repository: /swo-extensions-aws
+  repository: /swo-extension-aws
   pullPolicy: IfNotPresent
 
 nameOverride: ""

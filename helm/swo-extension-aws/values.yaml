@@ -4,7 +4,7 @@ global:
   ServiceName: default
   MpPortalBaseUrl: default
   MpBaseUrl: default
-  MpApiToken: default
+  MpApiToken: ZGVmYXVsdA==
   ConfigJson: ZGVmYXVsdA==
   DjangoSecretKey: ZGVmYXVsdA==
   MpProductsIds: default
@@ -39,23 +39,23 @@ global:
 
   replicaCountAPI: 1
   replicaCountWorker: 1
-  repositoryUrl: ""
+  registryUrl: ""
   azure_tenant_id: ""
 
   cronjobs:
-    - name: aws-invitations
+    aws-invitations:
       schedule: ""
       command: order_process_aws_invitations
-    - name: sync-agreements
+    sync-agreements:
       schedule: ""
       command: synchronize_agreements
-    - name: check-pool
+    check-pool:
       schedule: ""
       command: check_pool_accounts_notifications
-    - name: ccp-secret
+    ccp-secret:
       schedule: ""
       command: refresh_ccp_openid_secret
-    - name: generate-billing
+    generate-billing:
       schedule: ""
       command: generate_billing_journals
 
