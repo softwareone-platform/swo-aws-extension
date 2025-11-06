@@ -39,7 +39,7 @@ global:
 
   replicaCountAPI: 1
   replicaCountWorker: 1
-  repositoryUrl: ""
+  registryUrl: ""
   azure_tenant_id: ""
 
   cronjobs:
