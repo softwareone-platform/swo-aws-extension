@@ -38,7 +38,7 @@ from swo_aws_extension.flows.jobs.billing_journal.models import (
     Price,
     Search,
     SearchItem,
-    SearchSubscription,
+    SearchSource,
 )
 from swo_aws_extension.flows.jobs.billing_journal.processor_dispatcher import (
     JournalProcessorDispatcher,
@@ -1991,8 +1991,9 @@ def mock_journal_line_factory():
                     criteria="item.externalIds.vendor",
                     value=item_external_id,
                 ),
-                subscription=SearchSubscription(
-                    criteria="subscription.externalIds.vendor",
+                source=SearchSource(
+                    type="Subscription",
+                    criteria="externalIds.vendor",
                     value=account_id,
                 ),
             ),

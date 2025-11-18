@@ -1,7 +1,7 @@
 import json
 from dataclasses import asdict, dataclass, field
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 
 # TODO: why do we need it here and /models/hints.py?
@@ -47,9 +47,10 @@ class SearchItem:
 
 
 @dataclass
-class SearchSubscription:
-    """Billing charge search subscription."""
+class SearchSource:
+    """Billing charge search source."""
 
+    type: Literal["Agreement", "Asset", "Subscription"]
     criteria: str
     value: str  # noqa: WPS110
 
@@ -59,7 +60,7 @@ class Search:
     """Billing charge search."""
 
     item: SearchItem  # noqa: WPS110
-    subscription: SearchSubscription
+    source: SearchSource
 
 
 @dataclass
@@ -133,8 +134,9 @@ class JournalLine:
                     criteria="item.externalIds.vendor",
                     value=item_external_id or "Item Not Found",
                 ),
-                subscription=SearchSubscription(
-                    criteria="subscription.externalIds.vendor",
+                source=SearchSource(
+                    type="Subscription",
+                    criteria="externalIds.vendor",
                     value=invoice_details.account_id,
                 ),
             ),
