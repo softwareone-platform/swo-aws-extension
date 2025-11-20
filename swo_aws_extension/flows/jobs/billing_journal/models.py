@@ -1,7 +1,7 @@
 import json
 from dataclasses import asdict, dataclass, field
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 
 @dataclass
@@ -46,9 +46,10 @@ class SearchItem:
 
 
 @dataclass
-class SearchSubscription:
-    """Billing charge search subscription."""
+class SearchSource:
+    """Billing charge search source."""
 
+    type: Literal["Agreement", "Asset", "Subscription"]
     criteria: str
     value: str
 
@@ -58,7 +59,7 @@ class Search:
     """Billing charge search."""
 
     item: SearchItem
-    subscription: SearchSubscription
+    source: SearchSource
 
 
 @dataclass
@@ -132,8 +133,9 @@ class JournalLine:
                     criteria="item.externalIds.vendor",
                     value=item_external_id or "Item Not Found",
                 ),
-                subscription=SearchSubscription(
-                    criteria="subscription.externalIds.vendor",
+                source=SearchSource(
+                    type="Subscription",
+                    criteria="externalIds.vendor",
                     value=invoice_details.account_id,
                 ),
             ),
