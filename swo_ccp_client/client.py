@@ -4,8 +4,6 @@ from urllib.parse import urljoin, urlparse
 import requests
 from django.conf import settings
 from mpt_extension_sdk.key_vault.base import KeyVault
-from requests import HTTPError, Session
-from requests.adapters import HTTPAdapter, Retry
 
 from swo_aws_extension.constants import (
     ACCESS_TOKEN_NOT_FOUND_IN_RESPONSE,
@@ -19,35 +17,25 @@ from swo_aws_extension.openid import get_openid_token
 logger = logging.getLogger(__name__)
 
 
-class CCPClient(Session):
-    """
-    A class to interact with the CCP API.
-    """
+TIMEOUT = 60  # secs
+
+
+class CCPClient(requests.Session):
+    """A class to interact with the CCP API."""
 
     def __init__(self, config):
         super().__init__()
         self.config = config
         self.access_token = self.get_ccp_access_token(self.config.ccp_oauth_scope)
-        retries = Retry(
-            total=5,
-            backoff_factor=0.1,
-            status_forcelist=[500, 502, 503, 504],
-        )
 
-        self.mount(
-            "http://",
-            HTTPAdapter(
-                max_retries=retries,
-                pool_maxsize=36,
-            ),
-        )
         self.headers.update(
             {"User-Agent": "swo-extensions/1.0", "Authorization": f"Bearer {self.access_token}"},
         )
         base_url = self.config.ccp_api_base_url
-        self.base_url = f"{base_url}/" if base_url[-1] != "/" else base_url
+        self.base_url = base_url if base_url[-1] == "/" else f"{base_url}/"
 
     def get_ccp_access_token(self, scope):
+        """Returns CCP access token."""
         client_secret = self.get_secret_from_key_vault()
         if not client_secret:
             return None
@@ -69,64 +57,12 @@ class CCPClient(Session):
             return None
         return access_token
 
-    def request(self, method, url, *args, **kwargs):
-        url = self._join_url(url)
-        return super().request(method, url, *args, **kwargs)
-
-    def prepare_request(self, request, *args, **kwargs):
-        request.url = self._join_url(request.url)
-
-        return super().prepare_request(request, *args, **kwargs)
-
-    def _join_url(self, url):
-        url = url[1:] if url[0] == "/" else url
-        return urljoin(self.base_url, url)
-
-    def onboard_customer(self, payload):
-        """
-        Onboard a customer using the CCP API.
-
-        :param payload: The payload for CCP onboarding.
-        :return: The response from the API.
-        """
-        response = self.post(url="/services/aws-essentials/customer?api-version=v2", json=payload)
-        response.raise_for_status()
-        return response.json()
-
-    def _raise_for_status(self, response):
-        """
-        Raise an HTTPError if the response status code indicates an error.
-        Response has always 200 status code, but the body may contain a different status code.
-        This method checks the body for the status code and raises an error if it is 404 or 500.
-        """
-        response.raise_for_status()
-        data = response.json()
-        status_code = data.get("statusCode")
-        if status_code in [404, 500]:
-            http_error_msg = (
-                f"{status_code} Client Error: {data.get("message")} for url: {response.url}"
-            )
-            raise HTTPError(http_error_msg, response=response)
-
-    def get_onboard_status(self, ccp_engagement_id):
-        """
-        Get the status of the onboarding process.
-
-        :param ccp_engagement_id: The engagement ID for the onboarding process.
-        :return: The response from the API.
-        """
-
-        response = self.get(
-            url=f"services/aws-essentials/customer/engagement/{ccp_engagement_id}?api-version=v2"
-        )
-        self._raise_for_status(response)
-        return response.json()
-
     def refresh_secret(self):
         """
         Refreshes the OpenID token using key vault and sdk.
 
-        :return: The new secret if successful, None otherwise.
+        Returns:
+            The new secret if successful, None otherwise.
         """
         token = self.get_ccp_access_token(self.config.ccp_oauth_credentials_scope)
         if not token:
@@ -142,37 +78,30 @@ class CCPClient(Session):
         logger.info("Refreshed secret stored in key vault")
         return saved_secret
 
-    def _parse_keyvault_name_from_url(self, key_vault_url):
-        """
-        Parses the key vault URL to extract the name.
-
-        :param key_vault_url: The key vault URL.
-        :return: The name of the key vault.
-        """
-        hostname = urlparse(key_vault_url).hostname or key_vault_url
-        return hostname.split(".")[0]
-
     def get_secret(self, token):
         """
         Retrieves the OpenID secret from the key vault.
 
-        :param token: The access token for the API.
-        :return: The secret if successful, None otherwise.
-        """
-        client_id = self.config.ccp_client_id
-        key_vault_url = settings.MPT_KEY_VAULT_NAME
-        key_vault_name = self._parse_keyvault_name_from_url(key_vault_url)
+        Args:
+            token: The access token for the API.
 
-        secret_name = self.config.ccp_key_vault_secret_name
-        api_url = self.base_url
-        api_url = f"{api_url}process/lighthouse/ad/retrieve/secret/{client_id}?api-version=v1"
-        api_headers = {"Authorization": f"Bearer {token}"}
-        api_response = requests.get(api_url, headers=api_headers)
+        Returns:
+            The secret if successful, None otherwise.
+        """
+        key_vault_name = self._parse_keyvault_name_from_url(settings.MPT_KEY_VAULT_NAME)
+        ccp_client_id = self.config.ccp_client_id
+        api_path = f"process/lighthouse/ad/retrieve/secret/{ccp_client_id}?api-version=v1"
+
+        api_response = requests.get(
+            urljoin(self.base_url, api_path),
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=TIMEOUT,
+        )
         api_response.raise_for_status()
-        api_response_data = api_response.json()
-        new_client_secret = api_response_data.get("clientSecret", None)
+        new_client_secret = api_response.json().get("clientSecret", None)
         if not new_client_secret:
-            error = f"{FAILED_TO_GET_SECRET}: {key_vault_name} " f"and secret name: {secret_name}."
+            secret_name = self.config.ccp_key_vault_secret_name
+            error = f"{FAILED_TO_GET_SECRET}: {key_vault_name} and secret name: {secret_name}."
             logger.error(error)
             send_error(
                 title=FAILED_TO_GET_SECRET,
@@ -186,7 +115,8 @@ class CCPClient(Session):
         """
         Retrieves the OpenID secret from the key vault.
 
-        :return: The secret if successful, None otherwise.
+        Returns:
+            The secret if successful, None otherwise.
         """
         key_vault_name = self._parse_keyvault_name_from_url(settings.MPT_KEY_VAULT_NAME)
         key_vault = KeyVault(key_vault_name)
@@ -210,16 +140,20 @@ class CCPClient(Session):
         """
         Saves the OpenID secret to the key vault.
 
-        :param secret: The secret to save.
-        :return: The saved secret if successful, None otherwise.
+        Args:
+            secret: The secret to save.
+
+        Returns:
+            The saved secret if successful, None otherwise.
         """
         key_vault_name = self._parse_keyvault_name_from_url(settings.MPT_KEY_VAULT_NAME)
         key_vault = KeyVault(key_vault_name)
         saved_secret = key_vault.set_secret(self.config.ccp_key_vault_secret_name, secret)
         if not saved_secret:
+            secret_name = self.config.ccp_key_vault_secret_name
             error = (
-                f"{FAILED_TO_SAVE_SECRET_TO_KEY_VAULT}: {key_vault_name} "
-                "and secret name: {config.ccp_key_vault_secret_name}."
+                f"{FAILED_TO_SAVE_SECRET_TO_KEY_VAULT}: {key_vault_name} and "
+                f"secret name: {secret_name}."
             )
             logger.error(error)
             send_error(
@@ -227,6 +161,19 @@ class CCPClient(Session):
                 text=error,
                 button=None,
             )
-            return saved_secret
+            return None
         logger.info("Access token stored in key vault")
         return saved_secret
+
+    def _parse_keyvault_name_from_url(self, key_vault_url):
+        """
+        Parses the key vault URL to extract the name.
+
+        Args:
+            key_vault_url: The key vault URL.
+
+        Returns:
+            The name of the key vault.
+        """
+        hostname = urlparse(key_vault_url).hostname or key_vault_url
+        return hostname.split(".")[0]
