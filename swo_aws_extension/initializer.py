@@ -10,7 +10,7 @@ from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 
 
 def initialize(options, group=DEFAULT_APP_CONFIG_GROUP, name=DEFAULT_APP_CONFIG_NAME):
-    """Custom initializaer of extension."""
+    """Custom initializer of extension."""
     options["django_settings_module"] = "swo_aws_extension.default"
 
     sdk_initialize(

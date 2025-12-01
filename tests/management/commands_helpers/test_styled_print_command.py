@@ -17,7 +17,7 @@ def test_dummy_command_messages(mocker):
         stderr=mock_stderr,
     )
 
-    command.handle()
+    command.handle()  # act
 
     stdout_calls = mock_stdout.write.call_args_list
     stderr_calls = mock_stderr.write.call_args_list

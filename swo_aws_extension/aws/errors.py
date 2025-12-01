@@ -4,7 +4,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
-import botocore.exceptions
+from botocore import exceptions as boto_exceptions
 from requests import HTTPError, JSONDecodeError, RequestException
 
 FuncParams = ParamSpec("FuncParams")
@@ -39,7 +39,8 @@ class AWSOpenIdError(AWSHttpError):
     def __str__(self) -> str:
         message = f"{self.code} - {self.message}"
         if self.details:
-            message = f"{message}: {', '.join(self.details)}"
+            error_details = ", ".join(self.details)
+            message = f"{message}: {error_details}"
         return message
 
 
@@ -50,15 +51,19 @@ def wrap_http_error(func: Callable[FuncParams, RetType]) -> Callable[FuncParams,
     def _wrapper(*args: FuncParams.args, **kwargs: FuncParams.kwargs) -> RetType:
         try:
             return func(*args, **kwargs)
-        except HTTPError as e:
+        except HTTPError as error:
             logger.exception("HTTP error in %s.", func.__name__)
             try:
-                raise AWSOpenIdError(e.response.status_code, e.response.json()) from e
+                raise AWSOpenIdError(error.response.status_code, error.response.json()) from error
             except JSONDecodeError:
-                raise AWSHttpError(e.response.status_code, e.response.content.decode()) from e
-        except RequestException as e:
+                raise AWSHttpError(
+                    error.response.status_code, error.response.content.decode()
+                ) from error
+        except RequestException as error:
             logger.exception("Unexpected HTTP error in %s.", func.__name__)
-            raise AWSHttpError(e.response.status_code, e.response.content.decode()) from e
+            raise AWSHttpError(
+                error.response.status_code, error.response.content.decode()
+            ) from error
 
     return _wrapper
 
@@ -70,15 +75,15 @@ def wrap_boto3_error(func: Callable[FuncParams, RetType]) -> Callable[FuncParams
     def _wrapper(*args: FuncParams.args, **kwargs: FuncParams.kwargs) -> RetType:
         try:
             return func(*args, **kwargs)
-        except AWSError as e:
-            raise e from e
-        except botocore.exceptions.ClientError as e:
-            raise AWSError(f"AWS Client error. {e}") from e
-        except botocore.exceptions.BotoCoreError as e:
+        except AWSError:
+            raise
+        except boto_exceptions.ClientError as error:
+            raise AWSError(f"AWS Client error. {error}") from error
+        except boto_exceptions.BotoCoreError as error:
             logger.exception("Boto3 SDK error in %s.", func.__name__)
-            raise AWSError(f"Boto3 SDK error: {e}") from e
-        except Exception as e:
+            raise AWSError(f"Boto3 SDK error: {error}") from error
+        except Exception as error:
             logger.exception("Unexpected error in %s.", func.__name__)
-            raise AWSError(f"Unexpected error: {e}") from e
+            raise AWSError(f"Unexpected error: {error}") from error
 
     return _wrapper

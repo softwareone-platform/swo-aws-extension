@@ -13,15 +13,15 @@ from swo_aws_extension.constants import HTTP_STATUS_INTERNAL_SERVER_ERROR, HTTP_
 
 
 def test_aws_error():
-    error = AWSError("Test error")
+    result = AWSError("Test error")
 
-    assert str(error) == "Test error"
+    assert str(result) == "Test error"
 
 
 def test_aws_http_error():
-    error = AWSHttpError(HTTP_STATUS_INTERNAL_SERVER_ERROR, "Internal Server Error")
+    result = AWSHttpError(HTTP_STATUS_INTERNAL_SERVER_ERROR, "Internal Server Error")
 
-    assert str(error) == "500 - Internal Server Error"
+    assert str(result) == "500 - Internal Server Error"
 
 
 def test_aws_openid_error():
@@ -35,9 +35,11 @@ def test_aws_openid_error():
         "error_uri": "https://login.microsoftonline.com/error?code=7000222",
     }
 
-    error = AWSOpenIdError(HTTP_STATUS_UNAUTHORIZED, payload)
+    result = AWSOpenIdError(HTTP_STATUS_UNAUTHORIZED, payload)
 
-    assert str(error) == "invalid_client - XXXYYYZZZ: The provided client secret keys for app [...]"
+    assert (
+        str(result) == "invalid_client - XXXYYYZZZ: The provided client secret keys for app [...]"
+    )
 
 
 def test_aws_openid_error_additional_details():
@@ -52,9 +54,9 @@ def test_aws_openid_error_additional_details():
         "additionalDetails": ["Detail1", "Detail2"],
     }
 
-    error = AWSOpenIdError(HTTP_STATUS_UNAUTHORIZED, payload)
+    result = AWSOpenIdError(HTTP_STATUS_UNAUTHORIZED, payload)
 
-    assert str(error) == (
+    assert str(result) == (
         "invalid_client - XXXYYYZZZ: The provided client secret keys for app [...]: "
         "Detail1, Detail2"
     )
