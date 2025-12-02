@@ -1,6 +1,5 @@
 import logging
 from collections.abc import Mapping
-from pprint import pformat
 from typing import Annotated, Any
 
 from django.conf import settings
@@ -12,9 +11,6 @@ from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 from ninja import Body
 
 from swo_aws_extension.constants import HTTP_STATUS_BAD_REQUEST, HTTP_STATUS_OK
-from swo_aws_extension.flows.fulfillment import fulfill_order
-from swo_aws_extension.flows.order import InitialAWSContext
-from swo_aws_extension.flows.validation import validate_order
 from swo_aws_extension.models import Error
 
 logger = logging.getLogger(__name__)
@@ -32,7 +28,8 @@ def jwt_secret_callback(client: MPTClient, claims: Mapping[str, Any]) -> str:
 @ext.events.listener("orders")
 def process_order_fulfillment(client, event):
     """Process order fulfillment."""
-    fulfill_order(client, event.data)
+    # TODO: Implement order fulfillment logic here
+    logger.info("Received order fulfillment event: %s", event)
 
 
 @ext.api.post(
@@ -45,15 +42,4 @@ def process_order_fulfillment(client, event):
 )
 def process_order_validation(request, order: Annotated[dict | None, Body()] = None):
     """Start order process validation."""
-    try:
-        context = InitialAWSContext.from_order_data(order=order)
-        validated_order = validate_order(request.client, context)
-        logger.debug("Validated order: %s", pformat(validated_order))
-    except Exception as e:
-        logger.exception("Unexpected error during validation")
-        return HTTP_STATUS_BAD_REQUEST, Error(
-            id="AWS001",
-            message=f"Unexpected error during validation: {e}.",
-        )
-    else:
-        return HTTP_STATUS_OK, validated_order
+    return HTTP_STATUS_OK, order

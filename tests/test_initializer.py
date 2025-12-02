@@ -57,39 +57,31 @@ def make_mock_settings(app_config_name, logging_handler="console", *, use_app_in
 
 def test_initializer_sets_env(monkeypatch):
     monkeypatch.delenv("MPT_INITIALIZER", raising=False)
-
     from swo_aws_extension import initializer  # noqa: PLC0415
 
-    importlib.reload(initializer)
+    importlib.reload(initializer)  # act
+
     assert os.environ["MPT_INITIALIZER"] == "swo_aws_extension.initializer.initialize"
 
 
 def test_initialize_basic(monkeypatch, mocker):
     mock_settings = make_mock_settings("myext.app", logging_handler="rich", use_app_insights=False)
-
     monkeypatch.setitem(sys.modules, "django.conf", types.SimpleNamespace(settings=mock_settings))
-
     django_mock = types.SimpleNamespace(setup=mocker.Mock(), VERSION=(4, 2, 23))
-
     monkeypatch.setitem(sys.modules, "django", django_mock)
-
     monkeypatch.setattr(
         "mpt_extension_sdk.runtime.initializer.get_extension_app_config_name",
         lambda group, name: "test.swoext",
     )
-
     monkeypatch.setattr(
         "mpt_extension_sdk.runtime.initializer.get_extension_variables",
         lambda x: {"config_setting": "value"},
     )
-
     monkeypatch.setattr("rich.reconfigure", lambda **kwargs: None)
-
+    options = {"color": True, "debug": True}
     from swo_aws_extension import initializer  # noqa: PLC0415
 
-    options = {"color": True, "debug": True}
-
-    initializer.initialize(options)
+    initializer.initialize(options)  # act
 
     assert mock_settings.DEBUG is True
     assert "test.swoext" in mock_settings.INSTALLED_APPS
@@ -107,65 +99,51 @@ def test_initialize_with_app_insights(monkeypatch, mocker, mock_app_insights_ins
         "azure.monitor.opentelemetry.exporter.AzureMonitorTraceExporter",
         autospec=True,
     )
-
     mock_settings = make_mock_settings(
         "myext.app", logging_handler="console", use_app_insights=True
     )
-
     monkeypatch.setitem(
         sys.modules,
         "django.conf",
         types.SimpleNamespace(settings=mock_settings),
     )
-
     django_mock = mocker.MagicMock(autospec=True)
     django_mock.setup = mocker.Mock(autospec=True)
     django_mock.VERSION = (4, 2, 23)
-
     monkeypatch.setitem(sys.modules, "django", django_mock)
-
     mocker.patch(
         "mpt_extension_sdk.runtime.djapp.conf.extract_product_ids",
         return_value="PRD-1111-1111",
     )
-
     mocker.patch(
         "mpt_extension_sdk.runtime.utils.get_extension_app_config_name",
         return_value="test.swoext",
     )
-
     monkeypatch.setenv(
         "APPLICATIONINSIGHTS_CONNECTION_STRING",
         f"InstrumentationKey={mock_app_insights_instrumentation_key};"
         f"IngestionEndpoint=https://test.applicationinsights.azure.com/",
     )
-
     mocker.patch(
         "mpt_extension_sdk.runtime.utils.get_extension_variables",
         return_value={},
     )
-
     monkeypatch.setenv(
         "APPINSIGHTS_INSTRUMENTATIONKEY",
         mock_app_insights_instrumentation_key,
     )
     mocker.patch("rich.reconfigure", return_value=None)
-
     mock_instrument_logging = mocker.patch(
         "mpt_extension_sdk.runtime.initializer.instrument_logging"
     )
-
     mock_botocore = mocker.patch("swo_aws_extension.initializer.BotocoreInstrumentor")
-
+    options = {"color": False, "debug": False}
     from swo_aws_extension import initializer  # noqa: PLC0415
 
-    options = {"color": False, "debug": False}
-
-    initializer.initialize(options)
+    initializer.initialize(options)  # act
 
     assert mock_settings.LOGGING["root"]["handlers"] == ["console", "opentelemetry"]
     assert mock_settings.LOGGING["loggers"]["swo.mpt"]["handlers"] == ["console", "opentelemetry"]
     assert mock_settings.LOGGING["loggers"]["swo.mpt"]["level"] == "INFO"
-
     mock_instrument_logging.assert_called_once()
     mock_botocore.return_value.instrument.assert_called_once()

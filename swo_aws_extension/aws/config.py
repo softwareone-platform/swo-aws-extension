@@ -10,14 +10,6 @@ class Config:
     def __init__(self):
         self.setup_azure_env()
 
-    def _patch_path(self, file_path):
-        """Fixes relative paths to be from the project root."""
-        path = Path(file_path)
-        if not path.is_absolute():
-            project_root = Path(__file__).resolve().parent.parent
-            path = (project_root / path).resolve()
-        return path
-
     def get_file_contents(self, file_path: str) -> str:
         """Get the contents of a file."""
         path = self._patch_path(file_path)
@@ -49,11 +41,6 @@ class Config:
         return settings.EXTENSION_CONFIG["CCP_OAUTH_URL"]
 
     @property
-    def aws_region(self) -> str:
-        """AWS region."""
-        return settings.EXTENSION_CONFIG["AWS_REGION"]
-
-    @property
     def ccp_scope(self):
         """CCP scope."""
         return settings.EXTENSION_CONFIG["CCP_SCOPE"]
@@ -78,35 +65,13 @@ class Config:
         """Get the scope for the CCP OAuth."""
         return settings.EXTENSION_CONFIG["CCP_OAUTH_CREDENTIALS_SCOPE"]
 
-    @property
-    def minimum_mpa_threshold(self) -> int:
-        """Get the minimum MPA threshold."""
-        return settings.EXTENSION_CONFIG["MINIMUM_MPA_THRESHOLD"]
-
-    @property
-    def billing_discount_base(self) -> int:
-        """Get the base billing discount."""
-        return int(settings.EXTENSION_CONFIG.get("BILLING_DISCOUNT_BASE", 7))
-
-    @property
-    def billing_discount_incentivate(self) -> int:
-        """Get the billing discount for incentivate services."""
-        return int(settings.EXTENSION_CONFIG.get("BILLING_DISCOUNT_INCENTIVATE", 12))
-
-    @property
-    def billing_discount_support_enterprise(self) -> int:
-        """Get the billing discount for enterprise support."""
-        return int(settings.EXTENSION_CONFIG.get("BILLING_DISCOUNT_SUPPORT_ENTERPRISE", 35))
-
-    @property
-    def billing_discount_tolerance_rate(self) -> int:
-        """Get the billing discount for enterprise support."""
-        return int(settings.EXTENSION_CONFIG.get("BILLING_DISCOUNT_TOLERANCE_RATE", 1))
-
-    @property
-    def mpt_portal_base_url(self) -> str:
-        """Get the base URL for the MPT portal."""
-        return settings.MPT_PORTAL_BASE_URL
+    def _patch_path(self, file_path):
+        """Fixes relative paths to be from the project root."""
+        path = Path(file_path)
+        if not path.is_absolute():  # pragma: no cover
+            project_root = Path(__file__).resolve().parent.parent
+            path = (project_root / path).resolve()
+        return path
 
 
 _CONFIG = None
@@ -114,7 +79,7 @@ _CONFIG = None
 
 def get_config():
     """Get configuration."""
-    global _CONFIG  # noqa: PLW0603
+    global _CONFIG  # noqa: PLW0603 WPS420
     if not _CONFIG:
         _CONFIG = Config()
     return _CONFIG
