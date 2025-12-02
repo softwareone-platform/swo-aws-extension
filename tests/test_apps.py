@@ -12,14 +12,17 @@ def test_app_config():
     assert isinstance(result, Extension)
 
 
-def test_products_empty(settings):
-    settings.MPT_PRODUCTS_IDS = ""
+def test_multiples_products(settings):
+    settings.MPT_PRODUCTS_IDS = ["PRD-1111-1111", "PRD-2222-2222"]
     app = apps.get_app_config("swo_aws_extension")
 
     with pytest.raises(ImproperlyConfigured) as error:
         app.ready()
 
-    assert "MPT_PRODUCTS_IDS is missing or empty" in str(error.value)
+    assert (
+        "Multiple product IDs are not supported. Please configure only one AWS product ID."
+        in str(error.value)
+    )
 
 
 def test_products_not_defined(settings):

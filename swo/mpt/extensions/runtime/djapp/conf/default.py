@@ -14,10 +14,10 @@ import json
 import os
 from pathlib import Path
 
-from opentelemetry._logs import set_logger_provider
-from opentelemetry.sdk._logs import LoggerProvider
-from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from azure.monitor.opentelemetry.exporter import AzureMonitorLogExporter
+from opentelemetry._logs import set_logger_provider  # noqa: PLC2701
+from opentelemetry.sdk._logs import LoggerProvider  # noqa: PLC2701
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor  # noqa: PLC2701
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,13 +29,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv(
     "MPT_DJANGO_SECRET_KEY",
-    "django-insecure-6r_%9ku+bg0=@xw1ah$wh+liwbsyhwpn#6alt*ppjn8t_uyp-u",
+    "django_secret",
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ("*",)
 
 
 # Application definition
@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "swo.mpt.extensions.runtime.djapp.apps.DjAppConfig",
+    "mpt_extension_sdk.runtime.djapp.apps.DjAppConfig",
 ]
 
 MIDDLEWARE = [
@@ -61,7 +61,7 @@ MIDDLEWARE = [
     "mpt_extension_sdk.runtime.djapp.middleware.MPTClientMiddleware",
 ]
 
-ROOT_URLCONF = "swo.mpt.extensions.runtime.djapp.conf.urls"
+ROOT_URLCONF = "mpt_extension_sdk.runtime.djapp.conf.urls"
 
 TEMPLATES = [
     {
@@ -129,17 +129,13 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # OpenTelemetry configuration
 SERVICE_NAME = os.getenv("SERVICE_NAME", "Swo.Extensions.SwoDefaultExtensions")
-APPLICATIONINSIGHTS_CONNECTION_STRING = os.getenv(
-    "APPLICATIONINSIGHTS_CONNECTION_STRING", ""
-)
-USE_APPLICATIONINSIGHTS = APPLICATIONINSIGHTS_CONNECTION_STRING != ""
+APPLICATIONINSIGHTS_CONNECTION_STRING = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "")
+USE_APPLICATIONINSIGHTS = bool(APPLICATIONINSIGHTS_CONNECTION_STRING)
 
 if USE_APPLICATIONINSIGHTS:
     logger_provider = LoggerProvider()
     set_logger_provider(logger_provider)
-    exporter = AzureMonitorLogExporter(
-        connection_string=APPLICATIONINSIGHTS_CONNECTION_STRING
-    )
+    exporter = AzureMonitorLogExporter(connection_string=APPLICATIONINSIGHTS_CONNECTION_STRING)
     logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
 
 LOGGING = {
@@ -204,15 +200,13 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # MPT settings
 
-MPT_API_BASE_URL = os.getenv("MPT_API_BASE_URL", "http://localhost:8000")
-MPT_API_TOKEN = os.getenv("MPT_API_TOKEN", "change-me!")
-MPT_PRODUCTS_IDS = os.getenv("MPT_PRODUCTS_IDS", "PRD-1111-1111")
-MPT_PORTAL_BASE_URL = os.getenv("MPT_PORTAL_BASE_URL", "https://portal.s1.show")
-MPT_KEY_VAULT_NAME = os.getenv("MPT_KEY_VAULT_NAME", "change-me!")
+MPT_API_BASE_URL = os.environ["MPT_API_BASE_URL"]
+MPT_API_TOKEN = os.environ["MPT_API_TOKEN"]
+MPT_PRODUCTS_IDS = os.environ["MPT_PRODUCTS_IDS"]
+MPT_PORTAL_BASE_URL = os.environ["MPT_PORTAL_BASE_URL"]
+MPT_KEY_VAULT_NAME = os.environ["MPT_KEY_VAULT_NAME"]
 
-MPT_ORDERS_API_POLLING_INTERVAL_SECS = int(
-    os.getenv("MPT_ORDERS_API_POLLING_INTERVAL_SECS", "120")
-)
+MPT_ORDERS_API_POLLING_INTERVAL_SECS = int(os.getenv("MPT_ORDERS_API_POLLING_INTERVAL_SECS", "120"))
 
 EXTENSION_CONFIG = {
     "DUE_DATE_DAYS": "30",
@@ -220,9 +214,11 @@ EXTENSION_CONFIG = {
 
 MPT_SETUP_CONTEXTS_FUNC = os.getenv(
     "MPT_SETUP_CONTEXTS_FUNC",
-    "mpt_extension_sdk.runtime.events.utils.setup_contexts",
+    "swo_aws_extension.flows.fulfillment.base.setup_contexts",
 )
 
-MPT_NOTIFY_CATEGORIES = json.loads(
-    os.getenv("MPT_NOTIFY_CATEGORIES", '{"ORDERS": "NTC-0000-0006"}')
-)
+MPT_NOTIFY_CATEGORIES = json.loads(os.environ["MPT_NOTIFY_CATEGORIES"])
+
+INITIALIZER = os.getenv("MPT_INITIALIZER", "swo_aws_extension.initializer.initialize")
+
+AWS_PRODUCT_ID = None

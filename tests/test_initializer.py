@@ -92,6 +92,7 @@ def test_initialize_basic(monkeypatch, mocker):
     assert mock_settings.LOGGING["loggers"]["test"]["handlers"] == ["rich"]
     assert mock_settings.LOGGING["loggers"]["test"]["level"] == "DEBUG"
     assert mock_settings.MPT_PRODUCTS_IDS == ["PRD-1111-1111"]
+    assert mock_settings.AWS_PRODUCT_ID == "PRD-1111-1111"
 
 
 def test_initialize_with_app_insights(monkeypatch, mocker, mock_app_insights_instrumentation_key):

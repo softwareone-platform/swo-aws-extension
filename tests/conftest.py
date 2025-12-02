@@ -635,5 +635,5 @@ def template_factory():
 def webhook(settings):
     return {
         "id": "WH-123-123",
-        "criteria": {"product.id": settings.MPT_PRODUCTS_IDS[0]},
+        "criteria": {"product.id": settings.AWS_PRODUCT_ID},
     }
