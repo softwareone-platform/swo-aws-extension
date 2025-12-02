@@ -9,7 +9,7 @@ license = { text = "Apache-2.0 license" }
 
 dependencies = [
     "azure-core>=1.33.0,<2",
-    "boto3==1.39.*",
+    "boto3==1.42.*",
     "django==4.2.*",
     "jinja2==3.1.*",
     "markdown-it-py==3.0.*",
@@ -28,6 +28,8 @@ app_config = "swo_aws_extension.apps:ExtensionConfig"
 
 [dependency-groups]
 dev = [
+    "boto3-stubs>=1.41.5",
+    "botocore-stubs>=1.41.6",
     "flake8-aaa>=0.17.2",
     "flake8-pyproject>=1.2.3",
     "freezegun==1.4.*",
@@ -142,6 +144,7 @@ per-file-ignores = [
 "tests/conftest.py: WPS202 WPS211 WPS231 WPS430",
 "tests/django/settings.py: WPS407",
 "tests/swo_ccp/test_client.py: WPS202 WPS211",
+"tests/aws/test_client.py: WPS202 WPS204",
 "tests/test_initializer.py: WPS111 WPS213 WPS218 WPS230 WPS431",
 "tests/test_notifications.py: WPS202 WPS213 WPS221 WPS235 WPS462",
 ]
