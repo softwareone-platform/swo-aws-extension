@@ -16,16 +16,22 @@ class ExtensionConfig(DjAppConfig):
         """Checks if webhook and product ids is configured properly."""
         error_msgs = []
 
-        for product_id in settings.MPT_PRODUCTS_IDS:
-            if (
-                "WEBHOOKS_SECRETS" not in settings.EXTENSION_CONFIG
-                or product_id not in settings.EXTENSION_CONFIG["WEBHOOKS_SECRETS"]
-            ):
-                msg = (
-                    f"The webhook secret for {product_id} is not found. "
-                    f"Please, specify it in EXT_WEBHOOKS_SECRETS environment variable."
-                )
-                error_msgs.append(msg)
+        if len(settings.MPT_PRODUCTS_IDS) > 1:
+            error_msgs.append(
+                "Multiple product IDs are not supported. Please configure only one AWS product ID."
+            )
+
+        product_id = settings.AWS_PRODUCT_ID
+
+        if (
+            "WEBHOOKS_SECRETS" not in settings.EXTENSION_CONFIG
+            or product_id not in settings.EXTENSION_CONFIG["WEBHOOKS_SECRETS"]
+        ):
+            msg = (
+                f"The webhook secret for {product_id} is not found. "
+                f"Please, specify it in EXT_WEBHOOKS_SECRETS environment variable."
+            )
+            error_msgs.append(msg)
 
         if error_msgs:
             raise ImproperlyConfigured("\n".join(error_msgs))
