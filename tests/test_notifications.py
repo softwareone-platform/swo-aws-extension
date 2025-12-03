@@ -8,6 +8,7 @@ from swo_aws_extension.notifications import (
     FactsSection,
     dateformat,
     md2html,
+    notify_one_time_error_in_teams,
     notify_unhandled_exception_in_teams,
     send_error,
     send_exception,
@@ -183,3 +184,14 @@ def test_md2html(template_md):
 
     assert '<h1 style="line-height: 1.2em;">' in rendered
     assert '<h2 style="line-height: 1.2em;">' in rendered
+
+
+def test_notify_one_time_exception_in_teams(mocker):
+    mocked_send_exc = mocker.patch("swo_aws_extension.notifications.send_exception")
+
+    notify_one_time_error_in_teams("title", "error-message")  # act
+
+    mocked_send_exc.assert_called_once_with(
+        "title",
+        "error-message",
+    )

@@ -158,3 +158,12 @@ def notify_unhandled_exception_in_teams(process, order_id, traceback):
         f"of the order **{order_id}**:\n\n"
         f"```{traceback}```",
     )
+
+
+@functools.cache
+def notify_one_time_error_in_teams(title: str, message: str):
+    """Sends one-time exceptions notifications to ms teams."""
+    send_exception(
+        title,
+        message,
+    )

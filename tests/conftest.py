@@ -6,9 +6,15 @@ import responses
 from django.test import override_settings
 from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 
+from swo_aws_extension.airtable.models import PMARecord
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.config import get_config
-from swo_aws_extension.constants import HTTP_STATUS_OK
+from swo_aws_extension.constants import (
+    HTTP_STATUS_OK,
+    AccountTypesEnum,
+    FulfillmentParametersEnum,
+    OrderParametersEnum,
+)
 from swo_aws_extension.swo_ccp.client import CCPClient
 
 AWESOME_PRODUCT = "Awesome product"
@@ -86,7 +92,7 @@ def agreement(buyer, licensee, listing, seller):
 
 @pytest.fixture
 def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_factory, seller):
-    def _agreement(
+    def _agreement(  # noqa: WPS430
         licensee_name="My beautiful licensee",
         licensee_address=None,
         licensee_contact=None,
@@ -186,7 +192,7 @@ def force_test_settings():
 
 @pytest.fixture
 def aws_client_factory(mocker, settings, requests_mocker):
-    def _aws_client(config, mpa_account_id, role_name):
+    def _aws_client(config, mpa_account_id, role_name):  # noqa: WPS430
         requests_mocker.post(
             config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=HTTP_STATUS_OK
         )
@@ -243,7 +249,7 @@ def buyer():
 
 @pytest.fixture
 def buyer_factory():
-    def _factory(buyer_id=None, name=None, email=None):
+    def _factory(buyer_id=None, name=None, email=None):  # noqa: WPS430
         return {
             "id": buyer_id or "BUY-1111-1111",
             "name": name or "A buyer",
@@ -293,7 +299,7 @@ def constraints():
 
 @pytest.fixture
 def data_aws_cost_and_usage_factory():
-    def create_usage_report(
+    def create_usage_report(  # noqa: WPS430
         account_id="1234-1234-1234",
     ):
         return {
@@ -331,8 +337,23 @@ def data_aws_cost_and_usage_factory():
 
 @pytest.fixture
 def fulfillment_parameters_factory():
-    def _fulfillment_parameters():
-        return []
+    def _fulfillment_parameters(phase="", pm_account_id="123456789012"):  # noqa: WPS430
+        return [
+            {
+                "id": "PAR-1234-5678",
+                "name": "Phase",
+                "externalId": FulfillmentParametersEnum.PHASE.value,
+                "type": "Dropdown",
+                "value": phase,
+            },
+            {
+                "id": "PAR-1234-5679",
+                "name": "PM Account ID",
+                "externalId": FulfillmentParametersEnum.PM_ACCOUNT_ID.value,
+                "type": "SingleLineText",
+                "value": pm_account_id,
+            },
+        ]
 
     return _fulfillment_parameters
 
@@ -377,7 +398,7 @@ def licensee(buyer):
 def lines_factory(agreement, deployment_id=None):
     agreement_id = agreement["id"].split("-", 1)[1]
 
-    def _lines(
+    def _lines(  # noqa: WPS430
         line_id=1,
         item_id=1,
         name=AWESOME_PRODUCT,
@@ -460,9 +481,43 @@ def mpt_client(settings):
 
 
 @pytest.fixture
+def mpt_error_factory():
+    def _mpt_error(  # noqa: WPS430
+        status,
+        title,
+        detail,
+        trace_id="00-27cdbfa231ecb356ab32c11b22fd5f3c-721db10d009dfa2a-00",
+        errors=None,
+    ):
+        error = {
+            "status": status,
+            "title": title,
+            "detail": detail,
+            "traceId": trace_id,
+        }
+        if errors:
+            error["errors"] = errors
+
+        return error
+
+    return _mpt_error
+
+
+@pytest.fixture
 def order_parameters_factory(constraints):
-    def _order_parameters():
-        return []
+    def _order_parameters(  # noqa: WPS430
+        account_type=AccountTypesEnum.NEW_AWS_ENVIRONMENT.value,
+    ):
+        return [
+            {
+                "id": "PAR-1234-5680",
+                "name": "Account type",
+                "externalId": OrderParametersEnum.ACCOUNT_TYPE.value,
+                "type": "choice",
+                "value": account_type,
+                "constraints": constraints,
+            }
+        ]
 
     return _order_parameters
 
@@ -477,7 +532,7 @@ def order_factory(
     seller,
     template_factory,
 ):
-    def _order(
+    def _order(  # noqa: WPS430
         order_id="ORD-0792-5000-2253-4210",
         order_type="Purchase",
         order_parameters=None,
@@ -597,7 +652,7 @@ def template_factory():
         "of this message the parameter will be used in the given context."
     )
 
-    def _template(
+    def _template(  # noqa: WPS430
         name=None,
         template_id=None,
         content=None,  # noqa: WPS110
@@ -637,3 +692,29 @@ def webhook(settings):
         "id": "WH-123-123",
         "criteria": {"product.id": settings.AWS_PRODUCT_ID},
     }
+
+
+@pytest.fixture
+def pma_table_factory():
+    def _pma_record(  # noqa: WPS430
+        authorization_id="AUTH-1111-1111",
+        pma_account_id="123456789123",
+        pma_id="pma-1k5fapyt9osi1",
+        pma_name="Billing Transfer",
+        pma_email="test@example.com",
+        currency="USD",
+        country="US",
+        primary_account=None,
+    ):
+        return PMARecord(
+            authorization_id=authorization_id,
+            pma_account_id=pma_account_id,
+            pma_id=pma_id,
+            pma_name=pma_name,
+            pma_email=pma_email,
+            currency=currency,
+            country=country,
+            primary_account=primary_account,
+        )
+
+    return _pma_record
