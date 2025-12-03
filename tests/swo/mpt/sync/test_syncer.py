@@ -369,7 +369,10 @@ class TestTerminateAgreement:
         )
 
     def test_dry_run_skips_termination(
-        self, mpt_client, agreement_factory, mock_terminate_subscription
+        self,
+        mpt_client,
+        agreement_factory,
+        mock_terminate_subscription,
     ):
         terminate_agreement(mpt_client, agreement_factory(), dry_run=True)  # act
 
@@ -381,9 +384,11 @@ class TestSyncPmaAccountId:
         self, mpt_client, mock_send_exception, agreement_factory, mock_update_agreement
     ):
         agreement = agreement_factory()
-        pma_account_id = agreement["parameters"]["fulfillment"][0]["value"]
+        responsibility_transfer_id = agreement["parameters"]["fulfillment"][1]["value"]
 
-        sync_responsibility_transfer_id(mpt_client, agreement, pma_account_id, dry_run=False)  # act
+        sync_responsibility_transfer_id(
+            mpt_client, agreement, responsibility_transfer_id, dry_run=False
+        )  # act
 
         mock_update_agreement.assert_not_called()
         mock_send_exception.assert_not_called()

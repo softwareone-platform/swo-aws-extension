@@ -2,6 +2,7 @@ import json
 from http import HTTPStatus
 
 from mpt_extension_sdk.core.events.dataclasses import Event
+from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 
 from swo_aws_extension.extension import (
@@ -30,12 +31,15 @@ def test_jwt_secret_callback(mocker, settings, mpt_client, webhook):
 
 
 def test_process_order_fulfillment(mocker):
-    client = mocker.MagicMock()
+    mocked_fulfill_order = mocker.patch(
+        "swo_aws_extension.extension.fulfill_order",
+    )
+    client = mocker.MagicMock(spec=MPTClient)
     event = Event("evt-id", "orders", {"id": "ORD-0792-5000-2253-4210"})
 
     process_order_fulfillment(client, event)  # act
 
-    # TODO: Add assertions when implementation is done
+    mocked_fulfill_order.assert_called_once_with(client, event.data)
 
 
 def test_process_order_validation(client, mocker, order_factory, jwt_token, webhook):

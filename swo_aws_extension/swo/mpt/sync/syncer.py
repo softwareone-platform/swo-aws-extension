@@ -14,11 +14,12 @@ from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.config import get_config
 from swo_aws_extension.constants import (
     SWO_EXTENSION_MANAGEMENT_ROLE,
-    FulfillmentParameters,
+    FulfillmentParametersEnum,
+    ParamPhasesEnum,
     ResponsibilityTransferStatus,
     SubscriptionStatus,
 )
-from swo_aws_extension.notifications import send_error, send_exception, send_warning
+from swo_aws_extension.notifications import TeamsNotificationManager
 from swo_aws_extension.parameters import get_responsibility_transfer_id
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
@@ -52,27 +53,26 @@ def synchronize_agreements(  # noqa: C901
         rql_query = f"{rql_filter}{select}"
 
     agreements = get_agreements_by_query(mpt_client, rql_query)
-
     operation_description = "Synchronize AWS agreement subscriptions"
     for agreement in agreements:
         mpa_account_id = agreement.get("externalIds", {}).get("vendor", "")
         if not mpa_account_id:
             msg = f"{agreement.get('id')} - Skipping - MPA not found"
             logger.error(msg)
-            send_error(operation_description, msg)
+            TeamsNotificationManager().send_error(operation_description, msg)
             continue
         pma_account_id = agreement["authorization"].get("externalIds", {}).get("operations")
         if not pma_account_id:
             msg = f"{agreement.get('id')} - Skipping - PMA not found"
             logger.error(msg)
-            send_error(operation_description, msg)
+            TeamsNotificationManager().send_error(operation_description, msg)
             continue
         try:
             latest_transfers = get_latest_inbound_responsibility_transfers(pma_account_id)
         except Exception:
             msg = f"{agreement.get('id')} - Error occurred while fetching responsibility transfers"
             logger.exception(msg)
-            send_exception("Fetching responsibility transfers", msg)
+            TeamsNotificationManager().send_exception("Fetching responsibility transfers", msg)
             continue
 
         active_transfers = {
@@ -87,7 +87,7 @@ def synchronize_agreements(  # noqa: C901
                 f" {transfer_info}"
             )
             logger.warning(msg)
-            send_warning(operation_description, msg)
+            TeamsNotificationManager().send_warning(operation_description, msg)
             terminate_agreement(mpt_client, agreement, dry_run=dry_run)
             continue
         sync_responsibility_transfer_id(
@@ -107,9 +107,9 @@ def sync_responsibility_transfer_id(
         responsibility_transfer_id,
     )
     agreement_parameters = {
-        FulfillmentParameters.PHASE.value: [
+        ParamPhasesEnum.FULFILLMENT.value: [
             {
-                "externalId": FulfillmentParameters.RESPONSIBILITY_TRANSFER_ID.value,
+                "externalId": FulfillmentParametersEnum.RESPONSIBILITY_TRANSFER_ID.value,
                 "value": responsibility_transfer_id,
             }
         ]
@@ -129,7 +129,7 @@ def sync_responsibility_transfer_id(
                 f" {responsibility_transfer_id}"
             )
             logger.exception(msg)
-            send_exception("Synchronize PMA account id", msg)
+            TeamsNotificationManager().send_exception("Synchronize PMA account id", msg)
 
 
 # TODO: SDK candidate
@@ -214,4 +214,4 @@ def terminate_agreement(mpt_client: MPTClient, agreement: dict, *, dry_run) -> N
                     f" error terminating subscription {subscription_id}."
                 )
                 logger.exception(msg)
-                send_exception("Inactive transfer", msg)
+                TeamsNotificationManager().send_exception("Inactive transfer", msg)

@@ -3,6 +3,7 @@ import datetime as dt
 import pytest
 
 from swo_aws_extension.aws.client import AWSClient
+from swo_aws_extension.notifications import TeamsNotificationManager
 
 
 @pytest.fixture
@@ -14,17 +15,26 @@ def mock_terminate_subscription(mocker):
 
 @pytest.fixture
 def mock_send_exception(mocker):
-    return mocker.patch("swo_aws_extension.swo.mpt.sync.syncer.send_exception", autospec=True)
+    return mocker.patch(
+        "swo_aws_extension.swo.mpt.sync.syncer.TeamsNotificationManager.send_exception",
+        spec=TeamsNotificationManager,
+    )
 
 
 @pytest.fixture
 def mock_send_error(mocker):
-    return mocker.patch("swo_aws_extension.swo.mpt.sync.syncer.send_error", autospec=True)
+    return mocker.patch(
+        "swo_aws_extension.swo.mpt.sync.syncer.TeamsNotificationManager.send_error",
+        spec=TeamsNotificationManager,
+    )
 
 
 @pytest.fixture
 def mock_send_warning(mocker):
-    return mocker.patch("swo_aws_extension.swo.mpt.sync.syncer.send_warning", autospec=True)
+    return mocker.patch(
+        "swo_aws_extension.swo.mpt.sync.syncer.TeamsNotificationManager.send_warning",
+        spec=TeamsNotificationManager,
+    )
 
 
 @pytest.fixture
