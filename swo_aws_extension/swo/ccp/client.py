@@ -11,7 +11,7 @@ from swo_aws_extension.constants import (
     FAILED_TO_GET_SECRET,
     FAILED_TO_SAVE_SECRET_TO_KEY_VAULT,
 )
-from swo_aws_extension.notifications import send_error
+from swo_aws_extension.notifications import TeamsNotificationManager
 from swo_aws_extension.openid import get_openid_token
 
 logger = logging.getLogger(__name__)
@@ -22,6 +22,8 @@ TIMEOUT = 60  # secs
 
 class CCPClient(requests.Session):
     """A class to interact with the CCP API."""
+
+    _notifications = TeamsNotificationManager()
 
     def __init__(self, config):
         super().__init__()
@@ -49,7 +51,7 @@ class CCPClient(requests.Session):
         if not access_token:
             error = ACCESS_TOKEN_NOT_FOUND_IN_RESPONSE
             logger.error(ACCESS_TOKEN_NOT_FOUND_IN_RESPONSE)
-            send_error(
+            self._notifications.send_error(
                 title=ACCESS_TOKEN_NOT_FOUND_IN_RESPONSE,
                 text=error,
                 button=None,
@@ -103,7 +105,7 @@ class CCPClient(requests.Session):
             secret_name = self.config.ccp_key_vault_secret_name
             error = f"{FAILED_TO_GET_SECRET}: {key_vault_name} and secret name: {secret_name}."
             logger.error(error)
-            send_error(
+            self._notifications.send_error(
                 title=FAILED_TO_GET_SECRET,
                 text=error,
                 button=None,
@@ -128,7 +130,7 @@ class CCPClient(requests.Session):
                 f"{key_vault_name} and secret name: {secret_name}."
             )
             logger.error(error)
-            send_error(
+            self._notifications.send_error(
                 title=CCP_SECRET_NOT_FOUND_IN_KEY_VAULT,
                 text=error,
                 button=None,
@@ -156,7 +158,7 @@ class CCPClient(requests.Session):
                 f"secret name: {secret_name}."
             )
             logger.error(error)
-            send_error(
+            self._notifications.send_error(
                 title=FAILED_TO_SAVE_SECRET_TO_KEY_VAULT,
                 text=error,
                 button=None,

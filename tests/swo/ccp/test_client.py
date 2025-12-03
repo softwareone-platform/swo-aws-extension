@@ -45,7 +45,9 @@ def test_get_ccp_access_token_with_empty_token(
 ):
     with patch("swo_aws_extension.swo.ccp.client.get_openid_token") as mock_get_token:
         mock_get_token.return_value = {}
-        mocked_send_error = mocker.patch("swo_aws_extension.swo.ccp.client.send_error")
+        mocked_send_error = mocker.patch(
+            "swo_aws_extension.swo.ccp.client.TeamsNotificationManager.send_error"
+        )
 
         result = ccp_client.get_ccp_access_token("oauth_scope")
 
@@ -99,7 +101,9 @@ def test_get_secret_no_client_secret(
         mock_retrieve_secret_url,
         json={},
     )
-    mocked_send_error = mocker.patch("swo_aws_extension.swo.ccp.client.send_error")
+    mocked_send_error = mocker.patch(
+        "swo_aws_extension.swo.ccp.client.TeamsNotificationManager.send_error"
+    )
 
     result = ccp_client.get_secret(mock_token)
 
@@ -125,7 +129,9 @@ def test_get_secret_from_key_vault_not_found(mocker, config, mock_get_token):
         "mpt_extension_sdk.key_vault.base.KeyVault.get_secret",
         return_value=None,
     )
-    mock_send_error = mocker.patch("swo_aws_extension.swo.ccp.client.send_error", return_value=None)
+    mock_send_error = mocker.patch(
+        "swo_aws_extension.swo.ccp.client.TeamsNotificationManager.send_error", return_value=None
+    )
     ccp_client = CCPClient(config)
 
     result = ccp_client.get_secret_from_key_vault()
@@ -157,7 +163,9 @@ def test_save_secret_to_key_vault_not_saved(
     mock_key_vault_secret_value,
     caplog,
 ):
-    mocked_send_error = mocker.patch("swo_aws_extension.swo.ccp.client.send_error")
+    mocked_send_error = mocker.patch(
+        "swo_aws_extension.swo.ccp.client.TeamsNotificationManager.send_error"
+    )
     mock_set_secret = mocker.patch(
         "mpt_extension_sdk.key_vault.base.KeyVault.set_secret",
         return_value=None,
@@ -227,7 +235,9 @@ def test_refresh_secret_no_access_token(
     mocker, ccp_client, mock_key_vault_secret_value, config, mock_get_token
 ):
     mock_get_token.return_value = {}
-    mocked_send_error = mocker.patch("swo_aws_extension.swo.ccp.client.send_error")
+    mocked_send_error = mocker.patch(
+        "swo_aws_extension.swo.ccp.client.TeamsNotificationManager.send_error"
+    )
 
     result = ccp_client.refresh_secret()
 
@@ -246,7 +256,7 @@ def test_refresh_secret_no_secret(
 ):
     mock_get_secret = mocker.patch.object(ccp_client, "get_secret")
     mock_get_secret.return_value = None
-    mocker.patch("swo_aws_extension.swo.ccp.client.send_error")
+    mocker.patch("swo_aws_extension.swo.ccp.client.TeamsNotificationManager.send_error")
 
     result = ccp_client.refresh_secret()
 
@@ -273,7 +283,7 @@ def test_refresh_secret_not_saved(
     mock_get_secret.return_value = mock_get_secret_response["clientSecret"]
     mock_save_secret = mocker.patch.object(ccp_client, "save_secret_to_key_vault")
     mock_save_secret.return_value = None
-    mocker.patch("swo_aws_extension.swo.ccp.client.send_error")
+    mocker.patch("swo_aws_extension.swo.ccp.client.TeamsNotificationManager.send_error")
 
     result = ccp_client.refresh_secret()
 

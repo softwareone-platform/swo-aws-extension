@@ -42,12 +42,13 @@ def _get_response(
 class AWSClient:
     """AWS client."""
 
-    def __init__(self, config, mpa_account_id, role_name) -> None:
+    def __init__(self, config, pma_account_id, role_name) -> None:
         self.config = config
-        self.mpa_account_id = mpa_account_id
+        self.pma_account_id = pma_account_id
         self.role_name = role_name
         self.access_token = self._get_access_token()
         self.credentials = self._get_credentials()
+        self._validate_credentials()
 
     @wrap_boto3_error
     def get_inbound_responsibility_transfers(self) -> list:
@@ -65,12 +66,6 @@ class AWSClient:
 
     @wrap_http_error
     def _get_access_token(self):
-        """
-        Get the OpenID Connect access token.
-
-        Returns:
-            The OpenID Connect access token.
-        """
         ccp_client = CCPClient(self.config)
         payload = {
             "client_id": self.config.ccp_client_id,
@@ -90,16 +85,10 @@ class AWSClient:
 
     @wrap_boto3_error
     def _get_credentials(self):
-        """
-        Get the credentials for the assumed role.
-
-        Returns:
-            The credentials for the assumed role.
-        """
-        if not self.mpa_account_id:
+        if not self.pma_account_id:
             raise AWSError("Parameter 'mpa_account_id' must be provided to assume the role.")
 
-        role_arn = f"arn:aws:iam::{self.mpa_account_id}:role/{self.role_name}"
+        role_arn = f"arn:aws:iam::{self.pma_account_id}:role/{self.role_name}"
         response = boto3.client("sts").assume_role_with_web_identity(
             RoleArn=role_arn,
             RoleSessionName="SWOExtensionOnboardingSession",
@@ -107,24 +96,26 @@ class AWSClient:
         )
         return response["Credentials"]
 
-    def _get_organization_client(self):
-        """
-        Get the organization client.
+    @wrap_boto3_error
+    def _validate_credentials(self):
+        """Method used to validate credentials."""
+        sts_client = self._get_sts_client()
+        return sts_client.get_caller_identity()
 
-        Returns:
-            The organization client.
-        """
+    def _get_organization_client(self):
         return self._get_client("organizations")
 
     def _get_client(self, service_name):
-        """
-        Get the organization client.
-
-        Returns:
-            The organization client.
-        """
         return boto3.client(
             service_name,
+            aws_access_key_id=self.credentials["AccessKeyId"],
+            aws_secret_access_key=self.credentials["SecretAccessKey"],
+            aws_session_token=self.credentials["SessionToken"],
+        )
+
+    def _get_sts_client(self):
+        return boto3.client(
+            "sts",
             aws_access_key_id=self.credentials["AccessKeyId"],
             aws_secret_access_key=self.credentials["SecretAccessKey"],
             aws_session_token=self.credentials["SessionToken"],
