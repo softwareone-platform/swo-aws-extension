@@ -45,6 +45,8 @@ class PhasesEnum(StrEnum):
 
     CREATE_ACCOUNT = "createAccount"
     CREATE_BILLING_TRANSFER_INVITATION = "createBillingTransferInvitation"
+    CHECK_BILLING_TRANSFER_INVITATION = "checkBillingTransferInvitation"
+    COMPLETE = "complete"
 
 
 class ParamPhasesEnum(StrEnum):
@@ -58,6 +60,7 @@ class OrderParametersEnum(StrEnum):
     """Ordering parameters external Ids."""
 
     ACCOUNT_TYPE = "accountType"
+    MASTER_PAYER_ACCOUNT_ID = "masterPayerID"
 
 
 class FulfillmentParametersEnum(StrEnum):
@@ -66,3 +69,17 @@ class FulfillmentParametersEnum(StrEnum):
     PHASE = "phase"
     PM_ACCOUNT_ID = "pmAccountId"
     RESPONSIBILITY_TRANSFER_ID = "responsibilityTransferId"
+
+
+class OrderProcessingTemplateEnum(StrEnum):
+    """Order processing template enum."""
+
+    NEW_ACCOUNT = "New Account - processing"
+    EXISTING_ACCOUNT = "Existing Account - processing"
+
+
+class OrderQueryingTemplateEnum(StrEnum):
+    """Order querying template enum."""
+
+    TRANSFER_AWAITING_INVITATIONS = "Querying - awaiting invitations acceptance"
+    INVALID_ACCOUNT_ID = "Order querying template - invalid Account ID"

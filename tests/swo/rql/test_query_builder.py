@@ -3,7 +3,8 @@ from decimal import Decimal
 
 import pytest
 
-from swo_aws_extension.swo.rql.query_builder import RQLQuery
+from swo_aws_extension.swo.rql import constants
+from swo_aws_extension.swo.rql.query_builder import RQLQuery, parse_kwargs
 
 
 def test_create():
@@ -152,6 +153,11 @@ def test_or_merge():
     assert len(r3) == 2
     assert r3.op == RQLQuery.OR
     assert [r1, r2] == r3.children
+
+    r3 = r1 | r2
+
+    assert r3.op == RQLQuery.OR
+    assert str(r3) == "or(eq(id,ID),eq(field,value))"
 
 
 def test_and():
@@ -375,3 +381,32 @@ def test_in():
     product_ids = ["PRD-1", "PRD-2"]
     q = RQLQuery(product__id__in=product_ids)
     assert str(q) == "in(product.id,(PRD-1,PRD-2))"
+
+
+def test_parse_kwargs_non_keyword_op():
+    result = parse_kwargs({"agreement__product__id__custom": "PRD-1"})
+
+    assert result == ["eq(agreement.product.id.custom,PRD-1)"]
+
+
+@pytest.mark.parametrize(
+    ("lookup", "value", "expected"),
+    [
+        (f"field__{constants.NULL}", True, "eq(field,null())"),
+        (f"field__{constants.NULL}", False, "ne(field,null())"),
+        (f"field__{constants.EMPTY}", True, "eq(field,empty())"),
+        (f"field__{constants.EMPTY}", False, "ne(field,empty())"),
+    ],
+)
+def test_parse_kwargs_null_and_empty_flags(lookup, value, expected):
+    result = parse_kwargs({lookup: value})
+
+    assert result == [expected]
+
+
+def test_repr_for_expr_and_non_expr():
+    q_expr = RQLQuery(id="ID")
+    q_and = RQLQuery(id="ID", status__in=("a", "b"))
+
+    assert repr(q_expr) == "<R(expr) eq(id,ID)>"
+    assert repr(q_and) == "<R(and)>"

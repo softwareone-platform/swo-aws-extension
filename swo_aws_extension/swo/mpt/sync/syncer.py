@@ -99,7 +99,7 @@ def sync_responsibility_transfer_id(
     mpt_client: MPTClient, agreement: dict, responsibility_transfer_id: str, *, dry_run: bool
 ) -> None:
     """Synchronizes the PMA account ID for a given agreement."""
-    if get_responsibility_transfer_id(agreement).get("value") == responsibility_transfer_id:
+    if get_responsibility_transfer_id(agreement) == responsibility_transfer_id:
         return
     logger.info(
         "%s - synchronizing responsibility transfer ID: %s",

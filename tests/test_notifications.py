@@ -1,11 +1,18 @@
 import logging
+from http import HTTPStatus
 
 import pymsteams
 import pytest
+from mpt_extension_sdk.mpt_http.wrap_http_error import MPTHttpError
 
+from swo_aws_extension.flows.order import (
+    MPT_ORDER_STATUS_QUERYING,
+    InitialAWSContext,
+)
 from swo_aws_extension.notifications import (
     Button,
     FactsSection,
+    MPTNotificationManager,
     TeamsNotificationManager,
     dateformat,
 )
@@ -40,9 +47,7 @@ def test_send_notification_full(mocker, settings):
     mocked_message.color.assert_called_once_with("#00FF00")
     mocked_message.addLinkButton.assert_called_once_with(button.label, button.url)
     mocked_section.title.assert_called_once_with(facts_section.title)
-    mocked_section.addFact.assert_called_once_with(
-        next(iter(facts_section.data.keys())), next(iter(facts_section.data.values()))
-    )
+    mocked_section.addFact.assert_called_once_with("key", "value")
     mocked_message.addSection.assert_called_once_with(mocked_section)
     mocked_message.send.assert_called_once()
     mocked_card.assert_called_once_with("https://teams.webhook")
@@ -151,7 +156,7 @@ fringilla sapien ultricies purus placerat rhoncus ut a ex. Mauris a imperdiet le
 ullamcorper dui, vel porttitor sem. In vel tortor nulla. Duis urna nisl, sollicitudin ut sagittis
 vel, imperdiet vitae lectus. Donec quis tellus eros. Aliquam sit amet ex id neque iaculis auctor
 sed vel risus.
-"""
+"""  # noqa: WPS462
 
 
 def test_notify_one_time_exception_in_teams(mocker):
@@ -166,3 +171,51 @@ def test_notify_one_time_exception_in_teams(mocker):
         "title",
         "error-message",
     )
+
+
+def test_send_mpt_notification(
+    mocker, mpt_client, order_factory, order_parameters_factory, settings, buyer
+):
+    mock_mpt_notify = mocker.patch("swo_aws_extension.notifications.notify", return_value=True)
+    mock_get_rendered_template = mocker.patch(
+        "swo_aws_extension.notifications.get_rendered_template",
+        return_value="rendered-template",
+    )
+    context = InitialAWSContext.from_order_data(
+        order_factory(
+            order_parameters=order_parameters_factory(),
+            buyer=buyer,
+            status=MPT_ORDER_STATUS_QUERYING,
+        )
+    )
+    mpt_manager = MPTNotificationManager(mpt_client)
+
+    mpt_manager.send_notification(context)  # act
+
+    mock_mpt_notify.assert_called_once()
+    mock_get_rendered_template.assert_called_once()
+
+
+def test_send_mpt_notification_error(
+    mocker, mpt_client, order_factory, order_parameters_factory, settings, buyer
+):
+    mock_mpt_notify = mocker.patch(
+        "swo_aws_extension.notifications.notify",
+        side_effect=MPTHttpError(HTTPStatus.BAD_REQUEST, "Error"),
+    )
+    mocker.patch(
+        "swo_aws_extension.notifications.get_rendered_template",
+        return_value="rendered-template",
+    )
+    context = InitialAWSContext.from_order_data(
+        order_factory(
+            order_parameters=order_parameters_factory(),
+            buyer=buyer,
+            status=MPT_ORDER_STATUS_QUERYING,
+        )
+    )
+    mpt_manager = MPTNotificationManager(mpt_client)
+
+    mpt_manager.send_notification(context)  # act
+
+    mock_mpt_notify.assert_called_once()

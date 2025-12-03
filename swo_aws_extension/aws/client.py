@@ -64,6 +64,19 @@ class AWSClient:
             {"Type": "BILLING"},
         )
 
+    @wrap_boto3_error
+    def invite_organization_to_transfer_billing(
+        self, customer_id: str, start_timestamp: int, source_name: str
+    ) -> dict:
+        """Invite organization to transfer billing responsibility."""
+        org_client = self._get_organization_client()
+        return org_client.invite_organization_to_transfer_responsibility(
+            Type="BILLING",
+            Target={"Id": customer_id, "Type": "ACCOUNT"},
+            StartTimestamp=start_timestamp,
+            SourceName=source_name,
+        )
+
     @wrap_http_error
     def _get_access_token(self):
         ccp_client = CCPClient(self.config)

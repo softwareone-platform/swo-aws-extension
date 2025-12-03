@@ -23,9 +23,40 @@ def get_parameter(parameter_phase: str, param_external_id: str, source: dict[str
 get_ordering_parameter = functools.partial(get_parameter, ParamPhasesEnum.ORDERING.value)
 
 get_fulfillment_parameter = functools.partial(get_parameter, ParamPhasesEnum.FULFILLMENT.value)
-get_responsibility_transfer_id = functools.partial(
-    get_fulfillment_parameter, FulfillmentParametersEnum.RESPONSIBILITY_TRANSFER_ID
-)
+
+
+def get_mpa_account_id(source: dict[str, Any]) -> str | None:
+    """Get the Master Payer Account ID from the ordering parameter or None if it is not set."""
+    ordering_param = get_ordering_parameter(
+        OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID,
+        source,
+    )
+    return ordering_param.get("value", None)
+
+
+def set_ordering_parameter_error(order, param_external_id, error):
+    """
+    Set a validation error on an ordering parameter.
+
+    Args:
+        order (dict): The order that contains the parameter.
+        param_external_id (str): The external identifier of the parameter.
+        error (dict): The error (id, message) that must be set.
+
+    Returns:
+        dict: The order updated.
+    """
+    updated_order = copy.deepcopy(order)
+    parameter = get_ordering_parameter(
+        param_external_id,
+        updated_order,
+    )
+    parameter["error"] = error
+    parameter["constraints"] = {
+        "hidden": False,
+        "required": True,
+    }
+    return updated_order
 
 
 def get_phase(source: dict[str, Any]) -> str | None:
@@ -55,3 +86,23 @@ def get_account_type(source: dict[str, Any]) -> str | None:
         source,
     )
     return ordering_param.get("value", None)
+
+
+def set_responsibility_transfer_id(order: dict[str, Any], transfer_id: str) -> dict[str, Any]:
+    """Set the responsibility transfer ID on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.RESPONSIBILITY_TRANSFER_ID,
+        updated_order,
+    )
+    fulfillment_param["value"] = transfer_id
+    return updated_order
+
+
+def get_responsibility_transfer_id(source: dict[str, Any]) -> str | None:
+    """Get the Responsibility TransferID from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.RESPONSIBILITY_TRANSFER_ID,
+        source,
+    )
+    return fulfillment_param.get("value", None)
