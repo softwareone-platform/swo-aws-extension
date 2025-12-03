@@ -531,6 +531,7 @@ def mpt_error_factory():
 def order_parameters_factory(constraints):
     def factory(
         account_type=AccountTypesEnum.NEW_AWS_ENVIRONMENT.value,
+        mpa_id="651706759263",
     ):
         return [
             {
@@ -540,7 +541,15 @@ def order_parameters_factory(constraints):
                 "type": "choice",
                 "value": account_type,
                 "constraints": constraints,
-            }
+            },
+            {
+                "id": "PAR-1234-5680",
+                "name": "Master Payer Account ID",
+                "externalId": OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value,
+                "type": "choice",
+                "value": mpa_id,
+                "constraints": constraints,
+            },
         ]
 
     return factory
@@ -611,12 +620,17 @@ def order_factory(
             "seller": seller,
             "buyer": buyer or buyer_factory(),
             "client": {"id": "CLI-1111-1111"},
+            "licensee": {"id": "LCE-1111-2222"},
+            "vendor": {"id": "VEN-1111-2222", "name": "Vendor Name"},
             "audit": {
                 "created": {
                     "at": CREATED_AT,
                     "by": {"id": "USR-0000-0001"},
                 },
-                "updated": None,
+                "updated": {
+                    "at": CREATED_AT,
+                    "by": {"id": "USR-0000-0001", "name": "John Doe"},
+                },
             },
         }
         if external_ids:

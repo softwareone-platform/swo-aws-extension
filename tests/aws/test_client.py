@@ -156,3 +156,34 @@ class TestGetPagedResponse:
 
         assert result == [{"id": "transfer1"}]
         assert method_mock.call_args_list == [mocker.call(MaxResults=20)]
+
+
+def test_invite_organization_to_transfer_billing(
+    config, aws_client_factory, mock_get_paged_response
+):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.invite_organization_to_transfer_responsibility.return_value = {
+        "Handshake": {
+            "Resources": [
+                {"Type": "RESPONSIBILITY_TRANSFER", "Value": "RT-123"},
+            ]
+        }
+    }
+
+    result = mock_aws_client.invite_organization_to_transfer_billing(
+        customer_id="test_account_id", start_timestamp=1767225600, source_name="test_source_name"
+    )
+
+    assert result == {
+        "Handshake": {
+            "Resources": [
+                {"Type": "RESPONSIBILITY_TRANSFER", "Value": "RT-123"},
+            ]
+        }
+    }
+    mock_client.invite_organization_to_transfer_responsibility.assert_called_once_with(
+        Type="BILLING",
+        Target={"Id": "test_account_id", "Type": "ACCOUNT"},
+        StartTimestamp=1767225600,
+        SourceName="test_source_name",
+    )

@@ -7,6 +7,9 @@ from mpt_extension_sdk.flows.pipeline import Pipeline
 
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import SWO_EXTENSION_MANAGEMENT_ROLE
+from swo_aws_extension.flows.steps.create_billing_transfer_invitation import (
+    CreateBillingTransferInvitation,
+)
 from swo_aws_extension.flows.steps.setup_context import SetupContext
 from swo_aws_extension.notifications import TeamsNotificationManager
 
@@ -38,8 +41,10 @@ def pipeline_error_handler(error: Exception, context: Context, next_step):
 
 purchase_new_aws_environment = Pipeline(
     SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    CreateBillingTransferInvitation(config),
 )
 
 purchase_existing_aws_environment = Pipeline(
     SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    CreateBillingTransferInvitation(config),
 )
