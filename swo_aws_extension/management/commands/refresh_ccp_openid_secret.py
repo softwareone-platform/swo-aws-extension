@@ -1,6 +1,6 @@
 from swo_aws_extension.aws.config import get_config
 from swo_aws_extension.management.commands_helpers import StyledPrintCommand
-from swo_aws_extension.swo_ccp.client import CCPClient
+from swo_aws_extension.swo.ccp.client import CCPClient
 
 
 class Command(StyledPrintCommand):

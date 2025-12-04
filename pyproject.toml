@@ -8,19 +8,19 @@ readme = "README.md"
 license = { text = "Apache-2.0 license" }
 
 dependencies = [
-    "azure-core>=1.33.0,<2",
-    "boto3==1.39.*",
-    "django==4.2.*",
-    "jinja2==3.1.*",
-    "markdown-it-py==3.0.*",
-    "mpt-extension-sdk==5.10.*",
-    "openpyxl==3.1.*",
-    "phonenumbers==8.13.*",
-    "pyairtable==2.3.*",
-    "pymsteams==0.2.*",
-    "regex>=2024.7.24,<2025",
-    "requests==2.32.*",
-    "types-openpyxl==3.1.*",
+  "azure-core>=1.33.0,<2",
+  "boto3==1.42.*",
+  "django==4.2.*",
+  "jinja2==3.1.*",
+  "markdown-it-py==3.0.*",
+  "mpt-extension-sdk==5.10.*",
+  "openpyxl==3.1.*",
+  "phonenumbers==8.13.*",
+  "pyairtable==2.3.*",
+  "pymsteams==0.2.*",
+  "regex>=2024.7.24,<2025",
+  "requests==2.32.*",
+  "types-openpyxl==3.1.*",
 ]
 
 [project.entry-points."swo.mpt.ext"]
@@ -28,47 +28,49 @@ app_config = "swo_aws_extension.apps:ExtensionConfig"
 
 [dependency-groups]
 dev = [
-    "flake8-aaa>=0.17.2",
-    "flake8-pyproject>=1.2.3",
-    "freezegun==1.4.*",
-    "ipdb==0.13.*",
-    "ipython==8.*",
-    "mypy==1.8.*",
-    "pre-commit==3.6.*",
-    "pytest==7.4.*",
-    "pytest-cov==4.1.*",
-    "pytest-deadfixtures==2.2.*",
-    "pytest-django==4.7.*",
-    "pytest-mock==3.12.*",
-    "pytest-randomly==3.15.*",
-    "pytest-xdist==3.5.*",
-    "requests-mock==1.12.*",
-    "responses==0.24.*",
-    "ruff==0.12.11",  # force ruff version to have same formatting everywhere
-    "types-openpyxl==3.1.*",
-    "types-requests==2.31.*",
-    "wemake-python-styleguide==1.3.*",
+  "boto3-stubs>=1.42.0",
+  "botocore-stubs>=1.42.3",
+  "flake8-aaa>=0.17.2",
+  "flake8-pyproject>=1.2.3",
+  "freezegun==1.4.*",
+  "ipdb==0.13.*",
+  "ipython==8.*",
+  "mypy==1.8.*",
+  "pre-commit==3.6.*",
+  "pytest==7.4.*",
+  "pytest-cov==4.1.*",
+  "pytest-deadfixtures==2.2.*",
+  "pytest-django==4.7.*",
+  "pytest-mock==3.12.*",
+  "pytest-randomly==3.15.*",
+  "pytest-xdist==3.5.*",
+  "requests-mock==1.12.*",
+  "responses==0.24.*",
+  "ruff==0.12.11", # force ruff version to have same formatting everywhere
+  "types-openpyxl==3.1.*",
+  "types-requests==2.31.*",
+  "wemake-python-styleguide==1.3.*",
 ]
 runtime = [
-    "azure-monitor-opentelemetry-exporter==1.0.0b25",
-    "click==8.1.*",
-    "debugpy==1.8.*",
-    "gunicorn==23.0.*",
-    "opentelemetry-api==1.30.*",
-    "opentelemetry-instrumentation-django==0.51b0",
-    "opentelemetry-instrumentation-logging==0.51b0",
-    "opentelemetry-instrumentation-requests==0.51b0",
-    "opentelemetry-instrumentation-botocore==0.51b0",
-    "opentelemetry-sdk==1.30.*",
-    "pyfiglet==1.0.*",
-    "rich==14.1.*",
-    "watchfiles==0.21.*",
+  "azure-monitor-opentelemetry-exporter==1.0.0b25",
+  "click==8.1.*",
+  "debugpy==1.8.*",
+  "gunicorn==23.0.*",
+  "opentelemetry-api==1.30.*",
+  "opentelemetry-instrumentation-django==0.51b0",
+  "opentelemetry-instrumentation-logging==0.51b0",
+  "opentelemetry-instrumentation-requests==0.51b0",
+  "opentelemetry-instrumentation-botocore==0.51b0",
+  "opentelemetry-sdk==1.30.*",
+  "pyfiglet==1.0.*",
+  "rich==14.1.*",
+  "watchfiles==0.21.*",
 ]
 
 [tool.uv]
 default-groups = [
-    "dev",
-    "runtime",
+  "dev",
+  "runtime",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -88,22 +90,22 @@ addopts = "--cov=. --cov-report=term-missing --cov-report=html --cov-report=xml 
 DJANGO_SETTINGS_MODULE = "tests.django.settings"
 log_cli = false
 filterwarnings = [
-    "ignore:Support for class-based `config` is deprecated:DeprecationWarning",
-    "ignore:pkg_resources is deprecated as an API:DeprecationWarning",
+  "ignore:Support for class-based `config` is deprecated:DeprecationWarning",
+  "ignore:pkg_resources is deprecated as an API:DeprecationWarning",
 ]
 
 [tool.coverage.run]
 branch = true
 relative_files = true
 omit = [
-    "__init__.py",
-    "tests/**",
-    "swo_aws_extension/default.py",
+  "__init__.py",
+  "tests/**",
+  "swo_aws_extension/default.py",
 ]
 
 [tool.coverage.report]
 exclude_also = [
-    "raise NotImplementedError",
+  "raise NotImplementedError",
 ]
 
 [tool.flake8]
@@ -129,21 +131,29 @@ show-source = true
 statistics = false
 # To be fixed and removed
 per-file-ignores = [
-"swo_aws_extension/apps.py: WPS300",
-"swo_aws_extension/aws/client.py: WPS214",
-"swo_aws_extension/aws/config.py: WPS122 WPS121 WPS214",
-"swo_aws_extension/aws/errors.py: WPS225 WPS231 WPS238 WPS328 WPS430 WPS505",
-"swo_aws_extension/default.py: WPS111 WPS407",
-"swo_aws_extension/management/commands_helpers/__init__.py: WPS410 WPS412",
-"swo_aws_extension/notifications.py: WPS202 WPS213 WPS430",
-"swo_aws_extension/swo_ccp/client.py: WPS210 WPS214",
-"tests/aws/test_config.py: WPS202",
-"tests/aws/test_errors.py: WPS202",
-"tests/conftest.py: WPS202 WPS211 WPS231 WPS430",
-"tests/django/settings.py: WPS407",
-"tests/swo_ccp/test_client.py: WPS202 WPS211",
+  "swo_aws_extension/apps.py: WPS300",
+  "swo_aws_extension/aws/client.py: WPS214",
+  "swo_aws_extension/aws/config.py: WPS122 WPS121 WPS214",
+  "swo_aws_extension/aws/errors.py: WPS225 WPS231 WPS238 WPS328 WPS430 WPS505",
+  "swo_aws_extension/default.py: WPS111 WPS407",
+  "swo_aws_extension/management/commands_helpers/__init__.py: WPS410 WPS412",
+  "swo_aws_extension/notifications.py: WPS202 WPS213 WPS430",
+  "swo_aws_extension/swo/ccp/client.py: WPS210 WPS214",
+  "swo_aws_extension/swo/rql/query_builder.py: WPS110 WPS111 WPS115 WPS210 WPS211 WPS214 WPS221 WPS231 WPS237 WPS478",
+  "swo_aws_extension/swo/finops/client.py: WPS231 WPS505 WPS111 WPS121 WPS122 WPS214 WPS420 WPS430 WPS432 WPS458",
+  "swo_aws_extension/swo/mpt/sync/syncer.py: WPS202 WPS118 WPS111 WPS204 WPS210 WPS213 WPS221 WPS229 WPS231 WPS232 WPS327 WPS426",
+  "tests/aws/test_config.py: WPS202",
+  "tests/aws/test_errors.py: WPS202",
+  "tests/conftest.py: WPS202 WPS211 WPS231 WPS430",
+  "tests/django/settings.py: WPS407",
+  "tests/swo/ccp/test_client.py: WPS202 WPS211",
+  "tests/aws/test_client.py: WPS202 WPS204",
 "tests/test_initializer.py: WPS111 WPS213 WPS218 WPS230 WPS431",
-"tests/test_notifications.py: WPS202 WPS213 WPS221 WPS235 WPS462",
+  "tests/test_notifications.py: WPS202 WPS213 WPS221 WPS235 WPS462",
+  "tests/swo/mpt/sync/test_syncer.py: WPS118 WPS214 WPS432 WPS202 WPS204 WPS210 WPS211 WPS301 WPS420",
+  "tests/swo/mpt/sync/conftest.py: WPS430 WPS202 WPS118",
+  "tests/swo/finops/test_client.py: WPS202 WPS204 WPS210",
+  "tests/swo/rql/test_query_builder.py: AAA01 AAA05 WPS110 WPS111 WPS122 WPS202 WPS204 WPS210 WPS218 WPS221 WPS347 WPS420 WPS431 WPS432 WPS473 WPS604",
 ]
 
 [tool.ruff]
@@ -160,48 +170,48 @@ docstring-code-format = false
 
 [tool.ruff.lint]
 select = [
-  "A",    # flake8-builtins
-  "B",    # flake8-bugbear
-  "C4",   # flake8-comprehensions
-  "C90",  # maccabe
-  "COM",  # flake8-commas
-  "D",    # pydocstyle
-  "DTZ",  # flake8-datetimez
-  "E",    # pycodestyle
-  "ERA",  # flake8-eradicate
-  "EXE",  # flake8-executable
-  "F",    # pyflakes
-  "FBT",  # flake8-boolean-trap
-  "FLY",  # pyflint
+  "A", # flake8-builtins
+  "B", # flake8-bugbear
+  "C4", # flake8-comprehensions
+  "C90", # maccabe
+  "COM", # flake8-commas
+  "D", # pydocstyle
+  "DTZ", # flake8-datetimez
+  "E", # pycodestyle
+  "ERA", # flake8-eradicate
+  "EXE", # flake8-executable
+  "F", # pyflakes
+  "FBT", # flake8-boolean-trap
+  "FLY", # pyflint
   "FURB", # refurb
-  "G",    # flake8-logging-format
-  "I",    # isort
-  "ICN",  # flake8-import-conventions
-  "ISC",  # flake8-implicit-str-concat
-  "LOG",  # flake8-logging
-  "N",    # pep8-naming
+  "G", # flake8-logging-format
+  "I", # isort
+  "ICN", # flake8-import-conventions
+  "ISC", # flake8-implicit-str-concat
+  "LOG", # flake8-logging
+  "N", # pep8-naming
   "PERF", # perflint
-  "PIE",  # flake8-pie
-  "PL",   # pylint
-  "PT",   # flake8-pytest-style
-  "PTH",  # flake8-use-pathlib
-  "Q",    # flake8-quotes
-  "RET",  # flake8-return
-  "RSE",  # flake8-raise
-  "RUF",  # ruff
-  "S",    # flake8-bandit
-  "SIM",  # flake8-simpify
-  "SLF",  # flake8-self
+  "PIE", # flake8-pie
+  "PL", # pylint
+  "PT", # flake8-pytest-style
+  "PTH", # flake8-use-pathlib
+  "Q", # flake8-quotes
+  "RET", # flake8-return
+  "RSE", # flake8-raise
+  "RUF", # ruff
+  "S", # flake8-bandit
+  "SIM", # flake8-simpify
+  "SLF", # flake8-self
   "SLOT", # flake8-slots
   "T100", # flake8-debugger
-  "TRY",  # tryceratops
-  "UP",   # pyupgrade
-  "W",    # pycodestyle
-  "YTT",  # flake8-2020
+  "TRY", # tryceratops
+  "UP", # pyupgrade
+  "W", # pycodestyle
+  "YTT", # flake8-2020
 ]
 ignore = [
-  "A005",   # allow to shadow stdlib and builtin module names
-  "B904",  # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+  "A005", # allow to shadow stdlib and builtin module names
+  "B904", # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
   "COM812", # trailing comma, conflicts with `ruff format`
   # Different doc rules that we don't really care about:
   "D100",
@@ -214,18 +224,18 @@ ignore = [
   "D401",
   "D404",
   "D405",
-  "ISC001",  # implicit string concat conflicts with `ruff format`
-  "ISC003",  # prefer explicit string concat over implicit concat
-  "PLR09",   # we have our own complexity rules
+  "ISC001", # implicit string concat conflicts with `ruff format`
+  "ISC003", # prefer explicit string concat over implicit concat
+  "PLR09", # we have our own complexity rules
   "PLR2004", # do not report magic numbers
   "PLR6301", # do not require classmethod / staticmethod when self not used
   "PT011", # pytest.raises({exception}) is too broad, set the match parameter or use a more specific exception
-  "TRY003",  # long exception messages from `tryceratops`
+  "TRY003", # long exception messages from `tryceratops`
 ]
-external = [ "AAA", "WPS" ]
+external = ["AAA", "WPS"]
 
 # Plugin configs:
-flake8-import-conventions.banned-from = [ "ast", "datetime" ]
+flake8-import-conventions.banned-from = ["ast", "datetime"]
 flake8-import-conventions.aliases = { datetime = "dt" }
 flake8-quotes.inline-quotes = "double"
 mccabe.max-complexity = 6
