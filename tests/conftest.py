@@ -9,7 +9,7 @@ from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.config import get_config
 from swo_aws_extension.constants import HTTP_STATUS_OK
-from swo_aws_extension.swo_ccp.client import CCPClient
+from swo_aws_extension.swo.ccp.client import CCPClient
 
 AWESOME_PRODUCT = "Awesome product"
 CREATED_AT = "2023-12-14T18:02:16.9359"
@@ -256,7 +256,7 @@ def buyer_factory():
 @pytest.fixture
 def ccp_client(mocker, config, mock_key_vault_secret_value):
     mocker.patch(
-        "swo_aws_extension.swo_ccp.client.get_openid_token",
+        "swo_aws_extension.swo.ccp.client.get_openid_token",
         return_value={"access_token": "test_access_token"},
     )
     mocker.patch.object(
@@ -270,7 +270,7 @@ def ccp_client(mocker, config, mock_key_vault_secret_value):
 @pytest.fixture
 def ccp_client_no_secret(mocker, config):
     mocker.patch(
-        "swo_aws_extension.swo_ccp.client.get_openid_token",
+        "swo_aws_extension.swo.ccp.client.get_openid_token",
         return_value={"access_token": "test_access_token"},
     )
     mocker.patch.object(
