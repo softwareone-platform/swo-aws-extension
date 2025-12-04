@@ -220,3 +220,5 @@ MPT_SETUP_CONTEXTS_FUNC = os.getenv(
 MPT_NOTIFY_CATEGORIES = json.loads(os.environ["MPT_NOTIFY_CATEGORIES"])
 
 INITIALIZER = os.getenv("MPT_INITIALIZER", "swo_aws_extension.initializer.initialize")
+
+AWS_PRODUCT_ID = None

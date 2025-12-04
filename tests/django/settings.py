@@ -196,3 +196,5 @@ EXTENSION_CONFIG = {
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"
 
 INITIALIZER = os.getenv("MPT_INITIALIZER", "swo_aws_extension.initializer.initialize")
+
+AWS_PRODUCT_ID = "PRD-1111-1111"

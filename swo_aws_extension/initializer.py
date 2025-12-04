@@ -25,4 +25,8 @@ def initialize(options, group=DEFAULT_APP_CONFIG_GROUP, name=DEFAULT_APP_CONFIG_
     if settings.USE_APPLICATIONINSIGHTS:
         BotocoreInstrumentor().instrument()
 
+    # By default, MPT_PRODUCT_IDS is configured to support multiple products. However,
+    # this extension only supports a single AWS product. Therefore, we set AWS_PRODUCT_ID
+    # to the first product ID in the list.
+    settings.AWS_PRODUCT_ID = settings.MPT_PRODUCTS_IDS[0] if settings.MPT_PRODUCTS_IDS else None
     django.setup()
