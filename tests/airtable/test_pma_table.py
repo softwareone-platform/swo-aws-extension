@@ -16,7 +16,7 @@ def mock_get_for_product():
 
 @pytest.fixture
 def mock_table(mocker):
-    with patch("swo_aws_extension.airtable.pma_table.Table") as table_cls:
+    with patch("swo_aws_extension.airtable.pma_table.Api.table") as table_cls:
         table_instance = mocker.MagicMock(spec=Table)
         table_cls.return_value = table_instance
         yield table_instance

@@ -129,21 +129,19 @@ show-source = true
 statistics = false
 # To be fixed and removed
 per-file-ignores = [
-"swo_aws_extension/apps.py: WPS300",
-"swo_aws_extension/aws/client.py: WPS214",
-"swo_aws_extension/aws/config.py: WPS122 WPS121 WPS214",
-"swo_aws_extension/aws/errors.py: WPS225 WPS231 WPS238 WPS328 WPS430 WPS505",
-"swo_aws_extension/default.py: WPS111 WPS407",
-"swo_aws_extension/management/commands_helpers/__init__.py: WPS410 WPS412",
-"swo_aws_extension/notifications.py: WPS202 WPS213 WPS430",
-"swo_aws_extension/swo_ccp/client.py: WPS210 WPS214",
-"tests/aws/test_config.py: WPS202",
-"tests/aws/test_errors.py: WPS202",
-"tests/conftest.py: WPS202 WPS211 WPS231 WPS430",
-"tests/django/settings.py: WPS407",
-"tests/swo_ccp/test_client.py: WPS202 WPS211",
-"tests/test_initializer.py: WPS111 WPS213 WPS218 WPS230 WPS431",
-"tests/test_notifications.py: WPS202 WPS213 WPS221 WPS235 WPS462",
+  "tests/**/*.py: WPS202 WPS210 WPS211 WPS402 WPS231",
+  "tests/*.py: WPS202 WPS210 WPS211 WPS402 WPS231",
+  "swo_aws_extension/apps.py: WPS300",
+  "swo_aws_extension/aws/client.py: WPS214",
+  "swo_aws_extension/aws/config.py: WPS122 WPS121 WPS214",
+  "swo_aws_extension/aws/errors.py: WPS225 WPS231 WPS238 WPS328 WPS430 WPS505",
+  "swo_aws_extension/default.py: WPS111 WPS407",
+  "swo_aws_extension/management/commands_helpers/__init__.py: WPS410 WPS412",
+  "swo_aws_extension/notifications.py: WPS202 WPS213 WPS430",
+  "swo_aws_extension/swo_ccp/client.py: WPS210 WPS214",
+  "tests/django/settings.py: WPS407",
+  "tests/test_initializer.py: WPS111 WPS213 WPS218 WPS230 WPS431",
+  "tests/test_notifications.py: WPS202 WPS213 WPS221 WPS235 WPS462"
 ]
 
 [tool.ruff]

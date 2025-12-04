@@ -2,7 +2,7 @@ import logging
 
 from django.conf import settings
 from mpt_extension_sdk.runtime.djapp.conf import get_for_product
-from pyairtable import Table
+from pyairtable import Api
 from pyairtable.formulas import AND, EQUAL, FIELD, STR_VALUE
 
 from swo_aws_extension.airtable.errors import AirtableRecordNotFoundError
@@ -18,8 +18,9 @@ class ProgramManagementAccountTable:
         api_key = settings.EXTENSION_CONFIG["AIRTABLE_API_TOKEN"]
         base_id = get_for_product(settings, "AIRTABLE_BASES", settings.AWS_PRODUCT_ID)
 
+        api = Api(api_key)
         self._table_name = "Program Management Accounts"
-        self._table = Table(api_key, base_id, self._table_name)
+        self._table = api.table(base_id, self._table_name)
 
     def get_by_authorization_and_currency_id(self, auth_id: str, currency: str) -> PMARecord:
         """Get PMA Authorization record by Authorization ID and currency.
