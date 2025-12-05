@@ -1,11 +1,9 @@
 from django.conf import settings
 from mpt_extension_sdk.core.utils import setup_client
 
-from swo_aws_extension.aws.config import Config
-from swo_aws_extension.flows.jobs.synchronize_agreements import synchronize_agreements
+from swo_aws_extension.aws.config import get_config
 from swo_aws_extension.management.commands_helpers import StyledPrintCommand
-
-config = Config()
+from swo_aws_extension.swo.mpt.sync.syncer import synchronize_agreements
 
 
 class Command(StyledPrintCommand):
@@ -33,6 +31,7 @@ class Command(StyledPrintCommand):
     def handle(self, *args, **options):  # noqa: WPS110
         """Run command."""
         self.info("Start synchronizing agreements...")
+        config = get_config()
         mpt_client = setup_client()
         synchronize_agreements(
             mpt_client,
