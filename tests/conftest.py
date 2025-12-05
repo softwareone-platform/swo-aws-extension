@@ -1,4 +1,5 @@
 import datetime as dt
+from http import HTTPStatus
 
 import jwt
 import pytest
@@ -8,7 +9,6 @@ from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.config import get_config
-from swo_aws_extension.constants import HTTP_STATUS_OK
 from swo_aws_extension.swo.ccp.client import CCPClient
 
 AWESOME_PRODUCT = "Awesome product"
@@ -188,7 +188,7 @@ def force_test_settings():
 def aws_client_factory(mocker, settings, requests_mocker):
     def _aws_client(config, mpa_account_id, role_name):
         requests_mocker.post(
-            config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=HTTP_STATUS_OK
+            config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=HTTPStatus.OK
         )
 
         mock_boto3_client = mocker.patch("boto3.client")
