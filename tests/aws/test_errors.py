@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 import pytest
 from botocore import exceptions as botocore_exceptions
 from requests import HTTPError, JSONDecodeError, RequestException
@@ -9,7 +11,6 @@ from swo_aws_extension.aws.errors import (
     wrap_boto3_error,
     wrap_http_error,
 )
-from swo_aws_extension.constants import HTTP_STATUS_INTERNAL_SERVER_ERROR, HTTP_STATUS_UNAUTHORIZED
 
 
 def test_aws_error():
@@ -19,7 +20,7 @@ def test_aws_error():
 
 
 def test_aws_http_error():
-    result = AWSHttpError(HTTP_STATUS_INTERNAL_SERVER_ERROR, "Internal Server Error")
+    result = AWSHttpError(HTTPStatus.INTERNAL_SERVER_ERROR, "Internal Server Error")
 
     assert str(result) == "500 - Internal Server Error"
 
@@ -35,7 +36,7 @@ def test_aws_openid_error():
         "error_uri": "https://login.microsoftonline.com/error?code=7000222",
     }
 
-    result = AWSOpenIdError(HTTP_STATUS_UNAUTHORIZED, payload)
+    result = AWSOpenIdError(HTTPStatus.UNAUTHORIZED, payload)
 
     assert (
         str(result) == "invalid_client - XXXYYYZZZ: The provided client secret keys for app [...]"
@@ -54,7 +55,7 @@ def test_aws_openid_error_additional_details():
         "additionalDetails": ["Detail1", "Detail2"],
     }
 
-    result = AWSOpenIdError(HTTP_STATUS_UNAUTHORIZED, payload)
+    result = AWSOpenIdError(HTTPStatus.UNAUTHORIZED, payload)
 
     assert str(result) == (
         "invalid_client - XXXYYYZZZ: The provided client secret keys for app [...]: "
@@ -67,7 +68,7 @@ def test_wrap_http_error_http_error(mocker):
     func.__name__ = "test_wrap_http_error_http_error"
     func.side_effect = HTTPError(
         response=mocker.Mock(
-            status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR,
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             json=mocker.Mock(side_effect=JSONDecodeError("msg", "doc", 0)),
             content=b"Internal Server Error",
         )
@@ -85,7 +86,7 @@ def test_wrap_http_error_request_exception(mocker):
     func.__name__ = "test_wrap_http_error_request_exception"
     func.side_effect = RequestException(
         response=mocker.Mock(
-            status_code=HTTP_STATUS_INTERNAL_SERVER_ERROR, content=b"Internal Server Error"
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR, content=b"Internal Server Error"
         )
     )
     wrapped_func = wrap_http_error(func)

@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Mapping
+from http import HTTPStatus
 from typing import Annotated, Any
 
 from django.conf import settings
@@ -10,7 +11,6 @@ from mpt_extension_sdk.mpt_http.mpt import get_webhook
 from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 from ninja import Body
 
-from swo_aws_extension.constants import HTTP_STATUS_BAD_REQUEST, HTTP_STATUS_OK
 from swo_aws_extension.models import Error
 
 logger = logging.getLogger(__name__)
@@ -35,11 +35,11 @@ def process_order_fulfillment(client, event):
 @ext.api.post(
     "/v1/orders/validate",
     response={
-        HTTP_STATUS_OK: dict,
-        HTTP_STATUS_BAD_REQUEST: Error,
+        HTTPStatus.OK: dict,
+        HTTPStatus.BAD_REQUEST: Error,
     },
     auth=JWTAuth(jwt_secret_callback),
 )
 def process_order_validation(request, order: Annotated[dict | None, Body()] = None):
     """Start order process validation."""
-    return HTTP_STATUS_OK, order
+    return HTTPStatus.OK, order

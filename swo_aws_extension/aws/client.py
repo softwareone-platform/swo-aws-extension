@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 
 import boto3
 import requests
@@ -8,9 +9,34 @@ from swo_aws_extension.aws.errors import (
     wrap_boto3_error,
     wrap_http_error,
 )
-from swo_aws_extension.swo_ccp.client import CCPClient
+from swo_aws_extension.swo.ccp.client import CCPClient
 
 logger = logging.getLogger(__name__)
+
+
+def get_paged_response(
+    method_to_call: Callable, data_key: str, kwargs: dict | None = None, max_results: int = 5
+) -> list:
+    """Retrieves paginated data from API."""
+    response_data, next_token = _get_response(method_to_call, kwargs, data_key, max_results)
+    while next_token:
+        r_data, next_token = _get_response(
+            method_to_call, kwargs, data_key, max_results, next_token
+        )
+        response_data.extend(r_data)
+
+    return response_data
+
+
+def _get_response(
+    method_to_call: Callable, kwargs: dict, data_key: str, max_results: int, next_token=""
+) -> tuple[list, str | None]:
+    kwargs = kwargs or {}
+    if next_token:
+        kwargs["NextToken"] = next_token
+    response = method_to_call(MaxResults=max_results, **kwargs)
+
+    return response.get(data_key, []), response.get("NextToken")
 
 
 class AWSClient:
@@ -22,6 +48,20 @@ class AWSClient:
         self.role_name = role_name
         self.access_token = self._get_access_token()
         self.credentials = self._get_credentials()
+
+    @wrap_boto3_error
+    def get_inbound_responsibility_transfers(self) -> list:
+        """
+        Retrieves a list of inbound responsibility transfers.
+
+        Raises:
+            botocore.exceptions.ClientError
+        """
+        return get_paged_response(
+            self._get_organization_client().list_inbound_responsibility_transfers,
+            "ResponsibilityTransfers",
+            {"Type": "BILLING"},
+        )
 
     @wrap_boto3_error
     def get_cost_and_usage(

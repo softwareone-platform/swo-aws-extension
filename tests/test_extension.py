@@ -1,9 +1,9 @@
 import json
+from http import HTTPStatus
 
 from mpt_extension_sdk.core.events.dataclasses import Event
 from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 
-from swo_aws_extension.constants import HTTP_STATUS_OK
 from swo_aws_extension.extension import (
     ext,
     jwt_secret_callback,
@@ -55,5 +55,5 @@ def test_process_order_validation(client, mocker, order_factory, jwt_token, webh
         data=json.dumps(order),
     )
 
-    assert result.status_code == HTTP_STATUS_OK
+    assert result.status_code == HTTPStatus.OK
     assert result.json() == order
