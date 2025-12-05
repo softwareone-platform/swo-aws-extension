@@ -9,10 +9,17 @@ from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.config import get_config
+from swo_aws_extension.constants import ItemSkus
 from swo_aws_extension.swo.ccp.client import CCPClient
 
+PARAM_COMPANY_NAME = "ACME Inc"
 AWESOME_PRODUCT = "Awesome product"
 CREATED_AT = "2023-12-14T18:02:16.9359"
+META = "$meta"
+ACCOUNT_EMAIL = "test@aws.com"
+ACCOUNT_NAME = "Account Name"
+SERVICE_NAME = "Marketplace service"
+INVOICE_ENTITY = "Amazon Web Services EMEA SARL"
 TOKEN_EXP_SECONDS = 300
 
 
@@ -637,3 +644,111 @@ def webhook(settings):
         "id": "WH-123-123",
         "criteria": {"product.id": settings.AWS_PRODUCT_ID},
     }
+
+
+@pytest.fixture
+def aws_accounts_factory():
+    def _account(account_id="123456789012", status="ACTIVE", accounts=None):
+        if accounts:
+            return {"Accounts": accounts}
+        return {
+            "Accounts": [
+                {
+                    "Id": account_id,
+                    "Name": "Test Account",
+                    "Email": "test@example.com",
+                    "Status": status,
+                }
+            ]
+        }
+
+    return _account
+
+
+@pytest.fixture
+def mpa_pool_factory(mocker):
+    def _mpa_pool(
+        account_id="Account Id",
+        account_email="test@email.com",
+        account_name=ACCOUNT_NAME,
+        status="Ready",
+        agreement_id="",
+        client_id="client_id",
+        scu="XX-SCU-200500",
+        buyer_id="",
+        country="US",
+        *,
+        pls_enabled=True,
+    ):
+        mpa_pool = mocker.MagicMock()
+        mpa_pool.account_id = account_id
+        mpa_pool.account_email = account_email
+        mpa_pool.account_name = account_name
+        mpa_pool.pls_enabled = pls_enabled
+        mpa_pool.status = status
+        mpa_pool.agreement_id = agreement_id
+        mpa_pool.client_id = client_id
+        mpa_pool.scu = scu
+        mpa_pool.buyer_id = buyer_id
+        mpa_pool.country = country
+
+        return mpa_pool
+
+    return _mpa_pool
+
+
+@pytest.fixture
+def product_items(lines_factory):
+    return [
+        {
+            "id": "ITM-1234-1234-1234-0001",
+            "name": sku,
+            "externalIds": {
+                "vendor": sku,
+            },
+        }
+        for sku in ItemSkus
+    ]
+
+
+@pytest.fixture
+def subscription_factory(lines_factory):
+    def _subscription(
+        name="Subscription for account_name (account_id)",
+        account_email=ACCOUNT_EMAIL,
+        account_name="account_name",
+        vendor_id="account_id",
+        status="Active",
+        agreement_id="AGR-2119-4550-8674-5962",
+        lines=None,
+    ):
+        if lines is None:
+            lines = []
+            for sku in ItemSkus:
+                lines.extend(lines_factory(external_vendor_id=sku, name=sku, quantity=1))
+        return {
+            "id": "SUB-1000-2000-3000",
+            "status": status,
+            "name": name,
+            "autoRenew": True,
+            "agreement": {
+                "id": agreement_id,
+                "status": "Active",
+                "name": "Amazon Web Services",
+            },
+            "parameters": {
+                "fulfillment": [
+                    {"externalId": "accountEmail", "value": account_email},
+                    {"externalId": "accountName", "value": account_name},
+                ]
+            },
+            "externalIds": {"vendor": vendor_id},
+            "lines": lines,
+        }
+
+    return _subscription
+
+
+@pytest.fixture
+def ffc_client(mocker):
+    return mocker.Mock()
