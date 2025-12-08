@@ -1624,7 +1624,7 @@ def onboard_customer_factory():
         feature_pls="enabled",
     ):
         return {
-            "customerName": ACCOUNT_NAME,
+            "customerName": "A buyer",
             "customerSCU": "XX-SCU-200500",
             "accountId": "123456789012",
             "services": {"isManaged": True, "isSamlEnabled": True, "isBillingEnabled": True},

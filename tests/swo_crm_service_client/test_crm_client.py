@@ -139,7 +139,7 @@ def test_client_headers(crm_client, service_request, mocker):
     create_service_request: PreparedRequest = crm_client.send.call_args[0][0]
     csr_expected_headers = {
         "User-Agent": "swo-extensions/1.0",
-        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept-Encoding": "gzip, deflate",
         "Accept": "*/*",
         "Connection": "keep-alive",
         "Authorization": "Bearer test_token",
@@ -207,7 +207,7 @@ def test_client_token_expired(crm_client, service_request, mocker):
     create_service_request: PreparedRequest = crm_client.send.call_args[0][0]
     csr_expected_headers = {
         "User-Agent": "swo-extensions/1.0",
-        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept-Encoding": "gzip, deflate",
         "Accept": "*/*",
         "Connection": "keep-alive",
         "Authorization": "Bearer test_token",
@@ -235,7 +235,7 @@ def test_client_token_expired_none(crm_client, service_request, mocker):
     create_service_request: PreparedRequest = crm_client.send.call_args[0][0]
     csr_expected_headers = {
         "User-Agent": "swo-extensions/1.0",
-        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept-Encoding": "gzip, deflate",
         "Accept": "*/*",
         "Connection": "keep-alive",
         "Authorization": "Bearer test_token",
