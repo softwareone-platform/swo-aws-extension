@@ -112,7 +112,7 @@ class CCPOnboard(Step):
 
         mpa_account = get_mpa_account(context.mpa_account)
         customer = {
-            "customerName": mpa_account.account_name,
+            "customerName": context.buyer["name"],
             "customerSCU": mpa_account.scu,
             "accountId": context.mpa_account,
             "services": {
