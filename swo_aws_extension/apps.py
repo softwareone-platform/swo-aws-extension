@@ -21,7 +21,7 @@ class ExtensionConfig(DjAppConfig):
                 "Multiple product IDs are not supported. Please configure only one AWS product ID."
             )
 
-        product_id = settings.AWS_PRODUCT_ID
+        product_id = settings.MPT_PRODUCTS_IDS[0]
 
         if (
             "WEBHOOKS_SECRETS" not in settings.EXTENSION_CONFIG

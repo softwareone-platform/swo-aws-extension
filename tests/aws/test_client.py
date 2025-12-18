@@ -1,8 +1,12 @@
-from unittest.mock import call
-
 import pytest
 
+from swo_aws_extension.aws.client import get_paged_response
 from swo_aws_extension.aws.errors import AWSError
+
+
+@pytest.fixture
+def mock_get_paged_response(mocker):
+    return mocker.patch("swo_aws_extension.aws.client.get_paged_response", spec=True)
 
 
 def test_instance_aws_client(config, aws_client_factory):
@@ -23,40 +27,132 @@ def test_instance_aws_client_empty_mpa_account_id(config, aws_client_factory):
     assert "Parameter 'mpa_account_id' must be provided to assume the role." in str(error.value)
 
 
-def test_aws_client_get_cost_and_usage(
-    mocker, config, aws_client_factory, data_aws_cost_and_usage_factory
-):
-    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    aws_cost_and_usage = data_aws_cost_and_usage_factory()
-    aws_cost_and_usage["NextPageToken"] = "token0"
-    mock_client.get_cost_and_usage.side_effect = [
-        aws_cost_and_usage,
-        data_aws_cost_and_usage_factory(),
-    ]
+class TestGetInboundResponsibilityTransfers:
+    def test_success(self, config, aws_client_factory, mock_get_paged_response):
+        mock_aws_client, mock_client = aws_client_factory(
+            config, "test_account_id", "test_role_name"
+        )
+        mock_get_paged_response.return_value = [{"id": "transfer1"}, {"id": "transfer2"}]
 
-    result = aws_client.get_cost_and_usage(
-        "2025-01-01",
-        "2025-02-01",
-        [{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
-        {"Dimensions": {"Key": "LINKED_ACCOUNT", "Values": ["test_account_id"]}},
-    )
+        result = mock_aws_client.get_inbound_responsibility_transfers()
 
-    assert len(result[0]["Groups"]) == 2
-    expected_calls = [
-        call(
-            TimePeriod={"Start": "2025-01-01", "End": "2025-02-01"},
-            Granularity="MONTHLY",
-            Metrics=["UnblendedCost"],
-            GroupBy=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
-            Filter={"Dimensions": {"Key": "LINKED_ACCOUNT", "Values": ["test_account_id"]}},
-        ),
-        call(
-            TimePeriod={"Start": "2025-01-01", "End": "2025-02-01"},
-            Granularity="MONTHLY",
-            Metrics=["UnblendedCost"],
-            GroupBy=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
-            Filter={"Dimensions": {"Key": "LINKED_ACCOUNT", "Values": ["test_account_id"]}},
-            NextPageToken="token0",
-        ),
-    ]
-    mock_client.get_cost_and_usage.assert_has_calls(expected_calls)
+        assert result == [{"id": "transfer1"}, {"id": "transfer2"}]
+        mock_get_paged_response.assert_called_once_with(
+            mock_client.list_inbound_responsibility_transfers,
+            "ResponsibilityTransfers",
+            {"Type": "BILLING"},
+        )
+
+    def test_empty(self, config, aws_client_factory, mock_get_paged_response):
+        mock_aws_client, mock_client = aws_client_factory(
+            config, "test_account_id", "test_role_name"
+        )
+        mock_get_paged_response.return_value = []
+
+        result = mock_aws_client.get_inbound_responsibility_transfers()
+
+        assert result == []
+        mock_get_paged_response.assert_called_once_with(
+            mock_client.list_inbound_responsibility_transfers,
+            "ResponsibilityTransfers",
+            {"Type": "BILLING"},
+        )
+
+    def test_error(self, config, aws_client_factory, mock_get_paged_response):
+        mock_aws_client, mock_client = aws_client_factory(
+            config, "test_account_id", "test_role_name"
+        )
+        mock_get_paged_response.side_effect = Exception("Some error occurred")
+
+        with pytest.raises(Exception, match="Some error occurred"):
+            mock_aws_client.get_inbound_responsibility_transfers()
+
+        mock_get_paged_response.assert_called_once_with(
+            mock_client.list_inbound_responsibility_transfers,
+            "ResponsibilityTransfers",
+            {"Type": "BILLING"},
+        )
+
+
+class TestGetPagedResponse:
+    def test_success(self, mocker):
+        """Test get_paged_response with multiple pages."""
+        method_mock = mocker.Mock()
+        method_mock.side_effect = [
+            {
+                "ResponsibilityTransfers": [{"id": "transfer1"}, {"id": "transfer2"}],
+                "NextToken": "token1",
+            },
+            {
+                "ResponsibilityTransfers": [{"id": "transfer3"}],
+            },
+        ]
+
+        result = get_paged_response(
+            method_mock, "ResponsibilityTransfers", {"Type": "BILLING"}, max_results=2
+        )
+
+        assert result == [
+            {"id": "transfer1"},
+            {"id": "transfer2"},
+            {"id": "transfer3"},
+        ]
+        assert method_mock.call_args_list == [
+            mocker.call(MaxResults=2, Type="BILLING"),
+            mocker.call(MaxResults=2, NextToken="token1", Type="BILLING"),
+        ]
+
+    def test_with_kwargs_none(self, mocker):
+        """Test get_paged_response with kwargs=None (default value)."""
+        method_mock = mocker.Mock(
+            return_value={
+                "ResponsibilityTransfers": [{"id": "transfer1"}],
+            }
+        )
+
+        result = get_paged_response(method_mock, "ResponsibilityTransfers")
+
+        assert result == [{"id": "transfer1"}]
+        assert method_mock.call_args_list == [mocker.call(MaxResults=100)]
+
+    def test_empty_initial_response(self, mocker):
+        """Test get_paged_response with an empty initial response."""
+        method_mock = mocker.Mock(
+            return_value={
+                "ResponsibilityTransfers": [],
+            }
+        )
+
+        result = get_paged_response(method_mock, "ResponsibilityTransfers", {"Type": "BILLING"})
+
+        assert result == []
+        assert method_mock.call_args_list == [mocker.call(MaxResults=100, Type="BILLING")]
+
+    def test_single_page_no_next_token(self, mocker):
+        """Test get_paged_response with a single page (no NextToken in response)."""
+        method_mock = mocker.Mock(
+            return_value={
+                "ResponsibilityTransfers": [{"id": "transfer1"}, {"id": "transfer2"}],
+            }
+        )
+
+        result = get_paged_response(
+            method_mock, "ResponsibilityTransfers", {"Type": "BILLING"}, max_results=10
+        )
+
+        assert result == [{"id": "transfer1"}, {"id": "transfer2"}]
+        # Should only be called once since there's no NextToken
+        method_mock.assert_called_once_with(MaxResults=10, Type="BILLING")
+
+    def test_with_empty_kwargs(self, mocker):
+        """Test get_paged_response with explicitly empty kwargs dict."""
+        method_mock = mocker.Mock(
+            return_value={
+                "ResponsibilityTransfers": [{"id": "transfer1"}],
+            }
+        )
+
+        result = get_paged_response(method_mock, "ResponsibilityTransfers", {})
+
+        assert result == [{"id": "transfer1"}]
+        assert method_mock.call_args_list == [mocker.call(MaxResults=100)]

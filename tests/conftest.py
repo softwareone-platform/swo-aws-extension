@@ -1,4 +1,6 @@
+import copy
 import datetime as dt
+from http import HTTPStatus
 
 import jwt
 import pytest
@@ -8,11 +10,17 @@ from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.config import get_config
-from swo_aws_extension.constants import HTTP_STATUS_OK
-from swo_aws_extension.swo_ccp.client import CCPClient
+from swo_aws_extension.constants import FulfillmentParameters
+from swo_aws_extension.swo.ccp.client import CCPClient
 
+PARAM_COMPANY_NAME = "ACME Inc"
 AWESOME_PRODUCT = "Awesome product"
 CREATED_AT = "2023-12-14T18:02:16.9359"
+META = "$meta"
+ACCOUNT_EMAIL = "test@aws.com"
+ACCOUNT_NAME = "Account Name"
+SERVICE_NAME = "Marketplace service"
+INVOICE_ENTITY = "Amazon Web Services EMEA SARL"
 TOKEN_EXP_SECONDS = 300
 
 
@@ -41,7 +49,7 @@ def agreement(buyer, licensee, listing, seller):
                             "id": "ITM-1234-1234-1234-0010",
                             "name": "Item 0010",
                             "externalIds": {
-                                "vendor": "external-id1",
+                                "vendor": "225989344502",
                             },
                         },
                         "quantity": 10,
@@ -58,7 +66,7 @@ def agreement(buyer, licensee, listing, seller):
                             "id": "ITM-1234-1234-1234-0011",
                             "name": "Item 0011",
                             "externalIds": {
-                                "vendor": "external-id2",
+                                "vendor": "225989344502",
                             },
                         },
                         "quantity": 4,
@@ -81,6 +89,21 @@ def agreement(buyer, licensee, listing, seller):
         "product": {
             "id": "PRD-1111-1111",
         },
+        "externalIds": {
+            "vendor": "225989344502",
+        },
+        "authorization": {
+            "externalIds": {
+                "operations": "651706759263",
+            },
+        },
+        "parameters": {
+            "ordering": [],
+            "fulfillment": [
+                {"externalId": "responsibilityTransferId", "value": "rt-8lr3q6sn"},
+                {"externalId": "pmAccountId", "value": "651706759263"},
+            ],
+        },
     }
 
 
@@ -94,7 +117,8 @@ def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_fa
         fulfillment_parameters=None,
         ordering_parameters=None,
         lines=None,
-        vendor_id="",
+        vendor_id="225989344502",
+        pma_account_id="651706759263",
         *,
         use_buyer_address=False,
     ):
@@ -165,7 +189,12 @@ def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_fa
             "product": {
                 "id": "PRD-1111-1111",
             },
-            "authorization": {"id": "AUT-1234-5678"},
+            "authorization": {
+                "id": "AUT-1234-5678",
+                "externalIds": {
+                    "operations": pma_account_id,
+                },
+            },
             "lines": lines or [],
             "subscriptions": subscriptions,
             "parameters": {
@@ -188,7 +217,7 @@ def force_test_settings():
 def aws_client_factory(mocker, settings, requests_mocker):
     def _aws_client(config, mpa_account_id, role_name):
         requests_mocker.post(
-            config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=HTTP_STATUS_OK
+            config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=HTTPStatus.OK
         )
 
         mock_boto3_client = mocker.patch("boto3.client")
@@ -256,7 +285,7 @@ def buyer_factory():
 @pytest.fixture
 def ccp_client(mocker, config, mock_key_vault_secret_value):
     mocker.patch(
-        "swo_aws_extension.swo_ccp.client.get_openid_token",
+        "swo_aws_extension.swo.ccp.client.get_openid_token",
         return_value={"access_token": "test_access_token"},
     )
     mocker.patch.object(
@@ -270,7 +299,7 @@ def ccp_client(mocker, config, mock_key_vault_secret_value):
 @pytest.fixture
 def ccp_client_no_secret(mocker, config):
     mocker.patch(
-        "swo_aws_extension.swo_ccp.client.get_openid_token",
+        "swo_aws_extension.swo.ccp.client.get_openid_token",
         return_value={"access_token": "test_access_token"},
     )
     mocker.patch.object(
@@ -331,8 +360,19 @@ def data_aws_cost_and_usage_factory():
 
 @pytest.fixture
 def fulfillment_parameters_factory():
-    def _fulfillment_parameters():
-        return []
+    def _fulfillment_parameters(
+        pma_account_id="651706759263", responsibility_transfer_id="rt-8lr3q6sn"
+    ):
+        return [
+            {
+                "externalId": FulfillmentParameters.RESPONSIBILITY_TRANSFER_ID.value,
+                "value": responsibility_transfer_id,
+            },
+            {
+                "externalId": FulfillmentParameters.PMA_ACCOUNT_ID.value,
+                "value": pma_account_id,
+            },
+        ]
 
     return _fulfillment_parameters
 
@@ -637,3 +677,19 @@ def webhook(settings):
         "id": "WH-123-123",
         "criteria": {"product.id": settings.AWS_PRODUCT_ID},
     }
+
+
+@pytest.fixture
+def extension_settings(settings):
+    current_extension_config = copy.copy(settings.EXTENSION_CONFIG)
+    yield settings
+    settings.EXTENSION_CONFIG = current_extension_config
+
+
+@pytest.fixture
+def ffc_client_settings(extension_settings):
+    extension_settings.EXTENSION_CONFIG["FFC_OPERATIONS_API_BASE_URL"] = "https://local.local"
+    extension_settings.EXTENSION_CONFIG["FFC_SUB"] = "FKT-1234"
+    extension_settings.EXTENSION_CONFIG["FFC_OPERATIONS_SECRET"] = "1234"
+
+    return extension_settings
