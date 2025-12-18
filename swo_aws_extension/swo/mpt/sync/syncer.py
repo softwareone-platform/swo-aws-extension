@@ -19,7 +19,7 @@ from swo_aws_extension.constants import (
     SubscriptionStatus,
 )
 from swo_aws_extension.notifications import send_error, send_exception, send_warning
-from swo_aws_extension.parameters import get_pma_account_id, get_responsibility_transfer_id
+from swo_aws_extension.parameters import get_responsibility_transfer_id
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ def synchronize_agreements(  # noqa: C901
         dry_run: Whether to perform a dry run.
     """
     product_ids = set(product_ids)
-    select = "&select=parameters,subscriptions"
+    select = "&select=parameters,subscriptions,authorization.externalIds.operations"
     if agreement_ids:
         rql_filter = (
             RQLQuery(id__in=agreement_ids)
@@ -61,7 +61,7 @@ def synchronize_agreements(  # noqa: C901
             logger.error(msg)
             send_error(operation_description, msg)
             continue
-        pma_account_id = get_pma_account_id(agreement).get("value")
+        pma_account_id = agreement["authorization"].get("externalIds", {}).get("operations")
         if not pma_account_id:
             msg = f"{agreement.get('id')} - Skipping - PMA not found"
             logger.error(msg)

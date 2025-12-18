@@ -99,15 +99,12 @@ class TestSynchronizeAgreements:
         mpt_client,
         config,
         agreement_factory,
-        fulfillment_parameters_factory,
         mock_get_agreements_by_query,
         mock_awsclient,
         mock_send_error,
         mock_get_latest_inbound_responsibility_transfers,
     ):
-        mock_agreement = agreement_factory(
-            fulfillment_parameters=fulfillment_parameters_factory(pma_account_id="")
-        )
+        mock_agreement = agreement_factory(pma_account_id="")
         mock_get_agreements_by_query.return_value = [mock_agreement]
 
         synchronize_agreements(mpt_client, ["AGR-123-456"], ["PROD-123-456"], dry_run=False)  # act
