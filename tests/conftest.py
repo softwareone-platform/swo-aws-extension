@@ -92,6 +92,11 @@ def agreement(buyer, licensee, listing, seller):
         "externalIds": {
             "vendor": "225989344502",
         },
+        "authorization": {
+            "externalIds": {
+                "operations": "651706759263",
+            },
+        },
         "parameters": {
             "ordering": [],
             "fulfillment": [
@@ -113,6 +118,7 @@ def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_fa
         ordering_parameters=None,
         lines=None,
         vendor_id="225989344502",
+        pma_account_id="651706759263",
         *,
         use_buyer_address=False,
     ):
@@ -183,7 +189,12 @@ def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_fa
             "product": {
                 "id": "PRD-1111-1111",
             },
-            "authorization": {"id": "AUT-1234-5678"},
+            "authorization": {
+                "id": "AUT-1234-5678",
+                "externalIds": {
+                    "operations": pma_account_id,
+                },
+            },
             "lines": lines or [],
             "subscriptions": subscriptions,
             "parameters": {

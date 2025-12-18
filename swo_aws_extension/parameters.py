@@ -28,9 +28,6 @@ def get_parameter(parameter_phase, param_external_id, source):
 
 
 get_fulfillment_parameter = functools.partial(get_parameter, FulfillmentParameters.PHASE)
-get_pma_account_id = functools.partial(
-    get_fulfillment_parameter, FulfillmentParameters.PMA_ACCOUNT_ID
-)
 get_responsibility_transfer_id = functools.partial(
     get_fulfillment_parameter, FulfillmentParameters.RESPONSIBILITY_TRANSFER_ID
 )
