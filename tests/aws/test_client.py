@@ -113,7 +113,7 @@ class TestGetPagedResponse:
         result = get_paged_response(method_mock, "ResponsibilityTransfers")
 
         assert result == [{"id": "transfer1"}]
-        assert method_mock.call_args_list == [mocker.call(MaxResults=100)]
+        assert method_mock.call_args_list == [mocker.call(MaxResults=20)]
 
     def test_empty_initial_response(self, mocker):
         """Test get_paged_response with an empty initial response."""
@@ -126,7 +126,7 @@ class TestGetPagedResponse:
         result = get_paged_response(method_mock, "ResponsibilityTransfers", {"Type": "BILLING"})
 
         assert result == []
-        assert method_mock.call_args_list == [mocker.call(MaxResults=100, Type="BILLING")]
+        assert method_mock.call_args_list == [mocker.call(MaxResults=20, Type="BILLING")]
 
     def test_single_page_no_next_token(self, mocker):
         """Test get_paged_response with a single page (no NextToken in response)."""
@@ -155,4 +155,4 @@ class TestGetPagedResponse:
         result = get_paged_response(method_mock, "ResponsibilityTransfers", {})
 
         assert result == [{"id": "transfer1"}]
-        assert method_mock.call_args_list == [mocker.call(MaxResults=100)]
+        assert method_mock.call_args_list == [mocker.call(MaxResults=20)]

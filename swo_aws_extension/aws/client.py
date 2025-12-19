@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_paged_response(
-    method_to_call: Callable, data_key: str, kwargs: dict | None = None, max_results: int = 100
+    method_to_call: Callable, data_key: str, kwargs: dict | None = None, max_results: int = 20
 ) -> list:
     """Retrieves paginated data from API."""
     response_data, next_token = _get_response(method_to_call, kwargs, data_key, max_results)
