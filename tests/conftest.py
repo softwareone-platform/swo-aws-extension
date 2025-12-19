@@ -10,7 +10,11 @@ from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.config import get_config
-from swo_aws_extension.constants import FulfillmentParameters
+from swo_aws_extension.constants import (
+    AccountTypesEnum,
+    FulfillmentParametersEnum,
+    OrderParametersEnum,
+)
 from swo_aws_extension.swo.ccp.client import CCPClient
 
 PARAM_COMPANY_NAME = "ACME Inc"
@@ -215,7 +219,7 @@ def force_test_settings():
 
 @pytest.fixture
 def aws_client_factory(mocker, settings, requests_mocker):
-    def _aws_client(config, mpa_account_id, role_name):
+    def factory(config, mpa_account_id, role_name):
         requests_mocker.post(
             config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=HTTPStatus.OK
         )
@@ -235,7 +239,7 @@ def aws_client_factory(mocker, settings, requests_mocker):
         )
         return AWSClient(config, mpa_account_id, role_name), mock_client
 
-    return _aws_client
+    return factory
 
 
 @pytest.fixture
@@ -272,14 +276,14 @@ def buyer():
 
 @pytest.fixture
 def buyer_factory():
-    def _factory(buyer_id=None, name=None, email=None):
+    def factory(buyer_id=None, name=None, email=None):
         return {
             "id": buyer_id or "BUY-1111-1111",
             "name": name or "A buyer",
             "email": email or "buyer@example.com",
         }
 
-    return _factory
+    return factory
 
 
 @pytest.fixture
@@ -322,7 +326,7 @@ def constraints():
 
 @pytest.fixture
 def data_aws_cost_and_usage_factory():
-    def create_usage_report(
+    def factory(
         account_id="1234-1234-1234",
     ):
         return {
@@ -355,26 +359,27 @@ def data_aws_cost_and_usage_factory():
             ],
         }
 
-    return create_usage_report
+    return factory
 
 
 @pytest.fixture
 def fulfillment_parameters_factory():
-    def _fulfillment_parameters(
-        pma_account_id="651706759263", responsibility_transfer_id="rt-8lr3q6sn"
-    ):
+    def factory(phase="", responsibility_transfer_id="rt-8lr3q6sn"):  # noqa: WPS430
         return [
             {
-                "externalId": FulfillmentParameters.RESPONSIBILITY_TRANSFER_ID.value,
-                "value": responsibility_transfer_id,
+                "id": "PAR-1234-5678",
+                "name": "Phase",
+                "externalId": FulfillmentParametersEnum.PHASE.value,
+                "type": "Dropdown",
+                "value": phase,
             },
             {
-                "externalId": FulfillmentParameters.PMA_ACCOUNT_ID.value,
-                "value": pma_account_id,
+                "externalId": FulfillmentParametersEnum.RESPONSIBILITY_TRANSFER_ID.value,
+                "value": responsibility_transfer_id,
             },
         ]
 
-    return _fulfillment_parameters
+    return factory
 
 
 @pytest.fixture
@@ -417,7 +422,7 @@ def licensee(buyer):
 def lines_factory(agreement, deployment_id=None):
     agreement_id = agreement["id"].split("-", 1)[1]
 
-    def _lines(
+    def factory(
         line_id=1,
         item_id=1,
         name=AWESOME_PRODUCT,
@@ -447,7 +452,7 @@ def lines_factory(agreement, deployment_id=None):
             line["deploymentId"] = deployment_id
         return [line]
 
-    return _lines
+    return factory
 
 
 @pytest.fixture
@@ -500,11 +505,45 @@ def mpt_client(settings):
 
 
 @pytest.fixture
-def order_parameters_factory(constraints):
-    def _order_parameters():
-        return []
+def mpt_error_factory():
+    def factory(
+        status,
+        title,
+        detail,
+        trace_id="00-27cdbfa231ecb356ab32c11b22fd5f3c-721db10d009dfa2a-00",
+        errors=None,
+    ):
+        error = {
+            "status": status,
+            "title": title,
+            "detail": detail,
+            "traceId": trace_id,
+        }
+        if errors:
+            error["errors"] = errors
 
-    return _order_parameters
+        return error
+
+    return factory
+
+
+@pytest.fixture
+def order_parameters_factory(constraints):
+    def factory(
+        account_type=AccountTypesEnum.NEW_AWS_ENVIRONMENT.value,
+    ):
+        return [
+            {
+                "id": "PAR-1234-5680",
+                "name": "Account type",
+                "externalId": OrderParametersEnum.ACCOUNT_TYPE.value,
+                "type": "choice",
+                "value": account_type,
+                "constraints": constraints,
+            }
+        ]
+
+    return factory
 
 
 @pytest.fixture
@@ -517,7 +556,7 @@ def order_factory(
     seller,
     template_factory,
 ):
-    def _order(
+    def factory(
         order_id="ORD-0792-5000-2253-4210",
         order_type="Purchase",
         order_parameters=None,
@@ -530,6 +569,7 @@ def order_factory(
         deployment_id="",
         agreement=None,
         buyer=None,
+        authorization_external_id="123456789012",
     ):
         order_parameters = (
             order_parameters_factory() if order_parameters is None else order_parameters
@@ -553,6 +593,9 @@ def order_factory(
             "agreement": agreement,
             "authorization": {
                 "id": "AUT-1234-4567",
+                "externalIds": {
+                    "operations": authorization_external_id,
+                },
             },
             "type": order_type,
             "status": status or "Processing",
@@ -582,7 +625,7 @@ def order_factory(
         order["template"] = template or template_factory()
         return order
 
-    return _order
+    return factory
 
 
 @pytest.fixture
@@ -637,7 +680,7 @@ def template_factory():
         "of this message the parameter will be used in the given context."
     )
 
-    def _template(
+    def factory(
         name=None,
         template_id=None,
         content=None,  # noqa: WPS110
@@ -668,7 +711,7 @@ def template_factory():
             },
         }
 
-    return _template
+    return factory
 
 
 @pytest.fixture

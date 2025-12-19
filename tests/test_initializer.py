@@ -115,7 +115,7 @@ def test_initialize_with_app_insights(monkeypatch, mocker, mock_app_insights_ins
     monkeypatch.setitem(sys.modules, "django", django_mock)
     mocker.patch(
         "mpt_extension_sdk.runtime.djapp.conf.extract_product_ids",
-        return_value="PRD-1111-1111",
+        return_value=["PRD-1111-1111"],
     )
     mocker.patch(
         "mpt_extension_sdk.runtime.utils.get_extension_app_config_name",

@@ -11,6 +11,7 @@ from mpt_extension_sdk.mpt_http.mpt import get_webhook
 from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 from ninja import Body
 
+from swo_aws_extension.flows.fulfillment.base import fulfill_order
 from swo_aws_extension.models import Error
 
 logger = logging.getLogger(__name__)
@@ -28,8 +29,7 @@ def jwt_secret_callback(client: MPTClient, claims: Mapping[str, Any]) -> str:
 @ext.events.listener("orders")
 def process_order_fulfillment(client, event):
     """Process order fulfillment."""
-    # TODO: Implement order fulfillment logic here
-    logger.info("Received order fulfillment event: %s", event)
+    fulfill_order(client, event.data)
 
 
 @ext.api.post(
