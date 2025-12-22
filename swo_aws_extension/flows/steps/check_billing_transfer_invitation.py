@@ -4,6 +4,7 @@ from typing import override
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
+from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import (
     INVALID_RESPONSIBILITY_TRANSFER_STATUS,
     OrderQueryingTemplateEnum,
@@ -25,6 +26,9 @@ logger = logging.getLogger(__name__)
 
 class CheckBillingTransferInvitation(BasePhaseStep):
     """Check Billing Transfer Invitation step."""
+
+    def __init__(self, config: Config):
+        self._config = config
 
     @override
     def pre_step(self, context: PurchaseContext) -> None:
