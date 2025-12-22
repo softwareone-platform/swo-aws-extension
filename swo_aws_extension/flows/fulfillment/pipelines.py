@@ -28,7 +28,7 @@ def strip_trace_id(traceback_msg: str) -> str:
 # Should be removed with the new SDK error handling mechanism.
 def pipeline_error_handler(error: Exception, context: Context, next_step):
     """Custom error handler for AWS pipelines."""
-    logger.error("%s - Unexpected error in AWS pipeline: %s", context.order_id, str(error))
+    logger.error("%s - Unexpected error in AWS pipeline: %s", context.order_id, error)
     traceback_id = strip_trace_id(traceback.format_exc())
     TeamsNotificationManager().notify_one_time_error(
         "Order fulfillment unhandled exception!",

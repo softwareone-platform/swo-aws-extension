@@ -418,9 +418,11 @@ class TestSyncPmaAccountId:
 
         assert caplog.messages == [
             "AGR-2119-4550-8674-5962 - synchronizing responsibility transfer ID: PMA-123456",
-            "AGR-2119-4550-8674-5962 - dry run mode - skipping update with parameters: "
-            "{'fulfillment': [{'externalId': 'responsibilityTransferId', 'value': "
-            "'PMA-123456'}]}",
+            (
+                "AGR-2119-4550-8674-5962 - dry run mode - skipping update with parameters: "
+                "{'fulfillment': [{'externalId': 'responsibilityTransferId', 'value': "
+                "'PMA-123456'}]}"
+            ),
         ]
         mock_update_agreement.assert_not_called()
 
