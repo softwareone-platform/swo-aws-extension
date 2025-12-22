@@ -104,3 +104,10 @@ class MptOrderStatus(StrEnum):
     """MPT order statuses."""
 
     COMPLETED = "Completed"
+
+
+class FinOpsStatusEnum(StrEnum):
+    """FinOps entitlement status enum."""
+
+    ACTIVE = "Active"
+    TERMINATED = "Terminated"
