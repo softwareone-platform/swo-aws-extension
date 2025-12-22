@@ -8,7 +8,7 @@ readme = "README.md"
 license = { text = "Apache-2.0 license" }
 
 dependencies = [
-  "azure-core>=1.33.0,<2",
+  "azure-core==1.36.*",
   "boto3==1.42.*",
   "django==4.2.*",
   "jinja2==3.1.*",
@@ -18,7 +18,7 @@ dependencies = [
   "phonenumbers==8.13.*",
   "pyairtable==2.3.*",
   "pymsteams==0.2.*",
-  "regex>=2024.7.24,<2025",
+  "regex==2024.11.*",
   "requests==2.32.*",
   "types-openpyxl==3.1.*",
 ]
@@ -28,10 +28,11 @@ app_config = "swo_aws_extension.apps:ExtensionConfig"
 
 [dependency-groups]
 dev = [
-  "boto3-stubs>=1.42.0",
-  "botocore-stubs>=1.42.3",
-  "flake8-aaa>=0.17.2",
-  "flake8-pyproject>=1.2.3",
+  "boto3-stubs==1.42.*",
+  "botocore-stubs==1.42.*",
+  "flake8==7.3.0", # also update in pre-commit config
+  "flake8-aaa==0.17.*", # also update in pre-commit config
+  "flake8-pyproject==1.2.*", # also update in pre-commit config
   "freezegun==1.4.*",
   "ipdb==0.13.*",
   "ipython==8.*",
@@ -238,11 +239,18 @@ ignore = [
 external = ["AAA", "WPS"]
 
 # Plugin configs:
-flake8-import-conventions.banned-from = ["ast", "datetime"]
-flake8-import-conventions.aliases = { datetime = "dt" }
-flake8-quotes.inline-quotes = "double"
-mccabe.max-complexity = 6
-pydocstyle.convention = "google"
+[tool.ruff.lint.flake8-import-conventions]
+banned-from = ["ast", "datetime"]
+aliases = { datetime = "dt" }
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "double"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 6
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = [
