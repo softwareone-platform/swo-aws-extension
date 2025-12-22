@@ -132,8 +132,8 @@ show-source = true
 statistics = false
 # To be fixed and removed
 per-file-ignores = [
-  "tests/**/*.py: WPS202 WPS210  WPS211 WPS213 WPS402 WPS231",
-  "tests/*.py: WPS202 WPS210 WPS211 WPS213 WPS402 WPS231",
+  "tests/**/*.py: WPS202 WPS204 WPS210 WPS211 WPS213 WPS402 WPS231",
+  "tests/*.py: WPS202 WPS204 WPS210 WPS211 WPS213 WPS402 WPS231",
   "swo_aws_extension/apps.py: WPS300",
   "swo_aws_extension/aws/client.py: WPS214",
   "swo_aws_extension/aws/config.py: WPS122 WPS121 WPS214",

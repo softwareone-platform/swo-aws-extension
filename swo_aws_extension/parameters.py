@@ -106,3 +106,23 @@ def get_responsibility_transfer_id(source: dict[str, Any]) -> str | None:
         source,
     )
     return fulfillment_param.get("value", None)
+
+
+def set_crm_onboard_ticket_id(order: dict[str, Any], ticket_id: str) -> dict[str, Any]:
+    """Set the CRM onboard ticket ID on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CRM_ONBOARD_TICKET_ID,
+        updated_order,
+    )
+    fulfillment_param["value"] = ticket_id
+    return updated_order
+
+
+def get_crm_onboard_ticket_id(source: dict[str, Any]) -> str | None:
+    """Get the CRM onboard ticket ID from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CRM_ONBOARD_TICKET_ID,
+        source,
+    )
+    return fulfillment_param.get("value", None)
