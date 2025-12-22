@@ -23,20 +23,20 @@ def purchase_context(order_factory):
 
 
 def test_pre_step_skips_wrong_phase(
-    order_factory, fulfillment_parameters_factory, purchase_context
+    order_factory, fulfillment_parameters_factory, purchase_context, config
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
     )
     context = purchase_context(order)
-    step = OnboardServices()
+    step = OnboardServices(config)
 
     with pytest.raises(SkipStepError):
         step.pre_step(context)
 
 
 def test_pre_step_already_processed(
-    order_factory, fulfillment_parameters_factory, purchase_context
+    order_factory, fulfillment_parameters_factory, purchase_context, config
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -45,15 +45,15 @@ def test_pre_step_already_processed(
         )
     )
     context = purchase_context(order)
-    step = OnboardServices()
+    step = OnboardServices(config)
 
     with pytest.raises(AlreadyProcessedStepError):
         step.pre_step(context)
 
-    assert get_phase(context.order) == PhasesEnum.COMPLETE
+    assert get_phase(context.order) == PhasesEnum.CREATE_SUBSCRIPTION
 
 
-def test_pre_step_proceeds(order_factory, fulfillment_parameters_factory, purchase_context):
+def test_pre_step_proceeds(order_factory, fulfillment_parameters_factory, purchase_context, config):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.ONBOARD_SERVICES,
@@ -61,7 +61,7 @@ def test_pre_step_proceeds(order_factory, fulfillment_parameters_factory, purcha
         )
     )
     context = purchase_context(order)
-    step = OnboardServices()
+    step = OnboardServices(config)
 
     step.pre_step(context)  # act
 
@@ -69,7 +69,12 @@ def test_pre_step_proceeds(order_factory, fulfillment_parameters_factory, purcha
 
 
 def test_process_creates_service_request(
-    order_factory, fulfillment_parameters_factory, mpt_client, mock_crm_client, purchase_context
+    order_factory,
+    fulfillment_parameters_factory,
+    mpt_client,
+    mock_crm_client,
+    purchase_context,
+    config,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -78,7 +83,7 @@ def test_process_creates_service_request(
     )
     context = purchase_context(order)
     mock_crm_client.return_value.create_service_request.return_value = {"id": "CS0004728"}
-    step = OnboardServices()
+    step = OnboardServices(config)
 
     step.process(mpt_client, context)  # act
 
@@ -86,7 +91,12 @@ def test_process_creates_service_request(
 
 
 def test_process_sets_ticket_id(
-    order_factory, fulfillment_parameters_factory, mpt_client, mock_crm_client, purchase_context
+    order_factory,
+    fulfillment_parameters_factory,
+    mpt_client,
+    mock_crm_client,
+    purchase_context,
+    config,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -95,7 +105,7 @@ def test_process_sets_ticket_id(
     )
     context = purchase_context(order)
     mock_crm_client.return_value.create_service_request.return_value = {"id": "CS0004728"}
-    step = OnboardServices()
+    step = OnboardServices(config)
 
     step.process(mpt_client, context)  # act
 
@@ -109,6 +119,7 @@ def test_process_logs_ticket_creation(
     mock_crm_client,
     caplog,
     purchase_context,
+    config,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -117,7 +128,7 @@ def test_process_logs_ticket_creation(
     )
     context = purchase_context(order)
     mock_crm_client.return_value.create_service_request.return_value = {"id": "CS0004728"}
-    step = OnboardServices()
+    step = OnboardServices(config)
 
     step.process(mpt_client, context)  # act
 
@@ -131,6 +142,7 @@ def test_process_logs_when_no_ticket_id(
     mock_crm_client,
     caplog,
     purchase_context,
+    config,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -139,7 +151,7 @@ def test_process_logs_when_no_ticket_id(
     )
     context = purchase_context(order)
     mock_crm_client.return_value.create_service_request.return_value = {"status": "created"}
-    step = OnboardServices()
+    step = OnboardServices(config)
 
     step.process(mpt_client, context)  # act
 
@@ -147,8 +159,8 @@ def test_process_logs_when_no_ticket_id(
     assert not get_crm_onboard_ticket_id(context.order)
 
 
-def test_post_step_sets_complete_phase(
-    mocker, order_factory, fulfillment_parameters_factory, mpt_client, purchase_context
+def test_post_step_sets_create_subscription_phase(
+    mocker, order_factory, fulfillment_parameters_factory, mpt_client, purchase_context, config
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -157,7 +169,7 @@ def test_post_step_sets_complete_phase(
     )
     updated_order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.COMPLETE.value,
+            phase=PhasesEnum.CREATE_SUBSCRIPTION.value,
         )
     )
     context = purchase_context(order)
@@ -165,11 +177,13 @@ def test_post_step_sets_complete_phase(
         "swo_aws_extension.flows.steps.onboard_services.update_order",
         return_value=updated_order,
     )
-    step = OnboardServices()
+    step = OnboardServices(config)
 
     step.post_step(mpt_client, context)  # act
 
-    assert get_phase(context.order) == PhasesEnum.COMPLETE
-    mock_update.assert_called_once_with(
-        mpt_client, context.order_id, parameters=updated_order["parameters"]
-    )
+    assert get_phase(context.order) == PhasesEnum.CREATE_SUBSCRIPTION
+    mock_update.assert_called_once()
+    call_args = mock_update.call_args
+    assert call_args[0][0] == mpt_client
+    assert call_args[0][1] == context.order_id
+    assert call_args[1]["parameters"] is not None

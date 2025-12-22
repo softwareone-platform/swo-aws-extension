@@ -132,11 +132,14 @@ def test_post_step_sets_phase(
             phase=PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION,
         )
     )
-    mocker.patch(
-        "swo_aws_extension.flows.steps.create_billing_transfer_invitation.switch_order_status_to_query_and_notify",
+    mock_update = mocker.patch(
+        "swo_aws_extension.flows.steps.create_billing_transfer_invitation.update_order",
         return_value=updated_order,
     )
 
     CreateBillingTransferInvitation(config).post_step(mpt_client, context)  # act
 
     assert get_phase(context.order) == PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION
+    mock_update.assert_called_once_with(
+        mpt_client, context.order_id, parameters=context.order["parameters"]
+    )

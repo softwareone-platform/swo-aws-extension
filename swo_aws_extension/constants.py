@@ -61,7 +61,7 @@ class PhasesEnum(StrEnum):
     CHECK_BILLING_TRANSFER_INVITATION = "checkBillingTransferInvitation"
     ONBOARD_SERVICES = "onboardServices"
     CREATE_SUBSCRIPTION = "createSubscription"
-    COMPLETE = "complete"
+    COMPLETED = "completed"
 
 
 class ParamPhasesEnum(StrEnum):
