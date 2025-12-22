@@ -91,3 +91,10 @@ class OrderQueryingTemplateEnum(StrEnum):
 
     TRANSFER_AWAITING_INVITATIONS = "Querying - awaiting invitations acceptance"
     INVALID_ACCOUNT_ID = "Order querying template - invalid Account ID"
+
+
+class OpScaleStatusEnum(StrEnum):
+    """OpScale entitlement status enum."""
+
+    ACTIVE = "Active"
+    TERMINATED = "Terminated"

@@ -41,6 +41,11 @@ class Config:
         return settings.EXTENSION_CONFIG["CCP_OAUTH_URL"]
 
     @property
+    def aws_region(self) -> str:
+        """AWS region."""
+        return settings.EXTENSION_CONFIG["AWS_REGION"]
+
+    @property
     def ccp_scope(self):
         """CCP scope."""
         return settings.EXTENSION_CONFIG["CCP_SCOPE"]
