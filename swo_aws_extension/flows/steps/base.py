@@ -50,7 +50,7 @@ class BasePhaseStep(Step, ABC):
         self._next_step(self._client, context)
 
     @abstractmethod
-    def process(self, context: InitialAWSContext) -> None:
+    def process(self, client: MPTClient, context: InitialAWSContext) -> None:
         """Execute the actual step logic."""
         raise NotImplementedError
 
@@ -84,12 +84,13 @@ class BasePhaseStep(Step, ABC):
                 context.order_id,
                 error,
             )
+            TeamsNotificationManager().notify_one_time_error(error.title, error.message)
             return False
         return True
 
     def _run_process(self, context: InitialAWSContext) -> bool:
         try:
-            self.process(context)
+            self.process(self._client, context)
         except UnexpectedStopError as error:
             logger.info("%s - Unexpected Stop: %s", context.order_id, error)
             TeamsNotificationManager().notify_one_time_error(error.title, error.message)

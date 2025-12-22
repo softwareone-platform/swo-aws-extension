@@ -45,7 +45,7 @@ def test_already_processed_transfer_id_exists(
 
 
 def test_missing_mpa_id(
-    order_factory, config, fulfillment_parameters_factory, order_parameters_factory
+    order_factory, config, fulfillment_parameters_factory, order_parameters_factory, mpt_client
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -59,14 +59,14 @@ def test_missing_mpa_id(
     context = PurchaseContext.from_order_data(order)
 
     with pytest.raises(QueryStepError) as error:
-        CreateBillingTransferInvitation(config).process(context)
+        CreateBillingTransferInvitation(config).process(mpt_client, context)
 
     assert error.value.template_id == OrderQueryingTemplateEnum.INVALID_ACCOUNT_ID
 
 
 @freeze_time("2025-12-22 00:00:00")
 def test_create_transfer_billing_invitation(
-    order_factory, config, aws_client_factory, fulfillment_parameters_factory
+    order_factory, config, aws_client_factory, fulfillment_parameters_factory, mpt_client
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -85,7 +85,7 @@ def test_create_transfer_billing_invitation(
         }
     }
 
-    CreateBillingTransferInvitation(config).process(context)  # act
+    CreateBillingTransferInvitation(config).process(mpt_client, context)  # act
 
     assert get_responsibility_transfer_id(context.order) == "RT-123"
     relationship_name = f"Transfer Billing - {context.buyer['name']}"
@@ -97,7 +97,7 @@ def test_create_transfer_billing_invitation(
 
 
 def test_create_transfer_billing_invitation_error(
-    order_factory, config, aws_client_factory, fulfillment_parameters_factory
+    order_factory, config, aws_client_factory, fulfillment_parameters_factory, mpt_client
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -113,7 +113,7 @@ def test_create_transfer_billing_invitation_error(
     )
 
     with pytest.raises(QueryStepError) as error:
-        CreateBillingTransferInvitation(config).process(context)
+        CreateBillingTransferInvitation(config).process(mpt_client, context)
 
     assert error.value.template_id == OrderQueryingTemplateEnum.INVALID_ACCOUNT_ID
 

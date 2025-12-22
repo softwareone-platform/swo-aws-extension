@@ -7,10 +7,12 @@ from mpt_extension_sdk.flows.pipeline import Pipeline
 
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import SWO_EXTENSION_MANAGEMENT_ROLE
+from swo_aws_extension.flows.steps.complete_order import CompleteTerminationOrder
 from swo_aws_extension.flows.steps.create_billing_transfer_invitation import (
     CreateBillingTransferInvitation,
 )
 from swo_aws_extension.flows.steps.setup_context import SetupContext
+from swo_aws_extension.flows.steps.terminate import TerminateResponsibilityTransferStep
 from swo_aws_extension.notifications import TeamsNotificationManager
 
 config = Config()
@@ -47,4 +49,9 @@ purchase_new_aws_environment = Pipeline(
 purchase_existing_aws_environment = Pipeline(
     SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
     CreateBillingTransferInvitation(config),
+)
+terminate = Pipeline(
+    SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    TerminateResponsibilityTransferStep(),
+    CompleteTerminationOrder(),
 )
