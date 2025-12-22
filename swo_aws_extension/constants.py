@@ -9,6 +9,12 @@ FAILED_TO_GET_SECRET = "Failed to get secret"  # noqa: S105
 FAILED_TO_SAVE_SECRET_TO_KEY_VAULT = "Failed to save secret to key vault"  # noqa: S105
 
 SWO_EXTENSION_MANAGEMENT_ROLE = "SWOExtensionDevelopmentRole"
+CRM_EXTERNAL_EMAIL = "marketplace@softwareone.com"
+CRM_EXTERNAL_USERNAME = "mpt@marketplace.com"
+CRM_SERVICE_TYPE = "MarketPlaceServiceActivation"
+CRM_GLOBAL_EXT_USER_ID = "globalacademicExtUserId"
+CRM_REQUESTER = "Supplier.Portal"
+CRM_SUB_SERVICE = "Service Activation"
 
 
 class SubscriptionStatus(StrEnum):
@@ -54,6 +60,7 @@ class PhasesEnum(StrEnum):
     CREATE_BILLING_TRANSFER_INVITATION = "createBillingTransferInvitation"
     CHECK_BILLING_TRANSFER_INVITATION = "checkBillingTransferInvitation"
     ONBOARD_SERVICES = "onboardServices"
+    CREATE_SUBSCRIPTION = "createSubscription"
     COMPLETE = "complete"
 
 
