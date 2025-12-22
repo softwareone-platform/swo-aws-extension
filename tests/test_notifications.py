@@ -6,9 +6,9 @@ import pytest
 from mpt_extension_sdk.mpt_http.wrap_http_error import MPTHttpError
 
 from swo_aws_extension.flows.order import (
-    MPT_ORDER_STATUS_QUERYING,
     InitialAWSContext,
 )
+from swo_aws_extension.flows.order_utils import MPT_ORDER_STATUS_QUERYING
 from swo_aws_extension.notifications import (
     Button,
     FactsSection,
