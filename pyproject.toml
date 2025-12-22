@@ -153,7 +153,7 @@ per-file-ignores = [
   "tests/django/settings.py: WPS407",
   "tests/swo/ccp/test_client.py: WPS202 WPS211",
   "tests/aws/test_client.py: WPS432 WPS202 WPS204",
-"tests/test_initializer.py: WPS111 WPS213 WPS218 WPS230 WPS431",
+  "tests/test_initializer.py: WPS111 WPS213 WPS218 WPS230 WPS431",
   "tests/swo/mpt/sync/test_syncer.py: WPS118 WPS214 WPS432 WPS202 WPS204 WPS210 WPS211 WPS301 WPS420",
   "tests/swo/mpt/sync/conftest.py: WPS430 WPS202 WPS118",
   "tests/swo/finops/test_client.py: WPS202 WPS204 WPS210",

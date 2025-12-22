@@ -21,6 +21,11 @@ class SkipStepError(Exception):
 class ConfigurationStepError(Exception):
     """The step cannot proceed due to configuration issues."""
 
+    def __init__(self, title: str, message: str) -> None:
+        self.message = message
+        self.title = title
+        super().__init__(message)
+
 
 class FailStepError(Exception):
     """The step has failed and cannot proceed."""
@@ -45,3 +50,15 @@ ERR_MISSING_MPA_ID = ValidationError(
     "AWS002",
     "Account id is empty. Please provide an account id.",
 )
+
+
+class OrderStatusChangeError(RuntimeError):
+    """Exception raised when the order status cannot be changed."""
+
+    def __init__(self, target_status, current_status):
+        message = (
+            f"Order is already in `{current_status}` status. "
+            f"Unable to switch and order to `{target_status}` "
+            f"when it is in `{current_status}` status."
+        )
+        super().__init__(message)

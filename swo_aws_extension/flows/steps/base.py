@@ -9,6 +9,8 @@ from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.flows.order import (
     InitialAWSContext,
+)
+from swo_aws_extension.flows.order_utils import (
     switch_order_status_to_failed_and_notify,
     switch_order_status_to_query_and_notify,
 )
@@ -82,6 +84,7 @@ class BasePhaseStep(Step, ABC):
                 context.order_id,
                 error,
             )
+            TeamsNotificationManager().notify_one_time_error(error.title, error.message)
             return False
         return True
 

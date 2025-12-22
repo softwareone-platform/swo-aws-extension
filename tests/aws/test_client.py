@@ -1,3 +1,5 @@
+import datetime as dt
+
 import pytest
 
 from swo_aws_extension.aws.client import get_paged_response
@@ -71,6 +73,51 @@ class TestGetInboundResponsibilityTransfers:
             mock_client.list_inbound_responsibility_transfers,
             "ResponsibilityTransfers",
             {"Type": "BILLING"},
+        )
+
+
+class TestTerminateResponsibilityTransfer:
+    def test_success(self, config, aws_client_factory):
+        mock_aws_client, mock_client = aws_client_factory(
+            config, "test_account_id", "test_role_name"
+        )
+        end_timestamp = dt.datetime(2025, 12, 31, tzinfo=dt.UTC)
+        expected_response = {
+            "ResponsibilityTransfer": {
+                "Arn": "string",
+                "Name": "string",
+                "Id": "string",
+                "Type": "BILLING",
+                "Status": "WITHDRAWN",
+                "Source": {"ManagementAccountId": "string", "ManagementAccountEmail": "string"},
+                "Target": {"ManagementAccountId": "string", "ManagementAccountEmail": "string"},
+                "StartTimestamp": dt.datetime(2024, 12, 31, tzinfo=dt.UTC),
+                "EndTimestamp": end_timestamp,
+                "ActiveHandshakeId": "string",
+            }
+        }
+        mock_client.terminate_responsibility_transfer.return_value = expected_response
+
+        result = mock_aws_client.terminate_responsibility_transfer("rt-8lr3q6sn", end_timestamp)
+
+        assert result == expected_response
+        mock_client.terminate_responsibility_transfer.assert_called_once_with(
+            Id="rt-8lr3q6sn", EndTimestamp=end_timestamp
+        )
+
+    def test_error(self, config, aws_client_factory):
+        mock_aws_client, mock_client = aws_client_factory(
+            config, "test_account_id", "test_role_name"
+        )
+        transfer_id = "rt-invalid"
+        end_timestamp = dt.datetime(2025, 12, 31, 23, 59, 59, tzinfo=dt.UTC)
+        mock_client.terminate_responsibility_transfer.side_effect = Exception("Transfer not found")
+
+        with pytest.raises(Exception, match="Transfer not found"):
+            mock_aws_client.terminate_responsibility_transfer(transfer_id, end_timestamp)
+
+        mock_client.terminate_responsibility_transfer.assert_called_once_with(
+            Id=transfer_id, EndTimestamp=end_timestamp
         )
 
 
