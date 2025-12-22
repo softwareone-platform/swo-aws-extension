@@ -42,7 +42,7 @@ class TestGetInboundResponsibilityTransfers:
         mock_get_paged_response.assert_called_once_with(
             mock_client.list_inbound_responsibility_transfers,
             "ResponsibilityTransfers",
-            {"Type": "BILLING"},
+            {"Type": "BILLING", "MaxResults": 20},
         )
 
     def test_empty(self, config, aws_client_factory, mock_get_paged_response):
@@ -57,7 +57,7 @@ class TestGetInboundResponsibilityTransfers:
         mock_get_paged_response.assert_called_once_with(
             mock_client.list_inbound_responsibility_transfers,
             "ResponsibilityTransfers",
-            {"Type": "BILLING"},
+            {"Type": "BILLING", "MaxResults": 20},
         )
 
     def test_error(self, config, aws_client_factory, mock_get_paged_response):
@@ -72,7 +72,7 @@ class TestGetInboundResponsibilityTransfers:
         mock_get_paged_response.assert_called_once_with(
             mock_client.list_inbound_responsibility_transfers,
             "ResponsibilityTransfers",
-            {"Type": "BILLING"},
+            {"Type": "BILLING", "MaxResults": 20},
         )
 
 
@@ -136,7 +136,7 @@ class TestGetPagedResponse:
         ]
 
         result = get_paged_response(
-            method_mock, "ResponsibilityTransfers", {"Type": "BILLING"}, max_results=2
+            method_mock, "ResponsibilityTransfers", {"Type": "BILLING", "MaxResults": 2}
         )
 
         assert result == [
@@ -160,7 +160,7 @@ class TestGetPagedResponse:
         result = get_paged_response(method_mock, "ResponsibilityTransfers")
 
         assert result == [{"id": "transfer1"}]
-        assert method_mock.call_args_list == [mocker.call(MaxResults=20)]
+        assert method_mock.call_args_list == [mocker.call()]
 
     def test_empty_initial_response(self, mocker):
         """Test get_paged_response with an empty initial response."""
@@ -170,7 +170,9 @@ class TestGetPagedResponse:
             }
         )
 
-        result = get_paged_response(method_mock, "ResponsibilityTransfers", {"Type": "BILLING"})
+        result = get_paged_response(
+            method_mock, "ResponsibilityTransfers", {"Type": "BILLING", "MaxResults": 20}
+        )
 
         assert result == []
         assert method_mock.call_args_list == [mocker.call(MaxResults=20, Type="BILLING")]
@@ -184,7 +186,7 @@ class TestGetPagedResponse:
         )
 
         result = get_paged_response(
-            method_mock, "ResponsibilityTransfers", {"Type": "BILLING"}, max_results=10
+            method_mock, "ResponsibilityTransfers", {"Type": "BILLING", "MaxResults": 10}
         )
 
         assert result == [{"id": "transfer1"}, {"id": "transfer2"}]
@@ -202,7 +204,7 @@ class TestGetPagedResponse:
         result = get_paged_response(method_mock, "ResponsibilityTransfers", {})
 
         assert result == [{"id": "transfer1"}]
-        assert method_mock.call_args_list == [mocker.call(MaxResults=20)]
+        assert method_mock.call_args_list == [mocker.call()]
 
 
 def test_invite_organization_to_transfer_billing(
@@ -254,3 +256,98 @@ def test_get_responsibility_transfer_details(config, aws_client_factory, mock_ge
         }
     }
     mock_client.describe_responsibility_transfer.assert_called_once_with(Id="RT-123")
+
+
+def test_get_cost_and_usage_success(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = [
+        {"Groups": [{"Keys": ["123456789"], "Metrics": {"UnblendedCost": {"Amount": "100"}}}]}
+    ]
+
+    result = mock_aws_client.get_cost_and_usage(
+        start_date="2025-12-01",
+        end_date="2025-12-31",
+    )
+
+    assert result == [
+        {"Groups": [{"Keys": ["123456789"], "Metrics": {"UnblendedCost": {"Amount": "100"}}}]}
+    ]
+
+
+def test_get_cost_and_usage_with_group(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = [
+        {"Groups": [{"Keys": ["123456789"], "Metrics": {"UnblendedCost": {"Amount": "100"}}}]}
+    ]
+
+    result = mock_aws_client.get_cost_and_usage(
+        start_date="2025-12-01",
+        end_date="2025-12-31",
+        group_by=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
+    )
+
+    assert result == [
+        {"Groups": [{"Keys": ["123456789"], "Metrics": {"UnblendedCost": {"Amount": "100"}}}]}
+    ]
+
+
+def test_get_cost_and_usage_with_filter(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = []
+
+    result = mock_aws_client.get_cost_and_usage(
+        start_date="2025-12-01",
+        end_date="2025-12-31",
+        filter_by={"Dimensions": {"Key": "SERVICE", "Values": ["Amazon EC2"]}},
+    )
+
+    assert result == []
+
+
+def test_get_cost_and_usage_with_arn(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = [
+        {"Groups": [{"Keys": ["123456789"], "Metrics": {"UnblendedCost": {"Amount": "50"}}}]}
+    ]
+
+    result = mock_aws_client.get_cost_and_usage(
+        start_date="2025-12-01",
+        end_date="2025-12-31",
+        view_arn="arn:aws:billing::123456789:billingview/test",
+    )
+
+    assert result == [
+        {"Groups": [{"Keys": ["123456789"], "Metrics": {"UnblendedCost": {"Amount": "50"}}}]}
+    ]
+
+
+def test_get_cost_and_usage_empty(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = []
+
+    result = mock_aws_client.get_cost_and_usage(
+        start_date="2025-12-01",
+        end_date="2025-12-31",
+    )
+
+    assert result == []
+
+
+def test_get_billing_view_success(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = [
+        {"arn": "arn:aws:billing::123456789:billingview/test", "name": "test-view"}
+    ]
+
+    result = mock_aws_client.get_current_billing_view_by_account_id(account_id="123456789")
+
+    assert result == [{"arn": "arn:aws:billing::123456789:billingview/test", "name": "test-view"}]
+
+
+def test_get_billing_view_empty(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = []
+
+    result = mock_aws_client.get_current_billing_view_by_account_id(account_id="123456789")
+
+    assert result == []
