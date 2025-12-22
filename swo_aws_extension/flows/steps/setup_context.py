@@ -27,7 +27,8 @@ class SetupContext(BasePhaseStep):
     def pre_step(self, context: InitialAWSContext) -> None:
         if not context.pm_account_id:
             raise ConfigurationStepError(
-                "SetupContextError - PMA account is required to setup AWS Client in context"
+                "Setup context",
+                "SetupContextError - PMA account is required to setup AWS Client in context",
             )
 
     @override

@@ -21,6 +21,18 @@ def test_purchase_existing_steps():
     assert result == expected_step_classes
 
 
+def test_terminate_steps():
+    expected_step_classes = [
+        "SetupContext",
+        "TerminateResponsibilityTransferStep",
+        "CompleteTerminationOrder",
+    ]
+
+    result = [step.__class__.__name__ for step in pipelines.terminate.queue]
+
+    assert result == expected_step_classes
+
+
 def test_pipeline_error_handler(mocker):
     next_step_mock = mocker.MagicMock(spec=Step)
     context = Context({"id": "order-id"})
