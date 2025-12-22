@@ -1,0 +1,97 @@
+from mpt_extension_sdk.mpt_http.base import MPTClient
+
+from swo_aws_extension.constants import OrderQueryingTemplateEnum
+from swo_aws_extension.flows.order import (
+    PurchaseContext,
+    set_order_template,
+    switch_order_status_to_query_and_notify,
+)
+
+
+def test_set_order_template(mocker, order_factory, fulfillment_parameters_factory):
+    client = mocker.MagicMock(spec=MPTClient)
+    order = order_factory(fulfillment_parameters=fulfillment_parameters_factory())
+    context = PurchaseContext.from_order_data(order)
+    template = {"name": "MyTemplate"}
+    get_template_mock = mocker.patch(
+        "swo_aws_extension.flows.order.get_product_template_or_default",
+        return_value=template,
+    )
+
+    result = set_order_template(client, context, "Querying", "MyTemplate")
+
+    get_template_mock.assert_called_once()
+    assert context.template == template
+    assert result == template
+
+
+def test_switch_order_to_query_and_notify(
+    mocker, order_factory, fulfillment_parameters_factory, template_factory
+):
+    client = mocker.MagicMock(spec=MPTClient)
+    default_template = template_factory(name=OrderQueryingTemplateEnum.INVALID_ACCOUNT_ID.value)
+    new_template = template_factory(
+        name=OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS.value
+    )
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(), template=default_template
+    )
+    context = PurchaseContext.from_order_data(order)
+    mocker.patch(
+        "swo_aws_extension.flows.order.get_product_template_or_default",
+        return_value=new_template,
+    )
+    query_order_mock = mocker.patch(
+        "swo_aws_extension.flows.order.query_order",
+        return_value=order,
+    )
+    notification_mock = mocker.patch(
+        "swo_aws_extension.flows.order.MPTNotificationManager",
+    )
+
+    switch_order_status_to_query_and_notify(client, context, "TemplateName")  # act
+
+    query_order_mock.assert_called_with(
+        client,
+        context.order_id,
+        parameters=context.order["parameters"],
+        template=new_template,
+    )
+    notification_mock.assert_called_once()
+
+
+def test_switch_order_to_query_and_notify_error(
+    mocker, order_factory, fulfillment_parameters_factory, template_factory
+):
+    client = mocker.MagicMock(spec=MPTClient)
+    default_template = template_factory(name=OrderQueryingTemplateEnum.INVALID_ACCOUNT_ID.value)
+    new_template = template_factory(
+        name=OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS.value
+    )
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(), template=default_template
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.order.get_product_template_or_default",
+        return_value=new_template,
+    )
+    order["error"] = {"id": "SomeError", "message": "An error occurred"}
+    context = PurchaseContext.from_order_data(order)
+    query_order_mock = mocker.patch(
+        "swo_aws_extension.flows.order.query_order",
+        return_value=context.order,
+    )
+    notification_mock = mocker.patch(
+        "swo_aws_extension.flows.order.MPTNotificationManager",
+    )
+
+    switch_order_status_to_query_and_notify(client, context, "TemplateName")  # act
+
+    query_order_mock.assert_called_with(
+        client,
+        context.order_id,
+        parameters=context.order["parameters"],
+        template=new_template,
+        error=context.order["error"],
+    )
+    notification_mock.assert_called_once()
