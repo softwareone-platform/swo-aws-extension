@@ -33,14 +33,16 @@ class BasePhaseStep(Step, ABC):
             self.pre_step(context)
         except ConfigurationStepError as error:
             logger.info(
-                "%s - Stop - Stop step due to configuration error: %s", context.order_id, str(error)
+                "%s - Stop - Stop step due to configuration error: %s",
+                context.order_id,
+                error,
             )
             return
 
         try:
             self.process(context)
         except UnexpectedStopError as error:
-            logger.info("%s - Unexpected Stop: %s", context.order_id, str(error))
+            logger.info("%s - Unexpected Stop: %s", context.order_id, error)
             TeamsNotificationManager().notify_one_time_error(error.title, error.message)
             return
 
