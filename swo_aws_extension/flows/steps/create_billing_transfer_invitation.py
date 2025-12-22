@@ -1,5 +1,6 @@
 import datetime as dt
 import logging
+from typing import override
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
@@ -36,6 +37,7 @@ class CreateBillingTransferInvitation(BasePhaseStep):
     def __init__(self, config: Config) -> None:
         self._config = config
 
+    @override
     def pre_step(self, context: PurchaseContext) -> None:
         """Hook to run before the step processing."""
         phase = get_phase(context.order)
@@ -51,7 +53,8 @@ class CreateBillingTransferInvitation(BasePhaseStep):
                 f"{context.order_id} - Next - Billing transfer invitation already created. Continue"
             )
 
-    def process(self, context: PurchaseContext) -> None:
+    @override
+    def process(self, client: MPTClient, context: PurchaseContext) -> None:
         """Create billing transfer invitation."""
         mpa_id = get_mpa_account_id(context.order)
         if not mpa_id:
@@ -108,6 +111,7 @@ class CreateBillingTransferInvitation(BasePhaseStep):
             responsibility_transfer_id,
         )
 
+    @override
     def post_step(self, client: MPTClient, context: PurchaseContext) -> None:
         """Hook to run after the step processing."""
         context.order = set_phase(context.order, PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION)

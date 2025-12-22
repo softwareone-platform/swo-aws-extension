@@ -203,7 +203,9 @@ def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_fa
             "subscriptions": subscriptions,
             "parameters": {
                 "ordering": ordering_parameters or order_parameters_factory(),
-                "fulfillment": fulfillment_parameters or fulfillment_parameters_factory(),
+                "fulfillment": fulfillment_parameters_factory()
+                if fulfillment_parameters is None
+                else fulfillment_parameters,
             },
             "externalIds": {"vendor": vendor_id},
         }

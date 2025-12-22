@@ -1,3 +1,4 @@
+import datetime as dt
 import logging
 from collections.abc import Callable
 
@@ -62,6 +63,15 @@ class AWSClient:
             self._get_organization_client().list_inbound_responsibility_transfers,
             "ResponsibilityTransfers",
             {"Type": "BILLING"},
+        )
+
+    @wrap_boto3_error
+    def terminate_responsibility_transfer(
+        self, transfer_id: str, end_timestamp: dt.datetime
+    ) -> dict:
+        """Terminates a responsibility transfer."""
+        return self._get_organization_client().terminate_responsibility_transfer(
+            Id=transfer_id, EndTimestamp=end_timestamp
         )
 
     @wrap_boto3_error
