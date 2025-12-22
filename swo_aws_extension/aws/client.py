@@ -12,30 +12,29 @@ from swo_aws_extension.aws.errors import (
 )
 from swo_aws_extension.swo.ccp.client import CCPClient
 
+MINIMUM_DAYS_MONTH = 28
+MAX_RESULTS_PER_PAGE = 20
+
 logger = logging.getLogger(__name__)
 
 
-def get_paged_response(
-    method_to_call: Callable, data_key: str, kwargs: dict | None = None, max_results: int = 20
-) -> list:
+def get_paged_response(method_to_call: Callable, data_key: str, kwargs: dict | None = None) -> list:
     """Retrieves paginated data from API."""
-    response_data, next_token = _get_response(method_to_call, kwargs, data_key, max_results)
+    response_data, next_token = _get_response(method_to_call, kwargs, data_key)
     while next_token:
-        r_data, next_token = _get_response(
-            method_to_call, kwargs, data_key, max_results, next_token
-        )
+        r_data, next_token = _get_response(method_to_call, kwargs, data_key, next_token)
         response_data.extend(r_data)
 
     return response_data
 
 
 def _get_response(
-    method_to_call: Callable, kwargs: dict, data_key: str, max_results: int, next_token=""
+    method_to_call: Callable, kwargs: dict, data_key: str, next_token=""
 ) -> tuple[list, str | None]:
     call_args = dict(kwargs or {})
     if next_token:
         call_args["NextToken"] = next_token
-    response = method_to_call(MaxResults=max_results, **call_args)
+    response = method_to_call(**call_args)
 
     return response.get(data_key, []), response.get("NextToken")
 
@@ -62,7 +61,7 @@ class AWSClient:
         return get_paged_response(
             self._get_organization_client().list_inbound_responsibility_transfers,
             "ResponsibilityTransfers",
-            {"Type": "BILLING"},
+            {"Type": "BILLING", "MaxResults": MAX_RESULTS_PER_PAGE},
         )
 
     @wrap_boto3_error
@@ -92,6 +91,62 @@ class AWSClient:
         """Describe responsibility transfer."""
         org_client = self._get_organization_client()
         return org_client.describe_responsibility_transfer(Id=transfer_id)
+
+    @wrap_boto3_error
+    def get_cost_and_usage(
+        self,
+        start_date: str,
+        end_date: str,
+        group_by: list[dict] | None = None,
+        filter_by: dict | None = None,
+        view_arn: str | None = None,
+    ) -> list[dict]:
+        """Get cost and usage data for the specified date range."""
+        kwarg: dict = {
+            "TimePeriod": {"Start": start_date, "End": end_date},
+            "Granularity": "MONTHLY",
+            "Metrics": ["UnblendedCost"],
+        }
+        if group_by:
+            kwarg["GroupBy"] = group_by
+        if filter_by:
+            kwarg["Filter"] = filter_by
+        if view_arn:
+            kwarg["BillingViewArn"] = view_arn
+        return get_paged_response(
+            self._get_cost_explorer_client().get_cost_and_usage,
+            "ResultsByTime",
+            kwarg,
+        )
+
+    @wrap_boto3_error
+    def get_current_billing_view_by_account_id(self, account_id: str) -> list[dict]:
+        """Get billing view by account ID."""
+        billing_client = self._get_billing_client()
+        today = dt.datetime.now(dt.UTC).date()
+        first_day_of_month = today.replace(day=1)
+        next_month = today.replace(day=MINIMUM_DAYS_MONTH) + dt.timedelta(days=4)
+        last_day = dt.datetime.combine(
+            next_month.replace(day=1) - dt.timedelta(days=1),
+            dt.time.max,
+            tzinfo=dt.UTC,
+        )
+
+        return get_paged_response(
+            billing_client.list_billing_views,
+            "billingViews",
+            {
+                "billingViewTypes": ["BILLING_TRANSFER"],
+                "sourceAccountId": account_id,
+                "maxResults": MAX_RESULTS_PER_PAGE,
+                "activeTimeRange": {
+                    "activeAfterInclusive": dt.datetime.combine(
+                        first_day_of_month, dt.time.min, tzinfo=dt.UTC
+                    ),
+                    "activeBeforeInclusive": last_day,
+                },
+            },
+        )
 
     @wrap_http_error
     def _get_access_token(self):
@@ -148,4 +203,34 @@ class AWSClient:
             aws_access_key_id=self.credentials["AccessKeyId"],
             aws_secret_access_key=self.credentials["SecretAccessKey"],
             aws_session_token=self.credentials["SessionToken"],
+        )
+
+    def _get_cost_explorer_client(self):
+        """
+        Get the Cost Explorer client.
+
+        Returns:
+            The Cost Explorer client.
+        """
+        return boto3.client(
+            "ce",
+            aws_access_key_id=self.credentials["AccessKeyId"],
+            aws_secret_access_key=self.credentials["SecretAccessKey"],
+            aws_session_token=self.credentials["SessionToken"],
+            region_name="us-east-1",
+        )
+
+    def _get_billing_client(self):
+        """
+        Get the Billing client.
+
+        Returns:
+            The Billing client.
+        """
+        return boto3.client(
+            "billing",
+            aws_access_key_id=self.credentials["AccessKeyId"],
+            aws_secret_access_key=self.credentials["SecretAccessKey"],
+            aws_session_token=self.credentials["SessionToken"],
+            region_name="us-east-1",
         )
