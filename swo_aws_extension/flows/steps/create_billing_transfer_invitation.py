@@ -1,6 +1,8 @@
 import datetime as dt
 import logging
 
+from mpt_extension_sdk.mpt_http.base import MPTClient
+
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import OrderParametersEnum, OrderQueryingTemplateEnum, PhasesEnum
@@ -105,11 +107,11 @@ class CreateBillingTransferInvitation(BasePhaseStep):
             responsibility_transfer_id,
         )
 
-    def post_step(self, context: PurchaseContext) -> None:
+    def post_step(self, client: MPTClient, context: PurchaseContext) -> None:
         """Hook to run after the step processing."""
         context.order = set_phase(context.order, PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION)
         switch_order_status_to_query_and_notify(
-            self._client, context, OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS
+            client, context, OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS
         )
 
     def _get_start_billing_transfer_timestamp(self) -> int:

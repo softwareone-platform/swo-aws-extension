@@ -116,3 +116,27 @@ def test_create_transfer_billing_invitation_error(
         CreateBillingTransferInvitation(config).process(context)
 
     assert error.value.template_id == OrderQueryingTemplateEnum.INVALID_ACCOUNT_ID
+
+
+def test_post_step_sets_phase(
+    mocker, config, order_factory, fulfillment_parameters_factory, mpt_client
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION,
+        )
+    )
+    context = PurchaseContext.from_order_data(order)
+    updated_order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION,
+        )
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.steps.create_billing_transfer_invitation.switch_order_status_to_query_and_notify",
+        return_value=updated_order,
+    )
+
+    CreateBillingTransferInvitation(config).post_step(mpt_client, context)  # act
+
+    assert get_phase(context.order) == PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION

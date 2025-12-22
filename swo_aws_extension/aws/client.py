@@ -77,6 +77,12 @@ class AWSClient:
             SourceName=source_name,
         )
 
+    @wrap_boto3_error
+    def get_responsibility_transfer_details(self, transfer_id: str) -> dict:
+        """Describe responsibility transfer."""
+        org_client = self._get_organization_client()
+        return org_client.describe_responsibility_transfer(Id=transfer_id)
+
     @wrap_http_error
     def _get_access_token(self):
         ccp_client = CCPClient(self.config)

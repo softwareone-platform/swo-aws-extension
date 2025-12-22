@@ -22,6 +22,10 @@ class ConfigurationStepError(Exception):
     """The step cannot proceed due to configuration issues."""
 
 
+class FailStepError(Exception):
+    """The step has failed and cannot proceed."""
+
+
 class QueryStepError(Exception):
     """The step cannot proceed and requires querying."""
 

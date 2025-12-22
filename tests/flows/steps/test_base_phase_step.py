@@ -7,6 +7,7 @@ from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import (
     AlreadyProcessedStepError,
     ConfigurationStepError,
+    FailStepError,
     QueryStepError,
     SkipStepError,
     UnexpectedStopError,
@@ -26,7 +27,7 @@ class DummyStep(BasePhaseStep):
         if self.proc_exc is not None:
             raise self.proc_exc
 
-    def post_step(self, context: InitialAWSContext) -> None:
+    def post_step(self, client: MPTClient, context: InitialAWSContext) -> None:
         pass  # noqa: WPS420
 
 
@@ -107,6 +108,20 @@ def test_query_step_error(mocker, initial_context):
     client, next_step = _run_step(mocker, step, initial_context)  # act
 
     switch_mock.assert_called_once_with(client, initial_context, error.template_id)
+    next_step.assert_not_called()
+
+
+def test_fail_step_error(mocker, initial_context):
+    step = DummyStep()
+    error = FailStepError("Error")
+    step.proc_exc = error
+    switch_mock = mocker.patch(
+        "swo_aws_extension.flows.steps.base.switch_order_status_to_failed_and_notify",
+    )
+
+    client, next_step = _run_step(mocker, step, initial_context)  # act
+
+    switch_mock.assert_called_once_with(client, initial_context, str(error))
     next_step.assert_not_called()
 
 
