@@ -84,6 +84,7 @@ class BasePhaseStep(Step, ABC):
                 context.order_id,
                 error,
             )
+            TeamsNotificationManager().notify_one_time_error(error.title, error.message)
             return False
         return True
 

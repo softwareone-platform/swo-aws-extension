@@ -34,7 +34,12 @@ def test_setup_context_with_pma(
 
 
 def test_setup_context_without_pma_exception(
-    mocker, config, aws_client_factory, order_factory, fulfillment_parameters_factory
+    mocker,
+    config,
+    aws_client_factory,
+    order_factory,
+    fulfillment_parameters_factory,
+    mock_teams_notification_manager,
 ):
     mpt_client_mock = mocker.MagicMock(spec=MPTClient)
     next_step_mock = mocker.MagicMock(spec=Step)
@@ -45,6 +50,13 @@ def test_setup_context_without_pma_exception(
     step(mpt_client_mock, context, next_step_mock)  # act
 
     next_step_mock.assert_not_called()
+    assert mock_teams_notification_manager.mock_calls == [
+        mocker.call(),
+        mocker.call().notify_one_time_error(
+            "Setup context",
+            "SetupContextError - PMA account is required to setup AWS Client in context",
+        ),
+    ]
 
 
 def test_setup_context_invalid_aws_credentials(
