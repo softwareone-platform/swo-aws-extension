@@ -6,7 +6,8 @@ from mpt_extension_sdk.mpt_http.base import MPTClient
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import OrderParametersEnum, OrderQueryingTemplateEnum, PhasesEnum
-from swo_aws_extension.flows.order import PurchaseContext, switch_order_status_to_query_and_notify
+from swo_aws_extension.flows.order import PurchaseContext
+from swo_aws_extension.flows.order_utils import switch_order_status_to_query_and_notify
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import (
     ERR_CREATING_INVITATION_RESPONSE,
