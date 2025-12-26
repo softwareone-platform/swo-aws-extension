@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from mpt_extension_sdk.flows.context import Context as BaseContext
 from mpt_extension_sdk.mpt_http.base import MPTClient
-from mpt_extension_sdk.mpt_http.mpt import get_product_template_or_default, query_order
+from mpt_extension_sdk.mpt_http.mpt import fail_order, get_product_template_or_default, query_order
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import AccountTypesEnum
@@ -147,6 +147,23 @@ def switch_order_status_to_query_and_notify(
     context.order = query_order(
         client,
         context.order_id,
+        **kwargs,
+    )
+    MPTNotificationManager(client).send_notification(context)
+
+
+def switch_order_status_to_failed_and_notify(
+    client: MPTClient, context: InitialAWSContext, error: str
+):
+    """Switch the order status to 'Failed'."""
+    kwargs = {
+        "parameters": context.order["parameters"],
+    }
+
+    context.order = fail_order(
+        client,
+        context.order_id,
+        error,
         **kwargs,
     )
     MPTNotificationManager(client).send_notification(context)

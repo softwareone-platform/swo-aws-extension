@@ -187,3 +187,23 @@ def test_invite_organization_to_transfer_billing(
         StartTimestamp=1767225600,
         SourceName="test_source_name",
     )
+
+
+def test_get_responsibility_transfer_details(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.describe_responsibility_transfer.return_value = {
+        "ResponsibilityTransfer": {
+            "Id": "RT-123",
+            "Status": "PENDING",
+        }
+    }
+
+    result = mock_aws_client.get_responsibility_transfer_details(transfer_id="RT-123")
+
+    assert result == {
+        "ResponsibilityTransfer": {
+            "Id": "RT-123",
+            "Status": "PENDING",
+        }
+    }
+    mock_client.describe_responsibility_transfer.assert_called_once_with(Id="RT-123")

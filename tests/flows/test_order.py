@@ -4,6 +4,7 @@ from swo_aws_extension.constants import OrderQueryingTemplateEnum
 from swo_aws_extension.flows.order import (
     PurchaseContext,
     set_order_template,
+    switch_order_status_to_failed_and_notify,
     switch_order_status_to_query_and_notify,
 )
 
@@ -93,5 +94,28 @@ def test_switch_order_to_query_and_notify_error(
         parameters=context.order["parameters"],
         template=new_template,
         error=context.order["error"],
+    )
+    notification_mock.assert_called_once()
+
+
+def test_switch_order_to_failed_and_notify(mocker, order_factory, fulfillment_parameters_factory):
+    client = mocker.MagicMock(spec=MPTClient)
+    order = order_factory(fulfillment_parameters=fulfillment_parameters_factory())
+    context = PurchaseContext.from_order_data(order)
+    fail_order_mock = mocker.patch(
+        "swo_aws_extension.flows.order.fail_order",
+        return_value=order,
+    )
+    notification_mock = mocker.patch(
+        "swo_aws_extension.flows.order.MPTNotificationManager",
+    )
+
+    switch_order_status_to_failed_and_notify(client, context, "Failure reason")  # act
+
+    fail_order_mock.assert_called_with(
+        client,
+        context.order_id,
+        "Failure reason",
+        parameters=context.order["parameters"],
     )
     notification_mock.assert_called_once()

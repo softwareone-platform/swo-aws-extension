@@ -1,6 +1,7 @@
 import logging
 from typing import override
 
+from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.aws.client import AWSClient
@@ -44,7 +45,7 @@ class SetupContext(BasePhaseStep):
         logger.info("%s - Next - SetupContext completed successfully", context.order_id)
 
     @override
-    def post_step(self, context: InitialAWSContext) -> None:
+    def post_step(self, client: MPTClient, context: InitialAWSContext) -> None:
         phase = get_phase(context.order)
         if not phase:
             next_phase = (
@@ -54,5 +55,5 @@ class SetupContext(BasePhaseStep):
             )
             context.order = set_phase(context.order, next_phase)
             context.order = update_order(
-                self._client, context.order_id, parameters=context.order["parameters"]
+                client, context.order_id, parameters=context.order["parameters"]
             )

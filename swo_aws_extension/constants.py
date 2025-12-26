@@ -33,6 +33,13 @@ class ResponsibilityTransferStatus(StrEnum):
     WITHDRAWN = "WITHDRAWN"
 
 
+INVALID_RESPONSIBILITY_TRANSFER_STATUS = (
+    ResponsibilityTransferStatus.DECLINED,
+    ResponsibilityTransferStatus.CANCELED,
+    ResponsibilityTransferStatus.EXPIRED,
+)
+
+
 class AccountTypesEnum(StrEnum):
     """Order Account types enum."""
 
@@ -46,6 +53,7 @@ class PhasesEnum(StrEnum):
     CREATE_ACCOUNT = "createAccount"
     CREATE_BILLING_TRANSFER_INVITATION = "createBillingTransferInvitation"
     CHECK_BILLING_TRANSFER_INVITATION = "checkBillingTransferInvitation"
+    ONBOARD_SERVICES = "onboardServices"
     COMPLETE = "complete"
 
 
