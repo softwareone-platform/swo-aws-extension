@@ -127,15 +127,15 @@ wheels = [
 
 [[package]]
 name = "boto3-stubs"
-version = "1.42.14"
+version = "1.42.17"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore-stubs" },
     { name = "types-s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ac/42/2a73afec394eec6350d59c4deb4bda2639f7fc0ca8dfb2a41dcc4115f07e/boto3_stubs-1.42.14.tar.gz", hash = "sha256:b06c4be79348573fa03fc7fbe4bd82ebbc7e1e27cf208c8f5ab7bfcb75f55c05", size = 101097, upload-time = "2025-12-19T20:41:44.497Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/37/81/6f4b6ebe4fffddd1be319ecbb8ab6099f43f12dbdc85004b9866b88d2826/boto3_stubs-1.42.17.tar.gz", hash = "sha256:847567107d658aa0143dd09074bba9cb646453251a86fb96c5fe12b3b0e504ee", size = 101121, upload-time = "2025-12-26T20:51:31.662Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/6a/f325a61d06e664ab1cd904a1813c10f0a29b64a63bf521c574ff840d191d/boto3_stubs-1.42.14-py3-none-any.whl", hash = "sha256:87bbad7f8e3dbd50e11c47f6850084d598934cd5b7ef85af13539a50b54d1202", size = 69888, upload-time = "2025-12-19T20:41:41.611Z" },
+    { url = "https://files.pythonhosted.org/packages/31/a0/361b6b5772a7c57ef9ed8a9870b9f161e3d9408761e7d52cedbd7658d400/boto3_stubs-1.42.17-py3-none-any.whl", hash = "sha256:773a41e3249acb64d06558e1fa2fc44a09152dad2dce0c8bc61c3b49b00ce905", size = 69890, upload-time = "2025-12-26T20:47:01.882Z" },
 ]
 
 [[package]]
@@ -154,14 +154,14 @@ wheels = [
 
 [[package]]
 name = "botocore-stubs"
-version = "1.42.14"
+version = "1.42.17"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "types-awscrt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8a/36/1a0f56e6537df74e176cc1843048b25a6273567ab2a5e2b6a8c6c27778e1/botocore_stubs-1.42.14.tar.gz", hash = "sha256:635192fb510e59b6f46843c9893029b8fd387b7089ec72f700063316a67bbb14", size = 42386, upload-time = "2025-12-19T21:24:59.476Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/12/b3/894c6401de499257a7d15a9bca7449b00e462df72a542c92eb4379207e46/botocore_stubs-1.42.17.tar.gz", hash = "sha256:b58affbc979648c570822327d035e359279b5ea0d549ceb194be79aada552af2", size = 42413, upload-time = "2025-12-26T21:24:31.15Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/76/ba/89fa39e2aa8b296b8a0b99a3c19d55bf76d3edb5e4711936359d410d18c0/botocore_stubs-1.42.14-py3-none-any.whl", hash = "sha256:e8b8d87b57bb6c9104f02db54b5df12a91aad913305967d017eba25a6aaf8b32", size = 66761, upload-time = "2025-12-19T21:24:58.317Z" },
+    { url = "https://files.pythonhosted.org/packages/7e/78/fe92aa292c517426e1faa91a9de9ea1e365398f67dd772b4ce92f3b73f1d/botocore_stubs-1.42.17-py3-none-any.whl", hash = "sha256:174c6fb6bb217fc45e017e37f40a56c8d60eb4e8123fb1595081ba95b3f15550", size = 66761, upload-time = "2025-12-26T21:24:29.646Z" },
 ]
 
 [[package]]
@@ -1965,7 +1965,7 @@ dev = [
     { name = "ruff", specifier = "==0.14.10" },
     { name = "types-openpyxl", specifier = "==3.1.*" },
     { name = "types-requests", specifier = "==2.32.*" },
-    { name = "wemake-python-styleguide", specifier = "==1.4.*" },
+    { name = "wemake-python-styleguide", specifier = "==1.5.*" },
 ]
 runtime = [
     { name = "azure-monitor-opentelemetry-exporter", specifier = "==1.0.0b25" },
@@ -2119,16 +2119,16 @@ wheels = [
 
 [[package]]
 name = "wemake-python-styleguide"
-version = "1.4.0"
+version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
     { name = "flake8" },
     { name = "pygments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b8/08/c0776aa654dc43cb390e8ee13f597e7241495f30b454b7534ee482ece5b5/wemake_python_styleguide-1.4.0.tar.gz", hash = "sha256:0964cf40ac4d3f1c89dd79aee4b6edba9a1806fb395836c73e746fe287dbae3e", size = 153955, upload-time = "2025-08-25T10:15:08.56Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0a/06/a0968903b6d41de7c41b8d8cc6a31471894365fe0c7b13684a3e6faa956d/wemake_python_styleguide-1.5.0.tar.gz", hash = "sha256:a764b30bd298ecd3ca9d5cd64b7776dec9a529d728291e8b8076a56649d6cce1", size = 156819, upload-time = "2025-12-22T19:39:10.812Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/58/98c4aa00e3de8e45726029799d8facbdcd75347b2f48b285857577e8efd8/wemake_python_styleguide-1.4.0-py3-none-any.whl", hash = "sha256:c0727475a20a1b7d59f1d806040e84768bdb0935d1147023453aa44c14b65c95", size = 215985, upload-time = "2025-08-25T10:15:06.713Z" },
+    { url = "https://files.pythonhosted.org/packages/15/2a/9e303a946df30335695b60c0f75dc49a5f339cf4a101772522c88d4133f7/wemake_python_styleguide-1.5.0-py3-none-any.whl", hash = "sha256:0743a8d1a748e3b84cad5804de4e6211641cd77e5ea0e4aaeec1993765e7f6c0", size = 219957, upload-time = "2025-12-22T19:39:09.076Z" },
 ]
 
 [[package]]
