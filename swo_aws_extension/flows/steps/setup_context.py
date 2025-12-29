@@ -27,11 +27,12 @@ class SetupContext(BasePhaseStep):
     def pre_step(self, context: InitialAWSContext) -> None:
         if not context.pm_account_id:
             raise ConfigurationStepError(
-                "SetupContextError - PMA account is required to setup AWS Client in context"
+                "Setup context",
+                "SetupContextError - PMA account is required to setup AWS Client in context",
             )
 
     @override
-    def process(self, context: InitialAWSContext) -> None:
+    def process(self, client: MPTClient, context: InitialAWSContext) -> None:
         try:
             context.aws_client = AWSClient(self._config, context.pm_account_id, self._role_name)
         except AWSError as error:

@@ -2,10 +2,17 @@ import copy
 import logging
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
-from mpt_extension_sdk.mpt_http.mpt import fail_order, get_product_template_or_default, query_order
+from mpt_extension_sdk.mpt_http.mpt import (
+    complete_order,
+    fail_order,
+    get_product_template_or_default,
+    query_order,
+)
 from mpt_extension_sdk.mpt_http.wrap_http_error import MPTError, wrap_mpt_http_error
 
+from swo_aws_extension.constants import MptOrderStatus
 from swo_aws_extension.flows.order import InitialAWSContext
+from swo_aws_extension.flows.steps.errors import OrderStatusChangeError
 from swo_aws_extension.notifications import MPTNotificationManager
 
 logger = logging.getLogger(__name__)
@@ -117,3 +124,22 @@ def switch_order_status_to_process_and_notify(
         )
         return
     MPTNotificationManager(client).send_notification(context)
+
+
+def switch_order_status_to_complete(
+    client: MPTClient, context: InitialAWSContext, template_name: str
+):
+    """Updates the order status to completed."""
+    if context.order_status == MptOrderStatus.COMPLETED:
+        raise OrderStatusChangeError(
+            current_status=context.order_status, target_status=MptOrderStatus.COMPLETED
+        )
+    set_order_template(client, context, MPT_ORDER_STATUS_QUERYING, template_name)
+    kwargs = {
+        "parameters": context.order["parameters"],
+        "template": context.template,
+    }
+
+    context.order = complete_order(client, context.order_id, **kwargs)
+    MPTNotificationManager(client).send_notification(context)
+    logger.info("%s - Action - Set order to completed", context.order_id)

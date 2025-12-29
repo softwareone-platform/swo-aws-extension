@@ -1,4 +1,5 @@
 import logging
+from typing import override
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 class CheckBillingTransferInvitation(BasePhaseStep):
     """Check Billing Transfer Invitation step."""
 
+    @override
     def pre_step(self, context: PurchaseContext) -> None:
         """Hook to run before the step processing."""
         phase = get_phase(context.order)
@@ -35,9 +37,13 @@ class CheckBillingTransferInvitation(BasePhaseStep):
             )
 
         if not get_responsibility_transfer_id(context.order):
-            raise ConfigurationStepError("Billing transfer invitation ID is missing in the order.")
+            raise ConfigurationStepError(
+                "Error checking billing transfer status",
+                "Billing transfer invitation ID is missing in the order.",
+            )
 
-    def process(self, context: PurchaseContext) -> None:
+    @override
+    def process(self, client: MPTClient, context: PurchaseContext) -> None:
         """Check billing transfer invitation."""
         logger.info("%s - Action - Checking billing transfer invitation status", context.order_id)
 
@@ -67,6 +73,7 @@ class CheckBillingTransferInvitation(BasePhaseStep):
                 OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS,
             )
 
+    @override
     def post_step(self, client: MPTClient, context: PurchaseContext) -> None:
         """Hook to run after the step processing."""
         context.order = set_phase(context.order, PhasesEnum.ONBOARD_SERVICES)

@@ -1,10 +1,11 @@
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.wrap_http_error import MPTError
 
-from swo_aws_extension.constants import OrderQueryingTemplateEnum
+from swo_aws_extension.constants import OrderCompletedTemplate, OrderQueryingTemplateEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.order_utils import (
     set_order_template,
+    switch_order_status_to_complete,
     switch_order_status_to_failed_and_notify,
     switch_order_status_to_process_and_notify,
     switch_order_status_to_query_and_notify,
@@ -179,3 +180,34 @@ def test_switch_order_to_process_and_notify_error(
     switch_order_status_to_process_and_notify(mpt_client, context, "TemplateName")  # act
 
     notification_mock.assert_not_called()
+
+
+def test_switch_order_status_to_complete(
+    mocker, order_factory, order_parameters_factory, template_factory
+):
+    client = mocker.MagicMock(spec=MPTClient)
+    default_template = template_factory(name=OrderCompletedTemplate.TERMINATION_NEW_ACCOUNT.value)
+    new_template = template_factory(name=OrderCompletedTemplate.TERMINATION_NEW_ACCOUNT.value)
+    mocker.patch(
+        "swo_aws_extension.flows.order_utils.get_product_template_or_default",
+        return_value=new_template,
+    )
+    order = order_factory(template=default_template)
+    notification_mock = mocker.patch(
+        "swo_aws_extension.flows.order_utils.MPTNotificationManager",
+    )
+    context = PurchaseContext.from_order_data(order)
+    complete_order_mock = mocker.patch(
+        "swo_aws_extension.flows.order_utils.complete_order",
+        return_value=order,
+    )
+
+    switch_order_status_to_complete(client, context, "TemplateName")  # act
+
+    complete_order_mock.assert_called_with(
+        client,
+        context.order_id,
+        parameters=context.order["parameters"],
+        template=new_template,
+    )
+    notification_mock.assert_called_once()

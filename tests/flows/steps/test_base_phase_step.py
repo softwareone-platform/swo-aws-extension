@@ -23,7 +23,7 @@ class DummyStep(BasePhaseStep):
         if self.pre_exc is not None:
             raise self.pre_exc
 
-    def process(self, context: InitialAWSContext) -> None:
+    def process(self, client: MPTClient, context: InitialAWSContext) -> None:
         if self.proc_exc is not None:
             raise self.proc_exc
 
@@ -76,11 +76,15 @@ def test_skip_step_error_calls_next_step(mocker, initial_context):
 
 def test_configuration_error_stops_pipeline(mocker, initial_context):
     step = DummyStep()
-    step.pre_exc = ConfigurationStepError("cfg")
+    step.pre_exc = ConfigurationStepError("error", "cfg")
+    notify_mock = mocker.patch(
+        "swo_aws_extension.flows.steps.base.TeamsNotificationManager.notify_one_time_error",
+    )
 
     _, next_step = _run_step(mocker, step, initial_context)  # act
 
     next_step.assert_not_called()
+    notify_mock.assert_called_once_with("error", "cfg")
 
 
 def test_unexpected_stop_notifies_and_stops(mocker, initial_context):
