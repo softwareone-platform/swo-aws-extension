@@ -50,7 +50,7 @@ dev = [
   "ruff==0.14.10", # force ruff version to have same formatting everywhere
   "types-openpyxl==3.1.*",
   "types-requests==2.32.*",
-  "wemake-python-styleguide==1.4.*",
+  "wemake-python-styleguide==1.5.*",
 ]
 runtime = [
   "azure-monitor-opentelemetry-exporter==1.0.0b25",
