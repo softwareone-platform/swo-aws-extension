@@ -322,7 +322,7 @@ def config():
 
 
 @pytest.fixture
-def constraints():
+def dummy_constraints():
     return {"hidden": True, "readonly": False, "required": False}
 
 
@@ -534,10 +534,11 @@ def mpt_error_factory():
 
 
 @pytest.fixture
-def order_parameters_factory(constraints):
+def order_parameters_factory(dummy_constraints):
     def factory(
         account_type=AccountTypesEnum.NEW_AWS_ENVIRONMENT.value,
         mpa_id="651706759263",
+        constraints=None,
     ):
         return [
             {
@@ -546,7 +547,6 @@ def order_parameters_factory(constraints):
                 "externalId": OrderParametersEnum.ACCOUNT_TYPE.value,
                 "type": "choice",
                 "value": account_type,
-                "constraints": constraints,
             },
             {
                 "id": "PAR-1234-5680",
@@ -554,7 +554,23 @@ def order_parameters_factory(constraints):
                 "externalId": OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value,
                 "type": "choice",
                 "value": mpa_id,
-                "constraints": constraints,
+                "constraints": constraints.copy() if constraints else dummy_constraints.copy(),
+            },
+            {
+                "id": "PAR-1234-5680",
+                "name": "Order Account Name",
+                "externalId": OrderParametersEnum.ORDER_ACCOUNT_NAME.value,
+                "type": "choice",
+                "value": "Order Account Name",
+                "constraints": constraints.copy() if constraints else dummy_constraints.copy(),
+            },
+            {
+                "id": "PAR-1234-5680",
+                "name": "Order Root Account Email",
+                "externalId": OrderParametersEnum.ORDER_ROOT_ACCOUNT_EMAIL.value,
+                "type": "choice",
+                "value": "example@example.com",
+                "constraints": constraints.copy() if constraints else dummy_constraints.copy(),
             },
         ]
 
@@ -743,6 +759,11 @@ def webhook(settings):
 
 
 @pytest.fixture
+def mock_get_webhook(mocker, webhook):
+    return mocker.patch("swo_aws_extension.extension.get_webhook", return_value=webhook, spec=True)
+
+
+@pytest.fixture
 def extension_settings(settings):
     current_extension_config = copy.copy(settings.EXTENSION_CONFIG)
     yield settings
@@ -756,3 +777,8 @@ def ffc_client_settings(extension_settings):
     extension_settings.EXTENSION_CONFIG["FFC_OPERATIONS_SECRET"] = "1234"
 
     return extension_settings
+
+
+@pytest.fixture
+def mock_update_parameters_visibility(mocker):
+    return mocker.patch("swo_aws_extension.extension.update_parameters_visibility", spec=True)
