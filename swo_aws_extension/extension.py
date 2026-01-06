@@ -40,6 +40,6 @@ def process_order_fulfillment(client, event):
     },
     auth=JWTAuth(jwt_secret_callback),
 )
-def process_order_validation(request, order: Annotated[dict | None, Body()] = None):
+def process_order_validation(request, order: Annotated[dict, Body()]):
     """Start order process validation."""
     return HTTPStatus.OK, order
