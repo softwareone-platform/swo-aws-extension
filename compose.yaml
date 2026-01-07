@@ -1,0 +1,14 @@
+services:
+  app:
+    container_name: aws
+    build:
+      context: .
+      target: dev
+    working_dir: /extension
+    command: swoext run --no-color
+    volumes:
+      - .:/extension
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
