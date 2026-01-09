@@ -50,7 +50,7 @@ class SetupContext(BasePhaseStep):
         phase = get_phase(context.order)
         if not phase:
             next_phase = (
-                PhasesEnum.CREATE_ACCOUNT
+                PhasesEnum.CREATE_NEW_AWS_ENVIRONMENT
                 if context.is_type_new_aws_environment()
                 else PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION
             )

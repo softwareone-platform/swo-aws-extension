@@ -7,6 +7,7 @@ from swo_aws_extension.flows.fulfillment.pipelines import (
     pipeline_error_handler,
     purchase_existing_aws_environment,
     purchase_new_aws_environment,
+    terminate,
 )
 from swo_aws_extension.flows.order import InitialAWSContext, PurchaseContext
 
@@ -22,23 +23,26 @@ def fulfill_order(client: MPTClient, context: InitialAWSContext) -> None:
         context: The context of the order.
     """
     logger.info("%s - Start processing %s", context.order_id, context.order_type)
-    if not context.is_purchase_order():
-        return
 
-    context = PurchaseContext.from_context(context)
-    if context.is_type_new_aws_environment():
-        logger.info(
-            "%s - Pipeline - Starting: purchase new AWS environment",
-            context.order_id,
-        )
-        purchase_new_aws_environment.run(client, context, error_handler=pipeline_error_handler)
+    if context.is_termination_order():
+        terminate.run(client, context, error_handler=pipeline_error_handler)
+    elif context.is_purchase_order():
+        context = PurchaseContext.from_context(context)
+        if context.is_type_new_aws_environment():
+            logger.info(
+                "%s - Pipeline - Starting: purchase new AWS environment",
+                context.order_id,
+            )
+            purchase_new_aws_environment.run(client, context, error_handler=pipeline_error_handler)
 
-    elif context.is_type_existing_aws_environment():
-        logger.info(
-            "%s - Pipeline - Starting: purchase existing AWS environment",
-            context.order_id,
-        )
-        purchase_existing_aws_environment.run(client, context, error_handler=pipeline_error_handler)
+        elif context.is_type_existing_aws_environment():
+            logger.info(
+                "%s - Pipeline - Starting: purchase existing AWS environment",
+                context.order_id,
+            )
+            purchase_existing_aws_environment.run(
+                client, context, error_handler=pipeline_error_handler
+            )
     else:
         logger.error("%s - Unsupported order type: %s", context.order_id, context.order_type)
 

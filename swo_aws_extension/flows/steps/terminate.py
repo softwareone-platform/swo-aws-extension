@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 class TerminateResponsibilityTransferStep(BasePhaseStep):
     """Handles the termination of responsibility transfer."""
 
+    def __init__(self, config) -> None:
+        self._config = config
+
     @override
     def pre_step(self, context: InitialAWSContext) -> None:
         """Performs the preliminary step."""

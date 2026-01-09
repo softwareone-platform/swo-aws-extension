@@ -366,7 +366,12 @@ def data_aws_cost_and_usage_factory():
 
 @pytest.fixture
 def fulfillment_parameters_factory():
-    def factory(phase="", responsibility_transfer_id="rt-8lr3q6sn", crm_onboard_ticket_id=""):  # noqa: WPS430
+    def factory(
+        phase="",
+        responsibility_transfer_id="rt-8lr3q6sn",
+        crm_onboard_ticket_id="",
+        crm_new_account_ticket_id="",
+    ):
         return [
             {
                 "id": "PAR-1234-5678",
@@ -382,6 +387,10 @@ def fulfillment_parameters_factory():
             {
                 "externalId": FulfillmentParametersEnum.CRM_ONBOARD_TICKET_ID.value,
                 "value": crm_onboard_ticket_id,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.CRM_NEW_ACCOUNT_TICKET_ID.value,
+                "value": crm_new_account_ticket_id,
             },
         ]
 

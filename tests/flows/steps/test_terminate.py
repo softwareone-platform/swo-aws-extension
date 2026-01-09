@@ -7,16 +7,16 @@ from swo_aws_extension.flows.steps.errors import ConfigurationStepError, Unexpec
 from swo_aws_extension.flows.steps.terminate import TerminateResponsibilityTransferStep
 
 
-def test_pre_step_success(context_with_agreement):
-    step = TerminateResponsibilityTransferStep()
+def test_pre_step_success(context_with_agreement, config):
+    step = TerminateResponsibilityTransferStep(config)
 
     step.pre_step(context_with_agreement)  # Act
 
     assert context_with_agreement.transfer_id == "rt-8lr3q6sn"
 
 
-def test_pre_step_missing_agreement(context_without_agreement):
-    step = TerminateResponsibilityTransferStep()
+def test_pre_step_missing_agreement(context_without_agreement, config):
+    step = TerminateResponsibilityTransferStep(config)
 
     with pytest.raises(ConfigurationStepError) as exc_info:
         step.pre_step(context_without_agreement)
@@ -24,8 +24,8 @@ def test_pre_step_missing_agreement(context_without_agreement):
     assert "Agreement is required to assign transfer_id in context" in str(exc_info.value)
 
 
-def test_pre_step_missing_transfer_id(context_without_transfer_id):
-    step = TerminateResponsibilityTransferStep()
+def test_pre_step_missing_transfer_id(context_without_transfer_id, config):
+    step = TerminateResponsibilityTransferStep(config)
 
     with pytest.raises(ConfigurationStepError) as exc_info:
         step.pre_step(context_without_transfer_id)
@@ -34,9 +34,9 @@ def test_pre_step_missing_transfer_id(context_without_transfer_id):
 
 
 @freeze_time("2025-06-15")
-def test_process_success_current_month(context_with_agreement, mpt_client):
+def test_process_success_current_month(context_with_agreement, mpt_client, config):
     context_with_agreement.transfer_id = "rt-8lr3q6sn"
-    step = TerminateResponsibilityTransferStep()
+    step = TerminateResponsibilityTransferStep(config)
 
     step.process(mpt_client, context_with_agreement)  # Act
 
@@ -47,9 +47,9 @@ def test_process_success_current_month(context_with_agreement, mpt_client):
 
 
 @freeze_time("2025-12-15")
-def test_process_success_december(context_with_agreement, mpt_client):
+def test_process_success_december(context_with_agreement, mpt_client, config):
     context_with_agreement.transfer_id = "rt-8lr3q6sn"
-    step = TerminateResponsibilityTransferStep()
+    step = TerminateResponsibilityTransferStep(config)
 
     step.process(mpt_client, context_with_agreement)  # Act
 
@@ -60,12 +60,12 @@ def test_process_success_december(context_with_agreement, mpt_client):
 
 
 @freeze_time("2025-06-15")
-def test_process_exception_handling(context_with_agreement, mpt_client):
+def test_process_exception_handling(context_with_agreement, mpt_client, config):
     context_with_agreement.aws_client.terminate_responsibility_transfer.side_effect = Exception(
         "AWS API error"
     )
     context_with_agreement.transfer_id = "rt-8lr3q6sn"
-    step = TerminateResponsibilityTransferStep()
+    step = TerminateResponsibilityTransferStep(config)
 
     with pytest.raises(UnexpectedStopError) as exc_info:  # Act
         step.process(mpt_client, context_with_agreement)
@@ -75,8 +75,8 @@ def test_process_exception_handling(context_with_agreement, mpt_client):
 
 
 @freeze_time("2025-06-15")
-def test_post_step_logs_success(context_with_agreement, mpt_client, caplog):
-    step = TerminateResponsibilityTransferStep()
+def test_post_step_logs_success(context_with_agreement, mpt_client, caplog, config):
+    step = TerminateResponsibilityTransferStep(config)
 
     step.post_step(mpt_client, context_with_agreement)  # Act
 
@@ -84,8 +84,8 @@ def test_post_step_logs_success(context_with_agreement, mpt_client, caplog):
 
 
 @freeze_time("2025-06-15")
-def test_full_step_execution(mpt_client, mock_step, context_with_agreement):
-    step = TerminateResponsibilityTransferStep()
+def test_full_step_execution(mpt_client, mock_step, context_with_agreement, config):
+    step = TerminateResponsibilityTransferStep(config)
 
     step(mpt_client, context_with_agreement, mock_step)  # Act
 
@@ -95,9 +95,14 @@ def test_full_step_execution(mpt_client, mock_step, context_with_agreement):
 
 @freeze_time("2025-06-15")
 def test_step_stops_on_config_error(
-    mocker, mpt_client, context_without_agreement, mock_teams_notification_manager, mock_step
+    mocker,
+    mpt_client,
+    context_without_agreement,
+    mock_teams_notification_manager,
+    mock_step,
+    config,
 ):
-    step = TerminateResponsibilityTransferStep()
+    step = TerminateResponsibilityTransferStep(config)
 
     step(mpt_client, context_without_agreement, mock_step)  # Act
 
@@ -113,12 +118,12 @@ def test_step_stops_on_config_error(
 
 @freeze_time("2025-06-15")
 def test_step_stops_on_unexpected_error(
-    context_with_agreement, mock_step, mpt_client, mock_teams_notification_manager
+    context_with_agreement, mock_step, mpt_client, mock_teams_notification_manager, config
 ):
     context_with_agreement.aws_client.terminate_responsibility_transfer.side_effect = Exception(
         "AWS API error"
     )
-    step = TerminateResponsibilityTransferStep()
+    step = TerminateResponsibilityTransferStep(config)
 
     step(mpt_client, context_with_agreement, mock_step)  # Act
 

@@ -8,6 +8,7 @@ from swo_aws_extension.flows.fulfillment import pipelines
 def test_purchase_new_steps():
     expected_step_classes = [
         "SetupContext",
+        "CreateNewAWSEnvironment",
         "CreateBillingTransferInvitation",
         "CheckBillingTransferInvitation",
         "OnboardServices",

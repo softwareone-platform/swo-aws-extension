@@ -19,7 +19,9 @@ START_TIMESTAMP = 1767225600
 
 def test_skip_phase_is_not_expected(fulfillment_parameters_factory, order_factory, config):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_NEW_AWS_ENVIRONMENT
+        )
     )
     context = PurchaseContext.from_order_data(order)
 
