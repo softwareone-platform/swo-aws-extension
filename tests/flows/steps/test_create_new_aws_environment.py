@@ -16,8 +16,10 @@ from swo_aws_extension.flows.steps.errors import (
 )
 from swo_aws_extension.parameters import (
     get_crm_new_account_ticket_id,
-    get_mpa_account_id,
+    get_order_account_email,
+    get_order_account_name,
     get_phase,
+    get_technical_contact_info,
 )
 from swo_aws_extension.swo.crm_service.client import CRMServiceClient, ServiceRequest
 from swo_aws_extension.swo.crm_service.errors import CRMError
@@ -84,7 +86,9 @@ def test_process_creates_ticket_when_missing(
             customer_name=context.buyer.get("name"),
             buyer_external_id=context.buyer.get("id"),
             order_id=context.order_id,
-            master_payer_id=get_mpa_account_id(context.order),
+            order_account_name=get_order_account_name(context.order),
+            order_root_account_email=get_order_account_email(context.order),
+            technical_contact=get_technical_contact_info(context.order),
         ),
         title=CRM_NEW_ACCOUNT_TITLE,
     )
@@ -92,6 +96,35 @@ def test_process_creates_ticket_when_missing(
         context.order_id, expected_service_request
     )
     assert get_crm_new_account_ticket_id(context.order) == "TICKET-123"
+
+
+def test_process_skips_ticket_creation(
+    mocker,
+    order_factory,
+    order_parameters_factory,
+    fulfillment_parameters_factory,
+    config,
+    mpt_client,
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_NEW_AWS_ENVIRONMENT.value,
+            crm_new_account_ticket_id="EXISTING-TICKET",
+        ),
+        order_parameters=order_parameters_factory(mpa_id=""),
+    )
+    context = PurchaseContext.from_order_data(order)
+    mock_crm_client = mocker.MagicMock()
+    mocker.patch(
+        "swo_aws_extension.flows.steps.create_new_aws_environment.get_service_client",
+        return_value=mock_crm_client,
+    )
+
+    with pytest.raises(QueryStepError) as error:
+        CreateNewAWSEnvironment(config).process(mpt_client, context)
+
+    assert error.value.template_id == OrderQueryingTemplateEnum.NEW_ACCOUNT_CREATION.value
+    mock_crm_client.create_service_request.assert_not_called()
 
 
 def test_process_raises_query_error_mpa_missing(
@@ -119,7 +152,6 @@ def test_process_raises_query_error_mpa_missing(
 
 
 def test_process_succeeds_when_mpa_exists(
-    mocker,
     order_factory,
     order_parameters_factory,
     fulfillment_parameters_factory,
@@ -142,6 +174,38 @@ def test_process_succeeds_when_mpa_exists(
         "ORD-0792-5000-2253-4210 - Next - Create New AWS Environment completed successfully"
         in caplog.text
     )
+
+
+def test_process_logs_when_no_ticket_id(
+    mocker,
+    order_factory,
+    order_parameters_factory,
+    fulfillment_parameters_factory,
+    config,
+    mpt_client,
+    buyer,
+    caplog,
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_NEW_AWS_ENVIRONMENT.value,
+        ),
+        order_parameters=order_parameters_factory(mpa_id=""),
+    )
+    context = PurchaseContext.from_order_data(order)
+    context.buyer = buyer
+    mock_crm_client = mocker.MagicMock()
+    mock_crm_client.create_service_request.return_value = {"status": "created"}
+    mocker.patch(
+        "swo_aws_extension.flows.steps.create_new_aws_environment.get_service_client",
+        return_value=mock_crm_client,
+    )
+
+    with pytest.raises(QueryStepError):
+        CreateNewAWSEnvironment(config).process(mpt_client, context)
+
+    assert "No ticket ID returned from CRM" in caplog.text
+    assert not get_crm_new_account_ticket_id(context.order)
 
 
 def test_process_raises_error_when_crm_fails(

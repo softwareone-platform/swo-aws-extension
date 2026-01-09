@@ -6,9 +6,9 @@ from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import (
-    CRM_NEW_ACCOUNT_ADDITIONAL_INFO,
-    CRM_NEW_ACCOUNT_SUMMARY,
-    CRM_NEW_ACCOUNT_TITLE,
+    CRM_ONBOARD_ADDITIONAL_INFO,
+    CRM_ONBOARD_SUMMARY,
+    CRM_ONBOARD_TITLE,
     PhasesEnum,
 )
 from swo_aws_extension.flows.order import PurchaseContext
@@ -18,6 +18,7 @@ from swo_aws_extension.parameters import (
     get_crm_onboard_ticket_id,
     get_mpa_account_id,
     get_phase,
+    get_technical_contact_info,
     set_crm_onboard_ticket_id,
     set_phase,
 )
@@ -52,16 +53,16 @@ class OnboardServices(BasePhaseStep):
     @override
     def process(self, client: MPTClient, context: PurchaseContext) -> None:
         crm_client = get_service_client()
-        # TODO - Pending to confirm ticket details with PDM team
         service_request = ServiceRequest(
-            additional_info=CRM_NEW_ACCOUNT_ADDITIONAL_INFO,
-            summary=CRM_NEW_ACCOUNT_SUMMARY.format(
+            additional_info=CRM_ONBOARD_ADDITIONAL_INFO,
+            summary=CRM_ONBOARD_SUMMARY.format(
                 customer_name=context.buyer.get("name"),
                 buyer_external_id=context.buyer.get("id"),
                 order_id=context.order_id,
                 master_payer_id=get_mpa_account_id(context.order),
+                technical_contact=get_technical_contact_info(context.order),
             ),
-            title=CRM_NEW_ACCOUNT_TITLE,
+            title=CRM_ONBOARD_TITLE,
         )
         try:
             response = crm_client.create_service_request(context.order_id, service_request)

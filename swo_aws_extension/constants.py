@@ -9,6 +9,9 @@ FAILED_TO_GET_SECRET = "Failed to get secret"  # noqa: S105
 FAILED_TO_SAVE_SECRET_TO_KEY_VAULT = "Failed to save secret to key vault"  # noqa: S105
 
 SWO_EXTENSION_MANAGEMENT_ROLE = "SWOExtensionDevelopmentRole"
+# TODO: Update to the correct role once created
+ONBOARD_CUSTOMER_ROLE = "SWOExtensionDevelopmentRole11"
+
 CRM_EXTERNAL_EMAIL = "marketplace@softwareone.com"
 CRM_EXTERNAL_USERNAME = "mpt@marketplace.com"
 CRM_SERVICE_TYPE = "MarketPlaceServiceActivation"
@@ -17,6 +20,8 @@ CRM_REQUESTER = "Supplier.Portal"
 CRM_SUB_SERVICE = "Service Activation"
 
 BASIC_PRICING_PLAN_ARN = "arn:aws:billingconductor::aws:pricingplan/BasicPricingPlan"
+
+CRM_TICKET_RESOLVED_STATE = "Resolved"
 
 
 class SubscriptionStatus(StrEnum):
@@ -61,6 +66,7 @@ class PhasesEnum(StrEnum):
     CREATE_NEW_AWS_ENVIRONMENT = "createAccount"
     CREATE_BILLING_TRANSFER_INVITATION = "createBillingTransferInvitation"
     CHECK_BILLING_TRANSFER_INVITATION = "checkBillingTransferInvitation"
+    CHECK_CUSTOMER_ROLES = "checkCustomerRoles"
     ONBOARD_SERVICES = "onboardServices"
     CREATE_SUBSCRIPTION = "createSubscription"
     COMPLETED = "completed"
@@ -77,9 +83,10 @@ class OrderParametersEnum(StrEnum):
     """Ordering parameters external Ids."""
 
     ACCOUNT_TYPE = "accountType"
-    MASTER_PAYER_ACCOUNT_ID = "masterPayerId"
+    MASTER_PAYER_ACCOUNT_ID = "masterPayerID"
+    CONTACT = "contact"
     ORDER_ACCOUNT_NAME = "orderAccountName"
-    ORDER_ROOT_ACCOUNT_EMAIL = "orderRootAccountEmail"
+    ORDER_ROOT_ACCOUNT_EMAIL = "orderAccountEmail"
 
 
 class FulfillmentParametersEnum(StrEnum):
@@ -90,6 +97,8 @@ class FulfillmentParametersEnum(StrEnum):
     RESPONSIBILITY_TRANSFER_ID = "responsibilityTransferId"
     CRM_ONBOARD_TICKET_ID = "crmOnboardTicketId"
     CRM_NEW_ACCOUNT_TICKET_ID = "crmNewAccountTicketId"
+    CRM_CUSTOMER_ROLE_TICKET_ID = "crmCustomerRoleTicketId"
+    CUSTOMER_ROLES_DEPLOYED = "customerRolesDeployed"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
@@ -105,6 +114,7 @@ class OrderQueryingTemplateEnum(StrEnum):
     TRANSFER_AWAITING_INVITATIONS = "AWS Billing transfer invitation pending"
     INVALID_ACCOUNT_ID = "Order querying template - invalid Account ID"
     NEW_ACCOUNT_CREATION = "AWS Billing Transfer New AWS account creation"
+    WAITING_FOR_CUSTOMER_ROLES = "AWS Billing Transfer Waiting for roles deployment template"
 
 
 class OrderCompletedTemplate(StrEnum):
@@ -129,11 +139,50 @@ class FinOpsStatusEnum(StrEnum):
     TERMINATED = "Terminated"
 
 
-CRM_NEW_ACCOUNT_TITLE = "New AWS Onboarding in Marketplace"
-CRM_NEW_ACCOUNT_ADDITIONAL_INFO = "AWS New AWS linked account created"
+class CustomerRolesDeployed(StrEnum):
+    """Customer roles deployed status."""
+
+    YES = "yes"
+    NO_DEPLOYED = "no"
+
+
+CRM_NEW_ACCOUNT_TITLE = "New AWS on-boarding in Marketplace with New AWS account creation"
+CRM_NEW_ACCOUNT_ADDITIONAL_INFO = (
+    "New customer joining SWO and with need to create a new AWS account"
+)
+
 CRM_NEW_ACCOUNT_SUMMARY = (
     "Dear MCoE Team,<br><br>Good News!! <br>New customer for AWS is being onboarded in Marketplace"
     "<br>Here are some details: <br> Customer: {customer_name}<br> SCU: {buyer_external_id}<br> "
-    "Order: {order_id}<br> MasterPayerId: {master_payer_id}<br><br>Thank you for your attention. "
-    "<br><br>Best Regards,<br>Marketplace Platform Team<br>"
+    "Order: {order_id}<br> New Account name : {order_account_name}<br> New account e-mail : "
+    "{order_root_account_email}<br> Technical point of contact : {technical_contact} <br>"
+    "Thank you for your attention. <br><br>Best Regards,<br>Marketplace Platform Team<br>"
+)
+
+CRM_DEPLOY_ROLES_TITLE = "Action Required: Roles not deployed yet"
+CRM_DEPLOY_ROLES_ADDITIONAL_INFO = "New customer joining SWO but no service roles deployed"
+CRM_DEPLOY_ROLES_SUMMARY = (
+    "Dear MCoE Team,<br><br>Please get in touch with the customer as we have noticed that the"
+    " required service roles for AWS essentials have not been deployed yet. Thank you!"
+    "<br>Details of transfer: <br> Customer: {customer_name}<br> SCU: {buyer_external_id}<br>"
+    " Order: {order_id}<br> MasterPayerId: {master_payer_id}<br> Technical point of contact :"
+    " {technical_contact} <br> Thank you for your attention. <br><br>Best Regards,<br>Marketplace "
+    "Platform Team<br>"
+)
+
+CRM_ONBOARD_TITLE = "New AWS on-boarding in Marketplace existing AWS customer"
+CRM_ONBOARD_ADDITIONAL_INFO = "New customer joining SWO through billing transfer"
+CRM_ONBOARD_SUMMARY = (
+    "Dear MCoE Team,<br><br>Good News!! <br>A new customer for AWS is being onboarded in the SWO"
+    " Marketplace<br>Please check the order details and get in touch with the sales team and "
+    "customer primary contact for the next steps.<br>Here are some details: <br> Customer: "
+    "{customer_name}<br> SCU: {buyer_external_id}<br> Order: {order_id}<br> MasterPayerId:"
+    " {master_payer_id}<br> Technical point of contact : {technical_contact} <br>"
+    "Thank you for your attention. <br><br>Best Regards,<br>Marketplace Platform Team<br>"
+)
+
+CUSTOMER_ROLES_NOT_DEPLOYED_MESSAGE = (
+    "It seems there is an error with the configured SWO access. SWO roles have not "
+    "been created yet. The SWO support team will contact you. Please move the order to "
+    "'processing' status once the roles are created."
 )

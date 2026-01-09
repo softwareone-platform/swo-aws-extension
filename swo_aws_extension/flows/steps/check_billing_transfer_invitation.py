@@ -20,7 +20,12 @@ from swo_aws_extension.flows.steps.errors import (
     QueryStepError,
     SkipStepError,
 )
-from swo_aws_extension.parameters import get_phase, get_responsibility_transfer_id, set_phase
+from swo_aws_extension.parameters import (
+    get_mpa_account_id,
+    get_phase,
+    get_responsibility_transfer_id,
+    set_phase,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +79,8 @@ class CheckBillingTransferInvitation(BasePhaseStep):
             billing_group = context.aws_client.create_billing_group(
                 responsibility_transfer_arn=responsibility_arn,
                 pricing_plan_arn=BASIC_PRICING_PLAN_ARN,
-                name=f"billing-group-{context.master_payer_account_id}",
-                description=f"Billing group for MPA {context.master_payer_account_id}",
+                name=f"billing-group-{get_mpa_account_id(context.order)}",
+                description=f"Billing group for MPA {get_mpa_account_id(context.order)}",
             )
             logger.info(
                 "%s - Success - Billing group %s created for responsibility transfer %s",
@@ -94,7 +99,7 @@ class CheckBillingTransferInvitation(BasePhaseStep):
     @override
     def post_step(self, client: MPTClient, context: PurchaseContext) -> None:
         """Hook to run after the step processing."""
-        context.order = set_phase(context.order, PhasesEnum.ONBOARD_SERVICES)
+        context.order = set_phase(context.order, PhasesEnum.CHECK_CUSTOMER_ROLES)
         context.order = update_order(
             client, context.order_id, parameters=context.order["parameters"]
         )
