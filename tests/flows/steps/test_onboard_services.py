@@ -26,7 +26,9 @@ def test_pre_step_skips_wrong_phase(
     order_factory, fulfillment_parameters_factory, purchase_context, config
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_NEW_AWS_ENVIRONMENT
+        )
     )
     context = purchase_context(order)
     step = OnboardServices(config)

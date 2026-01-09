@@ -351,3 +351,43 @@ def test_get_billing_view_empty(config, aws_client_factory, mock_get_paged_respo
     result = mock_aws_client.get_current_billing_view_by_account_id(account_id="123456789")
 
     assert result == []
+
+
+def test_create_billing_group_success(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    expected_response = {"Arn": "arn:aws:billingconductor::123:billinggroup/test-billing-group"}
+    mock_client.create_billing_group.return_value = expected_response
+
+    result = mock_aws_client.create_billing_group(
+        responsibility_transfer_arn="arn:aws:billing::123:responsibilitytransfer/RT-123",
+        pricing_plan_arn="arn:aws:billingconductor::aws:pricingplan/BasicPricingPlan",
+        name="billing-group-test",
+        description="Billing group for MPA test_account_id",
+    )
+
+    assert result == expected_response
+    mock_client.create_billing_group.assert_called_once_with(
+        Name="billing-group-test",
+        Description="Billing group for MPA test_account_id",
+        ComputationPreference={
+            "PricingPlanArn": "arn:aws:billingconductor::aws:pricingplan/BasicPricingPlan"
+        },
+        AccountGrouping={
+            "ResponsibilityTransferArn": "arn:aws:billing::123:responsibilitytransfer/RT-123",
+        },
+    )
+
+
+def test_create_billing_group_error(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.create_billing_group.side_effect = Exception("Billing group creation failed")
+
+    with pytest.raises(Exception, match="Billing group creation failed"):
+        mock_aws_client.create_billing_group(
+            responsibility_transfer_arn="arn:aws:billing::123:responsibilitytransfer/RT-123",
+            pricing_plan_arn="arn:aws:billingconductor::aws:pricingplan/BasicPricingPlan",
+            name="billing-group-test",
+            description="Billing group for MPA test_account_id",
+        )
+
+    mock_client.create_billing_group.assert_called_once()

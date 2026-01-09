@@ -14,6 +14,7 @@ from swo_aws_extension.flows.steps.complete_order import CompleteOrder, Complete
 from swo_aws_extension.flows.steps.create_billing_transfer_invitation import (
     CreateBillingTransferInvitation,
 )
+from swo_aws_extension.flows.steps.create_new_aws_environment import CreateNewAWSEnvironment
 from swo_aws_extension.flows.steps.create_subscription import CreateSubscription
 from swo_aws_extension.flows.steps.onboard_services import OnboardServices
 from swo_aws_extension.flows.steps.setup_context import SetupContext
@@ -48,6 +49,7 @@ def pipeline_error_handler(error: Exception, context: Context, next_step):
 
 purchase_new_aws_environment = Pipeline(
     SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    CreateNewAWSEnvironment(config),
     CreateBillingTransferInvitation(config),
     CheckBillingTransferInvitation(config),
     OnboardServices(config),
@@ -65,6 +67,6 @@ purchase_existing_aws_environment = Pipeline(
 )
 terminate = Pipeline(
     SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
-    TerminateResponsibilityTransferStep(),
-    CompleteTerminationOrder(),
+    TerminateResponsibilityTransferStep(config),
+    CompleteTerminationOrder(config),
 )
