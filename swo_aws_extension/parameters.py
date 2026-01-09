@@ -30,7 +30,7 @@ get_fulfillment_parameter = functools.partial(get_parameter, ParamPhasesEnum.FUL
 def get_mpa_account_id(source: dict[str, Any]) -> str | None:
     """Get the Master Payer Account ID from the ordering parameter or None if it is not set."""
     ordering_param = get_ordering_parameter(
-        OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID,
+        OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value,
         source,
     )
     return ordering_param.get("value", None)
@@ -68,7 +68,7 @@ def set_ordering_parameter_error(order: dict, param_external_id: str, error: dic
 def get_phase(source: dict[str, Any]) -> str | None:
     """Get the phase from the fulfillment parameter or an empty string if it is not set."""
     fulfillment_param = get_fulfillment_parameter(
-        FulfillmentParametersEnum.PHASE,
+        FulfillmentParametersEnum.PHASE.value,
         source,
     )
     return fulfillment_param.get("value", None)
@@ -78,7 +78,7 @@ def set_phase(order: dict[str, Any], phase: str) -> dict[str, Any]:
     """Set the phase on the fulfillment parameters."""
     updated_order = copy.deepcopy(order)
     fulfillment_param = get_fulfillment_parameter(
-        FulfillmentParametersEnum.PHASE,
+        FulfillmentParametersEnum.PHASE.value,
         updated_order,
     )
     fulfillment_param["value"] = phase
@@ -98,7 +98,7 @@ def set_responsibility_transfer_id(order: dict[str, Any], transfer_id: str) -> d
     """Set the responsibility transfer ID on the fulfillment parameters."""
     updated_order = copy.deepcopy(order)
     fulfillment_param = get_fulfillment_parameter(
-        FulfillmentParametersEnum.RESPONSIBILITY_TRANSFER_ID,
+        FulfillmentParametersEnum.RESPONSIBILITY_TRANSFER_ID.value,
         updated_order,
     )
     fulfillment_param["value"] = transfer_id
@@ -108,7 +108,7 @@ def set_responsibility_transfer_id(order: dict[str, Any], transfer_id: str) -> d
 def get_responsibility_transfer_id(source: dict[str, Any]) -> str | None:
     """Get the Responsibility TransferID from the fulfillment parameter or None if it is not set."""
     fulfillment_param = get_fulfillment_parameter(
-        FulfillmentParametersEnum.RESPONSIBILITY_TRANSFER_ID,
+        FulfillmentParametersEnum.RESPONSIBILITY_TRANSFER_ID.value,
         source,
     )
     return fulfillment_param.get("value", None)
@@ -118,7 +118,7 @@ def set_crm_onboard_ticket_id(order: dict[str, Any], ticket_id: str) -> dict[str
     """Set the CRM onboard ticket ID on the fulfillment parameters."""
     updated_order = copy.deepcopy(order)
     fulfillment_param = get_fulfillment_parameter(
-        FulfillmentParametersEnum.CRM_ONBOARD_TICKET_ID,
+        FulfillmentParametersEnum.CRM_ONBOARD_TICKET_ID.value,
         updated_order,
     )
     fulfillment_param["value"] = ticket_id
@@ -128,7 +128,27 @@ def set_crm_onboard_ticket_id(order: dict[str, Any], ticket_id: str) -> dict[str
 def get_crm_onboard_ticket_id(source: dict[str, Any]) -> str | None:
     """Get the CRM onboard ticket ID from the fulfillment parameter or None if it is not set."""
     fulfillment_param = get_fulfillment_parameter(
-        FulfillmentParametersEnum.CRM_ONBOARD_TICKET_ID,
+        FulfillmentParametersEnum.CRM_ONBOARD_TICKET_ID.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def set_crm_new_account_ticket_id(order: dict[str, Any], ticket_id: str) -> dict[str, Any]:
+    """Set the CRM new account ticket ID on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CRM_NEW_ACCOUNT_TICKET_ID.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = ticket_id
+    return updated_order
+
+
+def get_crm_new_account_ticket_id(source: dict[str, Any]) -> str | None:
+    """Get the CRM new account ticket ID from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CRM_NEW_ACCOUNT_TICKET_ID.value,
         source,
     )
     return fulfillment_param.get("value", None)

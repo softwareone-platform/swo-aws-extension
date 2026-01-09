@@ -33,7 +33,9 @@ def test_pre_step_skips_wrong_phase(
     order_factory, fulfillment_parameters_factory, purchase_context, config
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_NEW_AWS_ENVIRONMENT.value,
+        )
     )
     context = purchase_context(order)
     step = CreateSubscription(config)
@@ -45,7 +47,7 @@ def test_pre_step_skips_wrong_phase(
 def test_pre_step_proceeds(order_factory, fulfillment_parameters_factory, purchase_context, config):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTION,
+            phase=PhasesEnum.CREATE_SUBSCRIPTION.value,
         )
     )
     context = purchase_context(order)
@@ -67,7 +69,7 @@ def test_process_creates_subscription(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTION,
+            phase=PhasesEnum.CREATE_SUBSCRIPTION.value,
         )
     )
     context = purchase_context(order)
@@ -93,7 +95,7 @@ def test_process_skips_when_subscription_exists(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTION,
+            phase=PhasesEnum.CREATE_SUBSCRIPTION.value,
         )
     )
     context = purchase_context(order)
@@ -111,12 +113,12 @@ def test_post_step_sets_complete_phase(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTION,
+            phase=PhasesEnum.CREATE_SUBSCRIPTION.value,
         )
     )
     updated_order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.COMPLETED,
+            phase=PhasesEnum.COMPLETED.value,
         )
     )
     context = purchase_context(order)
@@ -128,7 +130,7 @@ def test_post_step_sets_complete_phase(
 
     step.post_step(mpt_client, context)  # act
 
-    assert get_phase(context.order) == PhasesEnum.COMPLETED
+    assert get_phase(context.order) == PhasesEnum.COMPLETED.value
 
 
 def test_post_step_calls_update_order(
@@ -136,11 +138,11 @@ def test_post_step_calls_update_order(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTION,
+            phase=PhasesEnum.CREATE_SUBSCRIPTION.value,
         )
     )
     updated_order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED)
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED.value)
     )
     context = purchase_context(order)
     mock_update = mocker.patch(

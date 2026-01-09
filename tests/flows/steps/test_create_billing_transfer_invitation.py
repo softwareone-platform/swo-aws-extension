@@ -19,7 +19,9 @@ START_TIMESTAMP = 1767225600
 
 def test_skip_phase_is_not_expected(fulfillment_parameters_factory, order_factory, config):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_NEW_AWS_ENVIRONMENT.value
+        )
     )
     context = PurchaseContext.from_order_data(order)
 
@@ -32,7 +34,7 @@ def test_already_processed_transfer_id_exists(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION,
+            phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION.value,
             responsibility_transfer_id="RT-123",
         )
     )
@@ -41,7 +43,7 @@ def test_already_processed_transfer_id_exists(
     with pytest.raises(AlreadyProcessedStepError):
         CreateBillingTransferInvitation(config).pre_step(context)
 
-    assert get_phase(context.order) == PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION
+    assert get_phase(context.order) == PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION.value
 
 
 def test_missing_mpa_id(
@@ -49,7 +51,7 @@ def test_missing_mpa_id(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION,
+            phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION.value,
             responsibility_transfer_id="",
         ),
         order_parameters=order_parameters_factory(
@@ -61,7 +63,7 @@ def test_missing_mpa_id(
     with pytest.raises(QueryStepError) as error:
         CreateBillingTransferInvitation(config).process(mpt_client, context)
 
-    assert error.value.template_id == OrderQueryingTemplateEnum.INVALID_ACCOUNT_ID
+    assert error.value.template_id == OrderQueryingTemplateEnum.INVALID_ACCOUNT_ID.value
 
 
 @freeze_time("2025-12-22 00:00:00")
@@ -70,7 +72,7 @@ def test_create_transfer_billing_invitation(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION,
+            phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION.value,
             responsibility_transfer_id="",
         )
     )
@@ -101,7 +103,7 @@ def test_create_transfer_billing_invitation_error(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION,
+            phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION.value,
             responsibility_transfer_id="",
         )
     )
@@ -115,7 +117,7 @@ def test_create_transfer_billing_invitation_error(
     with pytest.raises(QueryStepError) as error:
         CreateBillingTransferInvitation(config).process(mpt_client, context)
 
-    assert error.value.template_id == OrderQueryingTemplateEnum.INVALID_ACCOUNT_ID
+    assert error.value.template_id == OrderQueryingTemplateEnum.INVALID_ACCOUNT_ID.value
 
 
 def test_post_step_sets_phase(
@@ -123,13 +125,13 @@ def test_post_step_sets_phase(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION,
+            phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION.value,
         )
     )
     context = PurchaseContext.from_order_data(order)
     updated_order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION,
+            phase=PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION.value,
         )
     )
     mock_update = mocker.patch(
@@ -139,7 +141,7 @@ def test_post_step_sets_phase(
 
     CreateBillingTransferInvitation(config).post_step(mpt_client, context)  # act
 
-    assert get_phase(context.order) == PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION
+    assert get_phase(context.order) == PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION.value
     mock_update.assert_called_once_with(
         mpt_client, context.order_id, parameters=context.order["parameters"]
     )
