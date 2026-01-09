@@ -3,12 +3,12 @@ import logging
 from typing import override
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
+from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import OrderParametersEnum, OrderQueryingTemplateEnum, PhasesEnum
 from swo_aws_extension.flows.order import PurchaseContext
-from swo_aws_extension.flows.order_utils import switch_order_status_to_query_and_notify
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import (
     ERR_CREATING_INVITATION_RESPONSE,
@@ -115,8 +115,8 @@ class CreateBillingTransferInvitation(BasePhaseStep):
     def post_step(self, client: MPTClient, context: PurchaseContext) -> None:
         """Hook to run after the step processing."""
         context.order = set_phase(context.order, PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION)
-        switch_order_status_to_query_and_notify(
-            client, context, OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS
+        context.order = update_order(
+            client, context.order_id, parameters=context.order["parameters"]
         )
 
     def _get_start_billing_transfer_timestamp(self) -> int:

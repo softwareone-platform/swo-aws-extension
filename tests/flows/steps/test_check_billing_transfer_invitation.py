@@ -18,17 +18,19 @@ from swo_aws_extension.flows.steps.errors import (
 from swo_aws_extension.parameters import get_phase
 
 
-def test_skip_phase_is_not_expected(fulfillment_parameters_factory, order_factory):
+def test_skip_phase_is_not_expected(fulfillment_parameters_factory, order_factory, config):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
     )
     context = PurchaseContext.from_order_data(order)
 
     with pytest.raises(SkipStepError):
-        CheckBillingTransferInvitation().pre_step(context)
+        CheckBillingTransferInvitation(config).pre_step(context)
 
 
-def test_configuration_error_missing_transfer_id(fulfillment_parameters_factory, order_factory):
+def test_configuration_error_missing_transfer_id(
+    fulfillment_parameters_factory, order_factory, config
+):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION,
@@ -38,7 +40,7 @@ def test_configuration_error_missing_transfer_id(fulfillment_parameters_factory,
     context = PurchaseContext.from_order_data(order)
 
     with pytest.raises(ConfigurationStepError):
-        CheckBillingTransferInvitation().pre_step(context)
+        CheckBillingTransferInvitation(config).pre_step(context)
 
 
 def test_process_transfer_accepted(
@@ -57,7 +59,7 @@ def test_process_transfer_accepted(
         "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
     }
 
-    CheckBillingTransferInvitation().process(mpt_client, context)  # act
+    CheckBillingTransferInvitation(config).process(mpt_client, context)  # act
 
     aws_client_mock.get_responsibility_transfer_details.assert_called_once_with(
         transfer_id="RT-123"
@@ -81,7 +83,7 @@ def test_process_transfer_pending(
     }
 
     with pytest.raises(QueryStepError) as error:
-        CheckBillingTransferInvitation().process(mpt_client, context)
+        CheckBillingTransferInvitation(config).process(mpt_client, context)
 
     assert error.value.template_id == OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS
 
@@ -103,7 +105,7 @@ def test_process_transfer_cancelled(
     }
 
     with pytest.raises(FailStepError):
-        CheckBillingTransferInvitation().process(mpt_client, context)
+        CheckBillingTransferInvitation(config).process(mpt_client, context)
 
 
 def test_process_transfer_declined(
@@ -123,11 +125,11 @@ def test_process_transfer_declined(
     }
 
     with pytest.raises(FailStepError):
-        CheckBillingTransferInvitation().process(mpt_client, context)
+        CheckBillingTransferInvitation(config).process(mpt_client, context)
 
 
 def test_post_step_sets_phase_to_onboard_services(
-    mocker, order_factory, fulfillment_parameters_factory, mpt_client
+    mocker, order_factory, fulfillment_parameters_factory, mpt_client, config
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -136,7 +138,7 @@ def test_post_step_sets_phase_to_onboard_services(
         )
     )
     context = PurchaseContext.from_order_data(order)
-    step = CheckBillingTransferInvitation()
+    step = CheckBillingTransferInvitation(config)
     updated_order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ONBOARD_SERVICES)
     )

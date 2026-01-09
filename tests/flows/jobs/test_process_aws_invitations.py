@@ -6,9 +6,62 @@ MPT_BASE_URL = "https://localhost"
 ORDERS_URL = (
     f"{MPT_BASE_URL}/v1/commerce/orders?"
     "and(in(agreement.product.id,(PRD-1111-1111)),eq(status,Querying))"
-    "&select=audit,parameters,lines,subscriptions,subscriptions.lines,agreement,buyer"
+    "&select=audit,parameters,lines,subscriptions,subscriptions.lines,agreement,buyer,"
+    "authorization.externalIds"
     "&order=audit.created.at&limit=10&offset=0"
 )
+
+
+def test_skips_missing_transfer_id(
+    mocker, mpt_client, config, order_factory, fulfillment_parameters_factory, requests_mocker
+):
+    processor = AWSInvitationsProcessor(mpt_client, config)
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(responsibility_transfer_id="")
+    )
+    requests_mocker.add(
+        requests_mocker.GET,
+        ORDERS_URL,
+        json={
+            "data": [order],
+            "$meta": {"pagination": {"total": 1, "limit": 10, "offset": 0}},
+        },
+    )
+    mock_aws_client = mocker.patch("swo_aws_extension.flows.jobs.process_aws_invitations.AWSClient")
+
+    processor.process_aws_invitations()  # act
+
+    mock_aws_client.assert_not_called()
+
+
+def test_skips_missing_pm_account_id(
+    mocker,
+    mpt_client,
+    config,
+    order_factory,
+    fulfillment_parameters_factory,
+    requests_mocker,
+):
+    processor = AWSInvitationsProcessor(mpt_client, config)
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="rt-test-123"
+        ),
+        authorization_external_id="",
+    )
+    requests_mocker.add(
+        requests_mocker.GET,
+        ORDERS_URL,
+        json={
+            "data": [order],
+            "$meta": {"pagination": {"total": 1, "limit": 10, "offset": 0}},
+        },
+    )
+    mock_aws_client = mocker.patch("swo_aws_extension.flows.jobs.process_aws_invitations.AWSClient")
+
+    processor.process_aws_invitations()  # act
+
+    mock_aws_client.assert_not_called()
 
 
 def test_process_invitations_status_changed(
