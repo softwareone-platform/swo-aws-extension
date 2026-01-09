@@ -371,6 +371,8 @@ def fulfillment_parameters_factory():
         responsibility_transfer_id="rt-8lr3q6sn",
         crm_onboard_ticket_id="",
         crm_new_account_ticket_id="",
+        crm_customer_role_ticket_id="",
+        customer_roles_deployed="no",
     ):
         return [
             {
@@ -391,6 +393,14 @@ def fulfillment_parameters_factory():
             {
                 "externalId": FulfillmentParametersEnum.CRM_NEW_ACCOUNT_TICKET_ID.value,
                 "value": crm_new_account_ticket_id,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.CRM_CUSTOMER_ROLE_TICKET_ID.value,
+                "value": crm_customer_role_ticket_id,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.CUSTOMER_ROLES_DEPLOYED.value,
+                "value": customer_roles_deployed,
             },
         ]
 

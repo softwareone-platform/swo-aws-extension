@@ -6,10 +6,11 @@ from mpt_extension_sdk.flows.context import Context
 from mpt_extension_sdk.flows.pipeline import Pipeline
 
 from swo_aws_extension.aws.config import Config
-from swo_aws_extension.constants import SWO_EXTENSION_MANAGEMENT_ROLE
+from swo_aws_extension.constants import ONBOARD_CUSTOMER_ROLE, SWO_EXTENSION_MANAGEMENT_ROLE
 from swo_aws_extension.flows.steps.check_billing_transfer_invitation import (
     CheckBillingTransferInvitation,
 )
+from swo_aws_extension.flows.steps.check_customer_roles import CheckCustomerRoles
 from swo_aws_extension.flows.steps.complete_order import CompleteOrder, CompleteTerminationOrder
 from swo_aws_extension.flows.steps.create_billing_transfer_invitation import (
     CreateBillingTransferInvitation,
@@ -52,6 +53,7 @@ purchase_new_aws_environment = Pipeline(
     CreateNewAWSEnvironment(config),
     CreateBillingTransferInvitation(config),
     CheckBillingTransferInvitation(config),
+    CheckCustomerRoles(config, ONBOARD_CUSTOMER_ROLE),
     OnboardServices(config),
     CreateSubscription(config),
     CompleteOrder(config),
@@ -61,6 +63,7 @@ purchase_existing_aws_environment = Pipeline(
     SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
     CreateBillingTransferInvitation(config),
     CheckBillingTransferInvitation(config),
+    CheckCustomerRoles(config, ONBOARD_CUSTOMER_ROLE),
     OnboardServices(config),
     CreateSubscription(config),
     CompleteOrder(config),

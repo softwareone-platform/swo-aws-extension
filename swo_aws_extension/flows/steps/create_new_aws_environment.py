@@ -21,10 +21,13 @@ from swo_aws_extension.flows.steps.errors import (
     SkipStepError,
     UnexpectedStopError,
 )
-from swo_aws_extension.parameters import (
+from swo_aws_extension.parameters import (  # noqa: WPS235
     get_crm_new_account_ticket_id,
     get_mpa_account_id,
+    get_order_account_email,
+    get_order_account_name,
     get_phase,
+    get_technical_contact_info,
     set_crm_new_account_ticket_id,
     set_ordering_parameter_error,
     set_phase,
@@ -85,14 +88,15 @@ class CreateNewAWSEnvironment(BasePhaseStep):
 
     def _create_new_account_ticket(self, context: PurchaseContext):
         crm_client = get_service_client()
-        # TODO - Pending to confirm ticket details with PDM team
         service_request = ServiceRequest(
             additional_info=CRM_NEW_ACCOUNT_ADDITIONAL_INFO,
             summary=CRM_NEW_ACCOUNT_SUMMARY.format(
                 customer_name=context.buyer.get("name"),
                 buyer_external_id=context.buyer.get("id"),
                 order_id=context.order_id,
-                master_payer_id=get_mpa_account_id(context.order),
+                order_account_name=get_order_account_name(context.order),
+                order_root_account_email=get_order_account_email(context.order),
+                technical_contact=get_technical_contact_info(context.order),
             ),
             title=CRM_NEW_ACCOUNT_TITLE,
         )

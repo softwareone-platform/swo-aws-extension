@@ -82,8 +82,8 @@ def test_process_transfer_accepted(
     aws_client_mock.create_billing_group.assert_called_once_with(
         responsibility_transfer_arn="arn:aws:billing::123456789012:responsibilitytransfer/RT-123",
         pricing_plan_arn=BASIC_PRICING_PLAN_ARN,
-        name="billing-group-mpa-id",
-        description="Billing group for MPA mpa-id",
+        name="billing-group-651706759263",
+        description="Billing group for MPA 651706759263",
     )
 
 
@@ -162,7 +162,7 @@ def test_post_step_sets_phase_to_onboard_services(
     step = CheckBillingTransferInvitation(config)
     updated_order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.ONBOARD_SERVICES.value
+            phase=PhasesEnum.CHECK_CUSTOMER_ROLES.value
         )
     )
     mocker.patch(
@@ -172,4 +172,4 @@ def test_post_step_sets_phase_to_onboard_services(
 
     step.post_step(mpt_client, context)  # act
 
-    assert get_phase(context.order) == PhasesEnum.ONBOARD_SERVICES.value
+    assert get_phase(context.order) == PhasesEnum.CHECK_CUSTOMER_ROLES.value

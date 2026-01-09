@@ -36,7 +36,7 @@ class TestUpdateParametersVisibility:
         assert order_root_account_email == {
             "constraints": {"hidden": False, "readonly": False, "required": True},
             "error": None,
-            "externalId": "orderRootAccountEmail",
+            "externalId": "orderAccountEmail",
             "id": "PAR-1234-5680",
             "name": "Order Root Account Email",
             "type": "choice",
@@ -48,7 +48,7 @@ class TestUpdateParametersVisibility:
         assert master_payer_param == {
             "constraints": {"hidden": True, "readonly": True, "required": False},
             "error": None,
-            "externalId": "masterPayerId",
+            "externalId": "masterPayerID",
             "id": "PAR-1234-5680",
             "name": "Master Payer Account ID",
             "type": "choice",
@@ -72,7 +72,7 @@ class TestUpdateParametersVisibility:
         assert master_payer_param == {
             "constraints": {"hidden": False, "readonly": False, "required": True},
             "error": None,
-            "externalId": "masterPayerId",
+            "externalId": "masterPayerID",
             "id": "PAR-1234-5680",
             "name": "Master Payer Account ID",
             "type": "choice",
@@ -96,7 +96,7 @@ class TestUpdateParametersVisibility:
         assert order_root_account_email == {
             "constraints": {"hidden": True, "readonly": True, "required": False},
             "error": None,
-            "externalId": "orderRootAccountEmail",
+            "externalId": "orderAccountEmail",
             "id": "PAR-1234-5680",
             "name": "Order Root Account Email",
             "type": "choice",
