@@ -148,6 +148,21 @@ class AWSClient:
             },
         )
 
+    @wrap_boto3_error
+    def create_billing_group(
+        self, responsibility_transfer_arn: str, pricing_plan_arn: str, name: str, description: str
+    ) -> dict:
+        """Create a billing group."""
+        billing_conductor_client = self._get_billing_conductor_client()
+        return billing_conductor_client.create_billing_group(
+            Name=name,
+            Description=description,
+            ComputationPreference={"PricingPlanArn": pricing_plan_arn},
+            AccountGrouping={
+                "ResponsibilityTransferArn": responsibility_transfer_arn,
+            },
+        )
+
     @wrap_http_error
     def _get_access_token(self):
         ccp_client = CCPClient(self.config)
@@ -233,4 +248,18 @@ class AWSClient:
             aws_secret_access_key=self.credentials["SecretAccessKey"],
             aws_session_token=self.credentials["SessionToken"],
             region_name="us-east-1",
+        )
+
+    def _get_billing_conductor_client(self):
+        """
+        Get the Billing Conductor client.
+
+        Returns:
+            The Billing Conductor client.
+        """
+        return boto3.client(
+            "billingconductor",
+            aws_access_key_id=self.credentials["AccessKeyId"],
+            aws_secret_access_key=self.credentials["SecretAccessKey"],
+            aws_session_token=self.credentials["SessionToken"],
         )

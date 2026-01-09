@@ -20,7 +20,9 @@ def test_complete_order_pre_step_skips(
     order_factory, fulfillment_parameters_factory, initial_context, config
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_NEW_AWS_ENVIRONMENT.value
+        )
     )
     context = initial_context(order)
     step = CompleteOrder(config)
@@ -33,7 +35,7 @@ def test_complete_order_pre_step_proceeds(
     order_factory, fulfillment_parameters_factory, initial_context, config
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED)
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED.value)
     )
     context = initial_context(order)
     step = CompleteOrder(config)
@@ -97,10 +99,10 @@ def test_complete_order_post_step_logs(order_factory, mpt_client, caplog, initia
     )
 
 
-def test_termination_pre_step_logs_start(order_factory, caplog, initial_context):
+def test_termination_pre_step_logs_start(order_factory, caplog, initial_context, config):
     order = order_factory()
     context = initial_context(order)
-    step = CompleteTerminationOrder()
+    step = CompleteTerminationOrder(config)
 
     step.pre_step(context)  # act
 
@@ -110,7 +112,7 @@ def test_termination_pre_step_logs_start(order_factory, caplog, initial_context)
 
 
 def test_termination_process_new_account(
-    mocker, order_factory, order_parameters_factory, mpt_client, initial_context
+    mocker, order_factory, order_parameters_factory, mpt_client, initial_context, config
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -121,7 +123,7 @@ def test_termination_process_new_account(
         "swo_aws_extension.flows.steps.complete_order.switch_order_status_to_complete"
     )
     context = initial_context(order)
-    step = CompleteTerminationOrder()
+    step = CompleteTerminationOrder(config)
 
     step.process(mpt_client, context)  # act
 
@@ -131,7 +133,7 @@ def test_termination_process_new_account(
 
 
 def test_termination_process_existing(
-    mocker, order_factory, order_parameters_factory, mpt_client, initial_context
+    mocker, order_factory, order_parameters_factory, mpt_client, initial_context, config
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -142,7 +144,7 @@ def test_termination_process_existing(
         "swo_aws_extension.flows.steps.complete_order.switch_order_status_to_complete"
     )
     context = initial_context(order)
-    step = CompleteTerminationOrder()
+    step = CompleteTerminationOrder(config)
 
     step.process(mpt_client, context)  # act
 
@@ -152,7 +154,7 @@ def test_termination_process_existing(
 
 
 def test_termination_post_step_logs(
-    order_factory, order_parameters_factory, mpt_client, caplog, initial_context
+    order_factory, order_parameters_factory, mpt_client, caplog, initial_context, config
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -160,7 +162,7 @@ def test_termination_post_step_logs(
         ),
     )
     context = initial_context(order)
-    step = CompleteTerminationOrder()
+    step = CompleteTerminationOrder(config)
 
     step.post_step(mpt_client, context)  # act
 

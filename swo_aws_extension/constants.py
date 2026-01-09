@@ -16,6 +16,8 @@ CRM_GLOBAL_EXT_USER_ID = "globalacademicExtUserId"
 CRM_REQUESTER = "Supplier.Portal"
 CRM_SUB_SERVICE = "Service Activation"
 
+BASIC_PRICING_PLAN_ARN = "arn:aws:billingconductor::aws:pricingplan/BasicPricingPlan"
+
 
 class SubscriptionStatus(StrEnum):
     """MPT subscription status."""
@@ -56,7 +58,7 @@ class AccountTypesEnum(StrEnum):
 class PhasesEnum(StrEnum):
     """Order phases enum."""
 
-    CREATE_ACCOUNT = "createAccount"
+    CREATE_NEW_AWS_ENVIRONMENT = "createAccount"
     CREATE_BILLING_TRANSFER_INVITATION = "createBillingTransferInvitation"
     CHECK_BILLING_TRANSFER_INVITATION = "checkBillingTransferInvitation"
     ONBOARD_SERVICES = "onboardServices"
@@ -87,6 +89,7 @@ class FulfillmentParametersEnum(StrEnum):
     PM_ACCOUNT_ID = "pmAccountId"
     RESPONSIBILITY_TRANSFER_ID = "responsibilityTransferId"
     CRM_ONBOARD_TICKET_ID = "crmOnboardTicketId"
+    CRM_NEW_ACCOUNT_TICKET_ID = "crmNewAccountTicketId"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
@@ -99,8 +102,9 @@ class OrderProcessingTemplateEnum(StrEnum):
 class OrderQueryingTemplateEnum(StrEnum):
     """Order querying template enum."""
 
-    TRANSFER_AWAITING_INVITATIONS = "Querying - awaiting invitations acceptance"
+    TRANSFER_AWAITING_INVITATIONS = "AWS Billing transfer invitation pending"
     INVALID_ACCOUNT_ID = "Order querying template - invalid Account ID"
+    NEW_ACCOUNT_CREATION = "AWS Billing Transfer New AWS account creation"
 
 
 class OrderCompletedTemplate(StrEnum):

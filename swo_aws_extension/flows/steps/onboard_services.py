@@ -52,6 +52,7 @@ class OnboardServices(BasePhaseStep):
     @override
     def process(self, client: MPTClient, context: PurchaseContext) -> None:
         crm_client = get_service_client()
+        # TODO - Pending to confirm ticket details with PDM team
         service_request = ServiceRequest(
             additional_info=CRM_NEW_ACCOUNT_ADDITIONAL_INFO,
             summary=CRM_NEW_ACCOUNT_SUMMARY.format(
