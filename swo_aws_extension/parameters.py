@@ -3,8 +3,10 @@ import functools
 from typing import Any
 
 from mpt_extension_sdk.mpt_http.utils import find_first
+from mpt_extension_sdk.mpt_http.wrap_http_error import ValidationError
 
 from swo_aws_extension.constants import (
+    AccountTypesEnum,
     FulfillmentParametersEnum,
     OrderParametersEnum,
     ParamPhasesEnum,
@@ -34,7 +36,7 @@ def get_mpa_account_id(source: dict[str, Any]) -> str | None:
     return ordering_param.get("value", None)
 
 
-def set_ordering_parameter_error(order, param_external_id, error):
+def set_ordering_parameter_error(order: dict, param_external_id: str, error: dict) -> dict:
     """
     Set a validation error on an ordering parameter.
 
@@ -52,11 +54,15 @@ def set_ordering_parameter_error(order, param_external_id, error):
         updated_order,
     )
     parameter["error"] = error
-    parameter["constraints"] = {
-        "hidden": False,
-        "required": True,
-    }
-    return updated_order
+
+    return set_order_parameter_constraints(
+        updated_order,
+        param_external_id,
+        constraints={
+            "hidden": False,
+            "required": True,
+        },
+    )
 
 
 def get_phase(source: dict[str, Any]) -> str | None:
@@ -82,7 +88,7 @@ def set_phase(order: dict[str, Any], phase: str) -> dict[str, Any]:
 def get_account_type(source: dict[str, Any]) -> str | None:
     """Get the account type from the ordering parameter or an empty string if it is not set."""
     ordering_param = get_ordering_parameter(
-        OrderParametersEnum.ACCOUNT_TYPE,
+        OrderParametersEnum.ACCOUNT_TYPE.value,
         source,
     )
     return ordering_param.get("value", None)
@@ -126,3 +132,99 @@ def get_crm_onboard_ticket_id(source: dict[str, Any]) -> str | None:
         source,
     )
     return fulfillment_param.get("value", None)
+
+
+def set_order_parameter_constraints(
+    order: dict, param_external_id: str, *, constraints: dict
+) -> dict:
+    """Sets ordering parameter constraints."""
+    updated_order = copy.deepcopy(order)
+    parameter_to_change = get_ordering_parameter(
+        param_external_id,
+        updated_order,
+    )
+    updated_constraints = parameter_to_change.get("constraints", {}) or {}
+    updated_constraints.update(constraints)
+    parameter_to_change["constraints"] = updated_constraints
+
+    return updated_order
+
+
+def set_order_parameter_value(order: dict, parameter_id: str, parameter_value: Any) -> dict:
+    """Set the value of a parameter in the order."""
+    updated_order = copy.deepcopy(order)
+    order_param = get_ordering_parameter(
+        parameter_id,
+        updated_order,
+    )
+    order_param["value"] = parameter_value
+
+    return updated_order
+
+
+def reset_ordering_parameters(order: dict, list_parameters: list) -> dict:
+    """Reset the ordering parameters to None and hide/make them readonly/not required."""
+    updated_order = copy.deepcopy(order)
+    for parameter_id in list_parameters:
+        updated_order = set_order_parameter_value(updated_order, parameter_id, None)
+        updated_order = set_order_parameter_constraints(
+            updated_order,
+            parameter_id,
+            constraints={"hidden": True, "required": False, "readonly": True},
+        )
+
+    return updated_order
+
+
+def update_parameters_visibility(order: dict) -> dict:
+    """Updates the visibility of parameters in the given order object."""
+    updated_order = copy.deepcopy(order)
+    updated_order = reset_ordering_parameters_error(updated_order)
+    account_type = get_account_type(updated_order)
+    if account_type == AccountTypesEnum.NEW_AWS_ENVIRONMENT.value:
+        updated_order = set_order_parameter_constraints(
+            updated_order,
+            OrderParametersEnum.ORDER_ACCOUNT_NAME.value,
+            constraints={"hidden": False, "required": True, "readonly": False},
+        )
+        updated_order = set_order_parameter_constraints(
+            updated_order,
+            OrderParametersEnum.ORDER_ROOT_ACCOUNT_EMAIL.value,
+            constraints={"hidden": False, "required": True, "readonly": False},
+        )
+        updated_order = reset_ordering_parameters(
+            updated_order, [OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value]
+        )
+    elif account_type == AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value:
+        updated_order = set_order_parameter_constraints(
+            updated_order,
+            OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value,
+            constraints={"hidden": False, "required": True, "readonly": False},
+        )
+        updated_order = reset_ordering_parameters(
+            updated_order,
+            [
+                OrderParametersEnum.ORDER_ACCOUNT_NAME.value,
+                OrderParametersEnum.ORDER_ROOT_ACCOUNT_EMAIL.value,
+            ],
+        )
+    else:
+        updated_order = set_ordering_parameter_error(
+            updated_order,
+            OrderParametersEnum.ACCOUNT_TYPE.value,
+            ValidationError(
+                err_id="AWS001", message=f"Invalid account type: {account_type}"
+            ).to_dict(),
+        )
+
+    return updated_order
+
+
+def reset_ordering_parameters_error(order: dict) -> dict:
+    """Reset errors for all ordering parameters."""
+    updated_order = copy.deepcopy(order)
+
+    for order_param in updated_order["parameters"][ParamPhasesEnum.ORDERING.value]:
+        order_param["error"] = None
+
+    return updated_order
