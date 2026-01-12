@@ -17,6 +17,8 @@ from swo_aws_extension.notifications import MPTNotificationManager
 
 logger = logging.getLogger(__name__)
 MPT_ORDER_STATUS_QUERYING = "Querying"
+MPT_ORDER_STATUS_PROCESSING = "Processing"
+MPT_ORDER_STATUS_COMPLETED = "Completed"
 
 
 def set_template(order, template):
@@ -105,7 +107,7 @@ def switch_order_status_to_process_and_notify(
     client: MPTClient, context: InitialAWSContext, template_name: str
 ):
     """Switch the order status to 'Processing'."""
-    set_order_template(client, context, MPT_ORDER_STATUS_QUERYING, template_name)
+    set_order_template(client, context, MPT_ORDER_STATUS_PROCESSING, template_name)
     kwargs = {
         "parameters": context.order["parameters"],
         "template": context.template,
@@ -134,7 +136,7 @@ def switch_order_status_to_complete(
         raise OrderStatusChangeError(
             current_status=context.order_status, target_status=MptOrderStatus.COMPLETED
         )
-    set_order_template(client, context, MPT_ORDER_STATUS_QUERYING, template_name)
+    set_order_template(client, context, MPT_ORDER_STATUS_COMPLETED, template_name)
     kwargs = {
         "parameters": context.order["parameters"],
         "template": context.template,

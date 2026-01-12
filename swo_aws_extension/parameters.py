@@ -154,6 +154,53 @@ def get_crm_new_account_ticket_id(source: dict[str, Any]) -> str | None:
     return fulfillment_param.get("value", None)
 
 
+def set_crm_customer_role_ticket_id(order: dict[str, Any], ticket_id: str) -> dict[str, Any]:
+    """Set the CRM customer role ticket ID on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CRM_CUSTOMER_ROLE_TICKET_ID,
+        updated_order,
+    )
+    fulfillment_param["value"] = ticket_id
+    return updated_order
+
+
+def get_crm_customer_role_ticket_id(source: dict[str, Any]) -> str | None:
+    """Get the customer role ticket ID from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CRM_CUSTOMER_ROLE_TICKET_ID,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def get_technical_contact_info(source: dict[str, Any]) -> dict:
+    """Get the technical contact information from the purchase context."""
+    ordering_param = get_ordering_parameter(
+        OrderParametersEnum.CONTACT,
+        source,
+    )
+    return ordering_param.get("value", {})
+
+
+def get_order_account_name(source: dict[str, Any]) -> str | None:
+    """Get the account name from the ordering parameter or None if it is not set."""
+    ordering_param = get_ordering_parameter(
+        OrderParametersEnum.ORDER_ACCOUNT_NAME,
+        source,
+    )
+    return ordering_param.get("value", None)
+
+
+def get_order_account_email(source: dict[str, Any]) -> str | None:
+    """Get the account email from the ordering parameter or None if it is not set."""
+    ordering_param = get_ordering_parameter(
+        OrderParametersEnum.ORDER_ROOT_ACCOUNT_EMAIL,
+        source,
+    )
+    return ordering_param.get("value", None)
+
+
 def set_order_parameter_constraints(
     order: dict, param_external_id: str, *, constraints: dict
 ) -> dict:
@@ -247,4 +294,15 @@ def reset_ordering_parameters_error(order: dict) -> dict:
     for order_param in updated_order["parameters"][ParamPhasesEnum.ORDERING.value]:
         order_param["error"] = None
 
+    return updated_order
+
+
+def set_customer_roles_deployed(order: dict, deployed: str) -> dict:
+    """Set the customer roles deployed flag on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CUSTOMER_ROLES_DEPLOYED.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = deployed
     return updated_order
