@@ -75,7 +75,9 @@ class OrderParametersEnum(StrEnum):
     """Ordering parameters external Ids."""
 
     ACCOUNT_TYPE = "accountType"
-    MASTER_PAYER_ACCOUNT_ID = "masterPayerID"
+    MASTER_PAYER_ACCOUNT_ID = "masterPayerId"
+    ORDER_ACCOUNT_NAME = "orderAccountName"
+    ORDER_ROOT_ACCOUNT_EMAIL = "orderRootAccountEmail"
 
 
 class FulfillmentParametersEnum(StrEnum):
