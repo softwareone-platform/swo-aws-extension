@@ -15,9 +15,9 @@ def test_setup_context_with_pma(
     aws_client_mock = mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
     order = order_factory()
     updated_order = order_factory(
-        order_factory(
-            fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT),
-        )
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_NEW_AWS_ENVIRONMENT.value,
+        ),
     )
     mocker.patch(
         "swo_aws_extension.flows.steps.setup_context.update_order",

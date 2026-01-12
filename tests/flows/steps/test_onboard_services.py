@@ -26,7 +26,9 @@ def test_pre_step_skips_wrong_phase(
     order_factory, fulfillment_parameters_factory, purchase_context, config
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CREATE_ACCOUNT)
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_NEW_AWS_ENVIRONMENT.value
+        )
     )
     context = purchase_context(order)
     step = OnboardServices(config)
@@ -40,7 +42,7 @@ def test_pre_step_already_processed(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.ONBOARD_SERVICES,
+            phase=PhasesEnum.ONBOARD_SERVICES.value,
             crm_onboard_ticket_id="CS0004728",
         )
     )
@@ -50,13 +52,13 @@ def test_pre_step_already_processed(
     with pytest.raises(AlreadyProcessedStepError):
         step.pre_step(context)
 
-    assert get_phase(context.order) == PhasesEnum.CREATE_SUBSCRIPTION
+    assert get_phase(context.order) == PhasesEnum.CREATE_SUBSCRIPTION.value
 
 
 def test_pre_step_proceeds(order_factory, fulfillment_parameters_factory, purchase_context, config):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.ONBOARD_SERVICES,
+            phase=PhasesEnum.ONBOARD_SERVICES.value,
             crm_onboard_ticket_id="",
         )
     )
@@ -78,7 +80,7 @@ def test_process_creates_service_request(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.ONBOARD_SERVICES,
+            phase=PhasesEnum.ONBOARD_SERVICES.value,
         )
     )
     context = purchase_context(order)
@@ -100,7 +102,7 @@ def test_process_sets_ticket_id(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.ONBOARD_SERVICES,
+            phase=PhasesEnum.ONBOARD_SERVICES.value,
         )
     )
     context = purchase_context(order)
@@ -123,7 +125,7 @@ def test_process_logs_ticket_creation(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.ONBOARD_SERVICES,
+            phase=PhasesEnum.ONBOARD_SERVICES.value,
         )
     )
     context = purchase_context(order)
@@ -146,7 +148,7 @@ def test_process_logs_when_no_ticket_id(
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.ONBOARD_SERVICES,
+            phase=PhasesEnum.ONBOARD_SERVICES.value,
         )
     )
     context = purchase_context(order)
@@ -181,7 +183,7 @@ def test_post_step_sets_create_subscription_phase(
 
     step.post_step(mpt_client, context)  # act
 
-    assert get_phase(context.order) == PhasesEnum.CREATE_SUBSCRIPTION
+    assert get_phase(context.order) == PhasesEnum.CREATE_SUBSCRIPTION.value
     mock_update.assert_called_once()
     call_args = mock_update.call_args
     assert call_args[0][0] == mpt_client

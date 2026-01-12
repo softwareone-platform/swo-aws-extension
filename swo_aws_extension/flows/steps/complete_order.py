@@ -59,6 +59,9 @@ class CompleteOrder(BasePhaseStep):
 class CompleteTerminationOrder(BasePhaseStep):
     """Handles the completion of a termination order."""
 
+    def __init__(self, config: Config):
+        self._config = config
+
     @override
     def pre_step(self, context: InitialAWSContext) -> None:
         logger.info("%s - Next - Starting Terminate order completion step", context.order_id)

@@ -6,6 +6,7 @@ from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import (
+    BASIC_PRICING_PLAN_ARN,
     INVALID_RESPONSIBILITY_TRANSFER_STATUS,
     OrderQueryingTemplateEnum,
     PhasesEnum,
@@ -67,6 +68,19 @@ class CheckBillingTransferInvitation(BasePhaseStep):
             logger.info(
                 "%s - Success - Billing transfer invitation %s has been accepted",
                 context.order_id,
+                transfer_id,
+            )
+            responsibility_arn = transfer_details.get("ResponsibilityTransfer", {}).get("Arn")
+            billing_group = context.aws_client.create_billing_group(
+                responsibility_transfer_arn=responsibility_arn,
+                pricing_plan_arn=BASIC_PRICING_PLAN_ARN,
+                name=f"billing-group-{context.master_payer_account_id}",
+                description=f"Billing group for MPA {context.master_payer_account_id}",
+            )
+            logger.info(
+                "%s - Success - Billing group %s created for responsibility transfer %s",
+                context.order_id,
+                billing_group.get("Arn"),
                 transfer_id,
             )
         elif status in INVALID_RESPONSIBILITY_TRANSFER_STATUS:
