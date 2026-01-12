@@ -3,10 +3,8 @@ import functools
 from typing import Any
 
 from mpt_extension_sdk.mpt_http.utils import find_first
-from mpt_extension_sdk.mpt_http.wrap_http_error import ValidationError
 
 from swo_aws_extension.constants import (
-    AccountTypesEnum,
     FulfillmentParametersEnum,
     OrderParametersEnum,
     ParamPhasesEnum,
@@ -89,6 +87,24 @@ def get_account_type(source: dict[str, Any]) -> str | None:
     """Get the account type from the ordering parameter or an empty string if it is not set."""
     ordering_param = get_ordering_parameter(
         OrderParametersEnum.ACCOUNT_TYPE.value,
+        source,
+    )
+    return ordering_param.get("value", None)
+
+
+def get_support_type(source: dict[str, Any]) -> str | None:
+    """Get the support type from the ordering parameter or an empty string if it is not set."""
+    ordering_param = get_ordering_parameter(
+        OrderParametersEnum.SUPPORT_TYPE.value,
+        source,
+    )
+    return ordering_param.get("value", None)
+
+
+def get_aws_type_of_support(source: dict[str, Any]) -> str | None:
+    """Get the AWS type of support from the parameter or an empty string if it is not set."""
+    ordering_param = get_ordering_parameter(
+        OrderParametersEnum.AWS_TYPE_OF_SUPPORT.value,
         source,
     )
     return ordering_param.get("value", None)
@@ -195,7 +211,7 @@ def get_order_account_name(source: dict[str, Any]) -> str | None:
 def get_order_account_email(source: dict[str, Any]) -> str | None:
     """Get the account email from the ordering parameter or None if it is not set."""
     ordering_param = get_ordering_parameter(
-        OrderParametersEnum.ORDER_ROOT_ACCOUNT_EMAIL,
+        OrderParametersEnum.ORDER_ACCOUNT_EMAIL,
         source,
     )
     return ordering_param.get("value", None)
@@ -238,50 +254,6 @@ def reset_ordering_parameters(order: dict, list_parameters: list) -> dict:
             updated_order,
             parameter_id,
             constraints={"hidden": True, "required": False, "readonly": True},
-        )
-
-    return updated_order
-
-
-def update_parameters_visibility(order: dict) -> dict:
-    """Updates the visibility of parameters in the given order object."""
-    updated_order = copy.deepcopy(order)
-    updated_order = reset_ordering_parameters_error(updated_order)
-    account_type = get_account_type(updated_order)
-    if account_type == AccountTypesEnum.NEW_AWS_ENVIRONMENT.value:
-        updated_order = set_order_parameter_constraints(
-            updated_order,
-            OrderParametersEnum.ORDER_ACCOUNT_NAME.value,
-            constraints={"hidden": False, "required": True, "readonly": False},
-        )
-        updated_order = set_order_parameter_constraints(
-            updated_order,
-            OrderParametersEnum.ORDER_ROOT_ACCOUNT_EMAIL.value,
-            constraints={"hidden": False, "required": True, "readonly": False},
-        )
-        updated_order = reset_ordering_parameters(
-            updated_order, [OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value]
-        )
-    elif account_type == AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value:
-        updated_order = set_order_parameter_constraints(
-            updated_order,
-            OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value,
-            constraints={"hidden": False, "required": True, "readonly": False},
-        )
-        updated_order = reset_ordering_parameters(
-            updated_order,
-            [
-                OrderParametersEnum.ORDER_ACCOUNT_NAME.value,
-                OrderParametersEnum.ORDER_ROOT_ACCOUNT_EMAIL.value,
-            ],
-        )
-    else:
-        updated_order = set_ordering_parameter_error(
-            updated_order,
-            OrderParametersEnum.ACCOUNT_TYPE.value,
-            ValidationError(
-                err_id="AWS001", message=f"Invalid account type: {account_type}"
-            ).to_dict(),
         )
 
     return updated_order
