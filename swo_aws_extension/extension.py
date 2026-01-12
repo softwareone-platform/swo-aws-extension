@@ -12,7 +12,7 @@ from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 from ninja import Body
 
 from swo_aws_extension.flows.fulfillment.base import fulfill_order
-from swo_aws_extension.parameters import update_parameters_visibility
+from swo_aws_extension.flows.validation.base import update_parameters_visibility
 
 logger = logging.getLogger(__name__)
 

@@ -82,11 +82,13 @@ class ParamPhasesEnum(StrEnum):
 class OrderParametersEnum(StrEnum):
     """Ordering parameters external Ids."""
 
+    AWS_TYPE_OF_SUPPORT = "AWSTypeOfSupport"
+    SUPPORT_TYPE = "supportType"
     ACCOUNT_TYPE = "accountType"
     MASTER_PAYER_ACCOUNT_ID = "masterPayerID"
     CONTACT = "contact"
     ORDER_ACCOUNT_NAME = "orderAccountName"
-    ORDER_ROOT_ACCOUNT_EMAIL = "orderAccountEmail"
+    ORDER_ACCOUNT_EMAIL = "orderAccountEmail"
 
 
 class FulfillmentParametersEnum(StrEnum):
@@ -146,16 +148,30 @@ class CustomerRolesDeployed(StrEnum):
     NO_DEPLOYED = "no"
 
 
-CRM_NEW_ACCOUNT_TITLE = "New AWS on-boarding in Marketplace with New AWS account creation"
-CRM_NEW_ACCOUNT_ADDITIONAL_INFO = (
-    "New customer joining SWO and with need to create a new AWS account"
-)
+class SupportTypesEnum(StrEnum):
+    """Support types enum."""
 
+    PARTNER_LED_SUPPORT = "PartnerLedSupport"
+    AWS_RESOLD_SUPPORT = "ResoldSupport"
+
+
+class AwsTypeOfSupportEnum(StrEnum):
+    """AWS type of support enum."""
+
+    ENTERPRISE_SUPPORT = "EnterpriseSupport"
+    ENTERPRISE_ON_RAMP = "EnterpriseOnRamp"
+    BUSINESS_SUPPORT = "BusinessSupport"
+    DEVELOPER_SUPPORT = "DeveloperSupport"
+    BASIC_SUPPORT = "BasicSupport"
+
+
+CRM_NEW_ACCOUNT_TITLE = "New AWS Onboarding in Marketplace"
+CRM_NEW_ACCOUNT_ADDITIONAL_INFO = "AWS New AWS linked account created"
 CRM_NEW_ACCOUNT_SUMMARY = (
     "Dear MCoE Team,<br><br>Good News!! <br>New customer for AWS is being onboarded in Marketplace"
     "<br>Here are some details: <br> Customer: {customer_name}<br> SCU: {buyer_external_id}<br> "
     "Order: {order_id}<br> New Account name : {order_account_name}<br> New account e-mail : "
-    "{order_root_account_email}<br> Technical point of contact : {technical_contact} <br>"
+    "{order_account_email}<br> Technical point of contact : {technical_contact} <br>"
     "Thank you for your attention. <br><br>Best Regards,<br>Marketplace Platform Team<br>"
 )
 
