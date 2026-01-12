@@ -87,7 +87,7 @@ def test_process_creates_ticket_when_missing(
             buyer_external_id=context.buyer.get("id"),
             order_id=context.order_id,
             order_account_name=get_order_account_name(context.order),
-            order_root_account_email=get_order_account_email(context.order),
+            order_account_email=get_order_account_email(context.order),
             technical_contact=get_technical_contact_info(context.order),
         ),
         title=CRM_NEW_ACCOUNT_TITLE,
