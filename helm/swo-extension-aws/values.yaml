@@ -1,0 +1,61 @@
+global:
+  OTELServiceName: Swo.Extensions.AWS
+  AppInsightsConnectionString: ZGVmYXVsdA==
+  ServiceName: default
+  MpPortalBaseUrl: default
+  MpBaseUrl: default
+  MpApiToken: ZGVmYXVsdA==
+  ConfigJson: ZGVmYXVsdA==
+  DjangoSecretKey: ZGVmYXVsdA==
+  MpProductsIds: default
+  WebhookSecretKeys: ZGVmYXVsdA==
+  AirTableApiToken: ZGVmYXVsdA==
+  AirTablePoolBase: '{}'
+  AirTableNotificationPoolBase: '{}'
+  MsTeamsWebhookUrl: ZGVmYXVsdA==
+  EmailNotificationsSender: default
+  EmailNotificationsEnabled: "1"
+  CrmOauthUrl: default
+  CrmClientId: default
+  CrmClientSecret: ZGVmYXVsdA==
+  CrmAudience: default
+  CcpOauthUrl: default
+  CcpClientId: default
+  CcpOauthScope: default
+  CcpOauthCredentialsScope: default
+  CcpApiBaseUrl: default
+  MpSetupContextsFunc: swo_aws_extension.flows.fulfillment.base.setup_contexts
+  MpOrdersApiPollingIntervalSecs: 60
+  CrmApiBaseUrl: default
+  AwsOpenIdScope: default
+  AwsRegion: us-east-1
+  AirTableBases: default
+  CcpKeyVaultSecretName: default
+  ExtMinimumMpaThreshold: 1
+  FfcOperationsSecret: ZGVmYXVsdA==
+  FfcOperationsApiBase: default
+  FfcOperationsSub: default
+  MpNotifyCategories: "{}"
+  MpInitializer: swo_aws_extension.initializer.initialize
+
+  replicaCountAPI: 1
+  replicaCountWorker: 1
+  registryUrl: ""
+  azure_tenant_id: ""
+
+  cronjobs:
+    aws-invitations:
+      schedule: ""
+      command: order_process_aws_invitations
+    sync-agreements:
+      schedule: ""
+      command: synchronize_agreements
+    ccp-secret:
+      schedule: ""
+      command: refresh_ccp_openid_secret
+    generate-billing:
+      schedule: ""
+      command: generate_billing_journals
+    sync-finops-accounts:
+      schedule: ""
+      command: synchronize_finops_accounts
