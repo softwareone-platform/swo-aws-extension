@@ -27,8 +27,6 @@ from swo_aws_extension.parameters import (
 from swo_aws_extension.swo.crm_service.client import ServiceRequest
 from swo_aws_extension.swo.crm_service.errors import CRMError
 
-ROLE_NAME = "TestRoleName"
-
 
 @pytest.fixture
 def mock_crm_client(mocker):
@@ -49,7 +47,7 @@ def test_pre_step_skips_wrong_phase(order_factory, fulfillment_parameters_factor
     context = PurchaseContext.from_order_data(order)
 
     with pytest.raises(SkipStepError):
-        CheckCustomerRoles(config, ROLE_NAME).pre_step(context)
+        CheckCustomerRoles(config).pre_step(context)
 
 
 def test_pre_step_proceeds_when_phase_matches(
@@ -60,7 +58,7 @@ def test_pre_step_proceeds_when_phase_matches(
     )
     context = PurchaseContext.from_order_data(order)
 
-    CheckCustomerRoles(config, ROLE_NAME).pre_step(context)  # act
+    CheckCustomerRoles(config).pre_step(context)  # act
 
     assert context.order is not None
 
@@ -80,7 +78,7 @@ def test_process_succeeds_when_roles_deployed(
     )
     context = PurchaseContext.from_order_data(order)
 
-    CheckCustomerRoles(config, ROLE_NAME).process(mpt_client, context)  # act
+    CheckCustomerRoles(config).process(mpt_client, context)  # act
 
     assert (
         get_fulfillment_parameter(
@@ -110,7 +108,7 @@ def test_process_creates_ticket_when_not_deployed(
     mock_crm_client.return_value.create_service_request.return_value = {"id": "TICKET-123"}
 
     with pytest.raises(QueryStepError):
-        CheckCustomerRoles(config, ROLE_NAME).process(mpt_client, context)
+        CheckCustomerRoles(config).process(mpt_client, context)
 
     contact = get_formatted_technical_contact(context.order)
     expected_service_request = ServiceRequest(
@@ -152,7 +150,7 @@ def test_process_skips_ticket_creation_when_open(
     mock_crm_client.return_value.get_service_request.return_value = {"state": "Open"}
 
     with pytest.raises(QueryStepError):
-        CheckCustomerRoles(config, ROLE_NAME).process(mpt_client, context)
+        CheckCustomerRoles(config).process(mpt_client, context)
 
     mock_crm_client.return_value.create_service_request.assert_not_called()
     assert "Customer role ticket EXISTING-TICKET is still open" in caplog.text
@@ -183,7 +181,7 @@ def test_process_creates_new_ticket_when_resolved(
     mock_crm_client.return_value.create_service_request.return_value = {"id": "NEW-TICKET"}
 
     with pytest.raises(QueryStepError):
-        CheckCustomerRoles(config, ROLE_NAME).process(mpt_client, context)
+        CheckCustomerRoles(config).process(mpt_client, context)
 
     assert "Ticket with id RESOLVED-TICKET is closed, creating new ticket" in caplog.text
     mock_crm_client.return_value.create_service_request.assert_called_once()
@@ -210,7 +208,7 @@ def test_process_raises_error_when_crm_fails(
     mock_crm_client.return_value.create_service_request.side_effect = CRMError("CRM API error")
 
     with pytest.raises(UnexpectedStopError) as error:
-        CheckCustomerRoles(config, ROLE_NAME).process(mpt_client, context)
+        CheckCustomerRoles(config).process(mpt_client, context)
 
     assert "Error creating pending customer roles ticket" in error.value.title
 
@@ -236,7 +234,7 @@ def test_process_logs_when_no_ticket_id(
     mock_crm_client.return_value.create_service_request.return_value = {"status": "created"}
 
     with pytest.raises(QueryStepError):
-        CheckCustomerRoles(config, ROLE_NAME).process(mpt_client, context)
+        CheckCustomerRoles(config).process(mpt_client, context)
 
     assert "No ticket ID returned from CRM" in caplog.text
     assert not get_crm_customer_role_ticket_id(context.order)
@@ -251,7 +249,7 @@ def test_post_step_updates_phase(
         )
     )
     context = PurchaseContext.from_order_data(order)
-    step = CheckCustomerRoles(config, ROLE_NAME)
+    step = CheckCustomerRoles(config)
     updated_order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ONBOARD_SERVICES)
     )

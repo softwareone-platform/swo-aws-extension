@@ -65,6 +65,26 @@ class Config:
         """Get the scope for the CCP OAuth."""
         return settings.EXTENSION_CONFIG["CCP_OAUTH_CREDENTIALS_SCOPE"]
 
+    @property
+    def apn_role_name(self) -> str:
+        """Get the APN role name."""
+        return settings.EXTENSION_CONFIG["APN_ROLE_NAME"]
+
+    @property
+    def apn_account_id(self) -> str:
+        """Get the APN account ID."""
+        return settings.EXTENSION_CONFIG["APN_ACCOUNT_ID"]
+
+    @property
+    def onboard_customer_role_name(self) -> str:
+        """Get the Onboard Customer role name."""
+        return settings.EXTENSION_CONFIG.get("ONBOARD_CUSTOMER_ROLE")
+
+    @property
+    def management_role_name(self) -> str:
+        """Get the Management role name."""
+        return settings.EXTENSION_CONFIG.get("MANAGEMENT_ROLE")
+
     def _patch_path(self, file_path):
         """Fixes relative paths to be from the project root."""
         path = Path(file_path)

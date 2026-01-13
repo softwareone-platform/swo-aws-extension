@@ -8,9 +8,6 @@ CCP_SECRET_NOT_FOUND_IN_KEY_VAULT = "CCP secret not found in key vault"  # noqa:
 FAILED_TO_GET_SECRET = "Failed to get secret"  # noqa: S105
 FAILED_TO_SAVE_SECRET_TO_KEY_VAULT = "Failed to save secret to key vault"  # noqa: S105
 
-SWO_EXTENSION_MANAGEMENT_ROLE = "swo/mpt/SWOExtensionManagementRole"
-# TODO: Update to the correct role once created
-ONBOARD_CUSTOMER_ROLE = "SWOExtensionDevelopmentRole11"
 
 CRM_EXTERNAL_EMAIL = "marketplace@softwareone.com"
 CRM_EXTERNAL_USERNAME = "mpt@marketplace.com"
@@ -22,6 +19,7 @@ CRM_SUB_SERVICE = "Service Activation"
 BASIC_PRICING_PLAN_ARN = "arn:aws:billingconductor::aws:pricingplan/BasicPricingPlan"
 
 CRM_TICKET_RESOLVED_STATE = "Resolved"
+MONTHS_PER_YEAR = 12
 
 
 class SubscriptionStatus(StrEnum):
@@ -66,8 +64,12 @@ class PhasesEnum(StrEnum):
     CREATE_NEW_AWS_ENVIRONMENT = "createAccount"
     CREATE_BILLING_TRANSFER_INVITATION = "createBillingTransferInvitation"
     CHECK_BILLING_TRANSFER_INVITATION = "checkBillingTransferInvitation"
+    CONFIGURE_APN_PROGRAM = "configureApnProgram"
+    CREATE_CHANNEL_HANDSHAKE = "createChannelHandshake"
+    CHECK_CHANNEL_HANDSHAKE_STATUS = "checkChannelHandshakeStatus"
     CHECK_CUSTOMER_ROLES = "checkCustomerRoles"
     ONBOARD_SERVICES = "onboardServices"
+    CHECK_ONBOARD_SERVICES_STATUS = "checkOnboardServicesStatus"
     CREATE_SUBSCRIPTION = "createSubscription"
     COMPLETED = "completed"
 
@@ -102,6 +104,9 @@ class FulfillmentParametersEnum(StrEnum):
     CRM_CUSTOMER_ROLE_TICKET_ID = "crmCustomerRoleTicketId"
     CUSTOMER_ROLES_DEPLOYED = "customerRolesDeployed"
     BILLING_GROUP_ARN = "billingGroupArn"
+    RELATIONSHIP_ID = "relationshipId"
+    CHANNEL_HANDSHAKE_ID = "channelHandshakeId"
+    CHANNEL_HANDSHAKE_APPROVED = "channelHandshakeApproved"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
@@ -121,6 +126,7 @@ class OrderQueryingTemplateEnum(StrEnum):
     INVALID_ACCOUNT_ID = "Order querying template - invalid Account ID"
     NEW_ACCOUNT_CREATION = "AWS Billing Transfer New AWS account creation"
     WAITING_FOR_CUSTOMER_ROLES = "AWS Billing Transfer Waiting for roles deployment template"
+    HANDSHAKE_AWAITING_ACCEPTANCE = "AWS Billing Transfer APN Channel Handshake pending acceptance"
 
 
 class OrderCompletedTemplate(StrEnum):
@@ -163,6 +169,23 @@ class ResoldSupportPlansEnum(StrEnum):
     ENTERPRISE_SUPPORT = "EnterpriseSupport"
     BUSINESS_SUPPORT = "BusinessSupport"
     CURRENT_SUPPORT = "ResoldCurrentSupport"
+
+
+class ChannelHandshakeStatusEnum(StrEnum):
+    """Channel Handshake Status Enum."""
+
+    PENDING = "PENDING"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+    CANCELED = "CANCELED"
+    EXPIRED = "EXPIRED"
+
+
+class ChannelHandshakeDeployed(StrEnum):
+    """Channel Handshake deployed status."""
+
+    YES = "yes"
+    NO_DEPLOYED = "no"
 
 
 CRM_NEW_ACCOUNT_TITLE = "New AWS Onboarding in Marketplace"

@@ -38,9 +38,8 @@ logger = logging.getLogger(__name__)
 class CheckCustomerRoles(BasePhaseStep):
     """Check Customer Roles step."""
 
-    def __init__(self, config: Config, role_name: str) -> None:
+    def __init__(self, config: Config) -> None:
         self._config = config
-        self._role_name = role_name
 
     @override
     def pre_step(self, context: PurchaseContext) -> None:
@@ -136,7 +135,11 @@ class CheckCustomerRoles(BasePhaseStep):
 
     def _are_customer_roles_deployed(self, context):
         try:
-            AWSClient(self._config, get_mpa_account_id(context.order), self._role_name)
+            AWSClient(
+                self._config,
+                get_mpa_account_id(context.order),
+                self._config.onboard_customer_role_name,
+            )
         except AWSError as error:
             logger.info("%s - Error - Customer role check failed: %s", context.order_id, error)
             return False

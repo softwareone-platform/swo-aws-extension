@@ -18,6 +18,7 @@ class InitialAWSContext(BaseContext):
     """AWS order processing context."""
 
     aws_client: AWSClient | None = None
+    aws_apn_client: AWSClient | None = None
     agreement: dict | None = None
     seller: dict | None = None
     buyer: dict | None = None

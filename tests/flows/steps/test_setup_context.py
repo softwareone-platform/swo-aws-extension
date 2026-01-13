@@ -2,8 +2,8 @@ import botocore
 from mpt_extension_sdk.flows.pipeline import Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
+from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import (
-    SWO_EXTENSION_MANAGEMENT_ROLE,
     AccountTypesEnum,
     OrderProcessingTemplateEnum,
     PhasesEnum,
@@ -32,13 +32,13 @@ def test_setup_context_with_pma(
         return_value=updated_order,
     )
     context = PurchaseContext.from_order_data(order)
-    step = SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE)
+    step = SetupContext(config)
 
     step(mpt_client_mock, context, next_step_mock)  # act
 
-    aws_client_mock.assert_called_once_with(
-        config, context.pm_account_id, SWO_EXTENSION_MANAGEMENT_ROLE
-    )
+    assert aws_client_mock.call_count == 2
+    aws_client_mock.assert_any_call(config, context.pm_account_id, config.management_role_name)
+    aws_client_mock.assert_any_call(config, config.apn_account_id, config.apn_role_name)
 
 
 def test_setup_context_without_pma_exception(
@@ -53,7 +53,7 @@ def test_setup_context_without_pma_exception(
     next_step_mock = mocker.MagicMock(spec=Step)
     order = order_factory(authorization_external_id="")
     context = PurchaseContext.from_order_data(order)
-    step = SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE)
+    step = SetupContext(config)
 
     step(mpt_client_mock, context, next_step_mock)  # act
 
@@ -90,12 +90,39 @@ def test_setup_context_invalid_aws_credentials(
     )
     order = order_factory()
     context = PurchaseContext.from_order_data(order)
-    step = SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE)
+    step = SetupContext(config)
 
     step(mpt_client_mock, context, next_step_mock)  # act
 
     next_step_mock.assert_not_called()
     assert "failing to provide valid AWS credentials" in one_time_notification_mock.call_args[0][1]
+
+
+def test_setup_context_invalid_apn_credentials(mocker, config, order_factory):
+    mpt_client_mock = mocker.MagicMock(spec=MPTClient)
+    next_step_mock = mocker.MagicMock(spec=Step)
+    aws_client_mock = mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.AWSClient",
+    )
+    aws_client_mock.side_effect = [
+        mocker.MagicMock(),
+        AWSError("Invalid credentials for APN account"),
+    ]
+    one_time_notification_mock = mocker.patch(
+        "swo_aws_extension.flows.steps.base.TeamsNotificationManager.notify_one_time_error",
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
+    )
+    order = order_factory()
+    context = PurchaseContext.from_order_data(order)
+    step = SetupContext(config)
+
+    step(mpt_client_mock, context, next_step_mock)  # act
+
+    next_step_mock.assert_not_called()
+    assert f"APN Account {config.apn_account_id}" in one_time_notification_mock.call_args[0][0]
+    assert config.apn_role_name in one_time_notification_mock.call_args[0][1]
 
 
 def test_init_template_new_account(
@@ -121,7 +148,7 @@ def test_init_template_new_account(
         return_value=order,
     )
     context = PurchaseContext.from_order_data(order)
-    step = SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE)
+    step = SetupContext(config)
 
     step(mpt_client_mock, context, next_step_mock)  # act
 
@@ -153,7 +180,7 @@ def test_init_template_existing_account(
         return_value=order,
     )
     context = PurchaseContext.from_order_data(order)
-    step = SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE)
+    step = SetupContext(config)
 
     step(mpt_client_mock, context, next_step_mock)  # act
 
@@ -180,7 +207,7 @@ def test_init_template_terminate(mocker, config, order_factory, fulfillment_para
         return_value=order,
     )
     context = PurchaseContext.from_order_data(order)
-    step = SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE)
+    step = SetupContext(config)
 
     step(mpt_client_mock, context, next_step_mock)  # act
 
@@ -219,7 +246,7 @@ def test_init_template_skipped_when_same(
         return_value=order,
     )
     context = PurchaseContext.from_order_data(order)
-    step = SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE)
+    step = SetupContext(config)
 
     step(mpt_client_mock, context, next_step_mock)  # act
 
