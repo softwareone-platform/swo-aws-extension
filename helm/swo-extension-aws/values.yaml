@@ -56,6 +56,6 @@ global:
     generate-billing:
       schedule: ""
       command: generate_billing_journals
-    sync-finops-accounts:
+    sync-finops:
       schedule: ""
       command: synchronize_finops_accounts
