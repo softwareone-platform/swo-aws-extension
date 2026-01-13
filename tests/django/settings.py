@@ -192,6 +192,10 @@ EXTENSION_CONFIG = {
     "MPT_KEY_VAULT_NAME": "mpt-key-vault",
     "CCP_KEY_VAULT_SECRET_NAME": "ccp-openid-token-secret-name",
     "CCP_OAUTH_CREDENTIALS_SCOPE": "ccp-oauth-credentials-scope",
+    "APN_ROLE_NAME": "RoleAPN",
+    "APN_ACCOUNT_ID": "1234567890",
+    "ONBOARD_CUSTOMER_ROLE": "OnboardCustomerRole",
+    "MANAGEMENT_ROLE": "SWOExtensionManagementRole",
 }
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"
 
