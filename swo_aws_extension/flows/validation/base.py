@@ -6,7 +6,7 @@ from mpt_extension_sdk.mpt_http.wrap_http_error import ValidationError
 from swo_aws_extension.constants import AccountTypesEnum, OrderParametersEnum, SupportTypesEnum
 from swo_aws_extension.parameters import (
     get_account_type,
-    get_aws_type_of_support,
+    get_resold_support_plans,
     get_support_type,
     reset_ordering_parameters,
     reset_ordering_parameters_error,
@@ -59,11 +59,11 @@ def _apply_account_type_constraints(order: dict, account_type: str | None) -> di
 def _apply_support_type_constraints(order: dict, support_type: str | None) -> dict:
     """Apply parameter constraints based on support type."""
     is_resold_support = support_type == SupportTypesEnum.AWS_RESOLD_SUPPORT.value
-    support_param = OrderParametersEnum.AWS_TYPE_OF_SUPPORT.value
+    support_param = OrderParametersEnum.RESOLD_SUPPORT_PLANS.value
     if not is_resold_support:
         return reset_ordering_parameters(order, [support_param])
 
-    if is_resold_support and get_aws_type_of_support(order) is None:
+    if is_resold_support and get_resold_support_plans(order) is None:
         order = set_ordering_parameter_error(
             order,
             support_param,

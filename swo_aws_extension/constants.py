@@ -82,13 +82,15 @@ class ParamPhasesEnum(StrEnum):
 class OrderParametersEnum(StrEnum):
     """Ordering parameters external Ids."""
 
-    AWS_TYPE_OF_SUPPORT = "AWSTypeOfSupport"
+    RESOLD_SUPPORT_PLANS = "resoldSupportPlans"
     SUPPORT_TYPE = "supportType"
     ACCOUNT_TYPE = "accountType"
     MASTER_PAYER_ACCOUNT_ID = "masterPayerID"
     CONTACT = "contact"
     ORDER_ACCOUNT_NAME = "orderAccountName"
     ORDER_ACCOUNT_EMAIL = "orderAccountEmail"
+    COST_MANAGEMENT = "costManagement"
+    SUPPLEMENTARY_SERVICES = "supplementaryServices"
 
 
 class FulfillmentParametersEnum(StrEnum):
@@ -106,8 +108,10 @@ class FulfillmentParametersEnum(StrEnum):
 class OrderProcessingTemplateEnum(StrEnum):
     """Order processing template enum."""
 
-    NEW_ACCOUNT = "New Account - processing"
-    EXISTING_ACCOUNT = "Existing Account - processing"
+    NEW_ACCOUNT = "AWS Billing Transfer Order Confirmation and next steps - New AWS account"
+    EXISTING_ACCOUNT = (
+        "AWS Billing Transfer Order Confirmation and next steps - Existing AWS account"
+    )
 
 
 class OrderQueryingTemplateEnum(StrEnum):
@@ -122,10 +126,8 @@ class OrderQueryingTemplateEnum(StrEnum):
 class OrderCompletedTemplate(StrEnum):
     """Order completion templates."""
 
-    NEW_ACCOUNT = "Order completed new account"
-    EXISTING_ACCOUNT = "Order completed existing account"
-    TERMINATION_NEW_ACCOUNT = "Order terminated new account"
-    TERMINATION_EXISTING_ACCOUNT = "Order terminated existing account"
+    PURCHASE = "AWS Billing Transfer Order Completed"
+    TERMINATION = "AWS Billing Transfer Termination order approved"
 
 
 class MptOrderStatus(StrEnum):
@@ -155,14 +157,12 @@ class SupportTypesEnum(StrEnum):
     AWS_RESOLD_SUPPORT = "ResoldSupport"
 
 
-class AwsTypeOfSupportEnum(StrEnum):
+class ResoldSupportPlansEnum(StrEnum):
     """AWS type of support enum."""
 
     ENTERPRISE_SUPPORT = "EnterpriseSupport"
-    ENTERPRISE_ON_RAMP = "EnterpriseOnRamp"
     BUSINESS_SUPPORT = "BusinessSupport"
-    DEVELOPER_SUPPORT = "DeveloperSupport"
-    BASIC_SUPPORT = "BasicSupport"
+    CURRENT_SUPPORT = "ResoldCurrentSupport"
 
 
 CRM_NEW_ACCOUNT_TITLE = "New AWS Onboarding in Marketplace"
@@ -171,8 +171,12 @@ CRM_NEW_ACCOUNT_SUMMARY = (
     "Dear MCoE Team,<br><br>Good News!! <br>New customer for AWS is being onboarded in Marketplace"
     "<br>Here are some details: <br> Customer: {customer_name}<br> SCU: {buyer_external_id}<br> "
     "Order: {order_id}<br> New Account name : {order_account_name}<br> New account e-mail : "
-    "{order_account_email}<br> Technical point of contact : {technical_contact} <br>"
-    "Thank you for your attention. <br><br>Best Regards,<br>Marketplace Platform Team<br>"
+    "{order_account_email}<br> Technical point of contact : {technical_contact} <br>Support type : "
+    "{support_type} <br> in case of resold support the AWS resold support option is "
+    "{resold_support_plans} else ignore. <br> Cost management tool selected : "
+    "{cost_management} <br>Interest in the following SWO additional services : "
+    "{supplementary_services} <br> Thank you, team, for your attention and taking all "
+    "necessary steps! <br><br>Best Regards,<br>Marketplace Platform Team<br>"
 )
 
 CRM_DEPLOY_ROLES_TITLE = "Action Required: Roles not deployed yet"
@@ -193,9 +197,14 @@ CRM_ONBOARD_SUMMARY = (
     " Marketplace<br>Please check the order details and get in touch with the sales team and "
     "customer primary contact for the next steps.<br>Here are some details: <br> Customer: "
     "{customer_name}<br> SCU: {buyer_external_id}<br> Order: {order_id}<br> MasterPayerId:"
-    " {master_payer_id}<br> Technical point of contact : {technical_contact} <br>"
-    "Thank you for your attention. <br><br>Best Regards,<br>Marketplace Platform Team<br>"
+    " {master_payer_id}<br> Technical point of contact : {technical_contact} <br>Support type : "
+    "{support_type} <br> in case of resold support the AWS resold support option is "
+    "{resold_support_plans} else ignore. <br> Cost management tool selected : "
+    "{cost_management} <br>Interest in the following SWO additional services : "
+    "{supplementary_services} <br>Thank you for your attention. <br><br>Best Regards,"
+    "<br>Marketplace Platform Team<br>"
 )
+
 
 CUSTOMER_ROLES_NOT_DEPLOYED_MESSAGE = (
     "It seems there is an error with the configured SWO access. SWO roles have not "
