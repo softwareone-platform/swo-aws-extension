@@ -17,6 +17,7 @@ from swo_aws_extension.flows.steps.create_billing_transfer_invitation import (
 )
 from swo_aws_extension.flows.steps.create_new_aws_environment import CreateNewAWSEnvironment
 from swo_aws_extension.flows.steps.create_subscription import CreateSubscription
+from swo_aws_extension.flows.steps.finops_entitlement import TerminateFinOpsEntitlementStep
 from swo_aws_extension.flows.steps.onboard_services import OnboardServices
 from swo_aws_extension.flows.steps.setup_context import SetupContext
 from swo_aws_extension.flows.steps.terminate import TerminateResponsibilityTransferStep
@@ -71,5 +72,6 @@ purchase_existing_aws_environment = Pipeline(
 terminate = Pipeline(
     SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
     TerminateResponsibilityTransferStep(config),
+    TerminateFinOpsEntitlementStep(config),
     CompleteTerminationOrder(config),
 )
