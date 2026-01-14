@@ -13,8 +13,8 @@ spec:
   template:
     metadata:
       labels:
-        app.pyracloud.com/access-policy: {{ .Values.accessPolicy }} 
-        app.pyracloud.com/access-policy-audience: {{ .Values.accessPolicyAudience }} 
+        app.pyracloud.com/access-policy: {{ .Values.accessPolicy }}
+        app.pyracloud.com/access-policy-audience: {{ .Values.accessPolicyAudience }}
         {{- include "common.labels" . | nindent 8 }}
     spec:
       volumes:
@@ -56,7 +56,7 @@ spec:
                   name: ops-pyc-cluster-teamsetup-pyra-xcluster-credentials
                   key: PYRA_PYRA__AZUREAD__AUTHENTICATION__CERTIFICATEPATH
             - name: AZURE_TENANT_ID
-              value: 1dc9b339-fadb-432e-86df-423c38a0fcb8
+              value: {{ .Values.global.AzureTenantId }}
           volumeMounts:
             - name: pyra-keyvault-certificate
               mountPath: "/app/keyvault-certificate"
@@ -106,14 +106,14 @@ spec:
             podAffinityTerm:
               labelSelector:
                 matchExpressions:
-                - key: app.kubernetes.io/name 
+                - key: app.kubernetes.io/name
                   operator: In
                   values:
-                  - {{ include "common.name" . }} 
+                  - {{ include "common.name" . }}
                 - key: app.kubernetes.io/instance
                   operator: In
                   values:
-                  - {{ .Release.Name }} 
+                  - {{ .Release.Name }}
               topologyKey: "kubernetes.io/hostname"
     {{- with .Values.tolerations }}
       tolerations:

@@ -41,7 +41,7 @@ global:
   replicaCountAPI: 1
   replicaCountWorker: 1
   registryUrl: ""
-  azure_tenant_id: ""
+  AzureTenantId: ""
 
   cronjobs:
     aws-invitations:
