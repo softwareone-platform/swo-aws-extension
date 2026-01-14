@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ include "common.fullname" . }}
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.global.replicaCountWorker }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "common.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.pyracloud.com/access-policy: {{ .Values.accessPolicy }}
+        app.pyracloud.com/access-policy-audience: {{ .Values.accessPolicyAudience }}
+        {{- include "common.labels" . | nindent 8 }}
+    spec:
+      volumes:
+        - name: pyra-keyvault-certificate
+          secret:
+            secretName: ops-pyc-cluster-teamsetup-pyra-keyvault-certificate
+      containers:
+        - name: main
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.global.registryUrl }}{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
+          command:
+            - swoext
+          args:
+            - run
+            - consumer
+            - --no-color
+            - --reload
+          env:
+            - name: "AZURE_CLIENT_CERTIFICATE_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: ops-pyc-cluster-teamsetup-pyra-keyvault-certificate
+                  key: keyvault-certificate-password
+            # Map shared config map keys to environment variables
+            - name: MPT_KEY_VAULT_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ops-pyc-cluster-teamsetup-default-env-variables
+                  key: PYRA_PYRA__KEYVAULT__SOURCES__0__URI
+            - name: AZURE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: ops-pyc-cluster-teamsetup-pyra-xcluster-credentials
+                  key: PYRA_PYRA__AZUREAD__AUTHENTICATION__APPLICATIONID
+            - name: AZURE_CLIENT_CERTIFICATE_PATH
+              valueFrom:
+                secretKeyRef:
+                  name: ops-pyc-cluster-teamsetup-pyra-xcluster-credentials
+                  key: PYRA_PYRA__AZUREAD__AUTHENTICATION__CERTIFICATEPATH
+            - name: AZURE_TENANT_ID
+              value:  {{ .Values.global.AzureTenantId }}
+          volumeMounts:
+            - name: pyra-keyvault-certificate
+              mountPath: "/app/pyra-keyvault-certificate"
+              readOnly: true
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: ops-pyc-cluster-teamsetup-default-env-variables
+            - secretRef:
+                name: ops-pyc-cluster-teamsetup-pyra-xcluster-credentials
+            - configMapRef:
+                name: {{ include "common.fullname" . }}
+            - secretRef:
+                name: {{ include "common.fullname" . }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+            - name: healthcheck
+              containerPort: 8800
+              protocol: TCP
+          # livenessProbe:
+          #   httpGet:
+          #     path: /live
+          #     port: healthcheck
+          #   initialDelaySeconds: 15
+          #   periodSeconds: 30
+          #   timeoutSeconds: 5
+          # readinessProbe:
+          #   httpGet:
+          #     path: /ready
+          #     port: healthcheck
+          #   initialDelaySeconds: 5
+          #   periodSeconds: 5
+          #   timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      affinity:
+        # Default affinity is set to ensure all pods are not located on the same node.
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - {{ include "common.name" . }}
+                - key: app.kubernetes.io/instance
+                  operator: In
+                  values:
+                  - {{ .Release.Name }}
+              topologyKey: "kubernetes.io/hostname"
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
