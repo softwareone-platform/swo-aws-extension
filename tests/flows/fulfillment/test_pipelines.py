@@ -42,6 +42,7 @@ def test_terminate_steps():
     expected_step_classes = [
         "SetupContext",
         "TerminateResponsibilityTransferStep",
+        "TerminateFinOpsEntitlementStep",
         "CompleteTerminationOrder",
     ]
 

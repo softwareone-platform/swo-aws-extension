@@ -128,7 +128,7 @@ class CheckCustomerRoles(BasePhaseStep):
 
     def _are_customer_roles_deployed(self, context):
         try:
-            AWSClient(self._config, context.pm_account_id, self._role_name)
+            AWSClient(self._config, get_mpa_account_id(context.order), self._role_name)
         except AWSError as error:
             logger.info("%s - Error - Customer role check failed: %s", context.order_id, error)
             return False

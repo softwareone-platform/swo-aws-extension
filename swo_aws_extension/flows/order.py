@@ -22,7 +22,6 @@ class InitialAWSContext(BaseContext):
     seller: dict | None = None
     buyer: dict | None = None
     subscriptions: list[dict] | None = None
-    transfer_id: str | None = None
 
     @property
     def pm_account_id(self):
