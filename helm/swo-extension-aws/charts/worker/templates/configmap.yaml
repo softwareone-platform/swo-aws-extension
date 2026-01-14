@@ -30,4 +30,4 @@ data:
   EXT_FFC_SUB: {{ .Values.global.FfcOperationsSub | quote }}
   EXT_FFC_OPERATIONS_API_BASE_URL: {{ .Values.global.FfcOperationsApiBase | quote }}
   MPT_NOTIFY_CATEGORIES: {{ .Values.global.MpNotifyCategories | quote }}
-  MP_INITIALIZER: {{ .Values.global.MpInitializer | quote }}
+  MPT_INITIALIZER: {{ .Values.global.MpInitializer | quote }}
