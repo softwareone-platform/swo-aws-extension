@@ -97,7 +97,6 @@ class FulfillmentParametersEnum(StrEnum):
     """Change parameters external Ids."""
 
     PHASE = "phase"
-    PM_ACCOUNT_ID = "pmAccountId"
     RESPONSIBILITY_TRANSFER_ID = "responsibilityTransferId"
     CRM_ONBOARD_TICKET_ID = "crmOnboardTicketId"
     CRM_NEW_ACCOUNT_TICKET_ID = "crmNewAccountTicketId"

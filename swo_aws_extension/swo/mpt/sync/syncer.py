@@ -168,11 +168,10 @@ def get_latest_inbound_responsibility_transfers(pma_account_id: str) -> dict | N
     aws_client = AWSClient(get_config(), pma_account_id, SWO_EXTENSION_MANAGEMENT_ROLE)
     result = {}
     for rt in aws_client.get_inbound_responsibility_transfers():
-        source_account_id = rt["Source"]["ManagementAccountId"]
-        if (
-            source_account_id not in result
-            or rt["StartTimestamp"] > result[source_account_id]["StartTimestamp"]
-        ):
+        source_account_id = rt.get("Source", {}).get("ManagementAccountId", None)
+        if (source_account_id and source_account_id not in result) or rt["StartTimestamp"] > result[
+            source_account_id
+        ]["StartTimestamp"]:
             result[source_account_id] = {
                 "Id": rt["Id"],
                 "Status": rt["Status"],
