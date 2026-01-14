@@ -186,8 +186,8 @@ def test_switch_order_status_to_complete(
     mocker, order_factory, order_parameters_factory, template_factory
 ):
     client = mocker.MagicMock(spec=MPTClient)
-    default_template = template_factory(name=OrderCompletedTemplate.TERMINATION_NEW_ACCOUNT.value)
-    new_template = template_factory(name=OrderCompletedTemplate.TERMINATION_NEW_ACCOUNT.value)
+    default_template = template_factory(name=OrderCompletedTemplate.TERMINATION.value)
+    new_template = template_factory(name=OrderCompletedTemplate.TERMINATION.value)
     mocker.patch(
         "swo_aws_extension.flows.order_utils.get_product_template_or_default",
         return_value=new_template,

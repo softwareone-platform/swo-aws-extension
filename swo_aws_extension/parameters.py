@@ -101,10 +101,10 @@ def get_support_type(source: dict[str, Any]) -> str | None:
     return ordering_param.get("value", None)
 
 
-def get_aws_type_of_support(source: dict[str, Any]) -> str | None:
-    """Get the AWS type of support from the parameter or an empty string if it is not set."""
+def get_resold_support_plans(source: dict[str, Any]) -> str | None:
+    """Get the resold support plans from the ordering parameter or None if it is not set."""
     ordering_param = get_ordering_parameter(
-        OrderParametersEnum.AWS_TYPE_OF_SUPPORT.value,
+        OrderParametersEnum.RESOLD_SUPPORT_PLANS.value,
         source,
     )
     return ordering_param.get("value", None)
@@ -278,3 +278,21 @@ def set_customer_roles_deployed(order: dict, deployed: str) -> dict:
     )
     fulfillment_param["value"] = deployed
     return updated_order
+
+
+def get_cost_management(source: dict[str, Any]) -> str | None:
+    """Get the cost management from the ordering parameter or None if it is not set."""
+    ordering_param = get_ordering_parameter(
+        OrderParametersEnum.COST_MANAGEMENT.value,
+        source,
+    )
+    return ordering_param.get("value", None)
+
+
+def get_supplementary_services(source: dict[str, Any]) -> str | None:
+    """Get the supplementary services from the ordering parameter or None if it is not set."""
+    ordering_param = get_ordering_parameter(
+        OrderParametersEnum.SUPPLEMENTARY_SERVICES.value,
+        source,
+    )
+    return ordering_param.get("value", None)

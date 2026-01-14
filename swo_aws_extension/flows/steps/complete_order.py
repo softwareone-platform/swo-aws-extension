@@ -32,11 +32,7 @@ class CompleteOrder(BasePhaseStep):
 
     @override
     def process(self, client: MPTClient, context: InitialAWSContext) -> None:
-        if context.is_type_new_aws_environment():
-            template_name = OrderCompletedTemplate.NEW_ACCOUNT
-        else:
-            template_name = OrderCompletedTemplate.EXISTING_ACCOUNT
-
+        template_name = OrderCompletedTemplate.PURCHASE
         mpa_id = get_mpa_account_id(context.order)
 
         context.agreement = update_agreement(
@@ -68,11 +64,7 @@ class CompleteTerminationOrder(BasePhaseStep):
 
     @override
     def process(self, client: MPTClient, context: InitialAWSContext) -> None:
-        if context.is_type_new_aws_environment():
-            template = OrderCompletedTemplate.TERMINATION_NEW_ACCOUNT
-        else:
-            template = OrderCompletedTemplate.TERMINATION_EXISTING_ACCOUNT
-
+        template = OrderCompletedTemplate.TERMINATION
         switch_order_status_to_complete(client, context, template)
 
     @override

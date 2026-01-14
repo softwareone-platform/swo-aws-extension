@@ -10,9 +10,13 @@ from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.errors import AlreadyProcessedStepError, SkipStepError
 from swo_aws_extension.flows.steps.onboard_services import OnboardServices
 from swo_aws_extension.parameters import (
+    get_cost_management,
     get_crm_onboard_ticket_id,
     get_mpa_account_id,
     get_phase,
+    get_resold_support_plans,
+    get_supplementary_services,
+    get_support_type,
     get_technical_contact_info,
 )
 from swo_aws_extension.swo.crm_service.client import ServiceRequest
@@ -111,6 +115,10 @@ def test_process_creates_service_request(
             order_id=context.order_id,
             master_payer_id=get_mpa_account_id(context.order),
             technical_contact=get_technical_contact_info(context.order),
+            support_type=get_support_type(context.order),
+            resold_support_plans=get_resold_support_plans(context.order),
+            cost_management=get_cost_management(context.order),
+            supplementary_services=get_supplementary_services(context.order),
         ),
         title=CRM_ONBOARD_TITLE,
     )
