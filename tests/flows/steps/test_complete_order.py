@@ -45,14 +45,10 @@ def test_complete_order_pre_step_proceeds(
     assert context.order is not None
 
 
-def test_complete_order_process_new_account(
+def test_complete_order_process_completed(
     mocker, order_factory, order_parameters_factory, mpt_client, initial_context, config
 ):
-    order = order_factory(
-        order_parameters=order_parameters_factory(
-            account_type=AccountTypesEnum.NEW_AWS_ENVIRONMENT.value
-        ),
-    )
+    order = order_factory()
     mock_switch = mocker.patch(
         "swo_aws_extension.flows.steps.complete_order.switch_order_status_to_complete"
     )
@@ -62,29 +58,7 @@ def test_complete_order_process_new_account(
 
     step.process(mpt_client, context)  # act
 
-    mock_switch.assert_called_once_with(mpt_client, context, OrderCompletedTemplate.NEW_ACCOUNT)
-
-
-def test_complete_order_process_existing(
-    mocker, order_factory, order_parameters_factory, mpt_client, initial_context, config
-):
-    order = order_factory(
-        order_parameters=order_parameters_factory(
-            account_type=AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value
-        ),
-    )
-    mock_switch = mocker.patch(
-        "swo_aws_extension.flows.steps.complete_order.switch_order_status_to_complete"
-    )
-    mocker.patch("swo_aws_extension.flows.steps.complete_order.update_agreement")
-    context = initial_context(order)
-    step = CompleteOrder(config)
-
-    step.process(mpt_client, context)  # act
-
-    mock_switch.assert_called_once_with(
-        mpt_client, context, OrderCompletedTemplate.EXISTING_ACCOUNT
-    )
+    mock_switch.assert_called_once_with(mpt_client, context, OrderCompletedTemplate.PURCHASE)
 
 
 def test_complete_order_post_step_logs(order_factory, mpt_client, caplog, initial_context, config):
@@ -111,7 +85,7 @@ def test_termination_pre_step_logs_start(order_factory, caplog, initial_context,
     ]
 
 
-def test_termination_process_new_account(
+def test_termination_process(
     mocker, order_factory, order_parameters_factory, mpt_client, initial_context, config
 ):
     order = order_factory(
@@ -127,30 +101,7 @@ def test_termination_process_new_account(
 
     step.process(mpt_client, context)  # act
 
-    mock_switch.assert_called_once_with(
-        mpt_client, context, OrderCompletedTemplate.TERMINATION_NEW_ACCOUNT
-    )
-
-
-def test_termination_process_existing(
-    mocker, order_factory, order_parameters_factory, mpt_client, initial_context, config
-):
-    order = order_factory(
-        order_parameters=order_parameters_factory(
-            account_type=AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value
-        ),
-    )
-    mock_switch = mocker.patch(
-        "swo_aws_extension.flows.steps.complete_order.switch_order_status_to_complete"
-    )
-    context = initial_context(order)
-    step = CompleteTerminationOrder(config)
-
-    step.process(mpt_client, context)  # act
-
-    mock_switch.assert_called_once_with(
-        mpt_client, context, OrderCompletedTemplate.TERMINATION_EXISTING_ACCOUNT
-    )
+    mock_switch.assert_called_once_with(mpt_client, context, OrderCompletedTemplate.TERMINATION)
 
 
 def test_termination_post_step_logs(
