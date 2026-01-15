@@ -24,6 +24,7 @@ from swo_aws_extension.parameters import (
     get_mpa_account_id,
     get_phase,
     get_responsibility_transfer_id,
+    set_billing_group_arn,
     set_phase,
 )
 
@@ -42,7 +43,7 @@ class CheckBillingTransferInvitation(BasePhaseStep):
         phase = get_phase(context.order)
         if phase != PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION:
             raise SkipStepError(
-                f"Current phase is '{phase}', skipping as it"
+                f"{context.order_id} - Next - Current phase is '{phase}', skipping as it"
                 f" is not '{PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION}'"
             )
 
@@ -85,9 +86,10 @@ class CheckBillingTransferInvitation(BasePhaseStep):
             logger.info(
                 "%s - Success - Billing group %s created for responsibility transfer %s",
                 context.order_id,
-                billing_group.get("Arn"),
+                billing_group["Arn"],
                 transfer_id,
             )
+            context.order = set_billing_group_arn(context.order, billing_group["Arn"])
         elif status in INVALID_RESPONSIBILITY_TRANSFER_STATUS:
             raise FailStepError(f"Billing transfer invitation {transfer_id} has status: {status}")
         else:

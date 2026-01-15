@@ -22,9 +22,9 @@ from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import QueryStepError, SkipStepError, UnexpectedStopError
 from swo_aws_extension.parameters import (
     get_crm_customer_role_ticket_id,
+    get_formatted_technical_contact,
     get_mpa_account_id,
     get_phase,
-    get_technical_contact_info,
     set_crm_customer_role_ticket_id,
     set_customer_roles_deployed,
     set_phase,
@@ -61,7 +61,8 @@ class CheckCustomerRoles(BasePhaseStep):
             context.order = set_customer_roles_deployed(
                 context.order, CustomerRolesDeployed.NO_DEPLOYED
             )
-            self._create_customer_role_ticket(context)
+            if not self._has_open_ticket(context):
+                self._create_customer_role_ticket(context)
             raise QueryStepError(
                 CUSTOMER_ROLES_NOT_DEPLOYED_MESSAGE,
                 OrderQueryingTemplateEnum.WAITING_FOR_CUSTOMER_ROLES,
@@ -76,26 +77,8 @@ class CheckCustomerRoles(BasePhaseStep):
         )
 
     def _create_customer_role_ticket(self, context: PurchaseContext) -> None:
-        customer_role_ticket_id = get_crm_customer_role_ticket_id(context.order)
         crm_client = get_service_client()
-
-        if customer_role_ticket_id:
-            customer_role_ticket = crm_client.get_service_request(
-                context.order_id, customer_role_ticket_id
-            )
-            if customer_role_ticket.get("state") != CRM_TICKET_RESOLVED_STATE:
-                logger.info(
-                    "%s - Customer role ticket %s is still open",
-                    context.order_id,
-                    customer_role_ticket_id,
-                )
-                return
-            logger.info(
-                "%s - Ticket with id %s is closed, creating new ticket...",
-                context.order_id,
-                customer_role_ticket_id,
-            )
-
+        contact = get_formatted_technical_contact(context.order)
         service_request = ServiceRequest(
             additional_info=CRM_DEPLOY_ROLES_ADDITIONAL_INFO,
             summary=CRM_DEPLOY_ROLES_SUMMARY.format(
@@ -103,7 +86,9 @@ class CheckCustomerRoles(BasePhaseStep):
                 buyer_external_id=context.buyer.get("id"),
                 order_id=context.order_id,
                 master_payer_id=get_mpa_account_id(context.order),
-                technical_contact=get_technical_contact_info(context.order),
+                technical_contact_name=contact["name"],
+                technical_contact_email=contact["email"],
+                technical_contact_phone=contact["phone"],
             ),
             title=CRM_DEPLOY_ROLES_TITLE,
         )
@@ -125,6 +110,29 @@ class CheckCustomerRoles(BasePhaseStep):
             )
         else:
             logger.info("%s - No ticket ID returned from CRM", context.order_id)
+
+    def _has_open_ticket(self, context: PurchaseContext) -> bool:
+        """Check if there's an existing open ticket for customer roles."""
+        ticket_id = get_crm_customer_role_ticket_id(context.order)
+        if not ticket_id:
+            return False
+
+        crm_client = get_service_client()
+        ticket = crm_client.get_service_request(context.order_id, ticket_id)
+        if ticket.get("state") != CRM_TICKET_RESOLVED_STATE:
+            logger.info(
+                "%s - Customer role ticket %s is still open",
+                context.order_id,
+                ticket_id,
+            )
+            return True
+
+        logger.info(
+            "%s - Ticket with id %s is closed, creating new ticket...",
+            context.order_id,
+            ticket_id,
+        )
+        return False
 
     def _are_customer_roles_deployed(self, context):
         try:
