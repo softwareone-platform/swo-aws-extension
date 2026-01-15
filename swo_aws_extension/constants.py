@@ -8,7 +8,7 @@ CCP_SECRET_NOT_FOUND_IN_KEY_VAULT = "CCP secret not found in key vault"  # noqa:
 FAILED_TO_GET_SECRET = "Failed to get secret"  # noqa: S105
 FAILED_TO_SAVE_SECRET_TO_KEY_VAULT = "Failed to save secret to key vault"  # noqa: S105
 
-SWO_EXTENSION_MANAGEMENT_ROLE = "SWOExtensionDevelopmentRole"
+SWO_EXTENSION_MANAGEMENT_ROLE = "swo/mpt/SWOExtensionManagementRole"
 # TODO: Update to the correct role once created
 ONBOARD_CUSTOMER_ROLE = "SWOExtensionDevelopmentRole11"
 
