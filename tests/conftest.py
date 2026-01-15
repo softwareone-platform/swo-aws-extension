@@ -375,6 +375,7 @@ def fulfillment_parameters_factory():
         crm_new_account_ticket_id="",
         crm_customer_role_ticket_id="",
         customer_roles_deployed="no",
+        billing_group_arn="",
     ):
         return [
             {
@@ -403,6 +404,10 @@ def fulfillment_parameters_factory():
             {
                 "externalId": FulfillmentParametersEnum.CUSTOMER_ROLES_DEPLOYED.value,
                 "value": customer_roles_deployed,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.BILLING_GROUP_ARN.value,
+                "value": billing_group_arn,
             },
         ]
 

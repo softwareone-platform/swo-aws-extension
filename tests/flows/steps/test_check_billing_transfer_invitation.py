@@ -16,7 +16,7 @@ from swo_aws_extension.flows.steps.errors import (
     QueryStepError,
     SkipStepError,
 )
-from swo_aws_extension.parameters import get_phase
+from swo_aws_extension.parameters import get_billing_group_arn, get_phase
 
 
 def test_skip_phase_is_not_expected(fulfillment_parameters_factory, order_factory, config):
@@ -84,6 +84,10 @@ def test_process_transfer_accepted(
         pricing_plan_arn=BASIC_PRICING_PLAN_ARN,
         name="billing-group-651706759263",
         description="Billing group for MPA 651706759263",
+    )
+    assert (
+        get_billing_group_arn(context.order)
+        == "arn:aws:billingconductor::123456789012:billinggroup/billing-group-mpa-id"
     )
 
 

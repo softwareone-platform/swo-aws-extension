@@ -19,10 +19,10 @@ from swo_aws_extension.flows.steps.errors import (
 )
 from swo_aws_extension.parameters import (
     get_crm_customer_role_ticket_id,
+    get_formatted_technical_contact,
     get_fulfillment_parameter,
     get_mpa_account_id,
     get_phase,
-    get_technical_contact_info,
 )
 from swo_aws_extension.swo.crm_service.client import ServiceRequest
 from swo_aws_extension.swo.crm_service.errors import CRMError
@@ -112,6 +112,7 @@ def test_process_creates_ticket_when_not_deployed(
     with pytest.raises(QueryStepError):
         CheckCustomerRoles(config, ROLE_NAME).process(mpt_client, context)
 
+    contact = get_formatted_technical_contact(context.order)
     expected_service_request = ServiceRequest(
         additional_info=CRM_DEPLOY_ROLES_ADDITIONAL_INFO,
         summary=CRM_DEPLOY_ROLES_SUMMARY.format(
@@ -119,7 +120,9 @@ def test_process_creates_ticket_when_not_deployed(
             buyer_external_id=context.buyer.get("id"),
             order_id=context.order_id,
             master_payer_id=get_mpa_account_id(context.order),
-            technical_contact=get_technical_contact_info(context.order),
+            technical_contact_name=contact["name"],
+            technical_contact_email=contact["email"],
+            technical_contact_phone=contact["phone"],
         ),
         title=CRM_DEPLOY_ROLES_TITLE,
     )

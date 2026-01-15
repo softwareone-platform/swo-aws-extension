@@ -391,3 +391,30 @@ def test_create_billing_group_error(config, aws_client_factory):
         )
 
     mock_client.create_billing_group.assert_called_once()
+
+
+def test_delete_billing_group_success(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    expected_response = {"Arn": "arn:aws:billingconductor::123:billinggroup/test-billing-group"}
+    mock_client.delete_billing_group.return_value = expected_response
+
+    result = mock_aws_client.delete_billing_group(
+        billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-billing-group",
+    )
+
+    assert result == expected_response
+    mock_client.delete_billing_group.assert_called_once_with(
+        Arn="arn:aws:billingconductor::123:billinggroup/test-billing-group",
+    )
+
+
+def test_delete_billing_group_error(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.delete_billing_group.side_effect = Exception("Billing group deletion failed")
+
+    with pytest.raises(Exception, match="Billing group deletion failed"):
+        mock_aws_client.delete_billing_group(
+            billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-billing-group",
+        )
+
+    mock_client.delete_billing_group.assert_called_once()

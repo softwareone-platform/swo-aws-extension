@@ -12,7 +12,7 @@ from swo_aws_extension.flows.steps.errors import (
     SkipStepError,
     UnexpectedStopError,
 )
-from swo_aws_extension.parameters import get_responsibility_transfer_id
+from swo_aws_extension.parameters import get_billing_group_arn, get_responsibility_transfer_id
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +72,18 @@ class TerminateResponsibilityTransferStep(BasePhaseStep):
                     f" responsibility transfer."
                 ),
             ) from exception
+
+        billing_group_arn = get_billing_group_arn(context.order)
+        try:
+            context.aws_client.delete_billing_group(billing_group_arn)
+        except AWSError as exception:
+            logger.info(
+                "%s - Failed to delete billing group with error: %s",
+                context.order_id,
+                exception,
+            )
+            return
+        logger.info("%s - Billing group %s deleted", context.order_id, billing_group_arn)
 
     @override
     def post_step(self, client: MPTClient, context: InitialAWSContext) -> None:

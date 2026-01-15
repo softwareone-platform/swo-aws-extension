@@ -163,6 +163,14 @@ class AWSClient:
             },
         )
 
+    @wrap_boto3_error
+    def delete_billing_group(self, billing_group_arn: str) -> dict:
+        """Delete a billing group."""
+        billing_conductor_client = self._get_billing_conductor_client()
+        return billing_conductor_client.delete_billing_group(
+            Arn=billing_group_arn,
+        )
+
     @wrap_http_error
     def _get_access_token(self):
         ccp_client = CCPClient(self.config)
