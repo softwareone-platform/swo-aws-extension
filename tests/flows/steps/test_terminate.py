@@ -71,6 +71,7 @@ def test_process_terminates_accepted_transfer(
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             responsibility_transfer_id="rt-8lr3q6sn",
+            billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-group",
         )
     )
     agreement = agreement_factory()
@@ -87,6 +88,9 @@ def test_process_terminates_accepted_transfer(
         "rt-8lr3q6sn",
         end_timestamp=expected_end,
     )
+    mock_aws_client.delete_billing_group.assert_called_once_with(
+        "arn:aws:billingconductor::123:billinggroup/test-group"
+    )
 
 
 @freeze_time("2025-12-15")
@@ -101,6 +105,7 @@ def test_process_success_december(
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             responsibility_transfer_id="rt-8lr3q6sn",
+            billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-group",
         )
     )
     agreement = agreement_factory()
@@ -116,6 +121,9 @@ def test_process_success_december(
     mock_aws_client.terminate_responsibility_transfer.assert_called_once_with(
         "rt-8lr3q6sn",
         end_timestamp=expected_end,
+    )
+    mock_aws_client.delete_billing_group.assert_called_once_with(
+        "arn:aws:billingconductor::123:billinggroup/test-group"
     )
 
 
@@ -144,7 +152,41 @@ def test_process_skips_non_accepted_transfer(
     step.process(mpt_client, context)  # Act
 
     mock_aws_client.terminate_responsibility_transfer.assert_not_called()
+    mock_aws_client.delete_billing_group.assert_not_called()
     assert "Skipping termination as transfer status is Pending" in caplog.text
+
+
+@freeze_time("2025-06-15")
+def test_process_delete_billing_group_error(
+    order_factory,
+    fulfillment_parameters_factory,
+    config,
+    mock_aws_client,
+    agreement_factory,
+    mpt_client,
+    caplog,
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="rt-8lr3q6sn",
+            billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-group",
+        )
+    )
+    agreement = agreement_factory()
+    context = InitialAWSContext(aws_client=mock_aws_client, order=order, agreement=agreement)
+    mock_aws_client.get_responsibility_transfer_details.return_value = {
+        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
+    }
+    mock_aws_client.delete_billing_group.side_effect = AWSError("Billing group deletion failed")
+    step = TerminateResponsibilityTransferStep(config)
+
+    step.process(mpt_client, context)  # Act
+
+    mock_aws_client.terminate_responsibility_transfer.assert_called_once()
+    mock_aws_client.delete_billing_group.assert_called_once_with(
+        "arn:aws:billingconductor::123:billinggroup/test-group"
+    )
+    assert "Failed to delete billing group with error" in caplog.text
 
 
 @freeze_time("2025-06-15")

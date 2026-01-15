@@ -60,7 +60,7 @@ spec:
                       name: ops-pyc-cluster-teamsetup-pyra-xcluster-credentials
                       key: PYRA_PYRA__AZUREAD__AUTHENTICATION__CERTIFICATEPATH
                 - name: AZURE_TENANT_ID
-                  value: {{ $.Values.global.azure_tenant_id }}
+                  value: {{ $.Values.global.AzureTenantId }}
               volumeMounts:
                 - name: pyra-keyvault-certificate
                   mountPath: "/app/pyra-keyvault-certificate"

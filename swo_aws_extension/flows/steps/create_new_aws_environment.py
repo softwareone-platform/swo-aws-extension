@@ -24,14 +24,14 @@ from swo_aws_extension.flows.steps.errors import (
 from swo_aws_extension.parameters import (  # noqa: WPS235
     get_cost_management,
     get_crm_new_account_ticket_id,
+    get_formatted_supplementary_services,
+    get_formatted_technical_contact,
     get_mpa_account_id,
     get_order_account_email,
     get_order_account_name,
     get_phase,
     get_resold_support_plans,
-    get_supplementary_services,
     get_support_type,
-    get_technical_contact_info,
     set_crm_new_account_ticket_id,
     set_ordering_parameter_error,
     set_phase,
@@ -92,6 +92,7 @@ class CreateNewAWSEnvironment(BasePhaseStep):
 
     def _create_new_account_ticket(self, context: PurchaseContext):
         crm_client = get_service_client()
+        contact = get_formatted_technical_contact(context.order)
         service_request = ServiceRequest(
             additional_info=CRM_NEW_ACCOUNT_ADDITIONAL_INFO,
             summary=CRM_NEW_ACCOUNT_SUMMARY.format(
@@ -100,11 +101,13 @@ class CreateNewAWSEnvironment(BasePhaseStep):
                 order_id=context.order_id,
                 order_account_name=get_order_account_name(context.order),
                 order_account_email=get_order_account_email(context.order),
-                technical_contact=get_technical_contact_info(context.order),
+                technical_contact_name=contact["name"],
+                technical_contact_email=contact["email"],
+                technical_contact_phone=contact["phone"],
                 support_type=get_support_type(context.order),
-                resold_support_plans=get_resold_support_plans(context.order),
+                resold_support_plans=get_resold_support_plans(context.order) or "N/A",
                 cost_management=get_cost_management(context.order),
-                supplementary_services=get_supplementary_services(context.order),
+                supplementary_services=get_formatted_supplementary_services(context.order),
             ),
             title=CRM_NEW_ACCOUNT_TITLE,
         )

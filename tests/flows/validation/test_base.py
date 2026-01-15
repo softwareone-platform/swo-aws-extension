@@ -46,7 +46,7 @@ def test_new_aws_environment(order_factory, order_parameters_factory):
         OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value, result
     )
     assert master_payer_param == {
-        "constraints": {"hidden": True, "readonly": True, "required": False},
+        "constraints": {"hidden": True, "readonly": False, "required": False},
         "error": None,
         "externalId": "masterPayerID",
         "id": "PAR-1234-5680",
@@ -83,7 +83,7 @@ def test_existing_aws_environment(order_factory, order_parameters_factory):
         OrderParametersEnum.ORDER_ACCOUNT_NAME.value, result
     )
     assert order_account_name_param == {
-        "constraints": {"hidden": True, "readonly": True, "required": False},
+        "constraints": {"hidden": True, "readonly": False, "required": False},
         "error": None,
         "externalId": "orderAccountName",
         "id": "PAR-1234-5680",
@@ -95,7 +95,7 @@ def test_existing_aws_environment(order_factory, order_parameters_factory):
         OrderParametersEnum.ORDER_ACCOUNT_EMAIL.value, result
     )
     assert order_account_email == {
-        "constraints": {"hidden": True, "readonly": True, "required": False},
+        "constraints": {"hidden": True, "readonly": False, "required": False},
         "error": None,
         "externalId": "orderAccountEmail",
         "id": "PAR-1234-5680",
@@ -178,7 +178,7 @@ def test_existing_aws_env_with_support_partner_led_support(order_factory, order_
         OrderParametersEnum.RESOLD_SUPPORT_PLANS.value, result
     )
     assert order_aws_type_of_support == {
-        "constraints": {"hidden": True, "readonly": True, "required": False},
+        "constraints": {"hidden": True, "readonly": False, "required": False},
         "error": None,
         "externalId": "resoldSupportPlans",
         "id": "PAR-1234-5682",

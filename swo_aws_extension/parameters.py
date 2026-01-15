@@ -199,6 +199,25 @@ def get_technical_contact_info(source: dict[str, Any]) -> dict:
     return ordering_param.get("value", {})
 
 
+def get_formatted_technical_contact(source: dict[str, Any]) -> dict[str, str]:
+    """Get formatted technical contact information for CRM tickets."""
+    contact = get_technical_contact_info(source)
+    first_name = contact.get("firstName", "")
+    last_name = contact.get("lastName", "")
+    full_name = f"{first_name} {last_name}".strip()
+    return {
+        "name": full_name or "N/A",
+        "email": contact.get("email") or "N/A",
+        "phone": contact.get("phone") or "N/A",
+    }
+
+
+def get_formatted_supplementary_services(source: dict[str, Any]) -> str:
+    """Get formatted supplementary services as comma-separated string."""
+    services = get_supplementary_services(source)
+    return ", ".join(services) if services else "None"
+
+
 def get_order_account_name(source: dict[str, Any]) -> str | None:
     """Get the account name from the ordering parameter or None if it is not set."""
     ordering_param = get_ordering_parameter(
@@ -253,7 +272,7 @@ def reset_ordering_parameters(order: dict, list_parameters: list) -> dict:
         updated_order = set_order_parameter_constraints(
             updated_order,
             parameter_id,
-            constraints={"hidden": True, "required": False, "readonly": True},
+            constraints={"hidden": True, "required": False, "readonly": False},
         )
 
     return updated_order
@@ -296,3 +315,23 @@ def get_supplementary_services(source: dict[str, Any]) -> str | None:
         source,
     )
     return ordering_param.get("value", None)
+
+
+def set_billing_group_arn(order: dict, billing_group_arn: str) -> dict[str, Any]:
+    """Set the billing group ARN on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.BILLING_GROUP_ARN.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = billing_group_arn
+    return updated_order
+
+
+def get_billing_group_arn(source: dict[str, Any]) -> str | None:
+    """Get the billing group ARN from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.BILLING_GROUP_ARN.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)

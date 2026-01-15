@@ -12,12 +12,12 @@ from swo_aws_extension.flows.steps.onboard_services import OnboardServices
 from swo_aws_extension.parameters import (
     get_cost_management,
     get_crm_onboard_ticket_id,
+    get_formatted_supplementary_services,
+    get_formatted_technical_contact,
     get_mpa_account_id,
     get_phase,
     get_resold_support_plans,
-    get_supplementary_services,
     get_support_type,
-    get_technical_contact_info,
 )
 from swo_aws_extension.swo.crm_service.client import ServiceRequest
 from swo_aws_extension.swo.crm_service.errors import CRMError
@@ -107,6 +107,7 @@ def test_process_creates_service_request(
 
     step.process(mpt_client, context)  # act
 
+    contact = get_formatted_technical_contact(context.order)
     expected_service_request = ServiceRequest(
         additional_info=CRM_ONBOARD_ADDITIONAL_INFO,
         summary=CRM_ONBOARD_SUMMARY.format(
@@ -114,11 +115,13 @@ def test_process_creates_service_request(
             buyer_external_id=context.buyer.get("id"),
             order_id=context.order_id,
             master_payer_id=get_mpa_account_id(context.order),
-            technical_contact=get_technical_contact_info(context.order),
+            technical_contact_name=contact["name"],
+            technical_contact_email=contact["email"],
+            technical_contact_phone=contact["phone"],
             support_type=get_support_type(context.order),
-            resold_support_plans=get_resold_support_plans(context.order),
+            resold_support_plans=get_resold_support_plans(context.order) or "N/A",
             cost_management=get_cost_management(context.order),
-            supplementary_services=get_supplementary_services(context.order),
+            supplementary_services=get_formatted_supplementary_services(context.order),
         ),
         title=CRM_ONBOARD_TITLE,
     )
