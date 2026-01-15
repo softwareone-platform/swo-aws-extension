@@ -26,7 +26,40 @@ from swo_aws_extension.swo.rql.query_builder import RQLQuery
 logger = logging.getLogger(__name__)
 
 
-def synchronize_agreements(  # noqa: C901
+def _synchronize_agreement(mpt_client, agreement, operation_description, dry_run):
+    mpa_account_id = agreement.get("externalIds", {}).get("vendor", "")
+    if not mpa_account_id:
+        msg = f"{agreement.get('id')} - Skipping - MPA not found"
+        logger.error(msg)
+        TeamsNotificationManager().send_error(operation_description, msg)
+        return
+
+    pma_account_id = agreement["authorization"].get("externalIds", {}).get("operations")
+    if not pma_account_id:
+        msg = f"{agreement.get('id')} - Skipping - PMA not found"
+        logger.error(msg)
+        TeamsNotificationManager().send_error(operation_description, msg)
+        return
+
+    try:
+        accepted_transfer = get_accepted_transfer_for_account(pma_account_id, mpa_account_id)
+    except Exception:
+        msg = f"{agreement.get('id')} - Error occurred while fetching responsibility transfers"
+        logger.exception(msg)
+        TeamsNotificationManager().send_exception("Fetching responsibility transfers", msg)
+        return
+
+    if not accepted_transfer:
+        msg = f"{agreement.get('id')} - agreement with an inactive transfer - terminating"
+        logger.warning(msg)
+        TeamsNotificationManager().send_warning(operation_description, msg)
+        terminate_agreement(mpt_client, agreement, dry_run=dry_run)
+        return
+
+    sync_responsibility_transfer_id(mpt_client, agreement, accepted_transfer["Id"], dry_run=dry_run)
+
+
+def synchronize_agreements(
     mpt_client: MPTClient, agreement_ids: list[str], product_ids: list[str], *, dry_run: bool
 ) -> None:
     """
@@ -52,47 +85,9 @@ def synchronize_agreements(  # noqa: C901
         rql_filter = RQLQuery(status="Active") & RQLQuery(product__id__in=product_ids)
         rql_query = f"{rql_filter}{select}"
 
-    agreements = get_agreements_by_query(mpt_client, rql_query)
     operation_description = "Synchronize AWS agreement subscriptions"
-    for agreement in agreements:
-        mpa_account_id = agreement.get("externalIds", {}).get("vendor", "")
-        if not mpa_account_id:
-            msg = f"{agreement.get('id')} - Skipping - MPA not found"
-            logger.error(msg)
-            TeamsNotificationManager().send_error(operation_description, msg)
-            continue
-        pma_account_id = agreement["authorization"].get("externalIds", {}).get("operations")
-        if not pma_account_id:
-            msg = f"{agreement.get('id')} - Skipping - PMA not found"
-            logger.error(msg)
-            TeamsNotificationManager().send_error(operation_description, msg)
-            continue
-        try:
-            latest_transfers = get_latest_inbound_responsibility_transfers(pma_account_id)
-        except Exception:
-            msg = f"{agreement.get('id')} - Error occurred while fetching responsibility transfers"
-            logger.exception(msg)
-            TeamsNotificationManager().send_exception("Fetching responsibility transfers", msg)
-            continue
-
-        active_transfers = {
-            k: v
-            for k, v in latest_transfers.items()
-            if v["Status"] == ResponsibilityTransferStatus.ACCEPTED.value
-        }
-        if mpa_account_id not in active_transfers:
-            transfer_info = latest_transfers.get(mpa_account_id, "No transfer history found")
-            msg = (
-                f"{agreement.get('id')} - agreement with an inactive transfer - terminating -"
-                f" {transfer_info}"
-            )
-            logger.warning(msg)
-            TeamsNotificationManager().send_warning(operation_description, msg)
-            terminate_agreement(mpt_client, agreement, dry_run=dry_run)
-            continue
-        sync_responsibility_transfer_id(
-            mpt_client, agreement, latest_transfers[mpa_account_id]["Id"], dry_run=dry_run
-        )
+    for agreement in get_agreements_by_query(mpt_client, rql_query):
+        _synchronize_agreement(mpt_client, agreement, operation_description, dry_run=dry_run)
 
 
 def sync_responsibility_transfer_id(
@@ -159,26 +154,43 @@ def get_subscription_by_external_id(mpt_client, subscription_external_id):  # pr
 
 
 @cache
-def get_latest_inbound_responsibility_transfers(pma_account_id: str) -> dict | None:
-    """Fetches active inbound responsibility transfers from the specified AWS client.
+def get_accepted_inbound_responsibility_transfers(pma_account_id: str) -> dict:
+    """Fetches ACCEPTED inbound responsibility transfers from the specified AWS client.
 
     Args:
-        pma_account_id: pma_account_id
+        pma_account_id: The PMA account ID to query transfers from.
+
+    Returns:
+        A dict mapping source ManagementAccountId to the ACCEPTED transfer info.
     """
     aws_client = AWSClient(get_config(), pma_account_id, SWO_EXTENSION_MANAGEMENT_ROLE)
     result = {}
     for rt in aws_client.get_inbound_responsibility_transfers():
-        source_account_id = rt.get("Source", {}).get("ManagementAccountId", None)
-        if (source_account_id and source_account_id not in result) or rt["StartTimestamp"] > result[
-            source_account_id
-        ]["StartTimestamp"]:
-            result[source_account_id] = {
-                "Id": rt["Id"],
-                "Status": rt["Status"],
-                "StartTimestamp": rt["StartTimestamp"],
-            }
+        if rt.get("Status") != ResponsibilityTransferStatus.ACCEPTED.value:
+            continue
+        source_account_id = rt.get("Source", {}).get("ManagementAccountId")
+        if not source_account_id:
+            continue
+        result[source_account_id] = {"Id": rt["Id"], "Status": rt["Status"]}
 
     return result
+
+
+def get_accepted_transfer_for_account(
+    pma_account_id: str, source_management_account_id: str
+) -> dict | None:
+    """
+    Get the ACCEPTED inbound responsibility transfer for a specific source account.
+
+    Args:
+        pma_account_id: The PMA account ID to query transfers from.
+        source_management_account_id: The source ManagementAccountId to filter by.
+
+    Returns:
+        The transfer dict if found with ACCEPTED status, None otherwise.
+    """
+    accepted_transfers = get_accepted_inbound_responsibility_transfers(pma_account_id)
+    return accepted_transfers.get(source_management_account_id)
 
 
 def terminate_agreement(mpt_client: MPTClient, agreement: dict, *, dry_run) -> None:
