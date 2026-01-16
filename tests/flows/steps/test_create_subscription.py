@@ -1,363 +1,158 @@
-from mpt_extension_sdk.mpt_http.base import MPTClient
+import pytest
 
-from swo_aws_extension.constants import PhasesEnum, TransferTypesEnum
-from swo_aws_extension.flows.order import ChangeContext, InitialAWSContext
-from swo_aws_extension.flows.steps import CreateSubscription
-from swo_aws_extension.flows.steps.create_subscription import (
-    CreateChangeSubscriptionStep,
-    SynchronizeAgreementSubscriptionsStep,
-)
+from swo_aws_extension.constants import PhasesEnum
+from swo_aws_extension.flows.order import PurchaseContext
+from swo_aws_extension.flows.steps.create_subscription import CreateSubscription
+from swo_aws_extension.flows.steps.errors import SkipStepError
+from swo_aws_extension.parameters import get_phase
 
 
-def test_create_subscription_phase_invalid_phase(
-    mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
+@pytest.fixture
+def purchase_context(order_factory):
+    def factory(order=None):
+        if order is None:
+            order = order_factory()
+        return PurchaseContext.from_order_data(order)
+
+    return factory
+
+
+@pytest.fixture
+def mock_get_subscription(mocker):
+    return mocker.patch(
+        "swo_aws_extension.flows.steps.create_subscription.get_order_subscription_by_external_id"
+    )
+
+
+@pytest.fixture
+def mock_create_subscription(mocker):
+    return mocker.patch("swo_aws_extension.flows.steps.create_subscription.create_subscription")
+
+
+def test_pre_step_skips_wrong_phase(
+    order_factory, fulfillment_parameters_factory, purchase_context, config
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.PRECONFIGURATION_MPA.value
+            phase=PhasesEnum.CREATE_NEW_AWS_ENVIRONMENT.value,
         )
     )
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    context = purchase_context(order)
+    step = CreateSubscription(config)
 
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = aws_client
-    next_step_mock = mocker.Mock()
-
-    create_subscription = CreateSubscription()
-    create_subscription(mpt_client_mock, context, next_step_mock)
-
-    next_step_mock.assert_called_once_with(mpt_client_mock, context)
+    with pytest.raises(SkipStepError):
+        step.pre_step(context)
 
 
-def test_create_subscription_new_account(
-    mocker,
-    order_factory,
-    config,
-    aws_client_factory,
-    fulfillment_parameters_factory,
-    order_parameters_factory,
-    subscription_factory,
-    account_creation_status_factory,
-):
+def test_pre_step_proceeds(order_factory, fulfillment_parameters_factory, purchase_context, config):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTIONS.value
-        ),
-    )
-    subscription = subscription_factory(
-        lines=[{"id": order_line["id"]} for order_line in order["lines"]]
-    )
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
-
-    mocked_get_order_subscription = mocker.patch(
-        "swo_aws_extension.flows.steps.create_subscription.get_order_subscription_by_external_id",
-        return_value=None,
-    )
-    mocked_create_subscription = mocker.patch(
-        "swo_aws_extension.flows.steps.create_subscription.create_subscription",
-        return_value=subscription,
-    )
-
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = aws_client
-    context.account_creation_status = account_creation_status_factory(account_id="account_id")
-    next_step_mock = mocker.Mock()
-
-    create_subscription = CreateSubscription()
-    create_subscription(mpt_client_mock, context, next_step_mock)
-
-    mocked_get_order_subscription.assert_called_once_with(
-        mpt_client_mock, context.order["id"], "account_id"
-    )
-    del subscription["id"]
-    del subscription["status"]
-    del subscription["agreement"]
-    mocked_create_subscription.assert_called_once_with(
-        mpt_client_mock, context.order_id, subscription
-    )
-    next_step_mock.assert_called_once_with(mpt_client_mock, context)
-
-
-def test_create_subscription_phase_subscription_already_created(
-    mocker,
-    order_factory,
-    config,
-    aws_client_factory,
-    fulfillment_parameters_factory,
-    subscription_factory,
-    order_parameters_factory,
-    account_creation_status_factory,
-):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTIONS.value
-        ),
-        order_parameters=order_parameters_factory(account_id=""),
-    )
-    subscription = subscription_factory()
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
-
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = aws_client
-    context.account_creation_status = account_creation_status_factory(account_id="account_id")
-    next_step_mock = mocker.Mock()
-    mocked_get_order_subscription = mocker.patch(
-        "swo_aws_extension.flows.steps.create_subscription.get_order_subscription_by_external_id",
-        return_value=subscription,
-    )
-    mocked_create_subscription = mocker.patch(
-        "swo_aws_extension.flows.steps.create_subscription.create_subscription",
-        return_value=subscription,
-    )
-    create_subscription = CreateSubscription()
-    create_subscription(mpt_client_mock, context, next_step_mock)
-
-    mocked_get_order_subscription.assert_called_once_with(
-        mpt_client_mock, context.order["id"], "account_id"
-    )
-    mocked_create_subscription.assert_not_called()
-    next_step_mock.assert_called_once_with(mpt_client_mock, context)
-
-
-def test_synchronize_agreement_subscriptions(
-    mocker,
-    order_factory,
-    config,
-    aws_client_factory,
-    fulfillment_parameters_factory,
-    agreement_factory,
-):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTIONS.value
-        ),
-    )
-    mock_agreement = agreement_factory()
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
-
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = aws_client
-    next_step_mock = mocker.Mock()
-
-    mocked_sync_agreement_subscriptions = mocker.patch(
-        "swo_aws_extension.flows.steps.create_subscription.sync_agreement_subscriptions"
-    )
-    mocked_get_agreement = mocker.patch(
-        "swo_aws_extension.flows.steps.create_subscription.get_agreement",
-        return_value=mock_agreement,
-    )
-
-    create_organization_subscriptions = SynchronizeAgreementSubscriptionsStep()
-    create_organization_subscriptions(mpt_client_mock, context, next_step_mock)
-
-    mocked_sync_agreement_subscriptions.assert_called_once_with(
-        mpt_client_mock, aws_client, mock_agreement
-    )
-    mocked_get_agreement.assert_called_once_with(mpt_client_mock, context.agreement["id"])
-    next_step_mock.assert_called_once_with(mpt_client_mock, context)
-
-
-def test_create_subscription_transfer_account(
-    mocker,
-    order_factory,
-    config,
-    aws_client_factory,
-    fulfillment_parameters_factory,
-    order_parameters_factory,
-    subscription_factory,
-    account_creation_status_factory,
-    aws_accounts_factory,
-):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTIONS.value
-        ),
-        order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value
-        ),
-    )
-    subscription = subscription_factory(
-        name="Subscription for Test Account (123456789012)",
-        account_name="Test Account",
-        account_email="test@example.com",
-        vendor_id="123456789012",
-        lines=[{"id": order_line["id"]} for order_line in order["lines"]],
-    )
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    mock_client.list_accounts.return_value = aws_accounts_factory()
-    mocked_get_order_subscription = mocker.patch(
-        "swo_aws_extension.flows.steps.create_subscription.get_order_subscription_by_external_id",
-        return_value=None,
-    )
-    mocked_create_subscription = mocker.patch(
-        "swo_aws_extension.flows.steps.create_subscription.create_subscription",
-        return_value=subscription,
-    )
-
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = aws_client
-    next_step_mock = mocker.Mock()
-
-    create_subscription = CreateSubscription()
-    create_subscription(mpt_client_mock, context, next_step_mock)
-
-    mocked_get_order_subscription.assert_called_once_with(
-        mpt_client_mock, context.order["id"], "123456789012"
-    )
-    del subscription["id"]
-    del subscription["status"]
-    del subscription["agreement"]
-    mocked_create_subscription.assert_called_once_with(
-        mpt_client_mock, context.order_id, subscription
-    )
-    next_step_mock.assert_called_once_with(mpt_client_mock, context)
-
-
-def test_create_subscription_transfer_account_no_accounts(
-    mocker,
-    order_factory,
-    config,
-    aws_client_factory,
-    fulfillment_parameters_factory,
-    order_parameters_factory,
-    subscription_factory,
-    account_creation_status_factory,
-    aws_accounts_factory,
-):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTIONS.value
-        ),
-        order_parameters=order_parameters_factory(
-            transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value
-        ),
-    )
-    subscription = subscription_factory(
-        name="Subscription for Test Account (123456789012)",
-        account_name="Test Account",
-        account_email="test@example.com",
-        vendor_id="123456789012",
-    )
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    mock_client.list_accounts.return_value = aws_accounts_factory(status="SUSPENDED")
-    mocked_get_order_subscription = mocker.patch(
-        "swo_aws_extension.flows.steps.create_subscription.get_order_subscription_by_external_id",
-        return_value=None,
-    )
-    mocked_create_subscription = mocker.patch(
-        "swo_aws_extension.flows.steps.create_subscription.create_subscription",
-        return_value=subscription,
-    )
-
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = aws_client
-    next_step_mock = mocker.Mock()
-
-    create_subscription = CreateSubscription()
-    create_subscription(mpt_client_mock, context, next_step_mock)
-
-    mocked_get_order_subscription.assert_not_called()
-    mocked_create_subscription.assert_not_called()
-    next_step_mock.assert_not_called()
-
-
-def test_create_change_subscription(
-    mocker,
-    order_factory,
-    config,
-    aws_client_factory,
-    fulfillment_parameters_factory,
-    subscription_factory,
-    account_creation_status_factory,
-    order_parameters_factory,
-):
-    order = order_factory(
-        order_parameters=order_parameters_factory(
-            change_order_email="test@example.com", change_order_name="Test Account"
+            phase=PhasesEnum.CREATE_SUBSCRIPTION.value,
         )
     )
-    subscription = subscription_factory(
-        name="Subscription for Test Account (account_id)",
-        account_name="Test Account",
-        account_email="test@example.com",
-        vendor_id="account_id",
-        lines=[{"id": order_line["id"]} for order_line in order["lines"]],
-    )
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    context = purchase_context(order)
+    step = CreateSubscription(config)
 
-    context = ChangeContext.from_order_data(order)
-    context.aws_client = aws_client
-    context.account_creation_status = account_creation_status_factory(account_id="account_id")
-    next_step_mock = mocker.Mock()
+    step.pre_step(context)  # act
 
-    mocked_get_order_subscription = mocker.patch(
-        "swo_aws_extension.flows.steps.create_subscription.get_order_subscription_by_external_id",
-        return_value=None,
-    )
-    mocked_create_subscription = mocker.patch(
-        "swo_aws_extension.flows.steps.create_subscription.create_subscription",
-        return_value=subscription,
-    )
-
-    create_change_subscription = CreateChangeSubscriptionStep()
-    create_change_subscription(mpt_client_mock, context, next_step_mock)
-
-    mocked_get_order_subscription.assert_called_once_with(
-        mpt_client_mock, context.order["id"], "account_id"
-    )
-    del subscription["id"]
-    del subscription["status"]
-    del subscription["agreement"]
-    mocked_create_subscription.assert_called_once_with(
-        mpt_client_mock, context.order_id, subscription
-    )
-    next_step_mock.assert_called_once_with(mpt_client_mock, context)
+    assert context.order is not None
 
 
-def test_create_change_subscription_already_exists(
-    mocker,
+def test_process_creates_subscription(
     order_factory,
-    config,
-    aws_client_factory,
     fulfillment_parameters_factory,
-    subscription_factory,
-    account_creation_status_factory,
-    order_parameters_factory,
+    purchase_context,
+    mpt_client,
+    mock_get_subscription,
+    mock_create_subscription,
+    config,
 ):
     order = order_factory(
-        order_parameters=order_parameters_factory(
-            change_order_email="test@example.com", change_order_name="Test Account"
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_SUBSCRIPTION.value,
         )
     )
-    existing_subscription = subscription_factory()
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    context = purchase_context(order)
+    mock_get_subscription.return_value = None
+    mock_create_subscription.return_value = {"id": "SUB-001"}
+    step = CreateSubscription(config)
 
-    context = ChangeContext.from_order_data(order)
-    context.aws_client = aws_client
-    context.account_creation_status = account_creation_status_factory(account_id="account_id")
-    next_step_mock = mocker.Mock()
+    step.process(mpt_client, context)  # act
 
-    mocked_get_order_subscription = mocker.patch(
-        "swo_aws_extension.flows.steps.create_subscription.get_order_subscription_by_external_id",
-        return_value=existing_subscription,
+    mock_create_subscription.assert_called_once()
+    assert {"id": "SUB-001"} in context.subscriptions
+
+
+def test_process_skips_when_subscription_exists(
+    order_factory,
+    fulfillment_parameters_factory,
+    purchase_context,
+    mpt_client,
+    mock_get_subscription,
+    mock_create_subscription,
+    caplog,
+    config,
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_SUBSCRIPTION.value,
+        )
     )
-    mocked_create_subscription = mocker.patch(
-        "swo_aws_extension.flows.steps.create_subscription.create_subscription"
-    )
+    context = purchase_context(order)
+    mock_get_subscription.return_value = {"id": "SUB-EXISTING"}
+    step = CreateSubscription(config)
 
-    create_change_subscription = CreateChangeSubscriptionStep()
-    create_change_subscription(mpt_client_mock, context, next_step_mock)
+    step.process(mpt_client, context)  # act
 
-    mocked_get_order_subscription.assert_called_once_with(
-        mpt_client_mock, context.order["id"], "account_id"
+    mock_create_subscription.assert_not_called()
+    assert "already exists, skipping creation" in caplog.text
+
+
+def test_post_step_sets_complete_phase(
+    mocker, order_factory, fulfillment_parameters_factory, mpt_client, purchase_context, config
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_SUBSCRIPTION.value,
+        )
     )
-    mocked_create_subscription.assert_not_called()
-    next_step_mock.assert_called_once_with(mpt_client_mock, context)
+    updated_order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.COMPLETED.value,
+        )
+    )
+    context = purchase_context(order)
+    mocker.patch(
+        "swo_aws_extension.flows.steps.create_subscription.update_order",
+        return_value=updated_order,
+    )
+    step = CreateSubscription(config)
+
+    step.post_step(mpt_client, context)  # act
+
+    assert get_phase(context.order) == PhasesEnum.COMPLETED.value
+
+
+def test_post_step_calls_update_order(
+    mocker, order_factory, fulfillment_parameters_factory, mpt_client, purchase_context, config
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_SUBSCRIPTION.value,
+        )
+    )
+    updated_order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED.value)
+    )
+    context = purchase_context(order)
+    mock_update = mocker.patch(
+        "swo_aws_extension.flows.steps.create_subscription.update_order",
+        return_value=updated_order,
+    )
+    step = CreateSubscription(config)
+
+    step.post_step(mpt_client, context)  # act
+
+    mock_update.assert_called_once_with(
+        mpt_client, context.order_id, parameters=context.order["parameters"]
+    )

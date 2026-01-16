@@ -14,27 +14,27 @@ jobs:
     timeout-minutes: 10
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+    - name: "Checkout"
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
-    - name: 'Get the version'
+    - name: "Get the version"
       id: get_version
       run: echo  "VERSION=${GITHUB_REF/refs\/tags\//}" >> "$GITHUB_OUTPUT"
 
-    - name: 'Build and push image'
-      uses: azure/docker-login@v1
+    - name: "Build and push image"
+      uses: azure/docker-login@v2
       with:
         login-server: ${{ vars.EXTENSION_REGISTRY_LOGIN_SERVER }}
         username: ${{ vars.EXTENSION_REGISTRY_USERNAME }}
         password: ${{ secrets.EXTENSION_REGISTRY_PASSWORD }}
     - run: |
-        docker build -f prod.Dockerfile -t ${{ vars.EXTENSION_REGISTRY_LOGIN_SERVER }}/swo-extensions-aws:${{ steps.get_version.outputs.VERSION }} .
+        docker build --target prod -t ${{ vars.EXTENSION_REGISTRY_LOGIN_SERVER }}/swo-extensions-aws:${{ steps.get_version.outputs.VERSION }} .
         docker push ${{ vars.EXTENSION_REGISTRY_LOGIN_SERVER }}/swo-extensions-aws:${{ steps.get_version.outputs.VERSION }}
 
   dtrack:
-    uses: softwareone-platform/ops-template/.github/workflows/dependency-track-python-poetry.yml@v2
+    uses: softwareone-platform/ops-template/.github/workflows/dependency-track-python-uv.yml@v2
     with:
       projectName: 'swo-extension-aws'
     secrets:

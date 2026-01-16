@@ -1,275 +1,187 @@
-import json
+from swo_aws_extension.aws.errors import AWSError
+from swo_aws_extension.constants import ResponsibilityTransferStatus
+from swo_aws_extension.flows.jobs.process_aws_invitations import AWSInvitationsProcessor
 
-import pytest
-from mpt_extension_sdk.flows.context import ORDER_TYPE_PURCHASE
-from mpt_extension_sdk.flows.pipeline import Pipeline
-from requests import RequestException, Response
-
-from swo_aws_extension.constants import (
-    AccountTypesEnum,
-    AwsHandshakeStateEnum,
-    OrderProcessingTemplateEnum,
-    PhasesEnum,
-    TransferTypesEnum,
+MPT_BASE_URL = "https://localhost"
+ORDERS_URL = (
+    f"{MPT_BASE_URL}/v1/commerce/orders?"
+    "and(in(agreement.product.id,(PRD-1111-1111)),eq(status,Querying))"
+    "&select=audit,parameters,lines,subscriptions,subscriptions.lines,agreement,buyer,"
+    "authorization.externalIds"
+    "&order=audit.created.at&limit=10&offset=0"
 )
-from swo_aws_extension.flows.jobs.process_aws_invitations import (
-    AWSInvitationsProcessor,
-    CheckInvitationLinksStep,
-)
-from swo_aws_extension.flows.order import MPT_ORDER_STATUS_QUERYING, PurchaseContext
 
 
-@pytest.fixture()
-def aws_invitation_processor_factory(mocker, config):
-    def _aws_invitation_processor(query_orders=None):
-        mpt_client = mocker.MagicMock()
-        mocker.patch(
-            "swo_aws_extension.flows.jobs.process_aws_invitations.setup_client",
-            return_value=mpt_client,
-        )
-        if query_orders is not None:
-            mocker.patch(
-                "swo_aws_extension.flows.jobs.process_aws_invitations.AWSInvitationsProcessor.get_querying_orders",
-                return_value=query_orders,
-            )
-        processor = AWSInvitationsProcessor(config)
-
-        return processor
-
-    return _aws_invitation_processor
-
-
-@pytest.fixture()
-def aws_invitation_processor(aws_invitation_processor_factory, fulfillment_parameters_factory):
-    return aws_invitation_processor_factory()
-
-
-def test_check_invitation_links_step(mocker, order_factory, fulfillment_parameters_factory):
-    next_step = mocker.MagicMock()
-    client = mocker.MagicMock()
-
-    step = CheckInvitationLinksStep()
+def test_skips_missing_transfer_id(
+    mocker, mpt_client, config, order_factory, fulfillment_parameters_factory, requests_mocker
+):
+    processor = AWSInvitationsProcessor(mpt_client, config)
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTIONS.value,
-        )
+        fulfillment_parameters=fulfillment_parameters_factory(responsibility_transfer_id="")
     )
-    context = PurchaseContext.from_order_data(order)
-    step(client, context, next_step)
-    next_step.assert_not_called()
-
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.ASSIGN_MPA.value,
-        )
+    requests_mocker.add(
+        requests_mocker.GET,
+        ORDERS_URL,
+        json={
+            "data": [order],
+            "$meta": {"pagination": {"total": 1, "limit": 10, "offset": 0}},
+        },
     )
-    context = PurchaseContext.from_order_data(order)
-    step(client, context, next_step)
-    next_step.assert_not_called()
+    mock_aws_client = mocker.patch("swo_aws_extension.flows.jobs.process_aws_invitations.AWSClient")
+
+    processor.process_aws_invitations()  # act
+
+    mock_aws_client.assert_not_called()
 
 
-def test_aws_invitation_processor_calls_pipeline(
+def test_skips_missing_pm_account_id(
     mocker,
-    config,
     mpt_client,
-    aws_invitation_processor_factory,
-    order_factory,
-    order_parameters_factory,
-    fulfillment_parameters_factory,
-):
-    processor = aws_invitation_processor_factory(
-        query_orders=[
-            order_factory(
-                order_type=ORDER_TYPE_PURCHASE,
-                status=MPT_ORDER_STATUS_QUERYING,
-                order_parameters=order_parameters_factory(
-                    account_type=AccountTypesEnum.EXISTING_ACCOUNT.value,
-                    transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value,
-                    account_id="123456789012",
-                ),
-                fulfillment_parameters=fulfillment_parameters_factory(
-                    phase=PhasesEnum.CHECK_INVITATION_LINK.value
-                ),
-            ),
-        ]
-    )
-    pipeline = mocker.MagicMock(spec=Pipeline)
-    processor.get_pipeline = mocker.MagicMock(return_value=pipeline)
-    processor.process_aws_invitations()
-    pipeline.run.assert_called_once()
-
-
-def test_aws_invitation_processor_skips_pipeline(
-    mocker,
     config,
-    mpt_client,
-    aws_invitation_processor_factory,
     order_factory,
-    order_parameters_factory,
     fulfillment_parameters_factory,
+    requests_mocker,
 ):
-    processor = aws_invitation_processor_factory(
-        query_orders=[
-            order_factory(
-                order_type=ORDER_TYPE_PURCHASE,
-                status=MPT_ORDER_STATUS_QUERYING,
-                order_parameters=order_parameters_factory(
-                    account_type=AccountTypesEnum.NEW_ACCOUNT.value,
-                    transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value,
-                ),
-                fulfillment_parameters=fulfillment_parameters_factory(
-                    phase=PhasesEnum.CHECK_INVITATION_LINK.value
-                ),
-            ),
-        ]
-    )
-    pipeline = mocker.MagicMock(spec=Pipeline)
-    processor.get_pipeline = mocker.MagicMock(return_value=pipeline)
-    processor.process_aws_invitations()
-    pipeline.run.assert_not_called()
-
-
-def test_process_one_order_with_invitations_accepted(
-    mocker,
-    config,
-    aws_client_factory,
-    aws_invitation_processor_factory,
-    order_factory,
-    order_parameters_factory,
-    fulfillment_parameters_factory,
-    agreement_factory,
-    handshake_data_factory,
-    mpa_pool_factory,
-):
-    order_parameters = order_parameters_factory(
-        account_type=AccountTypesEnum.EXISTING_ACCOUNT.value,
-        transfer_type=TransferTypesEnum.TRANSFER_WITHOUT_ORGANIZATION.value,
-        account_id="123456789012",
-    )
+    processor = AWSInvitationsProcessor(mpt_client, config)
     order = order_factory(
-        order_type=ORDER_TYPE_PURCHASE,
-        status=MPT_ORDER_STATUS_QUERYING,
-        order_parameters=order_parameters,
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CHECK_INVITATION_LINK.value
+            responsibility_transfer_id="rt-test-123"
         ),
-        agreement=agreement_factory(vendor_id="aws_mpa"),
+        authorization_external_id="",
     )
-    aws_client, aws_mock = aws_client_factory(config, "aws_mpa", "aws_role")
-    aws_mock.list_handshakes_for_organization.return_value = {
-        "Handshakes": [
-            handshake_data_factory(
-                state=AwsHandshakeStateEnum.ACCEPTED.value,
-                account_id="123456789012",
-            )
-        ]
+    requests_mocker.add(
+        requests_mocker.GET,
+        ORDERS_URL,
+        json={
+            "data": [order],
+            "$meta": {"pagination": {"total": 1, "limit": 10, "offset": 0}},
+        },
+    )
+    mock_aws_client = mocker.patch("swo_aws_extension.flows.jobs.process_aws_invitations.AWSClient")
+
+    processor.process_aws_invitations()  # act
+
+    mock_aws_client.assert_not_called()
+
+
+def test_process_invitations_status_changed(
+    mocker, mpt_client, config, order_factory, fulfillment_parameters_factory, requests_mocker
+):
+    """Test processing when transfer status has changed from REQUESTED."""
+    processor = AWSInvitationsProcessor(mpt_client, config)
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="rt-test-123"
+        )
+    )
+    requests_mocker.add(
+        requests_mocker.GET,
+        ORDERS_URL,
+        json={
+            "data": [order],
+            "$meta": {"pagination": {"total": 1, "limit": 10, "offset": 0}},
+        },
+    )
+    mock_aws_client = mocker.MagicMock()
+    mock_aws_client.get_responsibility_transfer_details.return_value = {
+        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
     }
-
-    def setup_aws(context):
-        context.aws_client = aws_client
-
     mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.SetupContext.setup_aws",
-        side_effect=setup_aws,
+        "swo_aws_extension.flows.jobs.process_aws_invitations.AWSClient",
+        return_value=mock_aws_client,
     )
-    mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.get_mpa_account",
-        return_value=mpa_pool_factory(),
-    )
-
-    mocker.patch(
-        "swo_aws_extension.flows.steps.invitation_links.update_order",
-        return_value=order,
+    switch_order_mock = mocker.patch(
+        "swo_aws_extension.flows.jobs.process_aws_invitations."
+        "switch_order_status_to_process_and_notify"
     )
 
-    mock_switch_order_status_to_process = mocker.patch(
-        "swo_aws_extension.flows.jobs.process_aws_invitations.PurchaseContext.switch_order_status_to_process"
+    processor.process_aws_invitations()  # act
+
+    mock_aws_client.get_responsibility_transfer_details.assert_called_once_with(
+        transfer_id="rt-test-123"
     )
-
-    processor = aws_invitation_processor_factory(query_orders=[order])
-
-    processor.process_aws_invitations()
-    mock_switch_order_status_to_process.assert_called_once_with(
-        mocker.ANY, OrderProcessingTemplateEnum.TRANSFER_WITH_ORG_TICKET_CREATED.value
-    )
+    switch_order_mock.assert_called_once()
 
 
-def response_factory(status_code, data):
-    response = Response()
-    response.status_code = status_code
-    response._content = json.dumps(data).encode("utf-8")
-    return response
-
-
-def test_get_quering_orders(mocker, aws_invitation_processor, order_factory):
-    mock_client = mocker.MagicMock()
-    aws_invitation_processor.client = mock_client
-
-    mock_client.get.side_effect = [
-        response_factory(
-            status_code=200,
-            data={
-                "data": [
-                    order_factory(),
-                    order_factory(),
-                ],
-                "$meta": {
-                    "pagination": {
-                        "total": 4,
-                        "limit": 2,
-                        "offset": 0,
-                    }
-                },
-            },
-        ),
-        response_factory(
-            status_code=200,
-            data={
-                "data": [
-                    order_factory(),
-                    order_factory(),
-                ],
-                "$meta": {
-                    "pagination": {
-                        "total": 4,
-                        "limit": 2,
-                        "offset": 2,
-                    }
-                },
-            },
-        ),
-    ]
-    orders = aws_invitation_processor.get_querying_orders()
-    assert len(orders) == 4
-
-
-def test_get_quering_orders_exceptions(mocker, aws_invitation_processor, order_factory):
-    mock_client = mocker.MagicMock()
-    aws_invitation_processor.client = mock_client
-
-    mock_client.get.side_effect = [
-        response_factory(
-            status_code=400,
-            data={
-                "data": [
-                    order_factory(),
-                    order_factory(),
-                ],
-                "$meta": {
-                    "pagination": {
-                        "total": 4,
-                        "limit": 2,
-                        "offset": 0,
-                    }
-                },
-            },
+def test_process_invitations_still_requested(
+    mocker, config, mpt_client, order_factory, fulfillment_parameters_factory, requests_mocker
+):
+    """Test processing when transfer is still in REQUESTED status."""
+    processor = AWSInvitationsProcessor(mpt_client, config)
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="rt-test-123"
         )
-    ]
-    orders = aws_invitation_processor.get_querying_orders()
-    assert len(orders) == 0
+    )
+    requests_mocker.add(
+        requests_mocker.GET,
+        ORDERS_URL,
+        json={
+            "data": [order],
+            "$meta": {"pagination": {"total": 1, "limit": 10, "offset": 0}},
+        },
+    )
+    mock_aws_client = mocker.MagicMock()
+    mock_aws_client.get_responsibility_transfer_details.return_value = {
+        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.REQUESTED}
+    }
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.process_aws_invitations.AWSClient",
+        return_value=mock_aws_client,
+    )
 
-    mock_client.get.side_effect = [
-        RequestException("Some error"),
-    ]
-    orders = aws_invitation_processor.get_querying_orders()
-    assert len(orders) == 0
+    processor.process_aws_invitations()  # act
+
+    mock_aws_client.get_responsibility_transfer_details.assert_called_once_with(
+        transfer_id="rt-test-123"
+    )
+
+
+def test_process_invitations_aws_error(
+    mocker, config, mpt_client, order_factory, fulfillment_parameters_factory, requests_mocker
+):
+    """Test processing when AWS error occurs."""
+    processor = AWSInvitationsProcessor(mpt_client, config)
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="rt-test-123"
+        )
+    )
+    requests_mocker.add(
+        requests_mocker.GET,
+        ORDERS_URL,
+        json={
+            "data": [order],
+            "$meta": {"pagination": {"total": 1, "limit": 10, "offset": 0}},
+        },
+    )
+    mock_aws_client = mocker.MagicMock()
+    mock_aws_client.get_responsibility_transfer_details.side_effect = AWSError("AWS API error")
+    mocker.patch(
+        "swo_aws_extension.flows.jobs.process_aws_invitations.AWSClient",
+        return_value=mock_aws_client,
+    )
+    notification_mock = mocker.patch(
+        "swo_aws_extension.flows.jobs.process_aws_invitations.TeamsNotificationManager"
+    )
+
+    processor.process_aws_invitations()  # act
+
+    notification_mock.return_value.notify_one_time_error.assert_called_once()
+
+
+def test_process_invitations_no_orders(mocker, config, mpt_client, requests_mocker):
+    """Test processing when there are no querying orders."""
+    processor = AWSInvitationsProcessor(mpt_client, config)
+    requests_mocker.add(
+        requests_mocker.GET,
+        ORDERS_URL,
+        json={
+            "data": [],
+            "$meta": {"pagination": {"total": 0, "limit": 10, "offset": 0}},
+        },
+    )
+
+    processor.process_aws_invitations()  # act
+
+    assert len(requests_mocker.calls) == 1

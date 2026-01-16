@@ -1,137 +1,272 @@
-[tool.poetry]
+[project]
 name = "swo-aws-extension"
 version = "0.0.0"
 description = "Amazon Web Service extension for SWO Marketplace Platform"
-authors = ["SoftwareOne AG"]
-license = "Apache-2.0 license"
-packages = [
-    { include = "swo_aws_extension" }
-]
+authors = [{ name = "SoftwareOne AG" }]
+requires-python = ">=3.12,<4"
 readme = "README.md"
+license = { text = "Apache-2.0 license" }
 
-[tool.poetry.dependencies]
-python = ">=3.12,<4"
-azure-core = "^1.33.0"
-boto3 = "1.39.*"
-django = "4.2.*" # should it be a dependency of the extension ? it is already a dependency of the sdk.
-jinja2 = "3.1.*"
-markdown-it-py = "3.0.*"
-mpt-extension-sdk = "4.3.*"
-openpyxl = "3.1.*"
-phonenumbers = "8.13.*"
-pyairtable = "2.3.*"
-pymsteams = "0.2.*"
-regex = "^2024.7.24"
-requests = "2.32.*"
-types-openpyxl = "3.1.*"
+dependencies = [
+  "azure-core==1.37.*",
+  "boto3==1.42.*",
+  "django==4.2.*",
+  "jinja2==3.1.*",
+  "markdown-it-py==3.0.*",
+  "mpt-extension-sdk==5.17.*",
+  "openpyxl==3.1.*",
+  "phonenumbers==8.13.*",
+  "pyairtable==2.3.*",
+  "pymsteams==0.2.*",
+  "regex==2024.11.*",
+  "requests==2.32.*",
+  "types-openpyxl==3.1.*",
+]
 
-[tool.poetry.group.dev.dependencies]
-freezegun = "1.4.*"
-ipdb = "0.13.*"
-ipython = "8.*"
-mypy = "1.8.*"
-poetry-plugin-sort = "0.2.*"
-pre-commit = "3.6.*"
-pytest = "7.4.*"
-pytest-cov = "4.1.*"
-pytest-deadfixtures = "2.2.*"
-pytest-django = "4.7.*"
-pytest-mock = "3.12.*"
-pytest-randomly = "3.15.*"
-pytest-xdist = "3.5.*"
-responses = "0.24.*"
-ruff = "0.3.*"
-types-openpyxl = "3.1.*"
-types-requests = "2.31.*"
-requests-mock = "1.12.*"
+[project.entry-points."swo.mpt.ext"]
+app_config = "swo_aws_extension.apps:ExtensionConfig"
 
-[tool.poetry.group.sdk.dependencies] # Move to the SDK when splitting
-django-ninja = "1.1.*"
-pyjwt = "2.8.*"
-typing-extensions = "4.9.*"
+[dependency-groups]
+dev = [
+  "boto3-stubs==1.42.*",
+  "botocore-stubs==1.42.*",
+  "flake8==7.3.0", # also update in pre-commit config
+  "flake8-aaa==0.17.*", # also update in pre-commit config
+  "flake8-pyproject==1.2.*", # also update in pre-commit config
+  "freezegun==1.5.*",
+  "ipdb==0.13.*",
+  "ipython==9.*",
+  "mypy==1.19.*",
+  "pre-commit==4.5.*",
+  "pytest==9.0.*",
+  "pytest-cov==7.0.*",
+  "pytest-deadfixtures==3.0.*",
+  "pytest-django==4.11.*",
+  "pytest-mock==3.15.*",
+  "pytest-randomly==4.0.*",
+  "pytest-xdist==3.8.*",
+  "requests-mock==1.12.*",
+  "responses==0.25.*",
+  "ruff==0.14.11", # force ruff version to have same formatting everywhere
+  "types-openpyxl==3.1.*",
+  "types-requests==2.32.*",
+  "wemake-python-styleguide==1.5.*",
+]
+runtime = [
+  "azure-monitor-opentelemetry-exporter==1.0.0b25",
+  "click==8.1.*",
+  "debugpy==1.8.*",
+  "gunicorn==23.0.*",
+  "opentelemetry-api==1.30.*",
+  "opentelemetry-instrumentation-django==0.51b0",
+  "opentelemetry-instrumentation-logging==0.51b0",
+  "opentelemetry-instrumentation-requests==0.51b0",
+  "opentelemetry-instrumentation-botocore==0.51b0",
+  "opentelemetry-sdk==1.30.*",
+  "pyfiglet==1.0.*",
+  "rich==14.1.*",
+  "watchfiles==0.21.*",
+]
 
+[tool.uv]
+default-groups = [
+  "dev",
+  "runtime",
+]
 
-[tool.poetry.group.runtime.dependencies] # Move to runtime when splitting
-azure-monitor-opentelemetry-exporter = "1.0.0b25"
-click = "8.1.*"
-debugpy = "1.8.*"
-gunicorn = "23.0.*"
-opentelemetry-api = "1.30.*"
-opentelemetry-instrumentation-django = "0.51b0"
-opentelemetry-instrumentation-logging = "0.51b0"
-opentelemetry-instrumentation-requests = "0.51b0"
-opentelemetry-instrumentation-botocore = "0.51b0"
-opentelemetry-sdk = "1.30.*"
-pyfiglet = "1.0.*"
-rich = "13.7.*"
-watchfiles = "0.21.*"
+[tool.hatch.build.targets.sdist]
+include = ["swo_aws_extension"]
 
-[tool.poetry.scripts]
-swoext = 'swo.mpt.extensions.runtime.swoext:main' # Move to runtime when splitting
-
-
-[tool.poetry.plugins."swo.mpt.ext"]
-"app_config" = "swo_aws_extension.apps:ExtensionConfig"
-
+[tool.hatch.build.targets.wheel]
+include = ["swo_aws_extension"]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 testpaths = "tests"
 pythonpath = "."
-addopts = "--cov=. --cov-report=term-missing --cov-report=html --cov-report=xml"
+addopts = "--cov=. --cov-report=term-missing --cov-report=html --cov-report=xml --import-mode=importlib"
 DJANGO_SETTINGS_MODULE = "tests.django.settings"
 log_cli = false
 filterwarnings = [
-    "ignore:Support for class-based `config` is deprecated:DeprecationWarning",
-    "ignore:pkg_resources is deprecated as an API:DeprecationWarning",
+  "ignore:Support for class-based `config` is deprecated:DeprecationWarning",
+  "ignore:pkg_resources is deprecated as an API:DeprecationWarning",
 ]
 
 [tool.coverage.run]
 branch = true
 relative_files = true
 omit = [
-    "tests/**",
-    "swo_aws_extension/default.py",
+  "__init__.py",
+  "tests/**",
+  "swo_aws_extension/default.py",
 ]
 
 [tool.coverage.report]
 exclude_also = [
-    "raise NotImplementedError",
+  "raise NotImplementedError",
+]
+
+[tool.flake8]
+allowed-domain-names = ["result"]
+aaa_act_block_style = "large"
+doctests = true
+extend-ignore = ["WPS226"]
+extend-exclude = [
+  ".coverage",
+  ".github",
+  ".idea",
+  ".mypy_cache",
+  ".pytest_cache",
+  ".ruff_cache",
+  "uv.lock",
+  ".venv"
+]
+format = "wemake"
+max-imports = 17
+max-line-length = 100
+select = ["AAA", "E999", "WPS"]
+show-source = true
+statistics = false
+# To be fixed and removed
+per-file-ignores = [
+  "tests/**/*.py: WPS202 WPS204 WPS210 WPS211 WPS213 WPS402 WPS231",
+  "tests/*.py: WPS202 WPS204 WPS210 WPS211 WPS213 WPS402 WPS231",
+  "swo_aws_extension/apps.py: WPS300",
+  "swo_aws_extension/aws/client.py: WPS214",
+  "swo_aws_extension/aws/config.py: WPS122 WPS121 WPS214",
+  "swo_aws_extension/aws/errors.py: WPS225 WPS231 WPS238 WPS328 WPS430 WPS505",
+  "swo_aws_extension/constants.py: WPS202",
+  "swo_aws_extension/default.py: WPS111 WPS407",
+  "swo_aws_extension/management/commands_helpers/__init__.py: WPS410 WPS412",
+  "swo_aws_extension/notifications.py: WPS202 WPS213 WPS430",
+  "swo_aws_extension/parameters.py: WPS204 WPS202",
+  "swo_aws_extension/swo/ccp/client.py: WPS210 WPS214",
+  "swo_aws_extension/flows/fulfillment/pipelines.py: WPS201",
+  "swo_aws_extension/flows/validation/base.py: WPS407",
+  "swo_aws_extension/swo/rql/query_builder.py: WPS110 WPS111 WPS115 WPS210 WPS211 WPS214 WPS221 WPS231 WPS237 WPS478",
+  "swo_aws_extension/swo/finops/client.py: WPS231 WPS505 WPS111 WPS121 WPS122 WPS214 WPS420 WPS430 WPS432 WPS458",
+  "swo_aws_extension/swo/mpt/sync/syncer.py: WPS210 WPS213",
+  "tests/aws/test_config.py: WPS202",
+  "tests/aws/test_errors.py: WPS202",
+  "tests/flows/validation/test_base.py: WPS118",
+  "tests/conftest.py: WPS202 WPS211 WPS231 WPS430",
+  "tests/django/settings.py: WPS407",
+  "tests/swo/ccp/test_client.py: WPS202 WPS211",
+  "tests/aws/test_client.py: WPS432 WPS202 WPS204",
+  "tests/test_initializer.py: WPS111 WPS213 WPS218 WPS230 WPS431",
+  "tests/swo/mpt/sync/conftest.py: WPS430 WPS202 WPS118",
+  "tests/swo/rql/test_query_builder.py: AAA01 AAA05 WPS110 WPS111 WPS122 WPS202 WPS204 WPS210 WPS218 WPS221 WPS347 WPS420 WPS431 WPS432 WPS473 WPS604",
 ]
 
 [tool.ruff]
-extend-exclude = [".vscode", ".devcontainer", "swo"]
+# Ruff config: https://docs.astral.sh/ruff/settings
+preview = true
+target-version = "py312"
 output-format = "full"
 line-length = 100
 
-[tool.ruff.lint]
+[tool.ruff.format]
+quote-style = "double"
+# This is only required because we have invalid on-purpose code in docstrings:
+docstring-code-format = false
 
+[tool.ruff.lint]
 select = [
-    "E", # w errors
-    "W", # pycodestyle warnings
-    "F", # pyflakes
-    "I", # isort
-    "B", # flake8-bugbear
-    "C4", # flake8-comprehensions
-    "UP", # pyupgrade,
-    "PT", # flake8-pytest-style
-    "T10", # flake8-pytest-style
+  "A", # flake8-builtins
+  "B", # flake8-bugbear
+  "C4", # flake8-comprehensions
+  "C90", # maccabe
+  "COM", # flake8-commas
+  "D", # pydocstyle
+  "DTZ", # flake8-datetimez
+  "E", # pycodestyle
+  "ERA", # flake8-eradicate
+  "EXE", # flake8-executable
+  "F", # pyflakes
+  "FBT", # flake8-boolean-trap
+  "FLY", # pyflint
+  "FURB", # refurb
+  "G", # flake8-logging-format
+  "I", # isort
+  "ICN", # flake8-import-conventions
+  "ISC", # flake8-implicit-str-concat
+  "LOG", # flake8-logging
+  "N", # pep8-naming
+  "PERF", # perflint
+  "PIE", # flake8-pie
+  "PL", # pylint
+  "PT", # flake8-pytest-style
+  "PTH", # flake8-use-pathlib
+  "Q", # flake8-quotes
+  "RET", # flake8-return
+  "RSE", # flake8-raise
+  "RUF", # ruff
+  "S", # flake8-bandit
+  "SIM", # flake8-simpify
+  "SLF", # flake8-self
+  "SLOT", # flake8-slots
+  "T100", # flake8-debugger
+  "TRY", # tryceratops
+  "UP", # pyupgrade
+  "W", # pycodestyle
+  "YTT", # flake8-2020
 ]
 ignore = [
-    "PT004", # fixture '{name}' does not return anything, add leading underscore
-    "PT011", # pytest.raises({exception}) is too broad, set the match parameter or use a more specific exception
-    "B008", # do not perform function calls in argument defaults
-    "B904", # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+  "A005", # allow to shadow stdlib and builtin module names
+  "B904", # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+  "COM812", # trailing comma, conflicts with `ruff format`
+  # Different doc rules that we don't really care about:
+  "D100",
+  "D104",
+  "D105", # docstring for magic methods
+  "D106",
+  "D107",
+  "D203",
+  "D212",
+  "D401",
+  "D404",
+  "D405",
+  "ISC001", # implicit string concat conflicts with `ruff format`
+  "ISC003", # prefer explicit string concat over implicit concat
+  "PLR09", # we have our own complexity rules
+  "PLR2004", # do not report magic numbers
+  "PLR6301", # do not require classmethod / staticmethod when self not used
+  "PT011", # pytest.raises({exception}) is too broad, set the match parameter or use a more specific exception
+  "TRY003", # long exception messages from `tryceratops`
+]
+external = ["AAA", "WPS"]
+
+# Plugin configs:
+[tool.ruff.lint.flake8-import-conventions]
+banned-from = ["ast", "datetime"]
+aliases = { datetime = "dt" }
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "double"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 6
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = [
+  "D101", # missing docstring in public class
+  "D102", # missing docstring in public methods
+  "D103", # missing docstring in public function
+  "S101", # asserts
+  "S105", # hardcoded passwords
+  "S404", # subprocess calls are for tests
+  "S603", # do not require `shell=True`
+  "S607", # partial executable paths
 ]
 
 [tool.ruff.lint.isort]
 known-third-party = ["swo"]
-
-[tool.ruff.lint.pycodestyle]
-max-line-length = 100
 
 [tool.mypy]
 warn_no_return = false

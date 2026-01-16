@@ -1,16 +1,21 @@
-from unittest.mock import call
+import datetime as dt
 
-import botocore.exceptions
 import pytest
 
+from swo_aws_extension.aws.client import get_paged_response
 from swo_aws_extension.aws.errors import AWSError
 
 
-def test_instance_aws_client(config, aws_client_factory):
-    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+@pytest.fixture
+def mock_get_paged_response(mocker):
+    return mocker.patch("swo_aws_extension.aws.client.get_paged_response", spec=True)
 
-    assert aws_client.access_token == "test_access_token"
-    assert aws_client.credentials == {
+
+def test_instance_aws_client(config, aws_client_factory):
+    result = aws_client_factory(config, "test_account_id", "test_role_name")
+
+    assert result[0].access_token == "test_access_token"
+    assert result[0].credentials == {
         "AccessKeyId": "test_access_key",
         "SecretAccessKey": "test_secret_key",
         "SessionToken": "test_session_token",
@@ -18,161 +23,398 @@ def test_instance_aws_client(config, aws_client_factory):
 
 
 def test_instance_aws_client_empty_mpa_account_id(config, aws_client_factory):
-    with pytest.raises(AWSError) as e:
+    with pytest.raises(AWSError) as error:
         aws_client_factory(config, None, "test_role_name")
-    assert "Parameter 'mpa_account_id' must be provided to assume the role." in str(e.value)
+
+    assert "Parameter 'mpa_account_id' must be provided to assume the role." in str(error.value)
 
 
-def test_create_organization_success(config, aws_client_factory):
-    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    mock_client.create_organization.return_value = {"Organization": {"Id": "test_organization"}}
+class TestGetInboundResponsibilityTransfers:
+    def test_success(self, config, aws_client_factory, mock_get_paged_response):
+        mock_aws_client, mock_client = aws_client_factory(
+            config, "test_account_id", "test_role_name"
+        )
+        mock_get_paged_response.return_value = [{"id": "transfer1"}, {"id": "transfer2"}]
 
-    aws_client.create_organization()
-    mock_client.create_organization.assert_called_once_with(FeatureSet="ALL")
+        result = mock_aws_client.get_inbound_responsibility_transfers()
+
+        assert result == [{"id": "transfer1"}, {"id": "transfer2"}]
+        mock_get_paged_response.assert_called_once_with(
+            mock_client.list_inbound_responsibility_transfers,
+            "ResponsibilityTransfers",
+            {"Type": "BILLING", "MaxResults": 20},
+        )
+
+    def test_empty(self, config, aws_client_factory, mock_get_paged_response):
+        mock_aws_client, mock_client = aws_client_factory(
+            config, "test_account_id", "test_role_name"
+        )
+        mock_get_paged_response.return_value = []
+
+        result = mock_aws_client.get_inbound_responsibility_transfers()
+
+        assert result == []
+        mock_get_paged_response.assert_called_once_with(
+            mock_client.list_inbound_responsibility_transfers,
+            "ResponsibilityTransfers",
+            {"Type": "BILLING", "MaxResults": 20},
+        )
+
+    def test_error(self, config, aws_client_factory, mock_get_paged_response):
+        mock_aws_client, mock_client = aws_client_factory(
+            config, "test_account_id", "test_role_name"
+        )
+        mock_get_paged_response.side_effect = Exception("Some error occurred")
+
+        with pytest.raises(Exception, match="Some error occurred"):
+            mock_aws_client.get_inbound_responsibility_transfers()
+
+        mock_get_paged_response.assert_called_once_with(
+            mock_client.list_inbound_responsibility_transfers,
+            "ResponsibilityTransfers",
+            {"Type": "BILLING", "MaxResults": 20},
+        )
 
 
-def test_create_organization_already_exists(config, aws_client_factory):
-    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    error_response = {
-        "Error": {
-            "Code": "AlreadyInOrganizationException",
-            "Message": "The account is already part of an organization.",
+class TestTerminateResponsibilityTransfer:
+    def test_success(self, config, aws_client_factory):
+        mock_aws_client, mock_client = aws_client_factory(
+            config, "test_account_id", "test_role_name"
+        )
+        end_timestamp = dt.datetime(2025, 12, 31, tzinfo=dt.UTC)
+        expected_response = {
+            "ResponsibilityTransfer": {
+                "Arn": "string",
+                "Name": "string",
+                "Id": "string",
+                "Type": "BILLING",
+                "Status": "WITHDRAWN",
+                "Source": {"ManagementAccountId": "string", "ManagementAccountEmail": "string"},
+                "Target": {"ManagementAccountId": "string", "ManagementAccountEmail": "string"},
+                "StartTimestamp": dt.datetime(2024, 12, 31, tzinfo=dt.UTC),
+                "EndTimestamp": end_timestamp,
+                "ActiveHandshakeId": "string",
+            }
+        }
+        mock_client.terminate_responsibility_transfer.return_value = expected_response
+
+        result = mock_aws_client.terminate_responsibility_transfer("rt-8lr3q6sn", end_timestamp)
+
+        assert result == expected_response
+        mock_client.terminate_responsibility_transfer.assert_called_once_with(
+            Id="rt-8lr3q6sn", EndTimestamp=end_timestamp
+        )
+
+    def test_error(self, config, aws_client_factory):
+        mock_aws_client, mock_client = aws_client_factory(
+            config, "test_account_id", "test_role_name"
+        )
+        transfer_id = "rt-invalid"
+        end_timestamp = dt.datetime(2025, 12, 31, 23, 59, 59, tzinfo=dt.UTC)
+        mock_client.terminate_responsibility_transfer.side_effect = Exception("Transfer not found")
+
+        with pytest.raises(Exception, match="Transfer not found"):
+            mock_aws_client.terminate_responsibility_transfer(transfer_id, end_timestamp)
+
+        mock_client.terminate_responsibility_transfer.assert_called_once_with(
+            Id=transfer_id, EndTimestamp=end_timestamp
+        )
+
+
+class TestGetPagedResponse:
+    def test_success(self, mocker):
+        """Test get_paged_response with multiple pages."""
+        method_mock = mocker.Mock()
+        method_mock.side_effect = [
+            {
+                "ResponsibilityTransfers": [{"id": "transfer1"}, {"id": "transfer2"}],
+                "NextToken": "token1",
+            },
+            {
+                "ResponsibilityTransfers": [{"id": "transfer3"}],
+            },
+        ]
+
+        result = get_paged_response(
+            method_mock, "ResponsibilityTransfers", {"Type": "BILLING", "MaxResults": 2}
+        )
+
+        assert result == [
+            {"id": "transfer1"},
+            {"id": "transfer2"},
+            {"id": "transfer3"},
+        ]
+        assert method_mock.call_args_list == [
+            mocker.call(MaxResults=2, Type="BILLING"),
+            mocker.call(MaxResults=2, NextToken="token1", Type="BILLING"),
+        ]
+
+    def test_with_kwargs_none(self, mocker):
+        """Test get_paged_response with kwargs=None (default value)."""
+        method_mock = mocker.Mock(
+            return_value={
+                "ResponsibilityTransfers": [{"id": "transfer1"}],
+            }
+        )
+
+        result = get_paged_response(method_mock, "ResponsibilityTransfers")
+
+        assert result == [{"id": "transfer1"}]
+        assert method_mock.call_args_list == [mocker.call()]
+
+    def test_empty_initial_response(self, mocker):
+        """Test get_paged_response with an empty initial response."""
+        method_mock = mocker.Mock(
+            return_value={
+                "ResponsibilityTransfers": [],
+            }
+        )
+
+        result = get_paged_response(
+            method_mock, "ResponsibilityTransfers", {"Type": "BILLING", "MaxResults": 20}
+        )
+
+        assert result == []
+        assert method_mock.call_args_list == [mocker.call(MaxResults=20, Type="BILLING")]
+
+    def test_single_page_no_next_token(self, mocker):
+        """Test get_paged_response with a single page (no NextToken in response)."""
+        method_mock = mocker.Mock(
+            return_value={
+                "ResponsibilityTransfers": [{"id": "transfer1"}, {"id": "transfer2"}],
+            }
+        )
+
+        result = get_paged_response(
+            method_mock, "ResponsibilityTransfers", {"Type": "BILLING", "MaxResults": 10}
+        )
+
+        assert result == [{"id": "transfer1"}, {"id": "transfer2"}]
+        # Should only be called once since there's no NextToken
+        method_mock.assert_called_once_with(MaxResults=10, Type="BILLING")
+
+    def test_with_empty_kwargs(self, mocker):
+        """Test get_paged_response with explicitly empty kwargs dict."""
+        method_mock = mocker.Mock(
+            return_value={
+                "ResponsibilityTransfers": [{"id": "transfer1"}],
+            }
+        )
+
+        result = get_paged_response(method_mock, "ResponsibilityTransfers", {})
+
+        assert result == [{"id": "transfer1"}]
+        assert method_mock.call_args_list == [mocker.call()]
+
+
+def test_invite_organization_to_transfer_billing(
+    config, aws_client_factory, mock_get_paged_response
+):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.invite_organization_to_transfer_responsibility.return_value = {
+        "Handshake": {
+            "Resources": [
+                {"Type": "RESPONSIBILITY_TRANSFER", "Value": "RT-123"},
+            ]
         }
     }
-    mock_client.create_organization.side_effect = botocore.exceptions.ClientError(
-        error_response, "CreateOrganization"
+
+    result = mock_aws_client.invite_organization_to_transfer_billing(
+        customer_id="test_account_id", start_timestamp=1767225600, source_name="test_source_name"
     )
 
-    aws_client.create_organization()
-    assert mock_client.create_organization.call_count == 1
-
-
-def test_create_organization_error(config, aws_client_factory):
-    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    error_response = {
-        "Error": {
-            "Code": "AccessDeniedForDependencyException",
-            "Message": "The request failed because your credentials do not have permission"
-            " to create the service-linked role required by AWS Organizations",
+    assert result == {
+        "Handshake": {
+            "Resources": [
+                {"Type": "RESPONSIBILITY_TRANSFER", "Value": "RT-123"},
+            ]
         }
     }
-    mock_client.create_organization.side_effect = botocore.exceptions.ClientError(
-        error_response, "CreateOrganization"
-    )
-
-    with pytest.raises(AWSError) as e:
-        aws_client.create_organization()
-    assert "AccessDeniedForDependencyException" in str(e.value)
-
-
-def test_aws_client_list_accounts(mocker, config, aws_client_factory, data_aws_account_factory):
-    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    mock_client.list_accounts.side_effect = [
-        {
-            "Accounts": [data_aws_account_factory(id=f"0000-{0:04}-{j:04}") for j in range(10)],
-            "NextToken": "token0",
-        },
-        {
-            "Accounts": [data_aws_account_factory(id=f"0000-{1:04}-{j:04}") for j in range(10)],
-        },
-    ]
-
-    accounts = aws_client.list_accounts()
-    assert len(accounts) == 20
-    expected_calls = [call(), call(NextToken="token0")]
-    mock_client.list_accounts.assert_has_calls(expected_calls)
-
-
-def test_enable_scp(config, aws_client_factory, roots_factory):
-    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    mock_client.list_roots.return_value = roots_factory()
-    mock_client.enable_policy_type.return_value = roots_factory()
-
-    aws_client.enable_scp()
-    mock_client.list_roots.assert_called_once_with()
-    mock_client.enable_policy_type.assert_called_once_with(
-        RootId="root_id", PolicyType="SERVICE_CONTROL_POLICY"
+    mock_client.invite_organization_to_transfer_responsibility.assert_called_once_with(
+        Type="BILLING",
+        Target={"Id": "test_account_id", "Type": "ACCOUNT"},
+        StartTimestamp=1767225600,
+        SourceName="test_source_name",
     )
 
 
-def test_enable_scp_already_enabled(config, aws_client_factory, roots_factory):
-    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    mock_client.list_roots.return_value = roots_factory(
-        policy_types=[{"Type": "SERVICE_CONTROL_POLICY", "Status": "ENABLED"}]
+def test_get_responsibility_transfer_details(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.describe_responsibility_transfer.return_value = {
+        "ResponsibilityTransfer": {
+            "Id": "RT-123",
+            "Status": "PENDING",
+        }
+    }
+
+    result = mock_aws_client.get_responsibility_transfer_details(transfer_id="RT-123")
+
+    assert result == {
+        "ResponsibilityTransfer": {
+            "Id": "RT-123",
+            "Status": "PENDING",
+        }
+    }
+    mock_client.describe_responsibility_transfer.assert_called_once_with(Id="RT-123")
+
+
+def test_get_cost_and_usage_success(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = [
+        {"Groups": [{"Keys": ["123456789"], "Metrics": {"UnblendedCost": {"Amount": "100"}}}]}
+    ]
+
+    result = mock_aws_client.get_cost_and_usage(
+        start_date="2025-12-01",
+        end_date="2025-12-31",
     )
 
-    aws_client.enable_scp()
-    mock_client.list_roots.assert_called_once_with()
-    mock_client.enable_policy_type.assert_not_called()
+    assert result == [
+        {"Groups": [{"Keys": ["123456789"], "Metrics": {"UnblendedCost": {"Amount": "100"}}}]}
+    ]
 
 
-def test_aws_client_list_invoice_summaries(
-    mocker, config, aws_client_factory, data_aws_invoice_summary_factory
-):
-    account_id = "test_account_id"
-    aws_client, mock_client = aws_client_factory(config, account_id, "test_role_name")
-    mock_client.list_invoice_summaries.side_effect = [
-        {
-            "InvoiceSummaries": [data_aws_invoice_summary_factory()],
-            "NextToken": "token0",
+def test_get_cost_and_usage_with_group(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = [
+        {"Groups": [{"Keys": ["123456789"], "Metrics": {"UnblendedCost": {"Amount": "100"}}}]}
+    ]
+
+    result = mock_aws_client.get_cost_and_usage(
+        start_date="2025-12-01",
+        end_date="2025-12-31",
+        group_by=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
+    )
+
+    assert result == [
+        {"Groups": [{"Keys": ["123456789"], "Metrics": {"UnblendedCost": {"Amount": "100"}}}]}
+    ]
+
+
+def test_get_cost_and_usage_with_filter(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = []
+
+    result = mock_aws_client.get_cost_and_usage(
+        start_date="2025-12-01",
+        end_date="2025-12-31",
+        filter_by={"Dimensions": {"Key": "SERVICE", "Values": ["Amazon EC2"]}},
+    )
+
+    assert result == []
+
+
+def test_get_cost_and_usage_with_arn(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = [
+        {"Groups": [{"Keys": ["123456789"], "Metrics": {"UnblendedCost": {"Amount": "50"}}}]}
+    ]
+
+    result = mock_aws_client.get_cost_and_usage(
+        start_date="2025-12-01",
+        end_date="2025-12-31",
+        view_arn="arn:aws:billing::123456789:billingview/test",
+    )
+
+    assert result == [
+        {"Groups": [{"Keys": ["123456789"], "Metrics": {"UnblendedCost": {"Amount": "50"}}}]}
+    ]
+
+
+def test_get_cost_and_usage_empty(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = []
+
+    result = mock_aws_client.get_cost_and_usage(
+        start_date="2025-12-01",
+        end_date="2025-12-31",
+    )
+
+    assert result == []
+
+
+def test_get_billing_view_success(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = [
+        {"arn": "arn:aws:billing::123456789:billingview/test", "name": "test-view"}
+    ]
+
+    result = mock_aws_client.get_current_billing_view_by_account_id(account_id="123456789")
+
+    assert result == [{"arn": "arn:aws:billing::123456789:billingview/test", "name": "test-view"}]
+
+
+def test_get_billing_view_empty(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = []
+
+    result = mock_aws_client.get_current_billing_view_by_account_id(account_id="123456789")
+
+    assert result == []
+
+
+def test_create_billing_group_success(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    expected_response = {"Arn": "arn:aws:billingconductor::123:billinggroup/test-billing-group"}
+    mock_client.create_billing_group.return_value = expected_response
+
+    result = mock_aws_client.create_billing_group(
+        responsibility_transfer_arn="arn:aws:billing::123:responsibilitytransfer/RT-123",
+        pricing_plan_arn="arn:aws:billingconductor::aws:pricingplan/BasicPricingPlan",
+        name="billing-group-test",
+        description="Billing group for MPA test_account_id",
+    )
+
+    assert result == expected_response
+    mock_client.create_billing_group.assert_called_once_with(
+        Name="billing-group-test",
+        Description="Billing group for MPA test_account_id",
+        ComputationPreference={
+            "PricingPlanArn": "arn:aws:billingconductor::aws:pricingplan/BasicPricingPlan"
         },
-        {
-            "InvoiceSummaries": [data_aws_invoice_summary_factory()],
+        AccountGrouping={
+            "ResponsibilityTransferArn": "arn:aws:billing::123:responsibilitytransfer/RT-123",
         },
-    ]
-    year = 2025
-    month = 2
-
-    list_invoices = aws_client.list_invoice_summaries_by_account_id(account_id, year, month)
-    assert len(list_invoices) == 2
-    expected_calls = [
-        call(
-            Selector={"ResourceType": "ACCOUNT_ID", "Value": account_id},
-            Filter={"BillingPeriod": {"Month": month, "Year": year}},
-        ),
-        call(
-            Selector={"ResourceType": "ACCOUNT_ID", "Value": account_id},
-            Filter={"BillingPeriod": {"Month": month, "Year": year}},
-            NextToken="token0",
-        ),
-    ]
-    mock_client.list_invoice_summaries.assert_has_calls(expected_calls)
+    )
 
 
-def test_aws_client_get_cost_and_usage(
-    mocker, config, aws_client_factory, data_aws_cost_and_usage_factory
-):
-    account_id = "test_account_id"
-    aws_client, mock_client = aws_client_factory(config, account_id, "test_role_name")
-    aws_cost_and_usage = data_aws_cost_and_usage_factory()
-    aws_cost_and_usage["NextPageToken"] = "token0"
-    mock_client.get_cost_and_usage.side_effect = [
-        aws_cost_and_usage,
-        data_aws_cost_and_usage_factory(),
-    ]
+def test_create_billing_group_error(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.create_billing_group.side_effect = Exception("Billing group creation failed")
 
-    start_date = "2025-01-01"
-    end_date = "2025-02-01"
-    group_by = [{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}]
-    filter_by = {"Dimensions": {"Key": "LINKED_ACCOUNT", "Values": [account_id]}}
+    with pytest.raises(Exception, match="Billing group creation failed"):
+        mock_aws_client.create_billing_group(
+            responsibility_transfer_arn="arn:aws:billing::123:responsibilitytransfer/RT-123",
+            pricing_plan_arn="arn:aws:billingconductor::aws:pricingplan/BasicPricingPlan",
+            name="billing-group-test",
+            description="Billing group for MPA test_account_id",
+        )
 
-    cost_and_usage = aws_client.get_cost_and_usage(start_date, end_date, group_by, filter_by)
-    assert len(cost_and_usage[0]["Groups"]) == 2
-    expected_calls = [
-        call(
-            TimePeriod={"Start": start_date, "End": end_date},
-            Granularity="MONTHLY",
-            Metrics=["UnblendedCost"],
-            GroupBy=group_by,
-            Filter=filter_by,
-        ),
-        call(
-            TimePeriod={"Start": start_date, "End": end_date},
-            Granularity="MONTHLY",
-            Metrics=["UnblendedCost"],
-            GroupBy=group_by,
-            Filter=filter_by,
-            NextPageToken="token0",
-        ),
-    ]
-    mock_client.get_cost_and_usage.assert_has_calls(expected_calls)
+    mock_client.create_billing_group.assert_called_once()
+
+
+def test_delete_billing_group_success(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    expected_response = {"Arn": "arn:aws:billingconductor::123:billinggroup/test-billing-group"}
+    mock_client.delete_billing_group.return_value = expected_response
+
+    result = mock_aws_client.delete_billing_group(
+        billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-billing-group",
+    )
+
+    assert result == expected_response
+    mock_client.delete_billing_group.assert_called_once_with(
+        Arn="arn:aws:billingconductor::123:billinggroup/test-billing-group",
+    )
+
+
+def test_delete_billing_group_error(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.delete_billing_group.side_effect = Exception("Billing group deletion failed")
+
+    with pytest.raises(Exception, match="Billing group deletion failed"):
+        mock_aws_client.delete_billing_group(
+            billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-billing-group",
+        )
+
+    mock_client.delete_billing_group.assert_called_once()

@@ -1,49 +1,85 @@
+import copy
 import logging
-import traceback
 
-from swo_aws_extension.flows.error import (
-    strip_trace_id,
+from mpt_extension_sdk.mpt_http.wrap_http_error import ValidationError
+
+from swo_aws_extension.constants import AccountTypesEnum, OrderParametersEnum, SupportTypesEnum
+from swo_aws_extension.parameters import (
+    get_account_type,
+    get_resold_support_plans,
+    get_support_type,
+    reset_ordering_parameters,
+    reset_ordering_parameters_error,
+    set_order_parameter_constraints,
+    set_ordering_parameter_error,
 )
-from swo_aws_extension.flows.order import PurchaseContext
-from swo_aws_extension.flows.validation.change import validate_and_setup_change_order
-from swo_aws_extension.flows.validation.purchase import validate_purchase_order
-from swo_aws_extension.notifications import notify_unhandled_exception_in_teams
 
 logger = logging.getLogger(__name__)
 
+VISIBLE_REQUIRED = {"hidden": False, "required": True, "readonly": False}
+VISIBLE_OPTIONAL = {"hidden": False, "required": False, "readonly": False}
+HIDDEN_OPTIONAL = {"hidden": True, "required": False, "readonly": False}
 
-def validate_order(mpt_client, context):
-    """
-    Performs the validation of a draft order.
+ACCOUNT_TYPE_CONFIG = {
+    AccountTypesEnum.NEW_AWS_ENVIRONMENT.value: {
+        "visible_params": [
+            OrderParametersEnum.ORDER_ACCOUNT_NAME.value,
+            OrderParametersEnum.ORDER_ACCOUNT_EMAIL.value,
+        ],
+        "reset_params": [OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value],
+    },
+    AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value: {
+        "visible_params": [OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value],
+        "reset_params": [
+            OrderParametersEnum.ORDER_ACCOUNT_NAME.value,
+            OrderParametersEnum.ORDER_ACCOUNT_EMAIL.value,
+        ],
+    },
+}
 
-    Args:
-        mpt_client (MPTClient): The client used to consume the MPT API.
-        context (InitialAWSContext): The context of the order.
 
-    Returns:
-        dict: The validated order.
-    """
-    try:
-        has_errors = False
-        order = context.order
-        if context.is_purchase_order():
-            purchase_context = PurchaseContext.from_context(context)
-            has_errors, order = validate_purchase_order(mpt_client, purchase_context)
-
-        elif context.is_change_order():
-            has_errors, order = validate_and_setup_change_order(mpt_client, context)
-        elif context.is_termination_order():
-            pass
-
-        logger.info(
-            f"Validation of order {context.order['id']} succeeded "
-            f"with{'out' if not has_errors else ''} errors"
+def _apply_account_type_constraints(order: dict, account_type: str | None) -> dict:
+    """Apply parameter constraints based on account type configuration."""
+    config = ACCOUNT_TYPE_CONFIG.get(account_type)
+    if not config:
+        return set_ordering_parameter_error(
+            order,
+            OrderParametersEnum.ACCOUNT_TYPE.value,
+            ValidationError(
+                err_id="AWS001", message=f"Invalid account type: {account_type}"
+            ).to_dict(),
         )
-        return order
-    except Exception:
-        notify_unhandled_exception_in_teams(
-            "validation",
-            context.order["id"],
-            strip_trace_id(traceback.format_exc()),
+
+    for param_property in config["visible_params"]:
+        order = set_order_parameter_constraints(order, param_property, constraints=VISIBLE_REQUIRED)
+
+    return reset_ordering_parameters(order, config["reset_params"])
+
+
+def _apply_support_type_constraints(order: dict, support_type: str | None) -> dict:
+    """Apply parameter constraints based on support type."""
+    is_resold_support = support_type == SupportTypesEnum.AWS_RESOLD_SUPPORT.value
+    support_param = OrderParametersEnum.RESOLD_SUPPORT_PLANS.value
+    if not is_resold_support:
+        return reset_ordering_parameters(order, [support_param])
+
+    if is_resold_support and get_resold_support_plans(order) is None:
+        order = set_ordering_parameter_error(
+            order,
+            support_param,
+            ValidationError(
+                err_id="AWS002", message="You should select the type of support"
+            ).to_dict(),
         )
-        raise
+
+    constraints = VISIBLE_OPTIONAL if is_resold_support else HIDDEN_OPTIONAL
+    return set_order_parameter_constraints(order, support_param, constraints=constraints)
+
+
+def update_parameters_visibility(order: dict) -> dict:
+    """Updates the visibility of parameters in the given order object."""
+    updated_order = copy.deepcopy(order)
+    updated_order = reset_ordering_parameters_error(updated_order)
+
+    updated_order = _apply_account_type_constraints(updated_order, get_account_type(updated_order))
+    return _apply_support_type_constraints(updated_order, get_support_type(updated_order))

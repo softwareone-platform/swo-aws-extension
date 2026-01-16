@@ -1,312 +1,87 @@
-from unittest import mock
-
-import pytest
+import botocore
+from mpt_extension_sdk.flows.pipeline import Step
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
-from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.constants import PhasesEnum
-from swo_aws_extension.flows.order import ChangeContext, PurchaseContext
-from swo_aws_extension.flows.steps.setup_context import (
-    SetupChangeContext,
-    SetupContext,
-    SetupContextPurchaseTransferWithoutOrganizationStep,
-    SetupPurchaseContext,
-)
-from swo_aws_extension.parameters import get_phase
-from swo_ccp_client.client import CCPClient
+from swo_aws_extension.constants import SWO_EXTENSION_MANAGEMENT_ROLE, PhasesEnum
+from swo_aws_extension.flows.order import PurchaseContext
+from swo_aws_extension.flows.steps.setup_context import SetupContext
 
 
-def test_setup_context_get_mpa_credentials(
-    mocker,
-    monkeypatch,
-    order_factory,
-    config,
-    requests_mocker,
-    agreement_factory,
-    mock_mpt_key_vault_name,
+def test_setup_context_with_pma(
+    mocker, config, aws_client_factory, order_factory, fulfillment_parameters_factory
 ):
-    monkeypatch.setenv("MPT_KEY_VAULT_NAME", mock_mpt_key_vault_name)
-    mocker.patch(
-        "swo_ccp_client.client.CCPClient.get_secret_from_key_vault", return_value="client_secret"
-    )
-    mocker.patch.object(
-        CCPClient,
-        "get_secret_from_key_vault",
-        return_value="client_secret",
-    )
-    role_name = "test_role"
-    order = order_factory(agreement=agreement_factory(vendor_id="123456789012"))
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    credentials = {
-        "AccessKeyId": "test_access_key",
-        "SecretAccessKey": "test_secret_key",
-        "SessionToken": "test_session_token",
-    }
-    requests_mocker.post(
-        config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=200
-    )
-
-    mock_boto3_client = mocker.patch("boto3.client")
-    mock_client = mock_boto3_client.return_value
-
-    mock_client.assume_role_with_web_identity.return_value = {"Credentials": credentials}
-    next_step_mock = mocker.Mock()
-
-    context = PurchaseContext.from_order_data(order)
-
-    mocker.patch("swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient))
-
-    setup_context = SetupContext(config, role_name)
-    setup_context(mpt_client_mock, context, next_step_mock)
-
-    assert isinstance(context.aws_client, AWSClient)
-    assert mock_client.assume_role_with_web_identity.call_count == 1
-    next_step_mock.assert_called_once_with(mpt_client_mock, context)
-
-
-def test_setup_context_without_account_id_raise_exception(
-    mocker,
-    order_factory,
-    config,
-    requests_mocker,
-    fulfillment_parameters_factory,
-    aws_client_factory,
-    create_account_status,
-):
-    role_name = "test_role"
-    order = order_factory(
+    mpt_client_mock = mocker.MagicMock(spec=MPTClient)
+    next_step_mock = mocker.MagicMock(spec=Step)
+    aws_client_mock = mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
+    order = order_factory()
+    updated_order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            account_request_id="account_request_id"
-        )
+            phase=PhasesEnum.CREATE_NEW_AWS_ENVIRONMENT.value,
+        ),
     )
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-
-    next_step_mock = mocker.Mock()
-    context = PurchaseContext.from_order_data(order)
-    setup_context = SetupContext(config, role_name)
-    with pytest.raises(ValueError):
-        setup_context(mpt_client_mock, context, next_step_mock)
-
-
-def test_setup_purchase_context_get_mpa_credentials(
-    mocker, order_factory, config, requests_mocker, agreement_factory, mpa_pool_factory
-):
-    role_name = "test_role"
-    order = order_factory(agreement=agreement_factory(vendor_id="123456789012"))
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    credentials = {
-        "AccessKeyId": "test_access_key",
-        "SecretAccessKey": "test_secret_key",
-        "SessionToken": "test_session_token",
-    }
-    requests_mocker.post(
-        config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=200
-    )
-    mocker.patch.object(
-        CCPClient,
-        "get_secret_from_key_vault",
-        return_value="client_secret",
-    )
-
-    mock_boto3_client = mocker.patch("boto3.client")
-    mock_client = mock_boto3_client.return_value
-
-    mock_client.assume_role_with_web_identity.return_value = {"Credentials": credentials}
-    next_step_mock = mocker.Mock()
-
-    context = PurchaseContext.from_order_data(order)
-
-    mocker.patch("swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient))
-    mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.get_mpa_account",
-        return_value=mpa_pool_factory(),
-    )
-
-    setup_context = SetupPurchaseContext(config, role_name)
-    setup_context(mpt_client_mock, context, next_step_mock)
-
-    assert isinstance(context.aws_client, AWSClient)
-    assert mock_client.assume_role_with_web_identity.call_count == 1
-    next_step_mock.assert_called_once_with(mpt_client_mock, context)
-
-
-def test_setup_context_get_account_creation_status(
-    settings,
-    mocker,
-    order_factory,
-    config,
-    requests_mocker,
-    fulfillment_parameters_factory,
-    aws_client_factory,
-    create_account_status,
-):
-    role_name = "test_role"
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            account_request_id="account_request_id"
-        )
-    )
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    mocker.patch(
-        "swo_ccp_client.client.CCPClient.get_secret_from_key_vault", return_value="client_secret"
-    )
-    mocker.patch.object(
-        CCPClient,
-        "get_secret_from_key_vault",
-        return_value="client_secret",
-    )
-
-    next_step_mock = mocker.Mock()
-    aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    mock_client.describe_create_account_status.return_value = create_account_status()
-
-    context = PurchaseContext.from_order_data(order)
-    context.aws_client = aws_client
-
-    setup_context = SetupPurchaseContext(config, role_name)
-    setup_context(mpt_client_mock, context, next_step_mock)
-
-    assert isinstance(context.aws_client, AWSClient)
-    mock_client.describe_create_account_status.assert_called_once_with(
-        CreateAccountRequestId="account_request_id"
-    )
-    next_step_mock.assert_called_once_with(mpt_client_mock, context)
-
-
-def test_transfer_without_organization(
-    mocker,
-    config,
-    order_factory,
-    fulfillment_parameters_factory,
-    agreement_factory,
-    mpa_pool_factory,
-):
-    """
-    Tests:
-    - Next step is called
-    - phase is initialized
-    """
-
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=""),
-        agreement=agreement_factory(vendor_id="123456789012"),
-    )
-
-    def dummy_update_order(_client, _id, parameters):
-        order["parameters"] = parameters
-        return order
-
     mocker.patch(
         "swo_aws_extension.flows.steps.setup_context.update_order",
-        side_effect=dummy_update_order,
+        return_value=updated_order,
     )
-    mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.get_mpa_account",
-        return_value=mpa_pool_factory(),
-    )
-    setup_aws_mock = mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.SetupContextPurchaseTransferWithoutOrganizationStep.setup_aws"
-    )
-
     context = PurchaseContext.from_order_data(order)
-    next_step = mocker.MagicMock()
-    step = SetupContextPurchaseTransferWithoutOrganizationStep(config, "role_name")
-    step(mocker.MagicMock(), context, next_step)
-    next_step.assert_called_once()
-    assert get_phase(context.order) == PhasesEnum.ASSIGN_MPA
-    setup_aws_mock.assert_called_once()
+    step = SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE)
 
+    step(mpt_client_mock, context, next_step_mock)  # act
 
-def test_setup_change_context(
-    mocker, order_factory, config, requests_mocker, agreement_factory, mpa_pool_factory
-):
-    role_name = "test_role"
-    order = order_factory(agreement=agreement_factory(vendor_id="123456789012"))
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    credentials = {
-        "AccessKeyId": "test_access_key",
-        "SecretAccessKey": "test_secret_key",
-        "SessionToken": "test_session_token",
-    }
-    requests_mocker.post(
-        config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=200
-    )
-    mocker.patch.object(
-        CCPClient,
-        "get_secret_from_key_vault",
-        return_value="client_secret",
+    aws_client_mock.assert_called_once_with(
+        config, context.pm_account_id, SWO_EXTENSION_MANAGEMENT_ROLE
     )
 
-    mock_boto3_client = mocker.patch("boto3.client")
-    mock_client = mock_boto3_client.return_value
 
-    mock_client.assume_role_with_web_identity.return_value = {"Credentials": credentials}
-    next_step_mock = mocker.Mock()
-
-    context = ChangeContext.from_order_data(order)
-
-    mocker.patch("swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient))
-    mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.get_mpa_account",
-        return_value=mpa_pool_factory(),
-    )
-
-    setup_context = SetupChangeContext(config, role_name)
-    setup_context(mpt_client_mock, context, next_step_mock)
-
-    assert isinstance(context.aws_client, AWSClient)
-    assert mock_client.assume_role_with_web_identity.call_count == 1
-    next_step_mock.assert_called_once_with(mpt_client_mock, context)
-
-
-def test_setup_change_context_set_account_creation_status(
+def test_setup_context_without_pma_exception(
     mocker,
-    order_factory,
     config,
-    requests_mocker,
-    agreement_factory,
-    mpa_pool_factory,
     aws_client_factory,
-    create_account_status,
+    order_factory,
     fulfillment_parameters_factory,
+    mock_teams_notification_manager,
 ):
-    role_name = "test_role"
-    order = order_factory(
-        agreement=agreement_factory(vendor_id="123456789012"),
-        fulfillment_parameters=fulfillment_parameters_factory(account_request_id="123456789012"),
-    )
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    credentials = {
-        "AccessKeyId": "test_access_key",
-        "SecretAccessKey": "test_secret_key",
-        "SessionToken": "test_session_token",
-    }
-    requests_mocker.post(
-        config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=200
-    )
-    mocker.patch.object(
-        CCPClient,
-        "get_secret_from_key_vault",
-        return_value="client_secret",
-    )
+    mpt_client_mock = mocker.MagicMock(spec=MPTClient)
+    next_step_mock = mocker.MagicMock(spec=Step)
+    order = order_factory(authorization_external_id="")
+    context = PurchaseContext.from_order_data(order)
+    step = SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE)
 
-    next_step_mock = mocker.Mock()
-    context = ChangeContext.from_order_data(order)
+    step(mpt_client_mock, context, next_step_mock)  # act
 
-    mocker.patch("swo_aws_extension.aws.client.AWSClient", return_value=mock.Mock(spec=AWSClient))
+    next_step_mock.assert_not_called()
+    assert mock_teams_notification_manager.mock_calls == [
+        mocker.call(),
+        mocker.call().notify_one_time_error(
+            "Setup context",
+            "SetupContextError - PMA account is required to setup AWS Client in context",
+        ),
+    ]
+
+
+def test_setup_context_invalid_aws_credentials(
+    mocker, config, aws_client_factory, order_factory, fulfillment_parameters_factory
+):
+    mpt_client_mock = mocker.MagicMock(spec=MPTClient)
+    next_step_mock = mocker.MagicMock(spec=Step)
     _, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    mock_client.describe_create_account_status.return_value = create_account_status()
-    mock_client.assume_role_with_web_identity.return_value = {"Credentials": credentials}
-
-    mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.get_mpa_account",
-        return_value=mpa_pool_factory(),
+    error_response = {
+        "Error": {
+            "Code": "InvalidIdentityToken",
+            "Message": "No OpenIDConnect provider found in your account for https://sts.windows.net/0001/",
+        }
+    }
+    mock_client.get_caller_identity.side_effect = botocore.exceptions.ClientError(
+        error_response, "get_caller_identity"
     )
+    one_time_notification_mock = mocker.patch(
+        "swo_aws_extension.flows.steps.base.TeamsNotificationManager.notify_one_time_error",
+    )
+    order = order_factory()
+    context = PurchaseContext.from_order_data(order)
+    step = SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE)
 
-    setup_context = SetupChangeContext(config, role_name)
-    setup_context(mpt_client_mock, context, next_step_mock)
+    step(mpt_client_mock, context, next_step_mock)  # act
 
-    assert isinstance(context.aws_client, AWSClient)
-    assert mock_client.assume_role_with_web_identity.call_count == 2
-    next_step_mock.assert_called_once_with(mpt_client_mock, context)
-    assert context.account_creation_status is not None
+    next_step_mock.assert_not_called()
+    assert "failing to provide valid AWS credentials" in one_time_notification_mock.call_args[0][1]

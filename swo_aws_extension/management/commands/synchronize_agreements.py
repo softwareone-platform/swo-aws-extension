@@ -1,19 +1,18 @@
 from django.conf import settings
-from django.core.management.base import BaseCommand
 from mpt_extension_sdk.core.utils import setup_client
 
-from swo_aws_extension.aws.config import Config
-from swo_aws_extension.flows.jobs.synchronize_agreements import synchronize_agreements
-
-config = Config()
+from swo_aws_extension.management.commands_helpers import StyledPrintCommand
+from swo_aws_extension.swo.mpt.sync.syncer import synchronize_agreements
 
 
-class Command(BaseCommand):
+class Command(StyledPrintCommand):
+    """Sync agreements command."""
+
     help = "Synchronize Agreements"
 
     def add_arguments(self, parser):
-        mutex_group = parser.add_mutually_exclusive_group()
-        mutex_group.add_argument(
+        """Add required arguments."""
+        parser.add_argument(
             "--agreements",
             nargs="*",
             metavar="AGREEMENT",
@@ -27,16 +26,11 @@ class Command(BaseCommand):
             help="Test synchronization without making changes",
         )
 
-    def success(self, message):
-        self.stdout.write(self.style.SUCCESS(message), ending="\n")
-
-    def info(self, message):
-        self.stdout.write(message, ending="\n")
-
-    def handle(self, *args, **options):
+    def handle(self, *args, **options):  # noqa: WPS110
+        """Run command."""
         self.info("Start synchronizing agreements...")
-        client = setup_client()
+        mpt_client = setup_client()
         synchronize_agreements(
-            client, config, options["agreements"], options["dry_run"], settings.MPT_PRODUCTS_IDS
+            mpt_client, options["agreements"], settings.MPT_PRODUCTS_IDS, dry_run=options["dry_run"]
         )
         self.success("Synchronizing agreements completed.")

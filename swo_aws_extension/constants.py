@@ -2,8 +2,16 @@ from enum import StrEnum
 
 MPT_DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:00Z"
 
+
+ACCESS_TOKEN_NOT_FOUND_IN_RESPONSE = "Access token not found in the response"  # noqa: S105
+CCP_SECRET_NOT_FOUND_IN_KEY_VAULT = "CCP secret not found in key vault"  # noqa: S105
+FAILED_TO_GET_SECRET = "Failed to get secret"  # noqa: S105
+FAILED_TO_SAVE_SECRET_TO_KEY_VAULT = "Failed to save secret to key vault"  # noqa: S105
+
 SWO_EXTENSION_MANAGEMENT_ROLE = "swo/mpt/SWOExtensionManagementRole"
-SWO_EXTENSION_BILLING_ROLE = "swo/mpt/SWOExtensionBillingRole"
+# TODO: Update to the correct role once created
+ONBOARD_CUSTOMER_ROLE = "SWOExtensionDevelopmentRole11"
+
 CRM_EXTERNAL_EMAIL = "marketplace@softwareone.com"
 CRM_EXTERNAL_USERNAME = "mpt@marketplace.com"
 CRM_SERVICE_TYPE = "MarketPlaceServiceActivation"
@@ -11,245 +19,14 @@ CRM_GLOBAL_EXT_USER_ID = "globalacademicExtUserId"
 CRM_REQUESTER = "Supplier.Portal"
 CRM_SUB_SERVICE = "Service Activation"
 
-COST_EXPLORER_DATE_FORMAT = "%Y-%m-%d"
-
-AWS_MARKETPLACE = "AWS Marketplace"
-
-ERROR = "Error"
-DRAFT = "Draft"
-VALIDATED = "Validated"
-JOURNAL_PENDING_STATUS = [ERROR, DRAFT, VALIDATED]
-
-
-class UsageMetricTypeEnum(StrEnum):
-    MARKETPLACE = "MARKETPLACE"
-    USAGE = "USAGE"
-    PROVIDER_DISCOUNT = "PROVIDER_DISCOUNT"
-    SUPPORT = "SUPPORT"
-    REFUND = "REFUND"
-    SAVING_PLANS = "SAVING_PLANS"
-    RECURRING = "RECURRING"
-    SERVICE_INVOICE_ENTITY = "SERVICE_INVOICE_ENTITY"
-    CREDITS = "CREDITS"
-    CREDITS_PROVIDER_DISCOUNT = "CREDITS_PROVIDER_DISCOUNT"
-
-
-class AWSServiceEnum(StrEnum):
-    SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE = "Savings Plans for AWS Compute usage"
-    TAX = "Tax"
-    REFUND = "Refund"
-    SUPPORT = "Support"
-
-
-class AWSRecordTypeEnum(StrEnum):
-    USAGE = "Usage"
-    SOLUTION_PROVIDER_PROGRAM_DISCOUNT = "Solution Provider Program Discount"
-    SUPPORT = "Support"
-    REFUND = "Refund"
-    SAVING_PLAN_RECURRING_FEE = "SavingsPlanRecurringFee"
-    RECURRING = "Recurring"
-    CREDIT = "Credit"
-
-
-EXCLUDE_USAGE_SERVICES = [AWSServiceEnum.SAVINGS_PLANS_FOR_AWS_COMPUTE_USAGE]
-
-
-class ItemSkusEnum(StrEnum):
-    AWS_USAGE = "AWS Usage"
-    AWS_MARKETPLACE = "AWS Marketplace"
-    AWS_USAGE_INCENTIVATE = "AWS Usage incentivate"
-    AWS_OTHER_SERVICES = "AWS Other services"
-    AWS_SUPPORT_ENTERPRISE = "AWS Support Enterprise"
-    UPFRONT = "Upfront"
-    UPFRONT_INCENTIVATE = "Upfront incentivate"
-    AWS_SUPPORT = "AWS Support"
-    SAVING_PLANS_RECURRING_FEE = "Saving Plans Recurring Fee"
-    SAVING_PLANS_RECURRING_FEE_INCENTIVATE = "Saving Plans Recurring Fee incentivate"
-
-
-AWS_ITEMS_SKUS = [item.value for item in ItemSkusEnum]
-
-
-class AccountTypesEnum(StrEnum):
-    NEW_ACCOUNT = "NewAccount"
-    EXISTING_ACCOUNT = "ExistingAccount"
-
-
-class PhasesEnum(StrEnum):
-    ASSIGN_MPA = "assignMPA"
-    PRECONFIGURATION_MPA = "preConfigurationMPA"
-    CREATE_ACCOUNT = "createAccount"
-    TRANSFER_ACCOUNT = "transferAccount"
-    TRANSFER_ACCOUNT_WITH_ORGANIZATION = "transferAccountWithOrganization"
-    CHECK_INVITATION_LINK = "checkInvitationLink"
-    CREATE_SUBSCRIPTIONS = "createSubscriptions"
-    CCP_ONBOARD = "ccpOnboard"
-    COMPLETED = "completed"
-
+BASIC_PRICING_PLAN_ARN = "arn:aws:billingconductor::aws:pricingplan/BasicPricingPlan"
 
 CRM_TICKET_RESOLVED_STATE = "Resolved"
 
 
-class TerminationParameterChoices(StrEnum):
-    CLOSE_ACCOUNT = "CloseAccount"
-    UNLINK_ACCOUNT = "UnlinkAccount"
+class SubscriptionStatus(StrEnum):
+    """MPT subscription status."""
 
-
-class SupportTypesEnum(StrEnum):
-    RESOLD_SUPPORT = "ResoldSupport"
-    PARTNER_LED_SUPPORT = "PartnerLedSupport"
-
-
-class TransferTypesEnum(StrEnum):
-    TRANSFER_WITHOUT_ORGANIZATION = "TransferWithoutOrganization"
-    TRANSFER_WITH_ORGANIZATION = "TransferWithOrganization"
-    SPLIT_BILLING = "SplitBilling"
-
-
-class CCPOnboardStatusEnum(StrEnum):
-    RUNNING = "Running"
-    SUCCEEDED = "Succeeded"
-    FAILED = "Failed"
-
-
-CRM_EMPTY_TITLE = "Action Required: AWS empty pool for region {region}"
-CRM_EMPTY_SUMMARY = (
-    "Dear MCoE Team,<br><br>A notification has been generated on the Marketplace"
-    " Platform regarding lack of accounts available (configured for "
-    "{type_of_support}) in {seller_country}.<br>We need your help to create "
-    "accounts following the process to be able to continue with the customer"
-    " onboarding.<br><br>Thank you for your attention. <br><br>Best Regards,"
-    "<br>Marketplace Platform Team<br>"
-)
-CRM_EMPTY_ADDITIONAL_INFO = "Empty AWS account pool"
-CRM_NOTIFICATION_TITLE = (
-    "Action Required: AWS reduce number or accounts in pool for region {region}"
-)
-CRM_NOTIFICATION_SUMMARY = (
-    "Dear MCoE Team,<br><br>A notification has been generated on the Marketplace Platform "
-    "regarding running low on the amount of accounts available (configured for {type_of_support})"
-    " in {seller_country}.<br>We need your help to create accounts following the process in this"
-    " region to continue with the customer onboarding.<br><br>Thank you for your attention. "
-    "<br><br>Best Regards,<br>Marketplace Platform Team<br>"
-)
-CRM_NOTIFICATION_ADDITIONAL_INFO = "Low AWS account pool"
-
-CRM_TERMINATION_TITLE = "Termination of account(s) linked to MPA {mpa_account}"
-CRM_TERMINATION_ADDITIONAL_INFO = "AWS Terminate account"
-CRM_TERMINATION_SUMMARY = (
-    "Dear MCoE Team,<br><br>A notification has been generated on the Marketplace"
-    " Platform for termination of an AWS account.<br><br>MPA: {mpa_account}<br>"
-    "Termination type: {termination_type}<br>Order Id: {order_id}<br><br>AWS Account to terminate:"
-    " {accounts}. Thank you for your attention. <br><br>Best Regards,"
-    "<br>Marketplace Platform Team<br>"
-)
-
-CRM_KEEPER_TITLE = (
-    "Action Required: Keeper update request for account_id={mpa_account} and SCU={scu}"
-)
-CRM_KEEPER_ADDITIONAL_INFO = "Update Keeper folder name"
-CRM_KEEPER_SUMMARY = (
-    "Dear MCoE Team,<br><br>A notification has been generated on the Marketplace Platform "
-    "regarding updating the Keeper Shared Credentials folder name with the assigned Buyer "
-    "SCU<br><br>MPA: {account_id}<br>Account Name: {account_name}<br>Account Email: "
-    "{account_email}<br>PLS Enabled: {pls_enabled}<br><br>SCU: {scu}<br>Buyer Id: {buyer_id}"
-    "<br><br>Additional data:<br>Order Id: {order_id}<br><br>Thank you for your attention. <br>"
-    "<br>Best Regards,<br>Marketplace Platform Team<br>"
-)
-
-CRM_TRANSFER_WITH_ORGANIZATION_TITLE = (
-    "Action Required: New AWS Onboarding in Marketplace - Transfer with Organization MPA AWS"
-    " Transfer {master_payer_id} {email_address}"
-)
-CRM_TRANSFER_WITH_ORGANIZATION_ADDITIONAL_INFO = "AWS Transfer account with organization"
-CRM_TRANSFER_WITH_ORGANIZATION_SUMMARY = (
-    "Dear MCoE Team,<br><br>A notification has been generated on the Marketplace Platform"
-    " regarding Transfer request for AWS MPA Account with organization.<br>Details of transfer:"
-    " <br>MPA: {master_payer_id}<br>Contact: {email_address}<br>Order Id: {order_id}<br>"
-    "<br>Thank you for your attention."
-    " <br><br>Best Regards,<br>Marketplace Platform Team<br>"
-)
-
-CRM_NEW_ACCOUNT_TITLE = "New AWS Onboarding in Marketplace"
-CRM_NEW_ACCOUNT_ADDITIONAL_INFO = "AWS New AWS linked account created"
-CRM_NEW_ACCOUNT_SUMMARY = (
-    "Dear MCoE Team,<br><br>Good News!! <br>New customer for AWS is being onboarded in Marketplace"
-    "<br>Here are some details: <br> Customer: {customer_name}<br> SCU: {buyer_external_id}<br> "
-    "Order: {order_id}<br> MasterPayerId: {master_payer_id}<br><br>Thank you for your attention. "
-    "<br><br>Best Regards,<br>Marketplace Platform Team<br>"
-)
-
-CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_TITLE = "New AWS Onboarding in Marketplace requires attention"
-CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_ADDITIONAL_INFO = (
-    "AWS New AWS linked account created but onboarding requires attention"
-)
-CRM_NEW_ACCOUNT_REQUIRES_ATTENTION_SUMMARY = (
-    "Dear MCoE Team,<br><br>Good News!! <br>New customer for AWS is being onboarded in Marketplace"
-    "<br>Here are some details: <br> Customer: {customer_name}<br> SCU: {buyer_external_id}<br> "
-    "Order: {order_id}<br> MasterPayerId: {master_payer_id}. We required your attention "
-    "because services onboarding is not been fully finished - ticket reference "
-    "{automation_ticket_id}.<br><br>Thank you for your attention. <br><br>Best Regards,"
-    "<br>Marketplace Platform Team<br>"
-)
-CRM_CCP_TICKET_TITLE = "CCP Onboard failed {ccp_engagement_id}"
-CRM_CCP_TICKET_ADDITIONAL_INFO = "CCP Onboard failed"
-CRM_CCP_TICKET_SUMMARY = (
-    "Dear CCP team, please check the status of onboard customer {ccp_engagement_id} within CCP "
-    "and CDE as a call error took place that prevented the marketplace automation "
-    "to run all scripts. <br>Here are some details:<br><br>"
-    "<br>Order Id: {order_id}<br><br>Response: {onboard_status}<br><br>"
-    "<br><br>Thanks!"
-)
-
-
-class StateMessageError(StrEnum):
-    REQUESTED = "Review the invitation for account {account}."
-    OPEN = "Review the invitation for account {account}."
-    CANCELED = (
-        "The invitation for the account {account} has been canceled. "
-        "Please remove it from the list."
-    )
-    DECLINED = (
-        "The invitation for account {account} has been declined by the receiver. "
-        "Please remove it from the list or contact support."
-    )
-    EXPIRED = (
-        "The invitation for the account {account} has expired. "
-        "Please remove it from the list or contact support."
-    )
-
-
-TRANSFER_ACCOUNT_INVITATION_NOTE = "Softwareone invite for order {context.order_id}."
-
-TRANSFER_ACCOUNT_INVITATION_FOR_GENERIC_STATE = (
-    "Log in the AWS Console and review invitations "
-    "for the account {account}. "
-    "The current invitation"
-    " is in state: {state}"
-)
-
-
-ACCESS_TOKEN_NOT_FOUND_IN_RESPONSE = "Access token not found in the response"
-CCP_SECRET_NOT_FOUND_IN_KEY_VAULT = "CCP secret not found in key vault"
-FAILED_TO_GET_SECRET = "Failed to get secret"
-FAILED_TO_SAVE_SECRET_TO_KEY_VAULT = "Failed to save secret to key vault"
-
-
-class AwsHandshakeStateEnum(StrEnum):
-    REQUESTED = "REQUESTED"
-    OPEN = "OPEN"
-    CANCELED = "CANCELED"
-    ACCEPTED = "ACCEPTED"
-    DECLINED = "DECLINED"
-    EXPIRED = "EXPIRED"
-
-
-class AgreementStatusEnum(StrEnum):
-    ACTIVE = "Active"
-    UPDATING = "Updating"
-
-
-class SubscriptionStatusEnum(StrEnum):
     ACTIVE = "Active"
     CONFIGURING = "Configuring"
     EXPIRED = "Expired"
@@ -258,54 +35,234 @@ class SubscriptionStatusEnum(StrEnum):
     TERMINATING = "Terminating"
 
 
-class TemplateTypeEnum(StrEnum):
-    ORDER_COMPLETED = "OrderCompleted"
-    ORDER_PROCESSING = "OrderProcessing"
-    ORDER_QUERYING = "OrderQuerying"
+class ResponsibilityTransferStatus(StrEnum):
+    """Responsibility transfer statuses."""
+
+    REQUESTED = "REQUESTED"
+    DECLINED = "DECLINED"
+    CANCELED = "CANCELED"
+    EXPIRED = "EXPIRED"
+    ACCEPTED = "ACCEPTED"
+    WITHDRAWN = "WITHDRAWN"
 
 
-class OrderCompletedTemplateEnum(StrEnum):
-    TRANSFER_WITH_ORG_WITH_PLS = "Order completed existing tenant with org - pls"
-    TRANSFER_WITH_ORG_WITHOUT_PLS = "Order completed existing tenant with org - no pls"
-    TRANSFER_WITHOUT_ORG_WITH_PLS = "Order completed existing tenant - pls"
-    TRANSFER_WITHOUT_ORG_WITHOUT_PLS = "Order completed existing tenant - no pls"
-    NEW_ACCOUNT_WITH_PLS = "Order completed new tenant - pls"
-    NEW_ACCOUNT_WITHOUT_PLS = "Order completed new tenant - no pls"
-    SPLIT_BILLING = "split agreement - add linked account"
-    CHANGE = "New Linked account"
-    TERMINATION_TERMINATE = "Termination order - Terminate"
-    TERMINATION_DELINK = "Termination order - de-link"
+INVALID_RESPONSIBILITY_TRANSFER_STATUS = (
+    ResponsibilityTransferStatus.DECLINED,
+    ResponsibilityTransferStatus.CANCELED,
+    ResponsibilityTransferStatus.EXPIRED,
+)
+
+
+class AccountTypesEnum(StrEnum):
+    """Order Account types enum."""
+
+    NEW_AWS_ENVIRONMENT = "NewAccount"
+    EXISTING_AWS_ENVIRONMENT = "ExistingAccount"
+
+
+class PhasesEnum(StrEnum):
+    """Order phases enum."""
+
+    CREATE_NEW_AWS_ENVIRONMENT = "createAccount"
+    CREATE_BILLING_TRANSFER_INVITATION = "createBillingTransferInvitation"
+    CHECK_BILLING_TRANSFER_INVITATION = "checkBillingTransferInvitation"
+    CHECK_CUSTOMER_ROLES = "checkCustomerRoles"
+    ONBOARD_SERVICES = "onboardServices"
+    CREATE_SUBSCRIPTION = "createSubscription"
+    COMPLETED = "completed"
+
+
+class ParamPhasesEnum(StrEnum):
+    """Parameter phases enum."""
+
+    ORDERING = "ordering"
+    FULFILLMENT = "fulfillment"
+
+
+class OrderParametersEnum(StrEnum):
+    """Ordering parameters external Ids."""
+
+    RESOLD_SUPPORT_PLANS = "resoldSupportPlans"
+    SUPPORT_TYPE = "supportType"
+    ACCOUNT_TYPE = "accountType"
+    MASTER_PAYER_ACCOUNT_ID = "masterPayerID"
+    CONTACT = "contact"
+    ORDER_ACCOUNT_NAME = "orderAccountName"
+    ORDER_ACCOUNT_EMAIL = "orderAccountEmail"
+    COST_MANAGEMENT = "costManagement"
+    SUPPLEMENTARY_SERVICES = "supplementaryServices"
+
+
+class FulfillmentParametersEnum(StrEnum):
+    """Change parameters external Ids."""
+
+    PHASE = "phase"
+    RESPONSIBILITY_TRANSFER_ID = "responsibilityTransferId"
+    CRM_ONBOARD_TICKET_ID = "crmOnboardTicketId"
+    CRM_NEW_ACCOUNT_TICKET_ID = "crmNewAccountTicketId"
+    CRM_CUSTOMER_ROLE_TICKET_ID = "crmCustomerRoleTicketId"
+    CUSTOMER_ROLES_DEPLOYED = "customerRolesDeployed"
+    BILLING_GROUP_ARN = "billingGroupArn"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
-    NEW_ACCOUNT = "New Tenant - processing"
-    CHANGE = "Processing add Linked account"
-    TRANSFER_WITH_ORG = "Order processing template transfer with org"
-    TRANSFER_WITHOUT_ORG = "Order processing template - invitations sent"
-    TRANSFER_WITH_ORG_TICKET_CREATED = "Order processing template transfer"
+    """Order processing template enum."""
 
-    TERMINATION = "Processing Termination"
-    SPLIT_BILLING = "Split agreement- processing"
+    NEW_ACCOUNT = "AWS Billing Transfer Order Confirmation and next steps - New AWS account"
+    EXISTING_ACCOUNT = (
+        "AWS Billing Transfer Order Confirmation and next steps - Existing AWS account"
+    )
 
 
 class OrderQueryingTemplateEnum(StrEnum):
-    NEW_ACCOUNT_ROOT_EMAIL_NOT_UNIQUE = "Order querying template - root e-mail provided not unique."
-    TRANSFER_AWAITING_INVITATIONS = "Querying - awaiting invitations acceptance"
+    """Order querying template enum."""
+
+    TRANSFER_AWAITING_INVITATIONS = "AWS Billing transfer invitation pending"
+    INVALID_ACCOUNT_ID = "Order querying template - invalid Account ID"
+    NEW_ACCOUNT_CREATION = "AWS Billing Transfer New AWS account creation"
+    WAITING_FOR_CUSTOMER_ROLES = "AWS Billing Transfer Waiting for roles deployment template"
 
 
-ORDER_DEFAULT_PROCESSING_TEMPLATE = "Order processing"
-COMMAND_INVALID_BILLING_DATE = (
-    "Invalid billing date. The billing date must be in the past. "
-    "You can't generate the billing of the current month until the 5th."
+class OrderCompletedTemplate(StrEnum):
+    """Order completion templates."""
+
+    PURCHASE = "AWS Billing Transfer Order Completed"
+    TERMINATION = "AWS Billing Transfer Termination order approved"
+
+
+class MptOrderStatus(StrEnum):
+    """MPT order statuses."""
+
+    COMPLETED = "Completed"
+
+
+class FinOpsStatusEnum(StrEnum):
+    """FinOps entitlement status enum."""
+
+    ACTIVE = "Active"
+    TERMINATED = "Terminated"
+
+
+class CustomerRolesDeployed(StrEnum):
+    """Customer roles deployed status."""
+
+    YES = "yes"
+    NO_DEPLOYED = "no"
+
+
+class SupportTypesEnum(StrEnum):
+    """Support types enum."""
+
+    PARTNER_LED_SUPPORT = "PartnerLedSupport"
+    AWS_RESOLD_SUPPORT = "ResoldSupport"
+
+
+class ResoldSupportPlansEnum(StrEnum):
+    """AWS type of support enum."""
+
+    ENTERPRISE_SUPPORT = "EnterpriseSupport"
+    BUSINESS_SUPPORT = "BusinessSupport"
+    CURRENT_SUPPORT = "ResoldCurrentSupport"
+
+
+CRM_NEW_ACCOUNT_TITLE = "New AWS Onboarding in Marketplace"
+CRM_NEW_ACCOUNT_ADDITIONAL_INFO = "AWS New AWS linked account created"
+CRM_NEW_ACCOUNT_SUMMARY = (
+    "Dear MCoE Team,<br><br>"
+    "Good News!! New customer for AWS is being onboarded in Marketplace.<br><br>"
+    "Please check the order details and get in touch with the sales team and customer "
+    "primary contact for the next steps.<br><br>"
+    "<b>Order Details:</b><br>"
+    "<ul>"
+    "<li><b>Customer:</b> {customer_name}</li>"
+    "<li><b>SCU:</b> {buyer_external_id}</li>"
+    "<li><b>Order:</b> {order_id}</li>"
+    "<li><b>New Account Name:</b> {order_account_name}</li>"
+    "<li><b>New Account E-mail:</b> {order_account_email}</li>"
+    "</ul>"
+    "<b>Technical Point of Contact:</b><br>"
+    "<ul>"
+    "<li><b>Name:</b> {technical_contact_name}</li>"
+    "<li><b>Email:</b> {technical_contact_email}</li>"
+    "<li><b>Phone:</b> {technical_contact_phone}</li>"
+    "</ul>"
+    "<b>Support Information:</b><br>"
+    "<ul>"
+    "<li><b>Support Type:</b> {support_type}</li>"
+    "<li><b>AWS Resold Support Option:</b> {resold_support_plans}</li>"
+    "</ul>"
+    "<b>Additional Services:</b><br>"
+    "<ul>"
+    "<li><b>Cost Management Tool:</b> {cost_management}</li>"
+    "<li><b>SWO Additional Services:</b> {supplementary_services}</li>"
+    "</ul>"
+    "Thank you, team, for your attention and taking all necessary steps!<br><br>"
+    "Best Regards,<br>"
+    "Marketplace Platform Team"
 )
-COMMAND_INVALID_BILLING_DATE_FUTURE = "Invalid billing date. Future months are not allowed."
 
-SYNCHRONIZATION_ERROR = "AWS Billing Journal Synchronization Error"
-AWS_BILLING_SUCCESS = "AWS Billing Journal Synchronization Success"
+CRM_DEPLOY_ROLES_TITLE = "Action Required: Roles not deployed yet"
+CRM_DEPLOY_ROLES_ADDITIONAL_INFO = "New customer joining SWO but no service roles deployed"
+CRM_DEPLOY_ROLES_SUMMARY = (
+    "Dear MCoE Team,<br><br>"
+    "Please get in touch with the customer as we have noticed that the required service roles "
+    "for AWS essentials have not been deployed yet.<br><br>"
+    "<b>Transfer Details:</b><br>"
+    "<ul>"
+    "<li><b>Customer:</b> {customer_name}</li>"
+    "<li><b>SCU:</b> {buyer_external_id}</li>"
+    "<li><b>Order:</b> {order_id}</li>"
+    "<li><b>MasterPayerId:</b> {master_payer_id}</li>"
+    "</ul>"
+    "<b>Technical Point of Contact:</b><br>"
+    "<ul>"
+    "<li><b>Name:</b> {technical_contact_name}</li>"
+    "<li><b>Email:</b> {technical_contact_email}</li>"
+    "<li><b>Phone:</b> {technical_contact_phone}</li>"
+    "</ul>"
+    "Thank you for your attention.<br><br>"
+    "Best Regards,<br>"
+    "Marketplace Platform Team"
+)
+
+CRM_ONBOARD_TITLE = "New AWS on-boarding in Marketplace existing AWS customer"
+CRM_ONBOARD_ADDITIONAL_INFO = "New customer joining SWO through billing transfer"
+CRM_ONBOARD_SUMMARY = (
+    "Dear MCoE Team,<br><br>"
+    "Good News!! A new customer for AWS is being onboarded in the SWO Marketplace.<br>"
+    "Please check the order details and get in touch with the sales team and customer "
+    "primary contact for the next steps.<br><br>"
+    "<b>Order Details:</b><br>"
+    "<ul>"
+    "<li><b>Customer:</b> {customer_name}</li>"
+    "<li><b>SCU:</b> {buyer_external_id}</li>"
+    "<li><b>Order:</b> {order_id}</li>"
+    "<li><b>MasterPayerId:</b> {master_payer_id}</li>"
+    "</ul>"
+    "<b>Technical Point of Contact:</b><br>"
+    "<ul>"
+    "<li><b>Name:</b> {technical_contact_name}</li>"
+    "<li><b>Email:</b> {technical_contact_email}</li>"
+    "<li><b>Phone:</b> {technical_contact_phone}</li>"
+    "</ul>"
+    "<b>Support Information:</b><br>"
+    "<ul>"
+    "<li><b>Support Type:</b> {support_type}</li>"
+    "<li><b>AWS Resold Support Option:</b> {resold_support_plans}</li>"
+    "</ul>"
+    "<b>Additional Services:</b><br>"
+    "<ul>"
+    "<li><b>Cost Management Tool:</b> {cost_management}</li>"
+    "<li><b>SWO Additional Services:</b> {supplementary_services}</li>"
+    "</ul>"
+    "Thank you for your attention.<br><br>"
+    "Best Regards,<br>"
+    "Marketplace Platform Team"
+)
 
 
-class JournalAttachmentFilesNameEnum(StrEnum):
-    RECORD_TYPE_AND_SERVICE_COST = "Record type and service cost"
-    SERVICE_INVOICE_ENTITY = "Service invoice entity"
-    ORGANIZATION_INVOICES = "Organization invoices"
-    MARKETPLACE_USAGE_REPORT = "Marketplace usage report"
+CUSTOMER_ROLES_NOT_DEPLOYED_MESSAGE = (
+    "It seems there is an error with the configured SWO access. SWO roles have not "
+    "been created yet. The SWO support team will contact you. Please move the order to "
+    "'processing' status once the roles are created."
+)

@@ -1,29 +1,34 @@
 import json
 import logging
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable, ParamSpec, TypeVar
+from typing import ParamSpec, TypeVar
 
-import botocore.exceptions
+from botocore import exceptions as boto_exceptions
 from requests import HTTPError, JSONDecodeError, RequestException
 
-Param = ParamSpec("Param")
+FuncParams = ParamSpec("FuncParams")
 RetType = TypeVar("RetType")
 
 logger = logging.getLogger(__name__)
 
 
 class AWSError(Exception):
-    pass
+    """AWS basic error."""
 
 
 class AWSHttpError(AWSError):
-    def __init__(self, status_code: int, content: str):
+    """AWS http error."""
+
+    def __init__(self, status_code: int, response_content: str):
         self.status_code = status_code
-        self.content = content
-        super().__init__(f"{self.status_code} - {self.content}")
+        self.response_content = response_content
+        super().__init__(f"{self.status_code} - {self.response_content}")
 
 
 class AWSOpenIdError(AWSHttpError):
+    """AWS openId error."""
+
     def __init__(self, status_code: int, payload: dict) -> None:
         super().__init__(status_code, json.dumps(payload))
         self.payload: dict = payload
@@ -34,42 +39,51 @@ class AWSOpenIdError(AWSHttpError):
     def __str__(self) -> str:
         message = f"{self.code} - {self.message}"
         if self.details:
-            message = f"{message}: {', '.join(self.details)}"
+            error_details = ", ".join(self.details)
+            message = f"{message}: {error_details}"
         return message
 
 
-def wrap_http_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]:
+def wrap_http_error(func: Callable[FuncParams, RetType]) -> Callable[FuncParams, RetType]:  # noqa: UP047
+    """Wraps http error to internal."""
+
     @wraps(func)
-    def _wrapper(*args: Param.args, **kwargs: Param.kwargs) -> RetType:
+    def _wrapper(*args: FuncParams.args, **kwargs: FuncParams.kwargs) -> RetType:
         try:
             return func(*args, **kwargs)
-        except HTTPError as e:
-            logging.exception(f"HTTP error in {func.__name__}: {e}")
+        except HTTPError as error:
+            logger.exception("HTTP error in %s.", func.__name__)
             try:
-                raise AWSOpenIdError(e.response.status_code, e.response.json()) from e
+                raise AWSOpenIdError(error.response.status_code, error.response.json()) from error
             except JSONDecodeError:
-                raise AWSHttpError(e.response.status_code, e.response.content.decode()) from e
-        except RequestException as e:
-            logging.exception(f"Unexpected HTTP error in {func.__name__}: {e}")
-            raise AWSHttpError(e.response.status_code, e.response.content.decode()) from e
+                raise AWSHttpError(
+                    error.response.status_code, error.response.content.decode()
+                ) from error
+        except RequestException as error:
+            logger.exception("Unexpected HTTP error in %s.", func.__name__)
+            raise AWSHttpError(
+                error.response.status_code, error.response.content.decode()
+            ) from error
 
     return _wrapper
 
 
-def wrap_boto3_error(func: Callable[Param, RetType]) -> Callable[Param, RetType]:
+def wrap_boto3_error(func: Callable[FuncParams, RetType]) -> Callable[FuncParams, RetType]:  # noqa: UP047
+    """Wraps boto3 error to internal extension errors."""
+
     @wraps(func)
-    def _wrapper(*args: Param.args, **kwargs: Param.kwargs) -> RetType:
+    def _wrapper(*args: FuncParams.args, **kwargs: FuncParams.kwargs) -> RetType:
         try:
             return func(*args, **kwargs)
-        except AWSError as e:
-            raise e
-        except botocore.exceptions.ClientError as e:
-            raise AWSError(f"AWS Client error: {e}") from e
-        except botocore.exceptions.BotoCoreError as e:
-            logging.exception(f"Boto3 SDK error in {func.__name__}: {e}")
-            raise AWSError(f"Boto3 SDK error: {e}") from e
-        except Exception as e:
-            logging.exception(f"Unexpected error in {func.__name__}: {e}")
-            raise AWSError(f"Unexpected error: {e}") from e
+        except AWSError:
+            raise
+        except boto_exceptions.ClientError as error:
+            raise AWSError(f"AWS Client error. {error}") from error
+        except boto_exceptions.BotoCoreError as error:
+            logger.exception("Boto3 SDK error in %s.", func.__name__)
+            raise AWSError(f"Boto3 SDK error: {error}") from error
+        except Exception as error:
+            logger.exception("Unexpected error in %s.", func.__name__)
+            raise AWSError(f"Unexpected error: {error}") from error
 
     return _wrapper

@@ -1,121 +1,122 @@
-from mpt_extension_sdk.flows.context import (
-    ORDER_TYPE_CHANGE,
-)
-from mpt_extension_sdk.mpt_http.base import MPTClient
+import pytest
 
-from swo_aws_extension.constants import (
-    OrderCompletedTemplateEnum,
-    PhasesEnum,
-)
-from swo_aws_extension.flows.order import (
-    ChangeContext,
-    InitialAWSContext,
-)
-from swo_aws_extension.flows.steps import (
-    CompleteChangeOrderStep,
-    CompleteOrderStep,
-    CompletePurchaseOrderStep,
-)
+from swo_aws_extension.constants import AccountTypesEnum, OrderCompletedTemplate, PhasesEnum
+from swo_aws_extension.flows.order import InitialAWSContext
+from swo_aws_extension.flows.steps.complete_order import CompleteOrder, CompleteTerminationOrder
+from swo_aws_extension.flows.steps.errors import SkipStepError
 
 
-def test_complete_order(
-    mocker,
-    order_factory,
-    config,
-    aws_client_factory,
-    fulfillment_parameters_factory,
-    mock_switch_order_status_to_complete,
+@pytest.fixture
+def initial_context(order_factory):
+    def factory(order=None):
+        if order is None:
+            order = order_factory()
+        return InitialAWSContext.from_order_data(order)
+
+    return factory
+
+
+def test_complete_order_pre_step_skips(
+    order_factory, fulfillment_parameters_factory, initial_context, config
 ):
-    order = order_factory(fulfillment_parameters=fulfillment_parameters_factory(phase=""))
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
-
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = aws_client
-    next_step_mock = mocker.Mock()
-
-    complete_order = CompleteOrderStep()
-    complete_order(mpt_client_mock, context, next_step_mock)
-
-    mock_switch_order_status_to_complete.assert_called_once_with(
-        mpt_client_mock,
-        OrderCompletedTemplateEnum.NEW_ACCOUNT_WITH_PLS.value,
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_NEW_AWS_ENVIRONMENT.value
+        )
     )
-    next_step_mock.assert_called_once_with(mpt_client_mock, context)
+    context = initial_context(order)
+    step = CompleteOrder(config)
+
+    with pytest.raises(SkipStepError):
+        step.pre_step(context)
 
 
-def test_complete_purchase_order_phase(
-    mocker,
-    order_factory,
-    config,
-    aws_client_factory,
-    fulfillment_parameters_factory,
-    mock_switch_order_status_to_complete,
+def test_complete_order_pre_step_proceeds(
+    order_factory, fulfillment_parameters_factory, initial_context, config
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED.value)
     )
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    context = initial_context(order)
+    step = CompleteOrder(config)
 
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = aws_client
-    next_step_mock = mocker.Mock()
-    complete_order = CompletePurchaseOrderStep()
-    complete_order(mpt_client_mock, context, next_step_mock)
+    step.pre_step(context)  # act
 
-    mock_switch_order_status_to_complete.assert_called_once_with(
-        mpt_client_mock,
-        OrderCompletedTemplateEnum.NEW_ACCOUNT_WITH_PLS.value,
+    assert context.order is not None
+
+
+def test_complete_order_process_completed(
+    mocker, order_factory, order_parameters_factory, mpt_client, initial_context, config
+):
+    order = order_factory()
+    mock_switch = mocker.patch(
+        "swo_aws_extension.flows.steps.complete_order.switch_order_status_to_complete"
+    )
+    mocker.patch("swo_aws_extension.flows.steps.complete_order.update_agreement")
+    context = initial_context(order)
+    step = CompleteOrder(config)
+
+    step.process(mpt_client, context)  # act
+
+    mock_switch.assert_called_once_with(mpt_client, context, OrderCompletedTemplate.PURCHASE)
+
+
+def test_complete_order_post_step_logs(order_factory, mpt_client, caplog, initial_context, config):
+    order = order_factory()
+    context = initial_context(order)
+    step = CompleteOrder(config)
+
+    step.post_step(mpt_client, context)  # act
+
+    assert (
+        "ORD-0792-5000-2253-4210 - Completed - order has been completed successfully" in caplog.text
     )
 
-    next_step_mock.assert_called_once_with(mpt_client_mock, context)
+
+def test_termination_pre_step_logs_start(order_factory, caplog, initial_context, config):
+    order = order_factory()
+    context = initial_context(order)
+    step = CompleteTerminationOrder(config)
+
+    step.pre_step(context)  # act
+
+    assert caplog.messages == [
+        "ORD-0792-5000-2253-4210 - Next - Starting Terminate order completion step"
+    ]
 
 
-def test_complete_purchase_order_phase_invalid_phase(
-    mocker, order_factory, config, aws_client_factory, fulfillment_parameters_factory
+def test_termination_process(
+    mocker, order_factory, order_parameters_factory, mpt_client, initial_context, config
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.PRECONFIGURATION_MPA.value
-        )
+        order_parameters=order_parameters_factory(
+            account_type=AccountTypesEnum.NEW_AWS_ENVIRONMENT.value
+        ),
     )
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_switch = mocker.patch(
+        "swo_aws_extension.flows.steps.complete_order.switch_order_status_to_complete"
+    )
+    context = initial_context(order)
+    step = CompleteTerminationOrder(config)
 
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = aws_client
-    next_step_mock = mocker.Mock()
+    step.process(mpt_client, context)  # act
 
-    complete_order = CompletePurchaseOrderStep()
-    complete_order(mpt_client_mock, context, next_step_mock)
-
-    next_step_mock.assert_called_once_with(mpt_client_mock, context)
+    mock_switch.assert_called_once_with(mpt_client, context, OrderCompletedTemplate.TERMINATION)
 
 
-def test_complete_change_order(
-    mocker,
-    order_factory,
-    config,
-    aws_client_factory,
-    fulfillment_parameters_factory,
-    mock_switch_order_status_to_complete,
+def test_termination_post_step_logs(
+    order_factory, order_parameters_factory, mpt_client, caplog, initial_context, config
 ):
     order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=""),
-        order_type=ORDER_TYPE_CHANGE,
+        order_parameters=order_parameters_factory(
+            account_type=AccountTypesEnum.NEW_AWS_ENVIRONMENT.value
+        ),
     )
-    mpt_client_mock = mocker.Mock(spec=MPTClient)
-    aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    context = initial_context(order)
+    step = CompleteTerminationOrder(config)
 
-    context = ChangeContext.from_order_data(order)
-    context.aws_client = aws_client
-    next_step_mock = mocker.Mock()
+    step.post_step(mpt_client, context)  # act
 
-    complete_order = CompleteChangeOrderStep()
-    complete_order(mpt_client_mock, context, next_step_mock)
-    mock_switch_order_status_to_complete.assert_called_once_with(
-        mpt_client_mock, OrderCompletedTemplateEnum.CHANGE.value
-    )
-
-    next_step_mock.assert_called_once_with(mpt_client_mock, context)
+    assert caplog.messages == [
+        "ORD-0792-5000-2253-4210 - Completed - Termination order has been completed successfully"
+    ]

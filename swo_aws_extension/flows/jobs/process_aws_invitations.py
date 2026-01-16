@@ -1,116 +1,134 @@
 import logging
+from http import HTTPStatus
 
 import requests
 from django.conf import settings
-from mpt_extension_sdk.core.utils import setup_client
-from mpt_extension_sdk.flows.pipeline import Pipeline, Step
 
-from swo_aws_extension.constants import SWO_EXTENSION_MANAGEMENT_ROLE, AccountTypesEnum, PhasesEnum
-from swo_aws_extension.flows.order import PurchaseContext
-from swo_aws_extension.flows.steps import (
-    AwaitInvitationLinksStep,
-    SendInvitationLinksStep,
-    SetupContextPurchaseTransferWithoutOrganizationStep,
-    ValidatePurchaseTransferWithoutOrganizationStep,
+from swo_aws_extension.aws.client import AWSClient
+from swo_aws_extension.aws.config import get_config
+from swo_aws_extension.aws.errors import AWSError
+from swo_aws_extension.constants import (
+    SWO_EXTENSION_MANAGEMENT_ROLE,
+    OrderProcessingTemplateEnum,
+    ResponsibilityTransferStatus,
 )
-from swo_aws_extension.parameters import get_account_type, get_phase
-from swo_rql import RQLQuery
+from swo_aws_extension.flows.order import PurchaseContext
+from swo_aws_extension.flows.order_utils import switch_order_status_to_process_and_notify
+from swo_aws_extension.notifications import TeamsNotificationManager
+from swo_aws_extension.parameters import get_responsibility_transfer_id
+from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 logger = logging.getLogger(__name__)
 
 
-class CheckInvitationLinksStep(Step):
-    def __call__(self, client, context: PurchaseContext, next_step):
-        if get_phase(context.order) != PhasesEnum.CHECK_INVITATION_LINK:
-            logger.info(
-                f"{context.order_id} - Stop - "
-                f"Expecting phase '{PhasesEnum.CHECK_INVITATION_LINK.value}'"
-                f" got '{get_phase(context.order)}'"
-            )
-            return
-        next_step(client, context)
-
-
 class AWSInvitationsProcessor:
-    def __init__(self, config):
-        self.client = setup_client()
+    """Process AWS invitation."""
+
+    def __init__(self, client, config):
+        self.client = client
         self.config = config
 
-    def get_querying_orders(self):
+    def process_aws_invitations(self):
+        """Process AWS invitations."""
+        logger.info("Processing AWS pending invitations")
+        for context in self._prepare_contexts():
+            transfer_id = get_responsibility_transfer_id(context.order)
+            if not transfer_id:
+                logger.info(
+                    "%s - Skipping AWS pending invitation because transfer ID is missing.",
+                    context.order_id,
+                )
+                continue
+            if not context.pm_account_id:
+                logger.info(
+                    "%s - Skipping AWS pending invitation because AWS PMA account ID is missing.",
+                    context.order_id,
+                )
+                continue
+            context.aws_client = AWSClient(
+                get_config(), context.pm_account_id, SWO_EXTENSION_MANAGEMENT_ROLE
+            )
+            self._process_invitation(context, transfer_id)
+
+    # TODO: SDK candidate
+    def _get_querying_orders(self):  # noqa: WPS210
+        """Retrieve querying orders."""
         orders = []
         orders_for_product_ids = RQLQuery().agreement.product.id.in_(settings.MPT_PRODUCTS_IDS)
         orders_in_querying = RQLQuery(status="Querying")
         rql_query = orders_for_product_ids & orders_in_querying
         url = (
             f"/commerce/orders?{rql_query}&select=audit,parameters,lines,subscriptions,"
-            f"subscriptions.lines,agreement,buyer&order=audit.created.at"
+            f"subscriptions.lines,agreement,buyer,authorization.externalIds&order=audit.created.at"
         )
         page = None
         limit = 10
         offset = 0
-        while self.has_more_pages(page):
+        while self._has_more_pages(page):
             try:
                 response = self.client.get(f"{url}&limit={limit}&offset={offset}")
-            except requests.RequestException:
+            except requests.RequestException:  # pragma: no cover
                 logger.exception("Cannot retrieve orders")
                 return []
 
-            if response.status_code == 200:
+            if response.status_code == HTTPStatus.OK:
                 page = response.json()
-                orders.extend(page["data"])
-            else:
-                logger.warning(f"Order API error: {response.status_code} {response.content}")
+                orders.extend(page.get("data") or [])
+            else:  # pragma: no cover
+                logger.warning("Order API error: %s %s", response.status_code, response.content)
                 return []
             offset += limit
 
         return orders
 
-    @staticmethod
-    def has_more_pages(orders):
+    def _has_more_pages(self, orders):
+        """Are there more pages."""
         if not orders:
             return True
         pagination = orders["$meta"]["pagination"]
         return pagination["total"] > pagination["limit"] + pagination["offset"]
 
-    def prepare_contexts(self) -> list[PurchaseContext]:
-        contexts = []
-        for o in self.get_querying_orders():
-            contexts.append(PurchaseContext.from_order_data(o))
+    def _prepare_contexts(self) -> list[PurchaseContext]:
+        """Prepare context."""
+        return [PurchaseContext.from_order_data(order) for order in self._get_querying_orders()]
 
-        return contexts
+    def _process_invitation(self, context, transfer_id):
+        try:
+            transfer_details = context.aws_client.get_responsibility_transfer_details(
+                transfer_id=transfer_id
+            )
+        except AWSError as error:
+            logger.info(
+                "%s - Error - Failed to get billing transfer invitation %s details: %s",
+                context.order_id,
+                transfer_id,
+                error,
+            )
+            TeamsNotificationManager().notify_one_time_error(
+                "Error processing AWS billing transfer invitations",
+                f"{context.order_id} - Error getting billing transfer invitation "
+                f"{transfer_id} details: {error!s}",
+            )
+            return
 
-    def get_pipeline(self) -> Pipeline:
-        return Pipeline(
-            CheckInvitationLinksStep(),
-            ValidatePurchaseTransferWithoutOrganizationStep(),
-            SetupContextPurchaseTransferWithoutOrganizationStep(
-                self.config, SWO_EXTENSION_MANAGEMENT_ROLE
-            ),
-            SendInvitationLinksStep(),
-            AwaitInvitationLinksStep(),
+        status = transfer_details.get("ResponsibilityTransfer", {}).get("Status")
+
+        if status != ResponsibilityTransferStatus.REQUESTED:
+            logger.info(
+                "%s - Action - Billing transfer invitation %s has changed status "
+                "to %s. Moving order to processing.",
+                context.order_id,
+                transfer_id,
+                status,
+            )
+            switch_order_status_to_process_and_notify(
+                self.client, context, OrderProcessingTemplateEnum.EXISTING_ACCOUNT
+            )
+            return
+
+        logger.info(
+            "%s - Skip - Billing transfer invitation %s is still in REQUESTED status. "
+            "Will check again later.",
+            context.order_id,
+            transfer_id,
         )
-
-    @staticmethod
-    def is_processable(context: PurchaseContext) -> bool:
-        return (
-            context.is_purchase_order()
-            and get_account_type(context.order) == AccountTypesEnum.EXISTING_ACCOUNT
-            and context.is_type_transfer_without_organization()
-            and get_phase(context.order) == PhasesEnum.CHECK_INVITATION_LINK
-        )
-
-    def process_aws_invitations(self):
-        """
-        Process AWS invitations.
-        """
-        client = self.client
-
-        contexts = self.prepare_contexts()
-        pipeline = self.get_pipeline()
-        for context in contexts:
-            try:
-                if not self.is_processable(context):
-                    continue
-                pipeline.run(client, context)
-            except Exception as e:
-                logger.exception(e)
