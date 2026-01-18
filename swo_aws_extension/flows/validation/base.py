@@ -68,8 +68,11 @@ def _apply_support_type_constraints(order: dict, support_type: str | None) -> di
             order,
             support_param,
             ValidationError(
-                err_id="AWS002", message="You should select the type of support"
+                err_id="AWS002", message="Please select the resold support plans option."
             ).to_dict(),
+        )
+        order = set_order_parameter_constraints(
+            order, OrderParametersEnum.SUPPORT_TYPE, constraints=HIDDEN_OPTIONAL
         )
 
     constraints = VISIBLE_OPTIONAL if is_resold_support else HIDDEN_OPTIONAL
