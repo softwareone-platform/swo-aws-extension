@@ -89,7 +89,6 @@ class OrderParametersEnum(StrEnum):
     CONTACT = "contact"
     ORDER_ACCOUNT_NAME = "orderAccountName"
     ORDER_ACCOUNT_EMAIL = "orderAccountEmail"
-    COST_MANAGEMENT = "costManagement"
     SUPPLEMENTARY_SERVICES = "supplementaryServices"
 
 
@@ -112,6 +111,7 @@ class OrderProcessingTemplateEnum(StrEnum):
     EXISTING_ACCOUNT = (
         "AWS Billing Transfer Order Confirmation and next steps - Existing AWS account"
     )
+    TERMINATE = "AWS Billing Transfer Termination order received"
 
 
 class OrderQueryingTemplateEnum(StrEnum):
@@ -193,7 +193,6 @@ CRM_NEW_ACCOUNT_SUMMARY = (
     "</ul>"
     "<b>Additional Services:</b><br>"
     "<ul>"
-    "<li><b>Cost Management Tool:</b> {cost_management}</li>"
     "<li><b>SWO Additional Services:</b> {supplementary_services}</li>"
     "</ul>"
     "Thank you, team, for your attention and taking all necessary steps!<br><br>"
@@ -252,7 +251,6 @@ CRM_ONBOARD_SUMMARY = (
     "</ul>"
     "<b>Additional Services:</b><br>"
     "<ul>"
-    "<li><b>Cost Management Tool:</b> {cost_management}</li>"
     "<li><b>SWO Additional Services:</b> {supplementary_services}</li>"
     "</ul>"
     "Thank you for your attention.<br><br>"

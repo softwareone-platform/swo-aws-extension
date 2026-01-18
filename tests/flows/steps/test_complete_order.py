@@ -50,7 +50,7 @@ def test_complete_order_process_completed(
 ):
     order = order_factory()
     mock_switch = mocker.patch(
-        "swo_aws_extension.flows.steps.complete_order.switch_order_status_to_complete"
+        "swo_aws_extension.flows.steps.complete_order.switch_order_status_to_complete_and_notify"
     )
     mocker.patch("swo_aws_extension.flows.steps.complete_order.update_agreement")
     context = initial_context(order)
@@ -94,7 +94,7 @@ def test_termination_process(
         ),
     )
     mock_switch = mocker.patch(
-        "swo_aws_extension.flows.steps.complete_order.switch_order_status_to_complete"
+        "swo_aws_extension.flows.steps.complete_order.switch_order_status_to_complete_and_notify"
     )
     context = initial_context(order)
     step = CompleteTerminationOrder(config)

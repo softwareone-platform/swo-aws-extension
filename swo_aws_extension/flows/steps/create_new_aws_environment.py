@@ -22,7 +22,6 @@ from swo_aws_extension.flows.steps.errors import (
     UnexpectedStopError,
 )
 from swo_aws_extension.parameters import (  # noqa: WPS235
-    get_cost_management,
     get_crm_new_account_ticket_id,
     get_formatted_supplementary_services,
     get_formatted_technical_contact,
@@ -106,7 +105,6 @@ class CreateNewAWSEnvironment(BasePhaseStep):
                 technical_contact_phone=contact["phone"],
                 support_type=get_support_type(context.order),
                 resold_support_plans=get_resold_support_plans(context.order) or "N/A",
-                cost_management=get_cost_management(context.order),
                 supplementary_services=get_formatted_supplementary_services(context.order),
             ),
             title=CRM_NEW_ACCOUNT_TITLE,

@@ -299,16 +299,7 @@ def set_customer_roles_deployed(order: dict, deployed: str) -> dict:
     return updated_order
 
 
-def get_cost_management(source: dict[str, Any]) -> str | None:
-    """Get the cost management from the ordering parameter or None if it is not set."""
-    ordering_param = get_ordering_parameter(
-        OrderParametersEnum.COST_MANAGEMENT.value,
-        source,
-    )
-    return ordering_param.get("value", None)
-
-
-def get_supplementary_services(source: dict[str, Any]) -> list[str] | None:
+def get_supplementary_services(source: dict[str, Any]) -> str | None:
     """Get the supplementary services from the ordering parameter or None if it is not set."""
     ordering_param = get_ordering_parameter(
         OrderParametersEnum.SUPPLEMENTARY_SERVICES.value,

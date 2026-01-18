@@ -152,13 +152,19 @@ def test_aws_environment_resold_support_without_aws_type_of_support(
         "constraints": {"hidden": False, "readonly": False, "required": False},
         "error": {
             "id": "AWS002",
-            "message": "You should select the type of support",
+            "message": "Please select the resold support plans option.",
         },
         "externalId": "resoldSupportPlans",
         "id": "PAR-1234-5682",
         "value": None,
         "name": "AWS type of support",
         "type": "choice",
+    }
+    support_type_param = get_ordering_parameter(OrderParametersEnum.SUPPORT_TYPE.value, result)
+    assert support_type_param["constraints"] == {
+        "hidden": True,
+        "readonly": False,
+        "required": False,
     }
 
 
