@@ -22,11 +22,12 @@ class InitialAWSContext(BaseContext):
     seller: dict | None = None
     buyer: dict | None = None
     subscriptions: list[dict] | None = None
+    order_authorization: dict | None = None
 
     @property
     def pm_account_id(self):
         """Program Management Account if exists."""
-        return self.order.get("authorization", {}).get("externalIds", {}).get("operations")
+        return self.order_authorization.get("externalIds", {}).get("operations")
 
     @property
     def master_payer_account_id(self):
@@ -68,6 +69,7 @@ class InitialAWSContext(BaseContext):
             buyer=order.pop("buyer", {}),
             subscriptions=order.get("subscriptions", []),
             order=order,
+            order_authorization=order.get("authorization", {}),
         )
 
 
@@ -83,7 +85,7 @@ class PurchaseContext(InitialAWSContext):
     @property
     def authorization_id(self):
         """Authorization ID from the order."""
-        return self.order.get("authorization", {}).get("id")
+        return self.order_authorization.get("id")
 
     @property
     def currency(self):

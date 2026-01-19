@@ -7,8 +7,9 @@ from mpt_extension_sdk.mpt_http.mpt import update_order
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.aws.errors import AWSError
-from swo_aws_extension.constants import PhasesEnum
+from swo_aws_extension.constants import OrderProcessingTemplateEnum, PhasesEnum
 from swo_aws_extension.flows.order import InitialAWSContext
+from swo_aws_extension.flows.order_utils import update_processing_template_and_notify
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import ConfigurationStepError, UnexpectedStopError
 from swo_aws_extension.parameters import get_phase, set_phase
@@ -33,6 +34,7 @@ class SetupContext(BasePhaseStep):
 
     @override
     def process(self, client: MPTClient, context: InitialAWSContext) -> None:
+        self._init_processing_template(client, context)
         try:
             context.aws_client = AWSClient(self._config, context.pm_account_id, self._role_name)
         except AWSError as error:
@@ -58,3 +60,16 @@ class SetupContext(BasePhaseStep):
             context.order = update_order(
                 client, context.order_id, parameters=context.order["parameters"]
             )
+
+    def _init_processing_template(self, client: MPTClient, context: InitialAWSContext) -> None:
+        template_name = ""
+        if context.is_purchase_order():
+            if context.is_type_new_aws_environment():
+                template_name = OrderProcessingTemplateEnum.NEW_ACCOUNT
+            else:
+                template_name = OrderProcessingTemplateEnum.EXISTING_ACCOUNT
+        elif context.is_termination_order():
+            template_name = OrderProcessingTemplateEnum.TERMINATE
+
+        if template_name and context.template["name"] != template_name:
+            update_processing_template_and_notify(client, context, template_name)

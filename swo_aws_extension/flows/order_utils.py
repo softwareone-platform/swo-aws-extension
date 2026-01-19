@@ -7,6 +7,7 @@ from mpt_extension_sdk.mpt_http.mpt import (
     fail_order,
     get_product_template_or_default,
     query_order,
+    update_order,
 )
 from mpt_extension_sdk.mpt_http.wrap_http_error import MPTError, wrap_mpt_http_error
 
@@ -63,14 +64,14 @@ def set_order_template(
         )
     context.order = set_template(context.order, template)
     logger.info("%s - Action - Updated template to %s", context.order_id, template_name)
-    return context.order["template"]
+    return context.order
 
 
 def switch_order_status_to_query_and_notify(
     client: MPTClient, context: InitialAWSContext, template_name: str
 ):
     """Switch the order status to 'Querying' if it is not already in that status."""
-    set_order_template(client, context, MPT_ORDER_STATUS_QUERYING, template_name)
+    context.order = set_order_template(client, context, MPT_ORDER_STATUS_QUERYING, template_name)
     kwargs = {
         "parameters": context.order["parameters"],
         "template": context.template,
@@ -107,7 +108,7 @@ def switch_order_status_to_process_and_notify(
     client: MPTClient, context: InitialAWSContext, template_name: str
 ):
     """Switch the order status to 'Processing'."""
-    set_order_template(client, context, MPT_ORDER_STATUS_PROCESSING, template_name)
+    context.order = set_order_template(client, context, MPT_ORDER_STATUS_PROCESSING, template_name)
     kwargs = {
         "parameters": context.order["parameters"],
         "template": context.template,
@@ -128,7 +129,7 @@ def switch_order_status_to_process_and_notify(
     MPTNotificationManager(client).send_notification(context)
 
 
-def switch_order_status_to_complete(
+def switch_order_status_to_complete_and_notify(
     client: MPTClient, context: InitialAWSContext, template_name: str
 ):
     """Updates the order status to completed."""
@@ -136,7 +137,7 @@ def switch_order_status_to_complete(
         raise OrderStatusChangeError(
             current_status=context.order_status, target_status=MptOrderStatus.COMPLETED
         )
-    set_order_template(client, context, MPT_ORDER_STATUS_COMPLETED, template_name)
+    context.order = set_order_template(client, context, MPT_ORDER_STATUS_COMPLETED, template_name)
     kwargs = {
         "parameters": context.order["parameters"],
         "template": context.template,
@@ -145,3 +146,18 @@ def switch_order_status_to_complete(
     context.order = complete_order(client, context.order_id, **kwargs)
     MPTNotificationManager(client).send_notification(context)
     logger.info("%s - Action - Set order to completed", context.order_id)
+
+
+def update_processing_template_and_notify(
+    client: MPTClient, context: InitialAWSContext, template_name: str
+):
+    """Update the order parameters and template from a template name."""
+    context.order = set_order_template(client, context, MPT_ORDER_STATUS_PROCESSING, template_name)
+
+    kwargs = {
+        "parameters": context.order["parameters"],
+        "template": context.template,
+    }
+
+    context.order = update_order(client, context.order_id, **kwargs)
+    MPTNotificationManager(client).send_notification(context)
