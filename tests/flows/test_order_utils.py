@@ -5,10 +5,11 @@ from swo_aws_extension.constants import OrderCompletedTemplate, OrderQueryingTem
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.order_utils import (
     set_order_template,
-    switch_order_status_to_complete,
+    switch_order_status_to_complete_and_notify,
     switch_order_status_to_failed_and_notify,
     switch_order_status_to_process_and_notify,
     switch_order_status_to_query_and_notify,
+    update_processing_template_and_notify,
 )
 
 
@@ -26,7 +27,7 @@ def test_set_order_template(mocker, order_factory, fulfillment_parameters_factor
 
     get_template_mock.assert_called_once()
     assert context.template == template
-    assert result == template
+    assert result == context.order
 
 
 def test_switch_order_to_query_and_notify(
@@ -202,9 +203,42 @@ def test_switch_order_status_to_complete(
         return_value=order,
     )
 
-    switch_order_status_to_complete(client, context, "TemplateName")  # act
+    switch_order_status_to_complete_and_notify(client, context, "TemplateName")  # act
 
     complete_order_mock.assert_called_with(
+        client,
+        context.order_id,
+        parameters=context.order["parameters"],
+        template=new_template,
+    )
+    notification_mock.assert_called_once()
+
+
+def test_update_processing_template_and_notify(
+    mocker, order_factory, fulfillment_parameters_factory, template_factory
+):
+    client = mocker.MagicMock(spec=MPTClient)
+    default_template = template_factory(name="Default")
+    new_template = template_factory(name="Processing")
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(), template=default_template
+    )
+    context = PurchaseContext.from_order_data(order)
+    mocker.patch(
+        "swo_aws_extension.flows.order_utils.get_product_template_or_default",
+        return_value=new_template,
+    )
+    update_order_mock = mocker.patch(
+        "swo_aws_extension.flows.order_utils.update_order",
+        return_value=order,
+    )
+    notification_mock = mocker.patch(
+        "swo_aws_extension.flows.order_utils.MPTNotificationManager",
+    )
+
+    update_processing_template_and_notify(client, context, "TemplateName")  # act
+
+    update_order_mock.assert_called_once_with(
         client,
         context.order_id,
         parameters=context.order["parameters"],

@@ -7,7 +7,7 @@ from mpt_extension_sdk.mpt_http.mpt import update_agreement
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.constants import OrderCompletedTemplate, PhasesEnum
 from swo_aws_extension.flows.order import InitialAWSContext
-from swo_aws_extension.flows.order_utils import switch_order_status_to_complete
+from swo_aws_extension.flows.order_utils import switch_order_status_to_complete_and_notify
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import SkipStepError
 from swo_aws_extension.parameters import get_mpa_account_id, get_phase
@@ -45,7 +45,7 @@ class CompleteOrder(BasePhaseStep):
             context.order_id,
             mpa_id,
         )
-        switch_order_status_to_complete(client, context, template_name)
+        switch_order_status_to_complete_and_notify(client, context, template_name)
 
     @override
     def post_step(self, client: MPTClient, context: InitialAWSContext) -> None:
@@ -65,7 +65,7 @@ class CompleteTerminationOrder(BasePhaseStep):
     @override
     def process(self, client: MPTClient, context: InitialAWSContext) -> None:
         template = OrderCompletedTemplate.TERMINATION
-        switch_order_status_to_complete(client, context, template)
+        switch_order_status_to_complete_and_notify(client, context, template)
 
     @override
     def post_step(self, client: MPTClient, context: InitialAWSContext) -> None:
