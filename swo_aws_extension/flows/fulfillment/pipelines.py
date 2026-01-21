@@ -15,6 +15,7 @@ from swo_aws_extension.flows.steps.configure_apn_program import ConfigureAPNProg
 from swo_aws_extension.flows.steps.create_billing_transfer_invitation import (
     CreateBillingTransferInvitation,
 )
+from swo_aws_extension.flows.steps.create_channel_handshake import CreateChannelHandshake
 from swo_aws_extension.flows.steps.create_new_aws_environment import CreateNewAWSEnvironment
 from swo_aws_extension.flows.steps.create_subscription import CreateSubscription
 from swo_aws_extension.flows.steps.finops_entitlement import TerminateFinOpsEntitlementStep
@@ -55,6 +56,7 @@ purchase_new_aws_environment = Pipeline(
     CreateBillingTransferInvitation(config),
     CheckBillingTransferInvitation(config),
     ConfigureAPNProgram(config),
+    CreateChannelHandshake(config),
     CheckCustomerRoles(config),
     OnboardServices(config),
     CreateSubscription(config),
@@ -66,6 +68,7 @@ purchase_existing_aws_environment = Pipeline(
     CreateBillingTransferInvitation(config),
     CheckBillingTransferInvitation(config),
     ConfigureAPNProgram(config),
+    CreateChannelHandshake(config),
     CheckCustomerRoles(config),
     OnboardServices(config),
     CreateSubscription(config),
