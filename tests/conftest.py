@@ -14,7 +14,6 @@ from swo_aws_extension.constants import (
     AccountTypesEnum,
     FulfillmentParametersEnum,
     OrderParametersEnum,
-    ResoldSupportPlansEnum,
     SupportTypesEnum,
 )
 from swo_aws_extension.swo.ccp.client import CCPClient
@@ -576,7 +575,6 @@ def order_parameters_factory(dummy_constraints):
         mpa_id="651706759263",
         constraints=None,
         support_type=SupportTypesEnum.PARTNER_LED_SUPPORT.value,
-        aws_type_of_support=ResoldSupportPlansEnum.ENTERPRISE_SUPPORT.value,
     ):
         return [
             {
@@ -616,14 +614,6 @@ def order_parameters_factory(dummy_constraints):
                 "externalId": OrderParametersEnum.SUPPORT_TYPE.value,
                 "type": "choice",
                 "value": support_type,
-                "constraints": constraints.copy() if constraints else dummy_constraints.copy(),
-            },
-            {
-                "id": "PAR-1234-5682",
-                "name": "AWS type of support",
-                "externalId": OrderParametersEnum.RESOLD_SUPPORT_PLANS.value,
-                "type": "choice",
-                "value": aws_type_of_support,
                 "constraints": constraints.copy() if constraints else dummy_constraints.copy(),
             },
         ]

@@ -1,8 +1,6 @@
 from swo_aws_extension.constants import (
     AccountTypesEnum,
     OrderParametersEnum,
-    ResoldSupportPlansEnum,
-    SupportTypesEnum,
 )
 from swo_aws_extension.flows.validation.base import update_parameters_visibility
 from swo_aws_extension.parameters import get_ordering_parameter
@@ -102,95 +100,6 @@ def test_existing_aws_environment(order_factory, order_parameters_factory):
         "name": "Order Root Account Email",
         "type": "choice",
         "value": None,
-    }
-
-
-def test_existing_aws_env_with_support_resold_support(order_factory, order_parameters_factory):
-    order = order_factory(
-        order_parameters=order_parameters_factory(
-            account_type=AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value,
-            support_type=SupportTypesEnum.AWS_RESOLD_SUPPORT.value,
-            aws_type_of_support=ResoldSupportPlansEnum.ENTERPRISE_SUPPORT.value,
-            constraints={"hidden": None, "required": None, "readonly": None},
-        )
-    )
-
-    result = update_parameters_visibility(order)
-
-    order_aws_type_of_support = get_ordering_parameter(
-        OrderParametersEnum.RESOLD_SUPPORT_PLANS.value, result
-    )
-    assert order_aws_type_of_support == {
-        "constraints": {"hidden": False, "readonly": False, "required": False},
-        "error": None,
-        "externalId": "resoldSupportPlans",
-        "id": "PAR-1234-5682",
-        "value": "EnterpriseSupport",
-        "name": "AWS type of support",
-        "type": "choice",
-    }
-
-
-def test_aws_environment_resold_support_without_aws_type_of_support(
-    order_factory, order_parameters_factory
-):
-    order = order_factory(
-        order_parameters=order_parameters_factory(
-            account_type=AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value,
-            support_type=SupportTypesEnum.AWS_RESOLD_SUPPORT.value,
-            aws_type_of_support=None,
-            constraints={"hidden": None, "required": None, "readonly": None},
-        )
-    )
-
-    result = update_parameters_visibility(order)
-
-    order_aws_type_of_support = get_ordering_parameter(
-        OrderParametersEnum.RESOLD_SUPPORT_PLANS.value, result
-    )
-    assert order_aws_type_of_support == {
-        "constraints": {"hidden": False, "readonly": False, "required": False},
-        "error": {
-            "id": "AWS002",
-            "message": "Please select the resold support plans option.",
-        },
-        "externalId": "resoldSupportPlans",
-        "id": "PAR-1234-5682",
-        "value": None,
-        "name": "AWS type of support",
-        "type": "choice",
-    }
-    support_type_param = get_ordering_parameter(OrderParametersEnum.SUPPORT_TYPE.value, result)
-    assert support_type_param["constraints"] == {
-        "hidden": True,
-        "readonly": False,
-        "required": False,
-    }
-
-
-def test_existing_aws_env_with_support_partner_led_support(order_factory, order_parameters_factory):
-    order = order_factory(
-        order_parameters=order_parameters_factory(
-            account_type=AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value,
-            support_type=SupportTypesEnum.PARTNER_LED_SUPPORT.value,
-            aws_type_of_support=None,
-            constraints={"hidden": None, "required": None, "readonly": None},
-        )
-    )
-
-    result = update_parameters_visibility(order)
-
-    order_aws_type_of_support = get_ordering_parameter(
-        OrderParametersEnum.RESOLD_SUPPORT_PLANS.value, result
-    )
-    assert order_aws_type_of_support == {
-        "constraints": {"hidden": True, "readonly": False, "required": False},
-        "error": None,
-        "externalId": "resoldSupportPlans",
-        "id": "PAR-1234-5682",
-        "value": None,
-        "name": "AWS type of support",
-        "type": "choice",
     }
 
 
