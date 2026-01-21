@@ -37,7 +37,10 @@ global:
   FfcOperationsSub: default
   MpNotifyCategories: "{}"
   MpInitializer: swo_aws_extension.initializer.initialize
-
+  ManagementRole: default
+  OnboardCustomerRole: default
+  ApnRoleName: default
+  ApnAccountId: default
   replicaCountAPI: 1
   replicaCountWorker: 1
   registryUrl: ""

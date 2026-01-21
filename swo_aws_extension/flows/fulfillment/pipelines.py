@@ -6,7 +6,6 @@ from mpt_extension_sdk.flows.context import Context
 from mpt_extension_sdk.flows.pipeline import Pipeline
 
 from swo_aws_extension.aws.config import Config
-from swo_aws_extension.constants import ONBOARD_CUSTOMER_ROLE, SWO_EXTENSION_MANAGEMENT_ROLE
 from swo_aws_extension.flows.steps.check_billing_transfer_invitation import (
     CheckBillingTransferInvitation,
 )
@@ -50,27 +49,27 @@ def pipeline_error_handler(error: Exception, context: Context, next_step):
 
 
 purchase_new_aws_environment = Pipeline(
-    SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    SetupContext(config),
     CreateNewAWSEnvironment(config),
     CreateBillingTransferInvitation(config),
     CheckBillingTransferInvitation(config),
-    CheckCustomerRoles(config, ONBOARD_CUSTOMER_ROLE),
+    CheckCustomerRoles(config),
     OnboardServices(config),
     CreateSubscription(config),
     CompleteOrder(config),
 )
 
 purchase_existing_aws_environment = Pipeline(
-    SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    SetupContext(config),
     CreateBillingTransferInvitation(config),
     CheckBillingTransferInvitation(config),
-    CheckCustomerRoles(config, ONBOARD_CUSTOMER_ROLE),
+    CheckCustomerRoles(config),
     OnboardServices(config),
     CreateSubscription(config),
     CompleteOrder(config),
 )
 terminate = Pipeline(
-    SetupContext(config, SWO_EXTENSION_MANAGEMENT_ROLE),
+    SetupContext(config),
     TerminateResponsibilityTransferStep(config),
     TerminateFinOpsEntitlementStep(config),
     CompleteTerminationOrder(config),

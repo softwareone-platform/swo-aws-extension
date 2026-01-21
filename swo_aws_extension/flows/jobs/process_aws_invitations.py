@@ -8,7 +8,6 @@ from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.config import get_config
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import (
-    SWO_EXTENSION_MANAGEMENT_ROLE,
     OrderProcessingTemplateEnum,
     ResponsibilityTransferStatus,
 )
@@ -45,8 +44,9 @@ class AWSInvitationsProcessor:
                     context.order_id,
                 )
                 continue
+            config = get_config()
             context.aws_client = AWSClient(
-                get_config(), context.pm_account_id, SWO_EXTENSION_MANAGEMENT_ROLE
+                config, context.pm_account_id, config.management_role_name
             )
             self._process_invitation(context, transfer_id)
 

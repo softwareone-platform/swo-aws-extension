@@ -7,7 +7,10 @@ from mpt_extension_sdk.mpt_http.mpt import update_order
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.aws.errors import AWSError
-from swo_aws_extension.constants import OrderProcessingTemplateEnum, PhasesEnum
+from swo_aws_extension.constants import (
+    OrderProcessingTemplateEnum,
+    PhasesEnum,
+)
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.order_utils import update_processing_template_and_notify
 from swo_aws_extension.flows.steps.base import BasePhaseStep
@@ -20,9 +23,8 @@ logger = logging.getLogger(__name__)
 class SetupContext(BasePhaseStep):
     """Initial setup context step."""
 
-    def __init__(self, config: Config, role_name: str) -> None:
+    def __init__(self, config: Config) -> None:
         self._config = config
-        self._role_name = role_name
 
     @override
     def pre_step(self, context: InitialAWSContext) -> None:
@@ -36,7 +38,9 @@ class SetupContext(BasePhaseStep):
     def process(self, client: MPTClient, context: InitialAWSContext) -> None:
         self._init_processing_template(client, context)
         try:
-            context.aws_client = AWSClient(self._config, context.pm_account_id, self._role_name)
+            context.aws_client = AWSClient(
+                self._config, context.pm_account_id, self._config.management_role_name
+            )
         except AWSError as error:
             raise UnexpectedStopError(
                 f"Program Management Account {context.pm_account_id} failed to retrieve "
@@ -44,7 +48,18 @@ class SetupContext(BasePhaseStep):
                 f"The Program Management Account {context.pm_account_id} is failing "
                 f"to provide valid AWS credentials with error: {error!s}. Please verify that "
                 f"the account ID is correct",
-            )
+            ) from error
+        apn_account_id = self._config.apn_account_id
+        apn_role_name = self._config.apn_role_name
+        try:
+            context.aws_apn_client = AWSClient(self._config, apn_account_id, apn_role_name)
+        except AWSError as error:
+            raise UnexpectedStopError(
+                f"APN Account {apn_account_id} failed to retrieve credentials",
+                f"The APN Account {apn_account_id} is failing to provide valid "
+                f"AWS credentials with error: {error!s}. Please verify that role "
+                f"{apn_role_name} is created",
+            ) from error
         logger.info("%s - Next - SetupContext completed successfully", context.order_id)
 
     @override

@@ -13,7 +13,6 @@ from mpt_extension_sdk.mpt_http.wrap_http_error import wrap_mpt_http_error
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.config import get_config
 from swo_aws_extension.constants import (
-    SWO_EXTENSION_MANAGEMENT_ROLE,
     FulfillmentParametersEnum,
     ParamPhasesEnum,
     ResponsibilityTransferStatus,
@@ -163,7 +162,8 @@ def get_accepted_inbound_responsibility_transfers(pma_account_id: str) -> dict:
     Returns:
         A dict mapping source ManagementAccountId to the ACCEPTED transfer info.
     """
-    aws_client = AWSClient(get_config(), pma_account_id, SWO_EXTENSION_MANAGEMENT_ROLE)
+    config = get_config()
+    aws_client = AWSClient(config, pma_account_id, config.management_role_name)
     result = {}
     for rt in aws_client.get_inbound_responsibility_transfers():
         if rt.get("Status") != ResponsibilityTransferStatus.ACCEPTED.value:

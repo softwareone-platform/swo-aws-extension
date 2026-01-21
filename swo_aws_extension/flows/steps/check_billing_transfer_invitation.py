@@ -101,7 +101,7 @@ class CheckBillingTransferInvitation(BasePhaseStep):
     @override
     def post_step(self, client: MPTClient, context: PurchaseContext) -> None:
         """Hook to run after the step processing."""
-        context.order = set_phase(context.order, PhasesEnum.CHECK_CUSTOMER_ROLES)
+        context.order = set_phase(context.order, PhasesEnum.CONFIGURE_APN_PROGRAM)
         context.order = update_order(
             client, context.order_id, parameters=context.order["parameters"]
         )

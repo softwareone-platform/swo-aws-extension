@@ -7,7 +7,12 @@ from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.aws.errors import AWSError
-from swo_aws_extension.constants import OrderParametersEnum, OrderQueryingTemplateEnum, PhasesEnum
+from swo_aws_extension.constants import (
+    MONTHS_PER_YEAR,
+    OrderParametersEnum,
+    OrderQueryingTemplateEnum,
+    PhasesEnum,
+)
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import (
@@ -27,8 +32,6 @@ from swo_aws_extension.parameters import (
 )
 
 logger = logging.getLogger(__name__)
-
-MONTHS_PER_YEAR = 12
 
 
 class CreateBillingTransferInvitation(BasePhaseStep):
