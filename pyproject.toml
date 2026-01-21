@@ -8,7 +8,7 @@ readme = "README.md"
 license = { text = "Apache-2.0 license" }
 
 dependencies = [
-  "azure-core==1.37.*",
+  "azure-core==1.38.*",
   "boto3==1.42.*",
   "django==4.2.*",
   "jinja2==3.1.*",
