@@ -9,6 +9,7 @@ from swo_aws_extension.aws.config import Config
 from swo_aws_extension.flows.steps.check_billing_transfer_invitation import (
     CheckBillingTransferInvitation,
 )
+from swo_aws_extension.flows.steps.check_channel_handshake_status import CheckChannelHandshakeStatus
 from swo_aws_extension.flows.steps.check_customer_roles import CheckCustomerRoles
 from swo_aws_extension.flows.steps.complete_order import CompleteOrder, CompleteTerminationOrder
 from swo_aws_extension.flows.steps.configure_apn_program import ConfigureAPNProgram
@@ -57,6 +58,7 @@ purchase_new_aws_environment = Pipeline(
     CheckBillingTransferInvitation(config),
     ConfigureAPNProgram(config),
     CreateChannelHandshake(config),
+    CheckChannelHandshakeStatus(config),
     CheckCustomerRoles(config),
     OnboardServices(config),
     CreateSubscription(config),
@@ -69,6 +71,7 @@ purchase_existing_aws_environment = Pipeline(
     CheckBillingTransferInvitation(config),
     ConfigureAPNProgram(config),
     CreateChannelHandshake(config),
+    CheckChannelHandshakeStatus(config),
     CheckCustomerRoles(config),
     OnboardServices(config),
     CreateSubscription(config),
