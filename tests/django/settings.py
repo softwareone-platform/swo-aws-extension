@@ -196,6 +196,7 @@ EXTENSION_CONFIG = {
     "APN_ACCOUNT_ID": "1234567890",
     "ONBOARD_CUSTOMER_ROLE": "OnboardCustomerRole",
     "MANAGEMENT_ROLE": "SWOExtensionManagementRole",
+    "QUERYING_TIMEOUT_DAYS": 4,
 }
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"
 

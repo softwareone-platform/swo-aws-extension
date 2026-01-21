@@ -85,6 +85,11 @@ class Config:
         """Get the Management role name."""
         return settings.EXTENSION_CONFIG.get("MANAGEMENT_ROLE")
 
+    @property
+    def querying_timeout_days(self) -> int:
+        """Get the timeout for channel handshake in days."""
+        return settings.EXTENSION_CONFIG["QUERYING_TIMEOUT_DAYS"]
+
     def _patch_path(self, file_path):
         """Fixes relative paths to be from the project root."""
         path = Path(file_path)
