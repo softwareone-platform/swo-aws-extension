@@ -5,6 +5,7 @@ from collections.abc import Callable
 import boto3
 import requests
 
+from swo_aws_extension.aws.config import Config
 from swo_aws_extension.aws.errors import (
     AWSError,
     wrap_boto3_error,
@@ -54,7 +55,15 @@ def _get_response(
 class AWSClient:
     """AWS client."""
 
-    def __init__(self, config, account_id, role_name) -> None:
+    def __init__(self, config: Config, account_id: str, role_name: str) -> None:
+        """
+        Initialize the AWS client.
+
+        Args:
+            config: Configuration object containing AWS and CCP settings
+            account_id: The AWS account ID to assume the role in.
+            role_name: The name of the IAM role to assume.
+        """
         self.config = config
         self.account_id = account_id
         self.role_name = role_name
