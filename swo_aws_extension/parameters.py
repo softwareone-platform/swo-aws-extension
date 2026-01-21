@@ -366,3 +366,14 @@ def set_channel_handshake_id(order: dict, handshake_id: str) -> dict[str, Any]:
     )
     fulfillment_param["value"] = handshake_id
     return updated_order
+
+
+def set_channel_handshake_approved(order: dict, approved: str) -> dict[str, Any]:
+    """Set the channel handshake approved flag on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CHANNEL_HANDSHAKE_APPROVED.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = approved
+    return updated_order
