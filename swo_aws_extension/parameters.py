@@ -346,3 +346,23 @@ def set_relationship_id(order: dict, relationship_id: str) -> dict[str, Any]:
     )
     fulfillment_param["value"] = relationship_id
     return updated_order
+
+
+def get_channel_handshake_id(source: dict[str, Any]) -> str | None:
+    """Get the channel handshake ID from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CHANNEL_HANDSHAKE_ID.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def set_channel_handshake_id(order: dict, handshake_id: str) -> dict[str, Any]:
+    """Set the channel handshake ID on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CHANNEL_HANDSHAKE_ID.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = handshake_id
+    return updated_order
