@@ -15,7 +15,6 @@ from swo_aws_extension.parameters import (
     get_formatted_technical_contact,
     get_mpa_account_id,
     get_phase,
-    get_resold_support_plans,
     get_support_type,
 )
 from swo_aws_extension.swo.crm_service.client import ServiceRequest
@@ -118,7 +117,6 @@ def test_process_creates_service_request(
             technical_contact_email=contact["email"],
             technical_contact_phone=contact["phone"],
             support_type=get_support_type(context.order),
-            resold_support_plans=get_resold_support_plans(context.order) or "N/A",
             supplementary_services=get_formatted_supplementary_services(context.order),
         ),
         title=CRM_ONBOARD_TITLE,
