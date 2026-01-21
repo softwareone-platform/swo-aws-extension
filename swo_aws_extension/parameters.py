@@ -326,3 +326,23 @@ def get_billing_group_arn(source: dict[str, Any]) -> str | None:
         source,
     )
     return fulfillment_param.get("value", None)
+
+
+def get_relationship_id(source: dict[str, Any]) -> str | None:
+    """Get the relationship ID from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.RELATIONSHIP_ID.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def set_relationship_id(order: dict, relationship_id: str) -> dict[str, Any]:
+    """Set the relationship ID on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.RELATIONSHIP_ID.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = relationship_id
+    return updated_order
