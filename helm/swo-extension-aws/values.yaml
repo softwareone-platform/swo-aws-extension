@@ -45,11 +45,12 @@ global:
   replicaCountWorker: 1
   registryUrl: ""
   AzureTenantId: ""
+  QueryingTimeoutDays: 4
 
   cronjobs:
-    aws-invitations:
+    order-querying:
       schedule: ""
-      command: order_process_aws_invitations
+      command: order_querying_processor
     sync-agreements:
       schedule: ""
       command: synchronize_agreements

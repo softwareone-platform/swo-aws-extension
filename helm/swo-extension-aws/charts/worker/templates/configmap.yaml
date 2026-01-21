@@ -35,3 +35,4 @@ data:
   EXT_ONBOARD_CUSTOMER_ROLE: {{ .Values.global.OnboardCustomerRole | quote }}
   EXT_APN_ROLE_NAME: {{ .Values.global.ApnRoleName | quote }}
   EXT_APN_ACCOUNT_ID: {{ .Values.global.ApnAccountId | quote }}
+  EXT_QUERYING_TIMEOUT_DAYS: {{ .Values.global.QueryingTimeoutDays | quote }}
