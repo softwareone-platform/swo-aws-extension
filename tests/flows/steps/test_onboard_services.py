@@ -110,7 +110,8 @@ def test_process_creates_service_request(
         additional_info=CRM_ONBOARD_ADDITIONAL_INFO,
         summary=CRM_ONBOARD_SUMMARY.format(
             customer_name=context.buyer.get("name"),
-            buyer_external_id=context.buyer.get("id"),
+            buyer_id=context.buyer.get("id"),
+            buyer_external_id=context.buyer.get("externalIds", {}).get("erpCustomer", ""),
             order_id=context.order_id,
             master_payer_id=get_mpa_account_id(context.order),
             technical_contact_name=contact["name"],
