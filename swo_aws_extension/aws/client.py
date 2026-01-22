@@ -3,15 +3,13 @@ import logging
 from collections.abc import Callable
 
 import boto3
-import requests
 
-from swo_aws_extension.aws.config import Config
 from swo_aws_extension.aws.errors import (
     AWSError,
     wrap_boto3_error,
-    wrap_http_error,
 )
-from swo_aws_extension.swo.ccp.client import CCPClient
+from swo_aws_extension.config import Config
+from swo_aws_extension.swo.openid.client import OpenIDClient
 
 MINIMUM_DAYS_MONTH = 28
 MAX_RESULTS_PER_PAGE = 20
@@ -55,6 +53,7 @@ def _get_response(
 class AWSClient:
     """AWS client."""
 
+    # TODO: Remove logic to get and validate credentials in the init method
     def __init__(self, config: Config, account_id: str, role_name: str) -> None:
         """
         Initialize the AWS client.
@@ -67,7 +66,7 @@ class AWSClient:
         self.config = config
         self.account_id = account_id
         self.role_name = role_name
-        self.access_token = self._get_access_token()
+        self._openid_client = OpenIDClient(config)
         self.credentials = self._get_credentials()
         self._validate_credentials()
 
@@ -264,25 +263,6 @@ class AWSClient:
             pagination_key="nextToken",
         )
 
-    @wrap_http_error
-    def _get_access_token(self):
-        ccp_client = CCPClient(self.config)
-        payload = {
-            "client_id": self.config.ccp_client_id,
-            "client_secret": ccp_client.get_secret_from_key_vault(),
-            "grant_type": "client_credentials",
-            "scope": self.config.aws_openid_scope,
-        }
-        headers = {"Content-Type": "application/x-www-form-urlencoded"}
-
-        response = requests.post(
-            self.config.ccp_oauth_url, headers=headers, data=payload, timeout=60
-        )
-        response.raise_for_status()
-        logger.info("OpenId Access token issued")
-        response_data = response.json()
-        return response_data["access_token"]
-
     @wrap_boto3_error
     def _get_credentials(self):
         if not self.account_id:
@@ -292,7 +272,7 @@ class AWSClient:
         response = boto3.client("sts").assume_role_with_web_identity(
             RoleArn=role_arn,
             RoleSessionName="SWOExtensionOnboardingSession",
-            WebIdentityToken=self.access_token,
+            WebIdentityToken=self._openid_client.fetch_access_token(self.config.aws_openid_scope),
         )
         return response["Credentials"]
 

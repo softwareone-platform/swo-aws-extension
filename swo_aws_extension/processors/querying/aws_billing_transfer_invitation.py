@@ -3,8 +3,8 @@ import logging
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.aws.config import get_config
 from swo_aws_extension.aws.errors import AWSError
+from swo_aws_extension.config import get_config
 from swo_aws_extension.constants import (
     OrderProcessingTemplateEnum,
     PhasesEnum,

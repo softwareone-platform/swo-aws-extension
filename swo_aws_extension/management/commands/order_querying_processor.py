@@ -1,6 +1,6 @@
 from mpt_extension_sdk.core.utils import setup_client
 
-from swo_aws_extension.aws.config import Config
+from swo_aws_extension.config import Config
 from swo_aws_extension.flows.jobs.query_order_processor import process_query_orders
 from swo_aws_extension.management.commands_helpers import StyledPrintCommand
 

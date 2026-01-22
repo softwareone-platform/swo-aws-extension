@@ -76,11 +76,6 @@ class Config:
         return settings.EXTENSION_CONFIG["APN_ACCOUNT_ID"]
 
     @property
-    def onboard_customer_role_name(self) -> str:
-        """Get the Onboard Customer role name."""
-        return settings.EXTENSION_CONFIG.get("ONBOARD_CUSTOMER_ROLE")
-
-    @property
     def management_role_name(self) -> str:
         """Get the Management role name."""
         return settings.EXTENSION_CONFIG.get("MANAGEMENT_ROLE")
@@ -89,6 +84,36 @@ class Config:
     def querying_timeout_days(self) -> int:
         """Get the timeout for channel handshake in days."""
         return settings.EXTENSION_CONFIG["QUERYING_TIMEOUT_DAYS"]
+
+    @property
+    def cloud_orchestrator_api_base_url(self) -> str:
+        """Get the base URL for the Cloud Orchestrator API."""
+        return settings.EXTENSION_CONFIG["CLOUD_ORCHESTRATOR_API_BASE_URL"]
+
+    @property
+    def crm_api_base_url(self) -> str:
+        """Get the base URL for the CRM API."""
+        return settings.EXTENSION_CONFIG["CRM_API_BASE_URL"]
+
+    @property
+    def crm_oauth_url(self) -> str:
+        """Get the OAuth URL for the CRM API."""
+        return settings.EXTENSION_CONFIG["CRM_OAUTH_URL"]
+
+    @property
+    def crm_client_id(self) -> str:
+        """Get the client ID for the CRM API."""
+        return settings.EXTENSION_CONFIG["CRM_CLIENT_ID"]
+
+    @property
+    def crm_client_secret(self) -> str:
+        """Get the client secret for the CRM API."""
+        return settings.EXTENSION_CONFIG["CRM_CLIENT_SECRET"]
+
+    @property
+    def crm_audience(self) -> str:
+        """Get the audience for the CRM API."""
+        return settings.EXTENSION_CONFIG["CRM_AUDIENCE"]
 
     def _patch_path(self, file_path):
         """Fixes relative paths to be from the project root."""

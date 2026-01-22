@@ -7,8 +7,8 @@ from mpt_extension_sdk.mpt_http.mpt import get_agreements_by_query
 from swo_aws_extension.airtable.finops_table import FinOpsEntitlementsTable
 from swo_aws_extension.airtable.models import FinOpsRecord
 from swo_aws_extension.aws.client import MINIMUM_DAYS_MONTH, AWSClient
-from swo_aws_extension.aws.config import Config
 from swo_aws_extension.aws.errors import AWSError
+from swo_aws_extension.config import Config
 from swo_aws_extension.constants import FinOpsStatusEnum
 from swo_aws_extension.notifications import TeamsNotificationManager
 from swo_aws_extension.swo.finops.client import get_ffc_client

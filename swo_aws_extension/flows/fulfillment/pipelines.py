@@ -5,7 +5,7 @@ import traceback
 from mpt_extension_sdk.flows.context import Context
 from mpt_extension_sdk.flows.pipeline import Pipeline
 
-from swo_aws_extension.aws.config import Config
+from swo_aws_extension.config import Config
 from swo_aws_extension.flows.steps.check_billing_transfer_invitation import (
     CheckBillingTransferInvitation,
 )

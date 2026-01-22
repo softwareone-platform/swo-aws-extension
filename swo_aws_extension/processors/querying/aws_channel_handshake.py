@@ -6,7 +6,7 @@ from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.aws.config import Config
+from swo_aws_extension.config import Config
 from swo_aws_extension.constants import (
     ChannelHandshakeStatusEnum,
     OrderProcessingTemplateEnum,

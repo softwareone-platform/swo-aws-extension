@@ -6,7 +6,7 @@ import requests
 from django.conf import settings
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
-from swo_aws_extension.aws.config import Config
+from swo_aws_extension.config import Config
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.processors.processor import ProcessorChain
 from swo_aws_extension.processors.querying.aws_billing_transfer_invitation import (
