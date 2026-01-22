@@ -1,6 +1,5 @@
 import copy
 import datetime as dt
-from http import HTTPStatus
 
 import jwt
 import pytest
@@ -9,7 +8,7 @@ from django.test import override_settings
 from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.aws.config import get_config
+from swo_aws_extension.config import get_config
 from swo_aws_extension.constants import (
     AccountTypesEnum,
     FulfillmentParametersEnum,
@@ -221,10 +220,11 @@ def force_test_settings():
 
 
 @pytest.fixture
-def aws_client_factory(mocker, settings, requests_mocker):
+def aws_client_factory(mocker, settings):
     def factory(config, mpa_account_id, role_name):
-        requests_mocker.post(
-            config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=HTTPStatus.OK
+        mocker.patch(
+            "swo_aws_extension.aws.client.OpenIDClient.fetch_access_token",
+            return_value="test_access_token",
         )
 
         mock_boto3_client = mocker.patch("boto3.client")
@@ -235,11 +235,6 @@ def aws_client_factory(mocker, settings, requests_mocker):
             "SessionToken": "test_session_token",
         }
         mock_client.assume_role_with_web_identity.return_value = {"Credentials": credentials}
-        mocker.patch.object(
-            CCPClient,
-            "get_secret_from_key_vault",
-            return_value="client_secret",
-        )
         return AWSClient(config, mpa_account_id, role_name), mock_client
 
     return factory
@@ -290,15 +285,10 @@ def buyer_factory():
 
 
 @pytest.fixture
-def ccp_client(mocker, config, mock_key_vault_secret_value):
+def ccp_client(mocker, config):
     mocker.patch(
-        "swo_aws_extension.swo.ccp.client.get_openid_token",
-        return_value={"access_token": "test_access_token"},
-    )
-    mocker.patch.object(
-        CCPClient,
-        "get_secret_from_key_vault",
-        return_value=mock_key_vault_secret_value,
+        "swo_aws_extension.swo.ccp.client.OpenIDClient.fetch_access_token",
+        return_value="test_access_token",
     )
     return CCPClient(config)
 
@@ -306,12 +296,11 @@ def ccp_client(mocker, config, mock_key_vault_secret_value):
 @pytest.fixture
 def ccp_client_no_secret(mocker, config):
     mocker.patch(
-        "swo_aws_extension.swo.ccp.client.get_openid_token",
-        return_value={"access_token": "test_access_token"},
+        "swo_aws_extension.swo.ccp.client.OpenIDClient.fetch_access_token",
+        return_value="test_access_token",
     )
-    mocker.patch.object(
-        CCPClient,
-        "get_secret_from_key_vault",
+    mocker.patch(
+        "swo_aws_extension.swo.ccp.client.KeyVaultManager.get_secret",
         return_value=None,
     )
     return CCPClient(config)

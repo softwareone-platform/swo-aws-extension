@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from swo_aws_extension.aws.config import Config, get_config
+from swo_aws_extension.config import Config, get_config
 
 
 def test_ccp_client_id(settings):

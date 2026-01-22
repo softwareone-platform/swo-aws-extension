@@ -4,7 +4,7 @@ from typing import override
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_agreement
 
-from swo_aws_extension.aws.config import Config
+from swo_aws_extension.config import Config
 from swo_aws_extension.constants import OrderCompletedTemplate, PhasesEnum
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.order_utils import switch_order_status_to_complete_and_notify

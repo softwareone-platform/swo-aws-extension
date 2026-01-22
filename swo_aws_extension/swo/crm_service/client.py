@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 
 import requests
 
+from swo_aws_extension.config import Config, get_config
 from swo_aws_extension.constants import (
     CRM_EXTERNAL_EMAIL,
     CRM_EXTERNAL_USERNAME,
@@ -15,8 +16,7 @@ from swo_aws_extension.constants import (
     CRM_SERVICE_TYPE,
     CRM_SUB_SERVICE,
 )
-from swo_aws_extension.openid import get_openid_token
-from swo_aws_extension.swo.crm_service.config import CRMConfig
+from swo_aws_extension.swo.auth import get_auth_token
 from swo_aws_extension.swo.crm_service.errors import (
     CRMHttpError,
     CRMNotFoundError,
@@ -75,15 +75,15 @@ class ServiceRequest:
 class CRMServiceClient(requests.Session):
     """Client to interact with CRM system."""
 
-    def __init__(self, config: CRMConfig, api_version: str = "3.0.0"):
+    def __init__(self, config: Config, api_version: str = "3.0.0"):
         super().__init__()
-        self._oauth_url = config.oauth_url
-        self._client_id = config.client_id
-        self._client_secret = config.client_secret
-        self._audience = config.audience
+        self._oauth_url = config.crm_oauth_url
+        self._client_id = config.crm_client_id
+        self._client_secret = config.crm_client_secret
+        self._audience = config.crm_audience
         self.api_version = api_version
         self._token_expiry: float | None = None
-        self.base_url = self._normalize_base_url(config.base_url)
+        self.base_url = self._normalize_base_url(config.crm_api_base_url)
 
     def request(self, method: str, url: str, *args, **kwargs):
         """Makes HTTP request with token refresh if needed."""
@@ -135,7 +135,7 @@ class CRMServiceClient(requests.Session):
 
     def _refresh_token_if_expired(self) -> None:
         if self._token_expiry is None or time.time() >= (self._token_expiry - TOKEN_EXPIRY_BUFFER):
-            token = get_openid_token(
+            token = get_auth_token(
                 endpoint=self._oauth_url,
                 client_id=self._client_id,
                 client_secret=self._client_secret,
@@ -165,7 +165,7 @@ class _CRMClientFactory:
         """Get CRM client singleton instance."""
         if cls._instance is not None:
             return cls._instance
-        config = CRMConfig.from_settings()
+        config = get_config()
         cls._instance = CRMServiceClient(
             config=config,
         )

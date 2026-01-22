@@ -36,3 +36,4 @@ data:
   EXT_APN_ROLE_NAME: {{ .Values.global.ApnRoleName | quote }}
   EXT_APN_ACCOUNT_ID: {{ .Values.global.ApnAccountId | quote }}
   EXT_QUERYING_TIMEOUT_DAYS: {{ .Values.global.QueryingTimeoutDays | quote }}
+  EXT_CLOUD_ORCHESTRATOR_API_BASE_URL: {{ .Values.global.CloudOrchestratorApiBaseUrl | quote }}

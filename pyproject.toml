@@ -111,7 +111,7 @@ per-file-ignores = [
   "tests/*.py: WPS202 WPS204 WPS210 WPS211 WPS213 WPS402 WPS231",
   "swo_aws_extension/apps.py: WPS300",
   "swo_aws_extension/aws/client.py: WPS214",
-  "swo_aws_extension/aws/config.py: WPS122 WPS121 WPS214",
+  "swo_aws_extension/config.py: WPS122 WPS121 WPS214",
   "swo_aws_extension/aws/errors.py: WPS225 WPS231 WPS238 WPS328 WPS430 WPS505",
   "swo_aws_extension/constants.py: WPS202",
   "swo_aws_extension/default.py: WPS111 WPS407",

@@ -5,8 +5,8 @@ from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.aws.config import Config
 from swo_aws_extension.aws.errors import AWSError
+from swo_aws_extension.config import Config
 from swo_aws_extension.constants import (
     CRM_TICKET_RESOLVED_STATE,
     CUSTOMER_ROLES_NOT_DEPLOYED_MESSAGE,
@@ -134,10 +134,11 @@ class CheckCustomerRoles(BasePhaseStep):
 
     def _are_customer_roles_deployed(self, context):
         try:
+            # TODO implement new method to check roles using cloud orchestration API
             AWSClient(
                 self._config,
                 get_mpa_account_id(context.order),
-                self._config.onboard_customer_role_name,
+                "",
             )
         except AWSError as error:
             logger.info("%s - Error - Customer role check failed: %s", context.order_id, error)

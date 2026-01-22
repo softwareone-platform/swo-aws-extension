@@ -191,12 +191,18 @@ EXTENSION_CONFIG = {
     "CCP_SCOPE": "ccp-scope",
     "MPT_KEY_VAULT_NAME": "mpt-key-vault",
     "CCP_KEY_VAULT_SECRET_NAME": "ccp-openid-token-secret-name",
-    "CCP_OAUTH_CREDENTIALS_SCOPE": "ccp-oauth-credentials-scope",
+    "CCP_OAUTH_CREDENTIALS_SCOPE": "ccp-openid-credentials-scope",
     "APN_ROLE_NAME": "RoleAPN",
     "APN_ACCOUNT_ID": "1234567890",
     "ONBOARD_CUSTOMER_ROLE": "OnboardCustomerRole",
     "MANAGEMENT_ROLE": "SWOExtensionManagementRole",
     "QUERYING_TIMEOUT_DAYS": 4,
+    "CLOUD_ORCHESTRATOR_API_BASE_URL": "https://cloud-orchestrator.test.com/",
+    "CRM_API_BASE_URL": "https://crm.test.com/",
+    "CRM_OAUTH_URL": "https://oauth.test.com/token",
+    "CRM_CLIENT_ID": "test-client-id",
+    "CRM_CLIENT_SECRET": "test-client-secret",
+    "CRM_AUDIENCE": "test-audience",
 }
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"
 

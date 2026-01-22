@@ -8,39 +8,17 @@ from swo_aws_extension.swo.crm_service.client import (
     ServiceRequest,
     get_service_client,
 )
-from swo_aws_extension.swo.crm_service.config import CRMConfig
 from swo_aws_extension.swo.crm_service.errors import (
     CRMHttpError,
     CRMNotFoundError,
 )
 
 BASE_URL = "https://crm.test.com/"
-OAUTH_URL = "https://oauth.test.com/token"
-CLIENT_ID = "test-client-id"
-CLIENT_SECRET = "test-client-secret"
-AUDIENCE = "test-audience"
 
 
 @pytest.fixture
-def crm_settings(settings):
-    settings.EXTENSION_CONFIG = {
-        "CRM_API_BASE_URL": BASE_URL,
-        "CRM_OAUTH_URL": OAUTH_URL,
-        "CRM_CLIENT_ID": CLIENT_ID,
-        "CRM_CLIENT_SECRET": CLIENT_SECRET,
-        "CRM_AUDIENCE": AUDIENCE,
-    }
-    return settings
-
-
-@pytest.fixture
-def crm_config(crm_settings):
-    return CRMConfig.from_settings()
-
-
-@pytest.fixture
-def crm_client(crm_config):
-    return CRMServiceClient(crm_config)
+def crm_client(config):
+    return CRMServiceClient(config)
 
 
 @pytest.fixture
@@ -49,44 +27,42 @@ def mock_crm_api(requests_mocker):
 
 
 @pytest.fixture
-def mock_openid_token(mocker):
+def mock_oauth_token(mocker):
     return mocker.patch(
-        "swo_aws_extension.swo.crm_service.client.get_openid_token",
+        "swo_aws_extension.swo.crm_service.client.get_auth_token",
         return_value={"access_token": "test-token", "expires_in": 3600},
     )
 
 
-def test_init_with_trailing_slash(crm_settings):
-    crm_settings.EXTENSION_CONFIG["CRM_API_BASE_URL"] = "https://crm.test.com/"
-    config = CRMConfig.from_settings()
+def test_init_with_trailing_slash(settings, config):
+    settings.EXTENSION_CONFIG["CRM_API_BASE_URL"] = "https://crm.test.com/"
 
     result = CRMServiceClient(config)
 
     assert result.base_url == "https://crm.test.com/"
 
 
-def test_init_without_trailing_slash(crm_settings):
-    crm_settings.EXTENSION_CONFIG["CRM_API_BASE_URL"] = "https://crm.test.com"
-    config = CRMConfig.from_settings()
+def test_init_without_trailing_slash(settings, config):
+    settings.EXTENSION_CONFIG["CRM_API_BASE_URL"] = "https://crm.test.com"
 
     result = CRMServiceClient(config)
 
     assert result.base_url == "https://crm.test.com/"
 
 
-def test_init_sets_api_version(crm_config):
-    result = CRMServiceClient(crm_config, api_version="2.0.0")
+def test_init_sets_api_version(settings, config):
+    result = CRMServiceClient(config, api_version="2.0.0")
 
     assert result.api_version == "2.0.0"
 
 
-def test_init_default_api_version(crm_config):
-    result = CRMServiceClient(crm_config)
+def test_init_default_api_version(settings, config):
+    result = CRMServiceClient(config)
 
     assert result.api_version == "3.0.0"
 
 
-def test_create_service_request_success(crm_client, mock_crm_api, mock_openid_token):
+def test_create_service_request_success(crm_client, mock_crm_api, mock_oauth_token):
     expected_response = {"id": "CS0004728"}
     mock_crm_api.add(
         responses.POST,
@@ -104,7 +80,7 @@ def test_create_service_request_success(crm_client, mock_crm_api, mock_openid_to
     assert result == expected_response
 
 
-def test_create_service_request_http_error(crm_client, mock_crm_api, mock_openid_token):
+def test_create_service_request_http_error(crm_client, mock_crm_api, mock_oauth_token):
     mock_crm_api.add(
         responses.POST,
         f"{BASE_URL}ticketing/ServiceRequests",
@@ -119,7 +95,7 @@ def test_create_service_request_http_error(crm_client, mock_crm_api, mock_openid
     assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
 
 
-def test_get_service_request_success(crm_client, mock_crm_api, mock_openid_token):
+def test_get_service_request_success(crm_client, mock_crm_api, mock_oauth_token):
     expected_response = {"id": "CS0004728", "status": "Open"}
     mock_crm_api.add(
         responses.GET,
@@ -133,7 +109,7 @@ def test_get_service_request_success(crm_client, mock_crm_api, mock_openid_token
     assert result == expected_response
 
 
-def test_get_service_request_not_found(crm_client, mock_crm_api, mock_openid_token):
+def test_get_service_request_not_found(crm_client, mock_crm_api, mock_oauth_token):
     mock_crm_api.add(
         responses.GET,
         f"{BASE_URL}ticketing/ServiceRequests/CS0004728",
@@ -145,7 +121,7 @@ def test_get_service_request_not_found(crm_client, mock_crm_api, mock_openid_tok
         crm_client.get_service_request("ORD-001", "CS0004728")
 
 
-def test_get_service_request_http_error(crm_client, mock_crm_api, mock_openid_token):
+def test_get_service_request_http_error(crm_client, mock_crm_api, mock_oauth_token):
     mock_crm_api.add(
         responses.GET,
         f"{BASE_URL}ticketing/ServiceRequests/CS0004728",
@@ -159,7 +135,7 @@ def test_get_service_request_http_error(crm_client, mock_crm_api, mock_openid_to
     assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
 
 
-def test_token_refreshed_on_first_request(crm_client, mock_crm_api, mock_openid_token):
+def test_token_refreshed_on_first_request(crm_client, mock_crm_api, mock_oauth_token):
     mock_crm_api.add(
         responses.GET,
         f"{BASE_URL}ticketing/ServiceRequests/CS001",
@@ -172,7 +148,7 @@ def test_token_refreshed_on_first_request(crm_client, mock_crm_api, mock_openid_
     assert "Authorization" in crm_client.headers
 
 
-def test_authorization_header_is_set(crm_client, mock_crm_api, mock_openid_token):
+def test_authorization_header_is_set(crm_client, mock_crm_api, mock_oauth_token):
     mock_crm_api.add(
         responses.GET,
         f"{BASE_URL}ticketing/ServiceRequests/CS001",
@@ -185,7 +161,7 @@ def test_authorization_header_is_set(crm_client, mock_crm_api, mock_openid_token
     assert crm_client.headers["Authorization"] == "Bearer test-token"
 
 
-def test_api_version_header_is_set(crm_client, mock_crm_api, mock_openid_token):
+def test_api_version_header_is_set(crm_client, mock_crm_api, mock_oauth_token):
     mock_crm_api.add(
         responses.GET,
         f"{BASE_URL}ticketing/ServiceRequests/CS001",
@@ -198,7 +174,7 @@ def test_api_version_header_is_set(crm_client, mock_crm_api, mock_openid_token):
     assert crm_client.headers["x-api-version"] == "3.0.0"
 
 
-def test_token_not_refreshed_when_valid(crm_client, mock_crm_api, mock_openid_token):
+def test_token_not_refreshed_when_valid(crm_client, mock_crm_api, mock_oauth_token):
     mock_crm_api.add(
         responses.GET,
         f"{BASE_URL}ticketing/ServiceRequests/CS001",
@@ -215,17 +191,10 @@ def test_token_not_refreshed_when_valid(crm_client, mock_crm_api, mock_openid_to
 
     crm_client.get_service_request("ORD-001", "CS002")  # act
 
-    mock_openid_token.assert_called_once()
+    mock_oauth_token.assert_called_once()
 
 
-def test_get_service_client_singleton(mocker, settings):
-    settings.EXTENSION_CONFIG = {
-        "CRM_API_BASE_URL": BASE_URL,
-        "CRM_OAUTH_URL": OAUTH_URL,
-        "CRM_CLIENT_ID": CLIENT_ID,
-        "CRM_CLIENT_SECRET": CLIENT_SECRET,
-        "CRM_AUDIENCE": AUDIENCE,
-    }
+def test_get_service_client_singleton(mocker):
     mocker.patch(
         "swo_aws_extension.swo.crm_service.client._CRMClientFactory._instance",
         None,
@@ -263,7 +232,7 @@ def test_service_request_default_values():
     assert "serviceType" in result
 
 
-def test_request_with_empty_url(crm_client, mock_crm_api, mock_openid_token):
+def test_request_with_empty_url(crm_client, mock_crm_api, mock_oauth_token):
     mock_crm_api.add(
         responses.GET,
         BASE_URL,

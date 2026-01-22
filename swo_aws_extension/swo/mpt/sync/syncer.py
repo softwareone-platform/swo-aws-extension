@@ -11,7 +11,7 @@ from mpt_extension_sdk.mpt_http.mpt import (
 from mpt_extension_sdk.mpt_http.wrap_http_error import wrap_mpt_http_error
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.aws.config import get_config
+from swo_aws_extension.config import get_config
 from swo_aws_extension.constants import (
     FulfillmentParametersEnum,
     ParamPhasesEnum,
