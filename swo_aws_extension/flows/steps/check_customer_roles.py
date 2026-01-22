@@ -8,9 +8,6 @@ from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.config import Config
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import (
-    CRM_DEPLOY_ROLES_ADDITIONAL_INFO,
-    CRM_DEPLOY_ROLES_SUMMARY,
-    CRM_DEPLOY_ROLES_TITLE,
     CRM_TICKET_RESOLVED_STATE,
     CUSTOMER_ROLES_NOT_DEPLOYED_MESSAGE,
     CustomerRolesDeployed,
@@ -19,6 +16,7 @@ from swo_aws_extension.constants import (
 )
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
+from swo_aws_extension.flows.steps.crm_tickets.templates.deploy_roles import DEPLOY_ROLES_TEMPLATE
 from swo_aws_extension.flows.steps.errors import QueryStepError, SkipStepError, UnexpectedStopError
 from swo_aws_extension.parameters import (
     get_crm_customer_role_ticket_id,
@@ -79,8 +77,8 @@ class CheckCustomerRoles(BasePhaseStep):
         crm_client = get_service_client()
         contact = get_formatted_technical_contact(context.order)
         service_request = ServiceRequest(
-            additional_info=CRM_DEPLOY_ROLES_ADDITIONAL_INFO,
-            summary=CRM_DEPLOY_ROLES_SUMMARY.format(
+            additional_info=DEPLOY_ROLES_TEMPLATE.additional_info,
+            summary=DEPLOY_ROLES_TEMPLATE.summary.format(
                 customer_name=context.buyer.get("name"),
                 buyer_id=context.buyer.get("id"),
                 buyer_external_id=context.buyer.get("externalIds", {}).get("erpCustomer", ""),
@@ -90,7 +88,7 @@ class CheckCustomerRoles(BasePhaseStep):
                 technical_contact_email=contact["email"],
                 technical_contact_phone=contact["phone"],
             ),
-            title=CRM_DEPLOY_ROLES_TITLE,
+            title=DEPLOY_ROLES_TEMPLATE.title,
         )
         try:
             response = crm_client.create_service_request(context.order_id, service_request)

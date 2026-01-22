@@ -2,9 +2,6 @@ import pytest
 
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import (
-    CRM_DEPLOY_ROLES_ADDITIONAL_INFO,
-    CRM_DEPLOY_ROLES_SUMMARY,
-    CRM_DEPLOY_ROLES_TITLE,
     CRM_TICKET_RESOLVED_STATE,
     CustomerRolesDeployed,
     FulfillmentParametersEnum,
@@ -12,6 +9,7 @@ from swo_aws_extension.constants import (
 )
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.check_customer_roles import CheckCustomerRoles
+from swo_aws_extension.flows.steps.crm_tickets.templates.deploy_roles import DEPLOY_ROLES_TEMPLATE
 from swo_aws_extension.flows.steps.errors import (
     QueryStepError,
     SkipStepError,
@@ -112,8 +110,8 @@ def test_process_creates_ticket_when_not_deployed(
 
     contact = get_formatted_technical_contact(context.order)
     expected_service_request = ServiceRequest(
-        additional_info=CRM_DEPLOY_ROLES_ADDITIONAL_INFO,
-        summary=CRM_DEPLOY_ROLES_SUMMARY.format(
+        additional_info=DEPLOY_ROLES_TEMPLATE.additional_info,
+        summary=DEPLOY_ROLES_TEMPLATE.summary.format(
             customer_name=context.buyer.get("name"),
             buyer_id=context.buyer.get("id"),
             buyer_external_id=context.buyer.get("externalIds", {}).get("erpCustomer", ""),
@@ -123,7 +121,7 @@ def test_process_creates_ticket_when_not_deployed(
             technical_contact_email=contact["email"],
             technical_contact_phone=contact["phone"],
         ),
-        title=CRM_DEPLOY_ROLES_TITLE,
+        title=DEPLOY_ROLES_TEMPLATE.title,
     )
     mock_crm_client.return_value.create_service_request.assert_called_once_with(
         context.order_id, expected_service_request

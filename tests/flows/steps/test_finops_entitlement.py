@@ -69,7 +69,7 @@ def test_pre_step_proceeds_with_transfer_id(
     context = InitialAWSContext(aws_client=mock_aws_client, order=order, agreement=agreement)
     step = TerminateFinOpsEntitlementStep(config)
 
-    step.pre_step(context)  # Act
+    step.pre_step(context)  # act
 
     assert context.order is not None
 
@@ -95,7 +95,7 @@ def test_process_with_no_entitlements(
     mock_finops_table.return_value.get_by_agreement_id.return_value = []
     step = TerminateFinOpsEntitlementStep(config)
 
-    step.process(mpt_client, context)  # Act
+    step.process(mpt_client, context)  # act
 
     mock_ffc_client.return_value.delete_entitlement.assert_not_called()
     mock_ffc_client.return_value.terminate_entitlement.assert_not_called()
@@ -128,7 +128,7 @@ def test_process_deletes_new_entitlement(
     }
     step = TerminateFinOpsEntitlementStep(config)
 
-    step.process(mpt_client, context)  # Act
+    step.process(mpt_client, context)  # act
 
     mock_ffc_client.return_value.delete_entitlement.assert_called_once_with("ent-123")
     mock_finops_table.return_value.update_status_and_usage_date.assert_called_once()
@@ -161,7 +161,7 @@ def test_process_terminates_active_entitlement(
     }
     step = TerminateFinOpsEntitlementStep(config)
 
-    step.process(mpt_client, context)  # Act
+    step.process(mpt_client, context)  # act
 
     mock_ffc_client.return_value.terminate_entitlement.assert_called_once_with("ent-123")
     mock_finops_table.return_value.update_status_and_usage_date.assert_called_once()
@@ -191,7 +191,7 @@ def test_process_handles_missing_entitlement(
     mock_ffc_client.return_value.get_entitlement_by_datasource.return_value = None
     step = TerminateFinOpsEntitlementStep(config)
 
-    step.process(mpt_client, context)  # Act
+    step.process(mpt_client, context)  # act
 
     mock_ffc_client.return_value.delete_entitlement.assert_not_called()
     mock_ffc_client.return_value.terminate_entitlement.assert_not_called()
@@ -224,7 +224,7 @@ def test_process_skips_unknown_status(
     }
     step = TerminateFinOpsEntitlementStep(config)
 
-    step.process(mpt_client, context)  # Act
+    step.process(mpt_client, context)  # act
 
     mock_ffc_client.return_value.delete_entitlement.assert_not_called()
     mock_ffc_client.return_value.terminate_entitlement.assert_not_called()
@@ -280,7 +280,7 @@ def test_post_step_logs_success(
     context = InitialAWSContext(aws_client=mock_aws_client, order=order, agreement=agreement)
     step = TerminateFinOpsEntitlementStep(config)
 
-    step.post_step(mpt_client, context)  # Act
+    step.post_step(mpt_client, context)  # act
 
     assert "Completed FinOps entitlement termination step" in caplog.text
 
@@ -306,6 +306,6 @@ def test_full_step_execution(
     mock_finops_table.return_value.get_by_agreement_id.return_value = []
     step = TerminateFinOpsEntitlementStep(config)
 
-    step(mpt_client, context, mock_step)  # Act
+    step(mpt_client, context, mock_step)  # act
 
     mock_step.assert_called_once_with(mpt_client, context)
