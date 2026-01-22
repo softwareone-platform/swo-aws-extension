@@ -373,6 +373,8 @@ def fulfillment_parameters_factory():
         crm_onboard_ticket_id="",
         crm_new_account_ticket_id="",
         crm_customer_role_ticket_id="",
+        crm_pls_ticket_id="",
+        crm_order_failed_ticket_id="",
         customer_roles_deployed="no",
         billing_group_arn="",
         channel_handshake_id="",
@@ -401,6 +403,14 @@ def fulfillment_parameters_factory():
             {
                 "externalId": FulfillmentParametersEnum.CRM_CUSTOMER_ROLE_TICKET_ID.value,
                 "value": crm_customer_role_ticket_id,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.CRM_PLS_TICKET_ID.value,
+                "value": crm_pls_ticket_id,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.CRM_ORDER_FAILED_TICKET_ID.value,
+                "value": crm_order_failed_ticket_id,
             },
             {
                 "externalId": FulfillmentParametersEnum.CUSTOMER_ROLES_DEPLOYED.value,
@@ -826,3 +836,8 @@ def ffc_client_settings(extension_settings):
 @pytest.fixture
 def mock_update_parameters_visibility(mocker):
     return mocker.patch("swo_aws_extension.extension.update_parameters_visibility", spec=True)
+
+
+@pytest.fixture
+def mock_crm_client(mocker):
+    return mocker.patch("swo_aws_extension.flows.steps.crm_tickets.base.get_service_client")
