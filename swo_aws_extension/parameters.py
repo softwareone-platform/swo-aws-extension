@@ -101,15 +101,6 @@ def get_support_type(source: dict[str, Any]) -> str | None:
     return ordering_param.get("value", None)
 
 
-def get_resold_support_plans(source: dict[str, Any]) -> str | None:
-    """Get the resold support plans from the ordering parameter or None if it is not set."""
-    ordering_param = get_ordering_parameter(
-        OrderParametersEnum.RESOLD_SUPPORT_PLANS.value,
-        source,
-    )
-    return ordering_param.get("value", None)
-
-
 def set_responsibility_transfer_id(order: dict[str, Any], transfer_id: str) -> dict[str, Any]:
     """Set the responsibility transfer ID on the fulfillment parameters."""
     updated_order = copy.deepcopy(order)

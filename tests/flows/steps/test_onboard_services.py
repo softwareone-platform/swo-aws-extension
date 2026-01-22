@@ -15,7 +15,6 @@ from swo_aws_extension.parameters import (
     get_formatted_technical_contact,
     get_mpa_account_id,
     get_phase,
-    get_resold_support_plans,
     get_support_type,
 )
 from swo_aws_extension.swo.crm_service.client import ServiceRequest
@@ -111,14 +110,14 @@ def test_process_creates_service_request(
         additional_info=CRM_ONBOARD_ADDITIONAL_INFO,
         summary=CRM_ONBOARD_SUMMARY.format(
             customer_name=context.buyer.get("name"),
-            buyer_external_id=context.buyer.get("id"),
+            buyer_id=context.buyer.get("id"),
+            buyer_external_id=context.buyer.get("externalIds", {}).get("erpCustomer", ""),
             order_id=context.order_id,
             master_payer_id=get_mpa_account_id(context.order),
             technical_contact_name=contact["name"],
             technical_contact_email=contact["email"],
             technical_contact_phone=contact["phone"],
             support_type=get_support_type(context.order),
-            resold_support_plans=get_resold_support_plans(context.order) or "N/A",
             supplementary_services=get_formatted_supplementary_services(context.order),
         ),
         title=CRM_ONBOARD_TITLE,

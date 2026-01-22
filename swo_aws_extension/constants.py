@@ -84,7 +84,6 @@ class ParamPhasesEnum(StrEnum):
 class OrderParametersEnum(StrEnum):
     """Ordering parameters external Ids."""
 
-    RESOLD_SUPPORT_PLANS = "resoldSupportPlans"
     SUPPORT_TYPE = "supportType"
     ACCOUNT_TYPE = "accountType"
     MASTER_PAYER_ACCOUNT_ID = "masterPayerID"
@@ -163,14 +162,6 @@ class SupportTypesEnum(StrEnum):
     AWS_RESOLD_SUPPORT = "ResoldSupport"
 
 
-class ResoldSupportPlansEnum(StrEnum):
-    """AWS type of support enum."""
-
-    ENTERPRISE_SUPPORT = "EnterpriseSupport"
-    BUSINESS_SUPPORT = "BusinessSupport"
-    CURRENT_SUPPORT = "ResoldCurrentSupport"
-
-
 class ChannelHandshakeStatusEnum(StrEnum):
     """Channel Handshake Status Enum."""
 
@@ -198,6 +189,7 @@ CRM_NEW_ACCOUNT_SUMMARY = (
     "<b>Order Details:</b><br>"
     "<ul>"
     "<li><b>Customer:</b> {customer_name}</li>"
+    "<li><b>Buyer:</b> {buyer_id}</li>"
     "<li><b>SCU:</b> {buyer_external_id}</li>"
     "<li><b>Order:</b> {order_id}</li>"
     "<li><b>New Account Name:</b> {order_account_name}</li>"
@@ -212,7 +204,6 @@ CRM_NEW_ACCOUNT_SUMMARY = (
     "<b>Support Information:</b><br>"
     "<ul>"
     "<li><b>Support Type:</b> {support_type}</li>"
-    "<li><b>AWS Resold Support Option:</b> {resold_support_plans}</li>"
     "</ul>"
     "<b>Additional Services:</b><br>"
     "<ul>"
@@ -232,6 +223,7 @@ CRM_DEPLOY_ROLES_SUMMARY = (
     "<b>Transfer Details:</b><br>"
     "<ul>"
     "<li><b>Customer:</b> {customer_name}</li>"
+    "<li><b>Buyer:</b> {buyer_id}</li>"
     "<li><b>SCU:</b> {buyer_external_id}</li>"
     "<li><b>Order:</b> {order_id}</li>"
     "<li><b>MasterPayerId:</b> {master_payer_id}</li>"
@@ -257,6 +249,7 @@ CRM_ONBOARD_SUMMARY = (
     "<b>Order Details:</b><br>"
     "<ul>"
     "<li><b>Customer:</b> {customer_name}</li>"
+    "<li><b>Buyer:</b> {buyer_id}</li>"
     "<li><b>SCU:</b> {buyer_external_id}</li>"
     "<li><b>Order:</b> {order_id}</li>"
     "<li><b>MasterPayerId:</b> {master_payer_id}</li>"
@@ -270,7 +263,6 @@ CRM_ONBOARD_SUMMARY = (
     "<b>Support Information:</b><br>"
     "<ul>"
     "<li><b>Support Type:</b> {support_type}</li>"
-    "<li><b>AWS Resold Support Option:</b> {resold_support_plans}</li>"
     "</ul>"
     "<b>Additional Services:</b><br>"
     "<ul>"
