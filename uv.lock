@@ -1817,7 +1817,7 @@ requires-dist = [
     { name = "jinja2", specifier = "==3.1.*" },
     { name = "markdown-it-py", specifier = "==3.0.*" },
     { name = "mpt-extension-sdk", specifier = "==5.17.*" },
-    { name = "opentelemetry-instrumentation-botocore", specifier = "==0.60b0" },
+    { name = "opentelemetry-instrumentation-botocore", specifier = "==0.60.*" },
     { name = "pyairtable", specifier = "==2.3.*" },
     { name = "pymsteams", specifier = "==0.2.*" },
     { name = "requests", specifier = "==2.32.*" },
