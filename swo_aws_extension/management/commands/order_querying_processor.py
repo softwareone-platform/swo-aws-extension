@@ -1,7 +1,7 @@
 from mpt_extension_sdk.core.utils import setup_client
 
 from swo_aws_extension.aws.config import Config
-from swo_aws_extension.flows.jobs.process_aws_invitations import AWSInvitationsProcessor
+from swo_aws_extension.flows.jobs.query_order_processor import process_query_orders
 from swo_aws_extension.management.commands_helpers import StyledPrintCommand
 
 config = Config()
@@ -17,6 +17,5 @@ class Command(StyledPrintCommand):
         """Run command."""
         self.info(f"Start processing {self.name}")
         mpt_client = setup_client()
-        aws_processor = AWSInvitationsProcessor(mpt_client, config)
-        aws_processor.process_aws_invitations()
+        process_query_orders(mpt_client, config)
         self.success(f"Processing {self.name} completed.")
