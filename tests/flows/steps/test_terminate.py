@@ -54,7 +54,7 @@ def test_pre_step_proceeds_with_transfer_id(
     context = InitialAWSContext(aws_client=mock_aws_client, order=order, agreement=agreement)
     step = TerminateResponsibilityTransferStep(config)
 
-    step.pre_step(context)  # Act
+    step.pre_step(context)  # act
 
     assert context.order is not None
 
@@ -81,7 +81,7 @@ def test_process_terminates_accepted_transfer(
     }
     step = TerminateResponsibilityTransferStep(config)
 
-    step.process(mpt_client, context)  # Act
+    step.process(mpt_client, context)  # act
 
     expected_end = _get_end_of_month(JUNE_YEAR, 7)
     mock_aws_client.terminate_responsibility_transfer.assert_called_once_with(
@@ -115,7 +115,7 @@ def test_process_success_december(
     }
     step = TerminateResponsibilityTransferStep(config)
 
-    step.process(mpt_client, context)  # Act
+    step.process(mpt_client, context)  # act
 
     expected_end = _get_end_of_month(DECEMBER_YEAR, 1)
     mock_aws_client.terminate_responsibility_transfer.assert_called_once_with(
@@ -149,7 +149,7 @@ def test_process_skips_non_accepted_transfer(
     }
     step = TerminateResponsibilityTransferStep(config)
 
-    step.process(mpt_client, context)  # Act
+    step.process(mpt_client, context)  # act
 
     mock_aws_client.terminate_responsibility_transfer.assert_not_called()
     mock_aws_client.delete_billing_group.assert_not_called()
@@ -180,7 +180,7 @@ def test_process_delete_billing_group_error(
     mock_aws_client.delete_billing_group.side_effect = AWSError("Billing group deletion failed")
     step = TerminateResponsibilityTransferStep(config)
 
-    step.process(mpt_client, context)  # Act
+    step.process(mpt_client, context)  # act
 
     mock_aws_client.terminate_responsibility_transfer.assert_called_once()
     mock_aws_client.delete_billing_group.assert_called_once_with(
@@ -237,7 +237,7 @@ def test_post_step_logs_success(
     context = InitialAWSContext(aws_client=mock_aws_client, order=order, agreement=agreement)
     step = TerminateResponsibilityTransferStep(config)
 
-    step.post_step(mpt_client, context)  # Act
+    step.post_step(mpt_client, context)  # act
 
     assert "responsibility transfer completed successfully" in caplog.text
 
@@ -264,7 +264,7 @@ def test_full_step_execution(
     }
     step = TerminateResponsibilityTransferStep(config)
 
-    step(mpt_client, context, mock_step)  # Act
+    step(mpt_client, context, mock_step)  # act
 
     mock_aws_client.terminate_responsibility_transfer.assert_called_once()
     mock_step.assert_called_once_with(mpt_client, context)

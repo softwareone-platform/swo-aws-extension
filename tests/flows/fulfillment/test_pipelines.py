@@ -8,6 +8,7 @@ from swo_aws_extension.flows.fulfillment import pipelines
 def test_purchase_new_steps():
     expected_step_classes = [
         "SetupContext",
+        "CRMTicketNewAccount",
         "CreateNewAWSEnvironment",
         "CreateBillingTransferInvitation",
         "CheckBillingTransferInvitation",
@@ -15,8 +16,11 @@ def test_purchase_new_steps():
         "CreateChannelHandshake",
         "CheckChannelHandshakeStatus",
         "CheckCustomerRoles",
+        "CRMTicketOrderFail",
         "OnboardServices",
         "CreateSubscription",
+        "CRMTicketPLS",
+        "CRMTicketOnboardServices",
         "CompleteOrder",
     ]
 
@@ -34,8 +38,11 @@ def test_purchase_existing_steps():
         "CreateChannelHandshake",
         "CheckChannelHandshakeStatus",
         "CheckCustomerRoles",
+        "CRMTicketOrderFail",
         "OnboardServices",
         "CreateSubscription",
+        "CRMTicketPLS",
+        "CRMTicketOnboardServices",
         "CompleteOrder",
     ]
 
