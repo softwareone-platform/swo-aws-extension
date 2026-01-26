@@ -83,7 +83,7 @@ class Config:
     @property
     def querying_timeout_days(self) -> int:
         """Get the timeout for channel handshake in days."""
-        return settings.EXTENSION_CONFIG["QUERYING_TIMEOUT_DAYS"]
+        return int(settings.EXTENSION_CONFIG["QUERYING_TIMEOUT_DAYS"])
 
     @property
     def cloud_orchestrator_api_base_url(self) -> str:
