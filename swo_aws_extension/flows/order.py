@@ -24,6 +24,7 @@ class InitialAWSContext(BaseContext):
     buyer: dict | None = None
     subscriptions: list[dict] | None = None
     order_authorization: dict | None = None
+    bootstrap_roles_status: dict | None = None
 
     @property
     def pm_account_id(self):
