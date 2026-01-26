@@ -1,9 +1,19 @@
 import datetime as dt
 
 import pytest
+from botocore.exceptions import ClientError
 
 from swo_aws_extension.aws.client import get_paged_response
-from swo_aws_extension.aws.errors import AWSError
+from swo_aws_extension.aws.errors import (
+    AWSError,
+    InvalidDateInTerminateResponsibilityError,
+)
+
+
+# InvalidInputException is the name given by AWS boto3 to the error we are testing:
+# see more: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/organizations/client/terminate_responsibility_transfer.html#
+class InvalidInputException(ClientError):  # noqa: N818
+    """Dummy exception for testing purposes."""
 
 
 @pytest.fixture
@@ -101,14 +111,40 @@ def test_terminate_transfer_error(config, aws_client_factory):
     mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     transfer_id = "rt-invalid"
     end_timestamp = dt.datetime(2025, 12, 31, 23, 59, 59, tzinfo=dt.UTC)
-    mock_client.terminate_responsibility_transfer.side_effect = AWSError("Transfer not found")
+    mock_client.exceptions.InvalidInputException = InvalidInputException
+    mock_client.terminate_responsibility_transfer.side_effect = InvalidInputException(
+        {
+            "Error": {"Code": "InvalidInputException", "Message": "Invalid input"},
+            "Reason": "SOME_REASON",
+            "Message": "Some Message",
+        },
+        "TerminateResponsibilityTransfer",
+    )
 
-    with pytest.raises(AWSError, match="Transfer not found"):
+    with pytest.raises(AWSError):
         mock_aws_client.terminate_responsibility_transfer(transfer_id, end_timestamp)
 
     mock_client.terminate_responsibility_transfer.assert_called_once_with(
         Id=transfer_id, EndTimestamp=end_timestamp
     )
+
+
+def test_terminate_transfer_invalid_date_error(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.exceptions.InvalidInputException = InvalidInputException
+    transfer_id = "rt-transfer"
+    end_timestamp = dt.datetime(2025, 12, 1, tzinfo=dt.UTC)
+    mock_client.terminate_responsibility_transfer.side_effect = InvalidInputException(
+        {
+            "Error": {"Code": "InvalidInputException", "Message": "Invalid date"},
+            "Reason": "INVALID_END_DATE",
+            "Message": "Invalid date",
+        },
+        "TerminateResponsibilityTransfer",
+    )
+
+    with pytest.raises(InvalidDateInTerminateResponsibilityError):
+        mock_aws_client.terminate_responsibility_transfer(transfer_id, end_timestamp)
 
 
 def test_get_paged_response_success(mocker):
