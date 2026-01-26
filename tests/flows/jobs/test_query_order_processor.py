@@ -5,7 +5,7 @@ import pytest
 import requests
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
-from swo_aws_extension.aws.config import Config
+from swo_aws_extension.config import Config
 from swo_aws_extension.flows.jobs.query_order_processor import (
     PurchaseOrderQueryService,
     process_query_orders,

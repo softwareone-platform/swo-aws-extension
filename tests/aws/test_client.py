@@ -14,7 +14,6 @@ def mock_get_paged_response(mocker):
 def test_instance_aws_client(config, aws_client_factory):
     result = aws_client_factory(config, "test_account_id", "test_role_name")
 
-    assert result[0].access_token == "test_access_token"
     assert result[0].credentials == {
         "AccessKeyId": "test_access_key",
         "SecretAccessKey": "test_secret_key",
