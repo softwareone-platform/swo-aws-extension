@@ -3,10 +3,10 @@ import datetime as dt
 import pytest
 from freezegun import freeze_time
 
-from swo_aws_extension.aws.errors import AWSError
+from swo_aws_extension.aws.errors import AWSError, InvalidDateInTerminateResponsibilityError
 from swo_aws_extension.constants import ResponsibilityTransferStatus
 from swo_aws_extension.flows.order import InitialAWSContext
-from swo_aws_extension.flows.steps.errors import SkipStepError, UnexpectedStopError
+from swo_aws_extension.flows.steps.errors import FailStepError, SkipStepError, UnexpectedStopError
 from swo_aws_extension.flows.steps.terminate import TerminateResponsibilityTransferStep
 
 JUNE_YEAR = 2025
@@ -216,6 +216,37 @@ def test_process_exception_handling(
 
     assert "Terminate responsibility transfer" in exc_info.value.title
     assert "unhandled exception while terminating responsibility transfer" in exc_info.value.message
+
+
+@freeze_time("2025-06-15")
+def test_process_wrong_date(
+    order_factory,
+    fulfillment_parameters_factory,
+    config,
+    mock_aws_client,
+    agreement_factory,
+    mpt_client,
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="rt-8lr3q6sn",
+        )
+    )
+    agreement = agreement_factory()
+    context = InitialAWSContext(aws_client=mock_aws_client, order=order, agreement=agreement)
+    mock_aws_client.get_responsibility_transfer_details.return_value = {
+        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
+    }
+    mock_aws_client.terminate_responsibility_transfer.side_effect = (
+        InvalidDateInTerminateResponsibilityError(
+            "Invalid date provided for termination",
+            dt.datetime.now(tz=dt.UTC),
+        )
+    )
+    step = TerminateResponsibilityTransferStep(config)
+
+    with pytest.raises(FailStepError):
+        step.process(mpt_client, context)  # act
 
 
 @freeze_time("2025-06-15")

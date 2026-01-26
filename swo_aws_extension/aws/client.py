@@ -6,6 +6,7 @@ import boto3
 
 from swo_aws_extension.aws.errors import (
     AWSError,
+    InvalidDateInTerminateResponsibilityError,
     wrap_boto3_error,
 )
 from swo_aws_extension.config import Config
@@ -89,9 +90,19 @@ class AWSClient:
         self, transfer_id: str, end_timestamp: dt.datetime
     ) -> dict:
         """Terminates a responsibility transfer."""
-        return self._get_organization_client().terminate_responsibility_transfer(
-            Id=transfer_id, EndTimestamp=end_timestamp
-        )
+        client = self._get_organization_client()
+        try:
+            return client.terminate_responsibility_transfer(
+                Id=transfer_id, EndTimestamp=end_timestamp
+            )
+        except client.exceptions.InvalidInputException as exception:
+            reason = exception.response.get("Reason", "")
+            message = exception.response.get("Message", "")
+            if reason == "INVALID_END_DATE":
+                raise InvalidDateInTerminateResponsibilityError(
+                    message, end_timestamp
+                ) from exception
+            raise
 
     @wrap_boto3_error
     def invite_organization_to_transfer_billing(
