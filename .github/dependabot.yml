@@ -20,6 +20,8 @@ updates:
     ignore:
       - dependency-name: "django"
         versions: ["*"]
+      - dependency-name: "opentelemetry-instrumentation-botocore"
+        versions: ["*"]
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
