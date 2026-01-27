@@ -164,5 +164,5 @@ def test_process_invitation_status_accepted(
     processor.process_invitation(mock_context, "tr-123")  # act
 
     mock_switch.assert_called_once_with(
-        processor.client, mock_context, OrderProcessingTemplateEnum.EXISTING_ACCOUNT
+        processor.client, mock_context, OrderProcessingTemplateEnum.NEW_ACCOUNT
     )

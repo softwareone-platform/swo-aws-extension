@@ -1,4 +1,3 @@
-import datetime as dt
 import logging
 from typing import Any
 
@@ -20,6 +19,7 @@ from swo_aws_extension.parameters import (
     set_phase,
 )
 from swo_aws_extension.processors.processor import Processor
+from swo_aws_extension.processors.querying.helper import get_template_name, is_querying_timeout
 
 logger = logging.getLogger(__name__)
 
@@ -30,18 +30,6 @@ class AWSChannelHandshakeProcessor(Processor):
     def __init__(self, client: MPTClient, config: Config):
         self.client = client
         self._config = config
-
-    def is_querying_timeout(self, context: PurchaseContext) -> bool:
-        """Check if order has been in querying more than timeout limit."""
-        audit = context.order.get("audit", {})
-        querying_at = audit.get("querying", {}).get("at")
-        if not querying_at:
-            return False
-        querying_time = dt.datetime.fromisoformat(querying_at)
-        if querying_time.tzinfo is None:
-            querying_time = querying_time.replace(tzinfo=dt.UTC)
-        now = dt.datetime.now(dt.UTC)
-        return now - querying_time > dt.timedelta(days=self._config.querying_timeout_days)
 
     def can_process(self, context: PurchaseContext) -> bool:
         """Check if the order is in phase to check channel handshake status."""
@@ -78,11 +66,11 @@ class AWSChannelHandshakeProcessor(Processor):
                 handshake.get("status"),
             )
             switch_order_status_to_process_and_notify(
-                self.client, context, OrderProcessingTemplateEnum.EXISTING_ACCOUNT
+                self.client, context, get_template_name(context)
             )
             return
 
-        if self.is_querying_timeout(context):
+        if is_querying_timeout(context, self._config.querying_timeout_days):
             logger.info(
                 "%s - Handshake timeout - Channel handshake %s has status: %s.",
                 context.order_id,
@@ -94,13 +82,12 @@ class AWSChannelHandshakeProcessor(Processor):
                 context.order_id,
             )
             switch_order_status_to_process_and_notify(
-                self.client, context, OrderProcessingTemplateEnum.EXISTING_ACCOUNT
+                self.client, context, get_template_name(context)
             )
             context.order = set_phase(context.order, PhasesEnum.CHECK_CUSTOMER_ROLES)
             context.order = update_order(
                 self.client, context.order_id, parameters=context.order["parameters"]
             )
-            return
 
     def setup_apn_client(self, context: PurchaseContext):
         """Setup AWS apn client in context."""
