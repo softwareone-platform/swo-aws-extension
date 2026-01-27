@@ -4,8 +4,8 @@ from urllib.parse import urljoin
 import requests
 
 from swo_aws_extension.constants import FAILED_TO_GET_SECRET
-from swo_aws_extension.notifications import TeamsNotificationManager
 from swo_aws_extension.swo.key_vault import KeyVaultManager
+from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 from swo_aws_extension.swo.openid.client import OpenIDClient
 
 logger = logging.getLogger(__name__)

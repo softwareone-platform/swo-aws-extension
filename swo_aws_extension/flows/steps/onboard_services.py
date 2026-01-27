@@ -12,8 +12,16 @@ from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import SkipStepError
 from swo_aws_extension.parameters import (  # noqa: WPS235
+    get_formatted_supplementary_services,
+    get_formatted_technical_contact,
+    get_mpa_account_id,
     get_phase,
+    get_support_type,
     set_phase,
+)
+from swo_aws_extension.swo.notifications.email import EmailNotificationManager
+from swo_aws_extension.swo.notifications.templates.deploy_services_feature import (
+    DEPLOY_SERVICES_FEATURE_TEMPLATE,
 )
 
 logger = logging.getLogger(__name__)
@@ -36,8 +44,24 @@ class OnboardServices(BasePhaseStep):
 
     @override
     def process(self, client: MPTClient, context: PurchaseContext) -> None:
-        logger.info("%s - Intent - Onboarding services", context.order_id)
-        # TODO implement the onboarding logic here
+        logger.info("%s - Action - Onboarding services", context.order_id)
+        recipients = self._config.deploy_services_feature_recipients
+        subject = DEPLOY_SERVICES_FEATURE_TEMPLATE.subject
+        contact = get_formatted_technical_contact(context.order)
+        body = DEPLOY_SERVICES_FEATURE_TEMPLATE.body.format(
+            customer_name=context.buyer.get("name"),
+            buyer_id=context.buyer.get("id"),
+            buyer_external_id=context.buyer.get("externalIds", {}).get("erpCustomer", ""),
+            order_id=context.order_id,
+            master_payer_id=get_mpa_account_id(context.order),
+            technical_contact_name=contact["name"],
+            technical_contact_email=contact["email"],
+            technical_contact_phone=contact["phone"],
+            support_type=get_support_type(context.order),
+            supplementary_services=get_formatted_supplementary_services(context.order),
+        )
+        EmailNotificationManager(self._config).send_email(recipients, subject, body)
+        logger.info("%s - Next - Onboarding services email sent", context.order_id)
 
     @override
     def post_step(self, client: MPTClient, context: PurchaseContext) -> None:

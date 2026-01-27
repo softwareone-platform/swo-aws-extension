@@ -3,9 +3,9 @@ import time
 
 import requests
 
-from swo_aws_extension.notifications import TeamsNotificationManager
 from swo_aws_extension.swo.auth import get_auth_token
 from swo_aws_extension.swo.key_vault import KeyVaultManager
+from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 from swo_aws_extension.swo.openid.errors import (
     OpenIDHttpError,
     OpenIDSecretNotFoundError,

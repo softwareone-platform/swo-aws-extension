@@ -14,7 +14,7 @@ from mpt_extension_sdk.mpt_http.wrap_http_error import MPTError, wrap_mpt_http_e
 from swo_aws_extension.constants import MptOrderStatus
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.steps.errors import OrderStatusChangeError
-from swo_aws_extension.notifications import MPTNotificationManager
+from swo_aws_extension.swo.notifications.mpt import MPTNotificationManager
 
 logger = logging.getLogger(__name__)
 MPT_ORDER_STATUS_QUERYING = "Querying"

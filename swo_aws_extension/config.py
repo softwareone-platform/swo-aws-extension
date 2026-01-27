@@ -115,6 +115,37 @@ class Config:
         """Get the audience for the CRM API."""
         return settings.EXTENSION_CONFIG["CRM_AUDIENCE"]
 
+    @property
+    def aws_ses_access_key(self) -> str:
+        """Get the AWS SES access key."""
+        return settings.EXTENSION_CONFIG["AWS_SES_CREDENTIALS"].split(":")[0]
+
+    @property
+    def aws_ses_secret_key(self) -> str:
+        """Get the AWS SES secret key."""
+        return settings.EXTENSION_CONFIG["AWS_SES_CREDENTIALS"].split(":")[1]
+
+    @property
+    def aws_ses_region(self) -> str:
+        """Get the AWS SES region."""
+        return settings.EXTENSION_CONFIG["AWS_SES_REGION"]
+
+    @property
+    def email_notifications_enabled(self) -> bool:
+        """Check if email notifications are enabled."""
+        return bool(int(settings.EXTENSION_CONFIG.get("EMAIL_NOTIFICATIONS_ENABLED", 0)))
+
+    @property
+    def email_notifications_sender(self) -> str:
+        """Get the email notifications sender."""
+        return settings.EXTENSION_CONFIG["EMAIL_NOTIFICATIONS_SENDER"]
+
+    @property
+    def deploy_services_feature_recipients(self) -> list[str]:
+        """Get the deploy services feature recipients."""
+        recipients = settings.EXTENSION_CONFIG.get("DEPLOY_SERVICES_FEATURE_RECIPIENTS", "")
+        return [email.strip() for email in recipients.split(",") if email.strip()]
+
     def _patch_path(self, file_path):
         """Fixes relative paths to be from the project root."""
         path = Path(file_path)

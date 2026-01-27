@@ -203,6 +203,11 @@ EXTENSION_CONFIG = {
     "CRM_CLIENT_ID": "test-client-id",
     "CRM_CLIENT_SECRET": "test-client-secret",
     "CRM_AUDIENCE": "test-audience",
+    "AWS_SES_CREDENTIALS": "access_key:secret_key",
+    "AWS_SES_REGION": "us-east-1",
+    "EMAIL_NOTIFICATIONS_ENABLED": 1,
+    "EMAIL_NOTIFICATIONS_SENDER": "sender@example.com",
+    "DEPLOY_SERVICES_FEATURE_RECIPIENTS": "services@example.com",
 }
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"
 
