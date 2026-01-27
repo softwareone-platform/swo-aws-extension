@@ -13,6 +13,7 @@ from swo_aws_extension.processors.querying.aws_billing_transfer_invitation impor
     AWSBillingTransferInvitationProcessor,
 )
 from swo_aws_extension.processors.querying.aws_channel_handshake import AWSChannelHandshakeProcessor
+from swo_aws_extension.processors.querying.aws_customer_roles import AWSCustomerRolesProcessor
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 logger = logging.getLogger(__name__)
@@ -77,6 +78,7 @@ def process_query_orders(client, config):
     query_processor_chain = ProcessorChain([
         AWSBillingTransferInvitationProcessor(client),
         AWSChannelHandshakeProcessor(client, config),
+        AWSCustomerRolesProcessor(client, config),
     ])
     for context in query_service.get_orders_as_context():
         try:
