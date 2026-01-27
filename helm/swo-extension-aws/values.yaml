@@ -46,6 +46,9 @@ global:
   AzureTenantId: ""
   QueryingTimeoutDays: 4
   CloudOrchestratorApiBaseUrl: default
+  AwsSesCredentials: ZGVmYXVsdA==
+  AwsSesRegion: default
+  DeployServicesFeatureRecipients: default
 
   cronjobs:
     order-querying:

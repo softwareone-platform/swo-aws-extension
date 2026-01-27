@@ -48,25 +48,32 @@ def test_pre_step_proceeds_when_phase_matches(
     assert context.order is not None
 
 
-def test_process_logs_onboarding_intent(
+def test_process_sends_email_notification(
+    mocker,
     order_factory,
     fulfillment_parameters_factory,
+    order_parameters_factory,
     mpt_client,
-    caplog,
     purchase_context,
     config,
 ):
+    mock_email_manager = mocker.MagicMock()
+    mocker.patch(
+        "swo_aws_extension.flows.steps.onboard_services.EmailNotificationManager",
+        return_value=mock_email_manager,
+    )
     order = order_factory(
+        order_parameters=order_parameters_factory(),
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.ONBOARD_SERVICES.value,
-        )
+        ),
     )
     context = purchase_context(order)
     step = OnboardServices(config)
 
     step.process(mpt_client, context)  # act
 
-    assert "Intent - Onboarding services" in caplog.text
+    mock_email_manager.send_email.assert_called_once()
 
 
 def test_post_step_sets_create_subscription_phase(

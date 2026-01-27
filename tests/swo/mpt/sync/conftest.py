@@ -3,7 +3,7 @@ import datetime as dt
 import pytest
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.notifications import TeamsNotificationManager
+from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
 
 @pytest.fixture

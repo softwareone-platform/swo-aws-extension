@@ -22,7 +22,7 @@ from swo_aws_extension.flows.steps.errors import (
     SkipStepError,
     UnexpectedStopError,
 )
-from swo_aws_extension.notifications import TeamsNotificationManager
+from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
 logger = logging.getLogger(__name__)
 

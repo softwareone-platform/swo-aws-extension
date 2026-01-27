@@ -116,7 +116,6 @@ per-file-ignores = [
   "swo_aws_extension/constants.py: WPS202",
   "swo_aws_extension/default.py: WPS111 WPS407",
   "swo_aws_extension/management/commands_helpers/__init__.py: WPS410 WPS412",
-  "swo_aws_extension/notifications.py: WPS202 WPS213 WPS430",
   "swo_aws_extension/parameters.py: WPS204 WPS202",
   "swo_aws_extension/swo/ccp/client.py: WPS210 WPS214",
   "swo_aws_extension/flows/fulfillment/pipelines.py: WPS201",

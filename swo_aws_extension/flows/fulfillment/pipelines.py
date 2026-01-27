@@ -30,7 +30,7 @@ from swo_aws_extension.flows.steps.finops_entitlement import TerminateFinOpsEnti
 from swo_aws_extension.flows.steps.onboard_services import OnboardServices
 from swo_aws_extension.flows.steps.setup_context import SetupContext
 from swo_aws_extension.flows.steps.terminate import TerminateResponsibilityTransferStep
-from swo_aws_extension.notifications import TeamsNotificationManager
+from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
 config = Config()
 logger = logging.getLogger(__name__)

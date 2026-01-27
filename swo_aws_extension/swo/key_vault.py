@@ -8,7 +8,7 @@ from swo_aws_extension.constants import (
     CCP_SECRET_NOT_FOUND_IN_KEY_VAULT,
     FAILED_TO_SAVE_SECRET_TO_KEY_VAULT,
 )
-from swo_aws_extension.notifications import TeamsNotificationManager
+from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
 logger = logging.getLogger(__name__)
 

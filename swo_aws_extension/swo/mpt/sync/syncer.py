@@ -18,8 +18,8 @@ from swo_aws_extension.constants import (
     ResponsibilityTransferStatus,
     SubscriptionStatus,
 )
-from swo_aws_extension.notifications import TeamsNotificationManager
 from swo_aws_extension.parameters import get_responsibility_transfer_id
+from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 logger = logging.getLogger(__name__)
