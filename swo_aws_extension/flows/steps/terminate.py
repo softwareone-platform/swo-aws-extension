@@ -4,11 +4,12 @@ from typing import override
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
-from swo_aws_extension.aws.errors import AWSError
+from swo_aws_extension.aws.errors import AWSError, InvalidDateInTerminateResponsibilityError
 from swo_aws_extension.constants import ResponsibilityTransferStatus
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import (
+    FailStepError,
     SkipStepError,
     UnexpectedStopError,
 )
@@ -59,6 +60,12 @@ class TerminateResponsibilityTransferStep(BasePhaseStep):
                 responsibility_transfer_id,
                 end_timestamp=self._get_last_day_of_the_month_timestamp(),
             )
+        except InvalidDateInTerminateResponsibilityError as exception:
+            raise FailStepError(
+                f"Order failed due to invalid date in terminate responsibility agreement"
+                f" with reason: {exception.message}"
+            ) from exception
+
         except AWSError as exception:
             logger.info(
                 "%s - Failed to terminate responsibility transfer with error: %s",
