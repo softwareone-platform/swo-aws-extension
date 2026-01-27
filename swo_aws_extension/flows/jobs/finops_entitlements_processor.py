@@ -10,9 +10,9 @@ from swo_aws_extension.aws.client import MINIMUM_DAYS_MONTH, AWSClient
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.config import Config
 from swo_aws_extension.constants import FinOpsStatusEnum
-from swo_aws_extension.notifications import TeamsNotificationManager
 from swo_aws_extension.swo.finops.client import get_ffc_client
 from swo_aws_extension.swo.finops.errors import FinOpsError
+from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 logger = logging.getLogger(__name__)

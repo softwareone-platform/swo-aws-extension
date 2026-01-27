@@ -37,3 +37,8 @@ data:
   EXT_APN_ACCOUNT_ID: {{ .Values.global.ApnAccountId | quote }}
   EXT_QUERYING_TIMEOUT_DAYS: {{ .Values.global.QueryingTimeoutDays | quote }}
   EXT_CLOUD_ORCHESTRATOR_API_BASE_URL: {{ .Values.global.CloudOrchestratorApiBaseUrl | quote }}
+  EXT_AWS_SES_CREDENTIALS: {{ .Values.global.AwsSesCredentials | quote }}
+  EXT_AWS_SES_REGION: {{ .Values.global.AwsSesRegion | quote }}
+  EXT_EMAIL_NOTIFICATIONS_ENABLED: {{ .Values.global.EmailNotificationsEnabled | quote }}
+  EXT_EMAIL_NOTIFICATIONS_SENDER: {{ .Values.global.EmailNotificationsSender | quote }}
+  EXT_DEPLOY_SERVICES_FEATURE_RECIPIENTS: {{ .Values.global.DeployServicesFeatureRecipients | quote }}
