@@ -19,6 +19,9 @@ from swo_aws_extension.flows.steps.create_billing_transfer_invitation import (
 from swo_aws_extension.flows.steps.create_channel_handshake import CreateChannelHandshake
 from swo_aws_extension.flows.steps.create_new_aws_environment import CreateNewAWSEnvironment
 from swo_aws_extension.flows.steps.create_subscription import CreateSubscription
+from swo_aws_extension.flows.steps.crm_tickets.deploy_customer_roles import (
+    CRMTicketDeployCustomerRoles,
+)
 from swo_aws_extension.flows.steps.crm_tickets.new_account import CRMTicketNewAccount
 from swo_aws_extension.flows.steps.crm_tickets.onboard_services import CRMTicketOnboardServices
 from swo_aws_extension.flows.steps.crm_tickets.order_fail import CRMTicketOrderFail
@@ -64,6 +67,7 @@ purchase_new_aws_environment = Pipeline(
     ConfigureAPNProgram(config),
     CreateChannelHandshake(config),
     CheckChannelHandshakeStatus(config),
+    CRMTicketDeployCustomerRoles(config),
     CheckCustomerRoles(config),
     CRMTicketOrderFail(config),
     OnboardServices(config),
@@ -80,6 +84,7 @@ purchase_existing_aws_environment = Pipeline(
     ConfigureAPNProgram(config),
     CreateChannelHandshake(config),
     CheckChannelHandshakeStatus(config),
+    CRMTicketDeployCustomerRoles(config),
     CheckCustomerRoles(config),
     CRMTicketOrderFail(config),
     OnboardServices(config),
