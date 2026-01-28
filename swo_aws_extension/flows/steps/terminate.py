@@ -131,6 +131,8 @@ class TerminateResponsibilityTransferStep(BasePhaseStep):  # noqa: WPS214
                 context.order_id,
                 exception,
             )
+            return
+        logger.info("%s - APN relationship %s deleted", context.order_id, relationship_id)
 
     @override
     def post_step(self, client: MPTClient, context: InitialAWSContext) -> None:

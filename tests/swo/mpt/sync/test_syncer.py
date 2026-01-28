@@ -44,12 +44,12 @@ def test_agreement_syncer_sync_success(
         (
             {"vendor_id": ""},
             "Skipping - MPA not found",
-            "AgreementSyncer.get_mpa",
+            "Synchronize AWS agreement subscriptions",
         ),
         (
             {"pma_account_id": ""},
             "Skipping - PMA not found",
-            "AgreementSyncer.get_pma",
+            "Synchronize AWS agreement subscriptions",
         ),
     ],
 )
@@ -81,7 +81,7 @@ def test_agreement_syncer_sync_aws_exception(
     syncer.process(agreement)  # act
 
     mock_send_warning.assert_called_once_with(
-        "AgreementSyncer.get_accepted_transfer",
+        "Synchronize AWS agreement subscriptions",
         f"{agreement.get('id')} - Error occurred while fetching responsibility transfers",
     )
 

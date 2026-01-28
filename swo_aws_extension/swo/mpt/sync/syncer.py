@@ -127,6 +127,8 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
                 relationship_id,
                 pm_identifier,
             )
+            return
+        logger.info("%s - APN relationship %s deleted", agreement.get("id"), relationship_id)
 
     def get_accepted_transfer(
         self, agreement: AgreementType, mpa_account_id, pma_account_id
@@ -137,9 +139,7 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
         except Exception as exception:
             msg = f"{agreement.get('id')} - Error occurred while fetching responsibility transfers"
             logger.exception(msg)
-            raise AgreementProcessorError(
-                msg, "AgreementSyncer.get_accepted_transfer"
-            ) from exception
+            raise AgreementProcessorError(msg, self._operation_description) from exception
 
     def get_pma(self, agreement: AgreementType) -> str:
         """Retrieve the PMA account ID for the given agreement."""
@@ -147,7 +147,7 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
         if not pma_account_id:
             msg = f"{agreement.get('id')} - Skipping - PMA not found"
             logger.error(msg)
-            raise AgreementProcessorError(msg, "AgreementSyncer.get_pma")
+            raise AgreementProcessorError(msg, self._operation_description)
         return str(pma_account_id)
 
     def get_mpa(self, agreement: AgreementType) -> str:
@@ -156,7 +156,7 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
         if not mpa_account_id:
             msg = f"{agreement.get('id')} - Skipping - MPA not found"
             logger.error(msg)
-            raise AgreementProcessorError(msg, "AgreementSyncer.get_mpa")
+            raise AgreementProcessorError(msg, self._operation_description)
         return str(mpa_account_id)
 
     def delete_billing_group(self, agreement: AgreementType, pma_account_id: str) -> None:
@@ -263,6 +263,7 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
 
     @override
     def _process(self, agreement: AgreementType) -> None:
+        logger.info("%s - Action - Start sync agreement", agreement.get("id"))
         mpa_account_id = self.get_mpa(agreement)
         pma_account_id = self.get_pma(agreement)
 
@@ -273,6 +274,7 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
             return
 
         self.sync_responsibility_transfer_id(self.mpt_client, agreement, accepted_transfer["Id"])
+        logger.info("%s - End - Sync completed", agreement.get("id"))
 
 
 # TODO: SDK candidate
