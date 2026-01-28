@@ -153,7 +153,7 @@ def test_process_transfer_declined(
         CheckBillingTransferInvitation(config).process(mpt_client, context)
 
 
-def test_post_step_sets_phase_to_onboard_services(
+def test_post_step_sets_phase_to_configure_apn(
     mocker, order_factory, fulfillment_parameters_factory, mpt_client, config
 ):
     order = order_factory(
@@ -166,7 +166,7 @@ def test_post_step_sets_phase_to_onboard_services(
     step = CheckBillingTransferInvitation(config)
     updated_order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CHECK_CUSTOMER_ROLES.value
+            phase=PhasesEnum.CONFIGURE_APN_PROGRAM.value
         )
     )
     mocker.patch(
@@ -176,4 +176,4 @@ def test_post_step_sets_phase_to_onboard_services(
 
     step.post_step(mpt_client, context)  # act
 
-    assert get_phase(context.order) == PhasesEnum.CHECK_CUSTOMER_ROLES.value
+    assert get_phase(context.order) == PhasesEnum.CONFIGURE_APN_PROGRAM.value

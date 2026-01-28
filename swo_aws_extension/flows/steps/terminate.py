@@ -4,22 +4,27 @@ from typing import override
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
-from swo_aws_extension.aws.errors import AWSError
+from swo_aws_extension.aws.errors import AWSError, InvalidDateInTerminateResponsibilityError
 from swo_aws_extension.constants import ResponsibilityTransferStatus
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import (
+    FailStepError,
     SkipStepError,
     UnexpectedStopError,
 )
-from swo_aws_extension.parameters import get_billing_group_arn, get_responsibility_transfer_id
+from swo_aws_extension.parameters import (
+    get_billing_group_arn,
+    get_relationship_id,
+    get_responsibility_transfer_id,
+)
 
 logger = logging.getLogger(__name__)
 
 MINIMUM_DAYS_MONTH = 28
 
 
-class TerminateResponsibilityTransferStep(BasePhaseStep):
+class TerminateResponsibilityTransferStep(BasePhaseStep):  # noqa: WPS214
     """Handles the termination of responsibility transfer."""
 
     def __init__(self, config) -> None:
@@ -54,11 +59,26 @@ class TerminateResponsibilityTransferStep(BasePhaseStep):
             context.order_id,
             responsibility_transfer_id,
         )
+
+        self.terminate_relationship_transfer(context, responsibility_transfer_id)
+        self.remove_billing_group(context)
+        self.remove_relationship(context)
+
+    def terminate_relationship_transfer(
+        self, context: InitialAWSContext, responsibility_transfer_id
+    ):
+        """Terminates the responsibility transfer."""
         try:
             context.aws_client.terminate_responsibility_transfer(
                 responsibility_transfer_id,
                 end_timestamp=self._get_last_day_of_the_month_timestamp(),
             )
+        except InvalidDateInTerminateResponsibilityError as exception:
+            raise FailStepError(
+                f"Order failed due to invalid date in terminate responsibility agreement"
+                f" with reason: {exception.message}"
+            ) from exception
+
         except AWSError as exception:
             logger.info(
                 "%s - Failed to terminate responsibility transfer with error: %s",
@@ -73,6 +93,8 @@ class TerminateResponsibilityTransferStep(BasePhaseStep):
                 ),
             ) from exception
 
+    def remove_billing_group(self, context: InitialAWSContext):
+        """Removes the billing group."""
         billing_group_arn = get_billing_group_arn(context.order)
         try:
             context.aws_client.delete_billing_group(billing_group_arn)
@@ -83,7 +105,34 @@ class TerminateResponsibilityTransferStep(BasePhaseStep):
                 exception,
             )
             return
-        logger.info("%s - Billing group %s deleted", context.order_id, billing_group_arn)
+        else:
+            logger.info("%s - Billing group %s deleted", context.order_id, billing_group_arn)
+
+    def remove_relationship(self, context: InitialAWSContext):
+        """Removes the APN relationship."""
+        relationship_id = get_relationship_id(context.order)
+        if not relationship_id:
+            logger.info("%s - No APN relationship ID found in the order", context.order_id)
+            return
+        try:
+            pm_identifier = context.aws_apn_client.get_program_management_id_by_account(
+                context.pm_account_id
+            )
+        except AWSError as exception:
+            logger.info(
+                "%s - Failed to get PMA identifier with error: %s", context.order_id, exception
+            )
+            return
+        try:
+            context.aws_apn_client.delete_pc_relationship(pm_identifier, relationship_id)
+        except AWSError as exception:
+            logger.info(
+                "%s - Failed to delete APN relationship with error: %s",
+                context.order_id,
+                exception,
+            )
+            return
+        logger.info("%s - APN relationship %s deleted", context.order_id, relationship_id)
 
     @override
     def post_step(self, client: MPTClient, context: InitialAWSContext) -> None:

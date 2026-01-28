@@ -3,7 +3,8 @@ import datetime as dt
 import pytest
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.notifications import TeamsNotificationManager
+from swo_aws_extension.swo.mpt.sync.syncer import AgreementSyncer
+from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
 
 @pytest.fixture
@@ -61,7 +62,17 @@ def mock_get_accepted_transfer_for_account(mocker):
 
 @pytest.fixture
 def mock_terminate_agreement(mocker):
-    return mocker.patch("swo_aws_extension.swo.mpt.sync.syncer.terminate_agreement", spec=True)
+    return mocker.patch(
+        "swo_aws_extension.swo.mpt.sync.syncer.AgreementSyncer.terminate_agreement", spec=True
+    )
+
+
+@pytest.fixture
+def mock_sync_responsibility_transfer_id(mocker):
+    return mocker.patch(
+        "swo_aws_extension.swo.mpt.sync.syncer.AgreementSyncer.sync_responsibility_transfer_id",
+        spec=True,
+    )
 
 
 @pytest.fixture
@@ -88,12 +99,83 @@ def responsibility_transfer_factory():
 
 
 @pytest.fixture
-def mock_sync_responsibility_transfer_id(mocker):
+def mock_update_agreement(mocker):
+    return mocker.patch("swo_aws_extension.swo.mpt.sync.syncer.update_agreement", spec=True)
+
+
+@pytest.fixture
+def mock_get_billing_group_arn(mocker):
+    return mocker.patch("swo_aws_extension.swo.mpt.sync.syncer.get_billing_group_arn")
+
+
+@pytest.fixture
+def mock_get_responsibility_transfer_id(mocker):
+    return mocker.patch("swo_aws_extension.swo.mpt.sync.syncer.get_responsibility_transfer_id")
+
+
+@pytest.fixture
+def mock_get_mpa_method(mocker):
+    return mocker.patch("swo_aws_extension.swo.mpt.sync.syncer.AgreementSyncer.get_mpa")
+
+
+@pytest.fixture
+def mock_get_accepted_transfer_method(mocker):
     return mocker.patch(
-        "swo_aws_extension.swo.mpt.sync.syncer.sync_responsibility_transfer_id", spec=True
+        "swo_aws_extension.swo.mpt.sync.syncer.AgreementSyncer.get_accepted_transfer"
     )
 
 
 @pytest.fixture
-def mock_update_agreement(mocker):
-    return mocker.patch("swo_aws_extension.swo.mpt.sync.syncer.update_agreement", spec=True)
+def mock_get_responsibility_transfers(mocker):
+    return mocker.patch(
+        "swo_aws_extension.swo.mpt.sync.syncer.get_accepted_inbound_responsibility_transfers"
+    )
+
+
+@pytest.fixture
+def mock_logger(mocker):
+    return mocker.patch("swo_aws_extension.swo.mpt.sync.syncer.logger")
+
+
+@pytest.fixture
+def syncer(mpt_client):
+    return AgreementSyncer(mpt_client, dry_run=False)
+
+
+@pytest.fixture
+def syncer_dry_run(mpt_client):
+    return AgreementSyncer(mpt_client, dry_run=True)
+
+
+@pytest.fixture
+def mock_agreement_syncer(mocker):
+    return mocker.patch("swo_aws_extension.swo.mpt.sync.syncer.AgreementSyncer", autospec=True)
+
+
+@pytest.fixture
+def mock_delete_billing_group_method(mocker):
+    return mocker.patch(
+        "swo_aws_extension.swo.mpt.sync.syncer.AgreementSyncer.delete_billing_group"
+    )
+
+
+@pytest.fixture
+def mock_sync_responsibility_transfer_id_method(mocker):
+    return mocker.patch(
+        "swo_aws_extension.swo.mpt.sync.syncer.AgreementSyncer.sync_responsibility_transfer_id"
+    )
+
+
+@pytest.fixture
+def mock_terminate_agreement_method(mocker):
+    return mocker.patch("swo_aws_extension.swo.mpt.sync.syncer.AgreementSyncer.terminate_agreement")
+
+
+@pytest.fixture
+def mock_get_relationship_id(mocker):
+    return mocker.patch("swo_aws_extension.swo.mpt.sync.syncer.get_relationship_id")
+
+
+@pytest.fixture
+def mock_remove_apn_method(mocker):
+    return mocker.patch("swo_aws_extension.swo.mpt.sync.syncer.AgreementSyncer.remove_apn")

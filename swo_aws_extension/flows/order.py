@@ -18,11 +18,13 @@ class InitialAWSContext(BaseContext):
     """AWS order processing context."""
 
     aws_client: AWSClient | None = None
+    aws_apn_client: AWSClient | None = None
     agreement: dict | None = None
     seller: dict | None = None
     buyer: dict | None = None
     subscriptions: list[dict] | None = None
     order_authorization: dict | None = None
+    bootstrap_roles_status: dict | None = None
 
     @property
     def pm_account_id(self):

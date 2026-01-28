@@ -1,6 +1,5 @@
 import copy
 import datetime as dt
-from http import HTTPStatus
 
 import jwt
 import pytest
@@ -9,12 +8,11 @@ from django.test import override_settings
 from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.aws.config import get_config
+from swo_aws_extension.config import get_config
 from swo_aws_extension.constants import (
     AccountTypesEnum,
     FulfillmentParametersEnum,
     OrderParametersEnum,
-    ResoldSupportPlansEnum,
     SupportTypesEnum,
 )
 from swo_aws_extension.swo.ccp.client import CCPClient
@@ -222,10 +220,11 @@ def force_test_settings():
 
 
 @pytest.fixture
-def aws_client_factory(mocker, settings, requests_mocker):
+def aws_client_factory(mocker, settings):
     def factory(config, mpa_account_id, role_name):
-        requests_mocker.post(
-            config.ccp_oauth_url, json={"access_token": "test_access_token"}, status=HTTPStatus.OK
+        mocker.patch(
+            "swo_aws_extension.aws.client.OpenIDClient.fetch_access_token",
+            return_value="test_access_token",
         )
 
         mock_boto3_client = mocker.patch("boto3.client")
@@ -236,11 +235,6 @@ def aws_client_factory(mocker, settings, requests_mocker):
             "SessionToken": "test_session_token",
         }
         mock_client.assume_role_with_web_identity.return_value = {"Credentials": credentials}
-        mocker.patch.object(
-            CCPClient,
-            "get_secret_from_key_vault",
-            return_value="client_secret",
-        )
         return AWSClient(config, mpa_account_id, role_name), mock_client
 
     return factory
@@ -291,15 +285,10 @@ def buyer_factory():
 
 
 @pytest.fixture
-def ccp_client(mocker, config, mock_key_vault_secret_value):
+def ccp_client(mocker, config):
     mocker.patch(
-        "swo_aws_extension.swo.ccp.client.get_openid_token",
-        return_value={"access_token": "test_access_token"},
-    )
-    mocker.patch.object(
-        CCPClient,
-        "get_secret_from_key_vault",
-        return_value=mock_key_vault_secret_value,
+        "swo_aws_extension.swo.ccp.client.OpenIDClient.fetch_access_token",
+        return_value="test_access_token",
     )
     return CCPClient(config)
 
@@ -307,12 +296,11 @@ def ccp_client(mocker, config, mock_key_vault_secret_value):
 @pytest.fixture
 def ccp_client_no_secret(mocker, config):
     mocker.patch(
-        "swo_aws_extension.swo.ccp.client.get_openid_token",
-        return_value={"access_token": "test_access_token"},
+        "swo_aws_extension.swo.ccp.client.OpenIDClient.fetch_access_token",
+        return_value="test_access_token",
     )
-    mocker.patch.object(
-        CCPClient,
-        "get_secret_from_key_vault",
+    mocker.patch(
+        "swo_aws_extension.swo.ccp.client.KeyVaultManager.get_secret",
         return_value=None,
     )
     return CCPClient(config)
@@ -374,8 +362,12 @@ def fulfillment_parameters_factory():
         crm_onboard_ticket_id="",
         crm_new_account_ticket_id="",
         crm_customer_role_ticket_id="",
+        crm_pls_ticket_id="",
+        crm_order_failed_ticket_id="",
         customer_roles_deployed="no",
         billing_group_arn="",
+        channel_handshake_id="",
+        relationship_id="",
     ):
         return [
             {
@@ -402,12 +394,28 @@ def fulfillment_parameters_factory():
                 "value": crm_customer_role_ticket_id,
             },
             {
+                "externalId": FulfillmentParametersEnum.CRM_PLS_TICKET_ID.value,
+                "value": crm_pls_ticket_id,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.CRM_ORDER_FAILED_TICKET_ID.value,
+                "value": crm_order_failed_ticket_id,
+            },
+            {
                 "externalId": FulfillmentParametersEnum.CUSTOMER_ROLES_DEPLOYED.value,
                 "value": customer_roles_deployed,
             },
             {
                 "externalId": FulfillmentParametersEnum.BILLING_GROUP_ARN.value,
                 "value": billing_group_arn,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.CHANNEL_HANDSHAKE_ID.value,
+                "value": channel_handshake_id,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.RELATIONSHIP_ID.value,
+                "value": relationship_id,
             },
         ]
 
@@ -566,7 +574,6 @@ def order_parameters_factory(dummy_constraints):
         mpa_id="651706759263",
         constraints=None,
         support_type=SupportTypesEnum.PARTNER_LED_SUPPORT.value,
-        aws_type_of_support=ResoldSupportPlansEnum.ENTERPRISE_SUPPORT.value,
     ):
         return [
             {
@@ -606,14 +613,6 @@ def order_parameters_factory(dummy_constraints):
                 "externalId": OrderParametersEnum.SUPPORT_TYPE.value,
                 "type": "choice",
                 "value": support_type,
-                "constraints": constraints.copy() if constraints else dummy_constraints.copy(),
-            },
-            {
-                "id": "PAR-1234-5682",
-                "name": "AWS type of support",
-                "externalId": OrderParametersEnum.RESOLD_SUPPORT_PLANS.value,
-                "type": "choice",
-                "value": aws_type_of_support,
                 "constraints": constraints.copy() if constraints else dummy_constraints.copy(),
             },
         ]
@@ -826,3 +825,8 @@ def ffc_client_settings(extension_settings):
 @pytest.fixture
 def mock_update_parameters_visibility(mocker):
     return mocker.patch("swo_aws_extension.extension.update_parameters_visibility", spec=True)
+
+
+@pytest.fixture
+def mock_crm_client(mocker):
+    return mocker.patch("swo_aws_extension.flows.steps.crm_tickets.base.get_service_client")

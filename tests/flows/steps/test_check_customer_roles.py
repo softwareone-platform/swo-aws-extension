@@ -1,13 +1,10 @@
 import pytest
 
-from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import (
-    CRM_DEPLOY_ROLES_ADDITIONAL_INFO,
-    CRM_DEPLOY_ROLES_SUMMARY,
-    CRM_DEPLOY_ROLES_TITLE,
-    CRM_TICKET_RESOLVED_STATE,
+    CUSTOMER_ROLES_NOT_DEPLOYED_MESSAGE,
     CustomerRolesDeployed,
     FulfillmentParametersEnum,
+    OrderQueryingTemplateEnum,
     PhasesEnum,
 )
 from swo_aws_extension.flows.order import PurchaseContext
@@ -18,26 +15,17 @@ from swo_aws_extension.flows.steps.errors import (
     UnexpectedStopError,
 )
 from swo_aws_extension.parameters import (
-    get_crm_customer_role_ticket_id,
-    get_formatted_technical_contact,
     get_fulfillment_parameter,
-    get_mpa_account_id,
     get_phase,
 )
-from swo_aws_extension.swo.crm_service.client import ServiceRequest
-from swo_aws_extension.swo.crm_service.errors import CRMError
-
-ROLE_NAME = "TestRoleName"
+from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
 
 
 @pytest.fixture
-def mock_crm_client(mocker):
-    return mocker.patch("swo_aws_extension.flows.steps.check_customer_roles.get_service_client")
-
-
-@pytest.fixture
-def mock_aws_client(mocker):
-    return mocker.patch("swo_aws_extension.flows.steps.check_customer_roles.AWSClient")
+def mock_cloud_orchestrator_client(mocker):
+    return mocker.patch(
+        "swo_aws_extension.flows.steps.check_customer_roles.CloudOrchestratorClient"
+    )
 
 
 def test_pre_step_skips_wrong_phase(order_factory, fulfillment_parameters_factory, config):
@@ -49,7 +37,7 @@ def test_pre_step_skips_wrong_phase(order_factory, fulfillment_parameters_factor
     context = PurchaseContext.from_order_data(order)
 
     with pytest.raises(SkipStepError):
-        CheckCustomerRoles(config, ROLE_NAME).pre_step(context)
+        CheckCustomerRoles(config).pre_step(context)
 
 
 def test_pre_step_proceeds_when_phase_matches(
@@ -60,7 +48,7 @@ def test_pre_step_proceeds_when_phase_matches(
     )
     context = PurchaseContext.from_order_data(order)
 
-    CheckCustomerRoles(config, ROLE_NAME).pre_step(context)  # act
+    CheckCustomerRoles(config).pre_step(context)  # act
 
     assert context.order is not None
 
@@ -70,8 +58,7 @@ def test_process_succeeds_when_roles_deployed(
     fulfillment_parameters_factory,
     config,
     mpt_client,
-    mock_aws_client,
-    caplog,
+    mock_cloud_orchestrator_client,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -79,8 +66,12 @@ def test_process_succeeds_when_roles_deployed(
         )
     )
     context = PurchaseContext.from_order_data(order)
+    mock_cloud_orchestrator_client.return_value.get_bootstrap_role_status.return_value = {
+        "deployed": True,
+        "message": "Roles are deployed",
+    }
 
-    CheckCustomerRoles(config, ROLE_NAME).process(mpt_client, context)  # act
+    CheckCustomerRoles(config).process(mpt_client, context)  # act
 
     assert (
         get_fulfillment_parameter(
@@ -90,14 +81,12 @@ def test_process_succeeds_when_roles_deployed(
     )
 
 
-def test_process_creates_ticket_when_not_deployed(
+def test_process_uses_cached_bootstrap_status(
     order_factory,
     fulfillment_parameters_factory,
     config,
     mpt_client,
-    mock_aws_client,
-    mock_crm_client,
-    buyer,
+    mock_cloud_orchestrator_client,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -105,99 +94,52 @@ def test_process_creates_ticket_when_not_deployed(
         )
     )
     context = PurchaseContext.from_order_data(order)
-    context.buyer = buyer
-    mock_aws_client.side_effect = AWSError("Role not found")
-    mock_crm_client.return_value.create_service_request.return_value = {"id": "TICKET-123"}
+    context.bootstrap_roles_status = {"deployed": True, "message": "Cached status"}
 
-    with pytest.raises(QueryStepError):
-        CheckCustomerRoles(config, ROLE_NAME).process(mpt_client, context)
+    CheckCustomerRoles(config).process(mpt_client, context)  # act
 
-    contact = get_formatted_technical_contact(context.order)
-    expected_service_request = ServiceRequest(
-        additional_info=CRM_DEPLOY_ROLES_ADDITIONAL_INFO,
-        summary=CRM_DEPLOY_ROLES_SUMMARY.format(
-            customer_name=context.buyer.get("name"),
-            buyer_external_id=context.buyer.get("id"),
-            order_id=context.order_id,
-            master_payer_id=get_mpa_account_id(context.order),
-            technical_contact_name=contact["name"],
-            technical_contact_email=contact["email"],
-            technical_contact_phone=contact["phone"],
-        ),
-        title=CRM_DEPLOY_ROLES_TITLE,
-    )
-    mock_crm_client.return_value.create_service_request.assert_called_once_with(
-        context.order_id, expected_service_request
-    )
-    assert get_crm_customer_role_ticket_id(context.order) == "TICKET-123"
+    mock_cloud_orchestrator_client.return_value.get_bootstrap_role_status.assert_not_called()
 
 
-def test_process_skips_ticket_creation_when_open(
+def test_process_query_error_when_not_deployed(
     order_factory,
     fulfillment_parameters_factory,
     config,
     mpt_client,
-    mock_aws_client,
-    mock_crm_client,
+    mock_cloud_orchestrator_client,
     caplog,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.CHECK_CUSTOMER_ROLES,
-            crm_customer_role_ticket_id="EXISTING-TICKET",
         )
     )
     context = PurchaseContext.from_order_data(order)
-    mock_aws_client.side_effect = AWSError("Role not found")
-    mock_crm_client.return_value.get_service_request.return_value = {"state": "Open"}
-
-    with pytest.raises(QueryStepError):
-        CheckCustomerRoles(config, ROLE_NAME).process(mpt_client, context)
-
-    mock_crm_client.return_value.create_service_request.assert_not_called()
-    assert "Customer role ticket EXISTING-TICKET is still open" in caplog.text
-
-
-def test_process_creates_new_ticket_when_resolved(
-    order_factory,
-    fulfillment_parameters_factory,
-    config,
-    mpt_client,
-    mock_aws_client,
-    mock_crm_client,
-    buyer,
-    caplog,
-):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CHECK_CUSTOMER_ROLES,
-            crm_customer_role_ticket_id="RESOLVED-TICKET",
-        )
-    )
-    context = PurchaseContext.from_order_data(order)
-    context.buyer = buyer
-    mock_aws_client.side_effect = AWSError("Role not found")
-    mock_crm_client.return_value.get_service_request.return_value = {
-        "state": CRM_TICKET_RESOLVED_STATE
+    mock_cloud_orchestrator_client.return_value.get_bootstrap_role_status.return_value = {
+        "deployed": False,
+        "message": "Bootstrap role not found",
     }
-    mock_crm_client.return_value.create_service_request.return_value = {"id": "NEW-TICKET"}
 
-    with pytest.raises(QueryStepError):
-        CheckCustomerRoles(config, ROLE_NAME).process(mpt_client, context)
+    with pytest.raises(QueryStepError) as exc_info:
+        CheckCustomerRoles(config).process(mpt_client, context)
 
-    assert "Ticket with id RESOLVED-TICKET is closed, creating new ticket" in caplog.text
-    mock_crm_client.return_value.create_service_request.assert_called_once()
-    assert get_crm_customer_role_ticket_id(context.order) == "NEW-TICKET"
+    assert exc_info.value.message == CUSTOMER_ROLES_NOT_DEPLOYED_MESSAGE
+    assert exc_info.value.template_id == OrderQueryingTemplateEnum.WAITING_FOR_CUSTOMER_ROLES
+    assert (
+        get_fulfillment_parameter(
+            FulfillmentParametersEnum.CUSTOMER_ROLES_DEPLOYED.value, context.order
+        )["value"]
+        == CustomerRolesDeployed.NO_DEPLOYED.value
+    )
+    assert "Customer roles are NOT deployed" in caplog.text
 
 
-def test_process_raises_error_when_crm_fails(
+def test_process_error_on_orchestrator_fails(
     order_factory,
     fulfillment_parameters_factory,
     config,
     mpt_client,
-    mock_aws_client,
-    mock_crm_client,
-    buyer,
+    mock_cloud_orchestrator_client,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -205,41 +147,14 @@ def test_process_raises_error_when_crm_fails(
         )
     )
     context = PurchaseContext.from_order_data(order)
-    context.buyer = buyer
-    mock_aws_client.side_effect = AWSError("Role not found")
-    mock_crm_client.return_value.create_service_request.side_effect = CRMError("CRM API error")
-
-    with pytest.raises(UnexpectedStopError) as error:
-        CheckCustomerRoles(config, ROLE_NAME).process(mpt_client, context)
-
-    assert "Error creating pending customer roles ticket" in error.value.title
-
-
-def test_process_logs_when_no_ticket_id(
-    order_factory,
-    fulfillment_parameters_factory,
-    config,
-    mpt_client,
-    mock_aws_client,
-    mock_crm_client,
-    buyer,
-    caplog,
-):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CHECK_CUSTOMER_ROLES,
-        )
+    mock_cloud_orchestrator_client.return_value.get_bootstrap_role_status.side_effect = (
+        CloudOrchestratorError("API error")
     )
-    context = PurchaseContext.from_order_data(order)
-    context.buyer = buyer
-    mock_aws_client.side_effect = AWSError("Role not found")
-    mock_crm_client.return_value.create_service_request.return_value = {"status": "created"}
 
-    with pytest.raises(QueryStepError):
-        CheckCustomerRoles(config, ROLE_NAME).process(mpt_client, context)
+    with pytest.raises(UnexpectedStopError) as exc_info:
+        CheckCustomerRoles(config).process(mpt_client, context)  # act
 
-    assert "No ticket ID returned from CRM" in caplog.text
-    assert not get_crm_customer_role_ticket_id(context.order)
+    assert "Error checking customer roles" in exc_info.value.title
 
 
 def test_post_step_updates_phase(
@@ -251,7 +166,6 @@ def test_post_step_updates_phase(
         )
     )
     context = PurchaseContext.from_order_data(order)
-    step = CheckCustomerRoles(config, ROLE_NAME)
     updated_order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.ONBOARD_SERVICES)
     )
@@ -260,7 +174,7 @@ def test_post_step_updates_phase(
         return_value=updated_order,
     )
 
-    step.post_step(mpt_client, context)  # act
+    CheckCustomerRoles(config).post_step(mpt_client, context)  # act
 
     assert get_phase(context.order) == PhasesEnum.ONBOARD_SERVICES
     mock_update.assert_called_once_with(

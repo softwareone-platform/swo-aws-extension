@@ -4,7 +4,7 @@ from typing import override
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
-from swo_aws_extension.aws.config import Config
+from swo_aws_extension.config import Config
 from swo_aws_extension.constants import (
     BASIC_PRICING_PLAN_ARN,
     INVALID_RESPONSIBILITY_TRANSFER_STATUS,
@@ -101,7 +101,7 @@ class CheckBillingTransferInvitation(BasePhaseStep):
     @override
     def post_step(self, client: MPTClient, context: PurchaseContext) -> None:
         """Hook to run after the step processing."""
-        context.order = set_phase(context.order, PhasesEnum.CHECK_CUSTOMER_ROLES)
+        context.order = set_phase(context.order, PhasesEnum.CONFIGURE_APN_PROGRAM)
         context.order = update_order(
             client, context.order_id, parameters=context.order["parameters"]
         )

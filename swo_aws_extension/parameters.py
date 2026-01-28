@@ -101,15 +101,6 @@ def get_support_type(source: dict[str, Any]) -> str | None:
     return ordering_param.get("value", None)
 
 
-def get_resold_support_plans(source: dict[str, Any]) -> str | None:
-    """Get the resold support plans from the ordering parameter or None if it is not set."""
-    ordering_param = get_ordering_parameter(
-        OrderParametersEnum.RESOLD_SUPPORT_PLANS.value,
-        source,
-    )
-    return ordering_param.get("value", None)
-
-
 def set_responsibility_transfer_id(order: dict[str, Any], transfer_id: str) -> dict[str, Any]:
     """Set the responsibility transfer ID on the fulfillment parameters."""
     updated_order = copy.deepcopy(order)
@@ -299,6 +290,15 @@ def set_customer_roles_deployed(order: dict, deployed: str) -> dict:
     return updated_order
 
 
+def get_customer_roles_deployed(source: dict[str, Any]) -> str | None:
+    """Get the customer roles deployed flag from the fulfillment parameter."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CUSTOMER_ROLES_DEPLOYED.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
 def get_supplementary_services(source: dict[str, Any]) -> str | None:
     """Get the supplementary services from the ordering parameter or None if it is not set."""
     ordering_param = get_ordering_parameter(
@@ -326,3 +326,94 @@ def get_billing_group_arn(source: dict[str, Any]) -> str | None:
         source,
     )
     return fulfillment_param.get("value", None)
+
+
+def get_relationship_id(source: dict[str, Any]) -> str | None:
+    """Get the relationship ID from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.RELATIONSHIP_ID.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def set_relationship_id(order: dict, relationship_id: str) -> dict[str, Any]:
+    """Set the relationship ID on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.RELATIONSHIP_ID.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = relationship_id
+    return updated_order
+
+
+def get_channel_handshake_id(source: dict[str, Any]) -> str | None:
+    """Get the channel handshake ID from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CHANNEL_HANDSHAKE_ID.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def set_channel_handshake_id(order: dict, handshake_id: str) -> dict[str, Any]:
+    """Set the channel handshake ID on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CHANNEL_HANDSHAKE_ID.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = handshake_id
+    return updated_order
+
+
+def set_channel_handshake_approved(order: dict, approved: str) -> dict[str, Any]:
+    """Set the channel handshake approved flag on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CHANNEL_HANDSHAKE_APPROVED.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = approved
+    return updated_order
+
+
+def get_crm_pls_ticket_id(source: dict[str, Any]) -> str | None:
+    """Get the CRM PLS ticket ID from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CRM_PLS_TICKET_ID.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def set_crm_pls_ticket_id(order: dict, ticket_id: str) -> dict[str, Any]:
+    """Set the CRM PLS ticket ID on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CRM_PLS_TICKET_ID,
+        updated_order,
+    )
+    fulfillment_param["value"] = ticket_id
+    return updated_order
+
+
+def get_crm_order_failed_ticket_id(source: dict[str, Any]) -> str | None:
+    """Get the CRM order fail ticket ID from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CRM_ORDER_FAILED_TICKET_ID.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def set_crm_order_failed_ticket_id(order: dict, ticket_id: str) -> dict[str, Any]:
+    """Set the CRM order failed ticket ID on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CRM_ORDER_FAILED_TICKET_ID,
+        updated_order,
+    )
+    fulfillment_param["value"] = ticket_id
+    return updated_order

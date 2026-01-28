@@ -8,19 +8,15 @@ readme = "README.md"
 license = { text = "Apache-2.0 license" }
 
 dependencies = [
-  "azure-core==1.37.*",
   "boto3==1.42.*",
   "django==4.2.*",
   "jinja2==3.1.*",
-  "markdown-it-py==3.0.*",
+  "markdown-it-py==4.0.*",
   "mpt-extension-sdk==5.17.*",
-  "openpyxl==3.1.*",
-  "phonenumbers==8.13.*",
+  "opentelemetry-instrumentation-botocore==0.60b0",  # fix version, because extension-sdk has opentelemetry-sdk==1.39.0 fixed
   "pyairtable==2.3.*",
   "pymsteams==0.2.*",
-  "regex==2024.11.*",
   "requests==2.32.*",
-  "types-openpyxl==3.1.*",
 ]
 
 [project.entry-points."swo.mpt.ext"]
@@ -30,7 +26,7 @@ app_config = "swo_aws_extension.apps:ExtensionConfig"
 dev = [
   "boto3-stubs==1.42.*",
   "botocore-stubs==1.42.*",
-  "flake8==7.3.0", # also update in pre-commit config
+  "flake8==7.3.*", # also update in pre-commit config
   "flake8-aaa==0.17.*", # also update in pre-commit config
   "flake8-pyproject==1.2.*", # also update in pre-commit config
   "freezegun==1.5.*",
@@ -40,38 +36,17 @@ dev = [
   "pre-commit==4.5.*",
   "pytest==9.0.*",
   "pytest-cov==7.0.*",
-  "pytest-deadfixtures==3.0.*",
+  "pytest-deadfixtures==3.1.*",
   "pytest-django==4.11.*",
   "pytest-mock==3.15.*",
   "pytest-randomly==4.0.*",
   "pytest-xdist==3.8.*",
   "requests-mock==1.12.*",
   "responses==0.25.*",
-  "ruff==0.14.11", # force ruff version to have same formatting everywhere
+  "ruff==0.14.14", # force ruff version to have same formatting everywhere
   "types-openpyxl==3.1.*",
   "types-requests==2.32.*",
   "wemake-python-styleguide==1.5.*",
-]
-runtime = [
-  "azure-monitor-opentelemetry-exporter==1.0.0b25",
-  "click==8.1.*",
-  "debugpy==1.8.*",
-  "gunicorn==23.0.*",
-  "opentelemetry-api==1.30.*",
-  "opentelemetry-instrumentation-django==0.51b0",
-  "opentelemetry-instrumentation-logging==0.51b0",
-  "opentelemetry-instrumentation-requests==0.51b0",
-  "opentelemetry-instrumentation-botocore==0.51b0",
-  "opentelemetry-sdk==1.30.*",
-  "pyfiglet==1.0.*",
-  "rich==14.1.*",
-  "watchfiles==0.21.*",
-]
-
-[tool.uv]
-default-groups = [
-  "dev",
-  "runtime",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -136,12 +111,11 @@ per-file-ignores = [
   "tests/*.py: WPS202 WPS204 WPS210 WPS211 WPS213 WPS402 WPS231",
   "swo_aws_extension/apps.py: WPS300",
   "swo_aws_extension/aws/client.py: WPS214",
-  "swo_aws_extension/aws/config.py: WPS122 WPS121 WPS214",
+  "swo_aws_extension/config.py: WPS122 WPS121 WPS214",
   "swo_aws_extension/aws/errors.py: WPS225 WPS231 WPS238 WPS328 WPS430 WPS505",
   "swo_aws_extension/constants.py: WPS202",
   "swo_aws_extension/default.py: WPS111 WPS407",
   "swo_aws_extension/management/commands_helpers/__init__.py: WPS410 WPS412",
-  "swo_aws_extension/notifications.py: WPS202 WPS213 WPS430",
   "swo_aws_extension/parameters.py: WPS204 WPS202",
   "swo_aws_extension/swo/ccp/client.py: WPS210 WPS214",
   "swo_aws_extension/flows/fulfillment/pipelines.py: WPS201",
@@ -149,7 +123,7 @@ per-file-ignores = [
   "swo_aws_extension/flows/order_utils.py: WPS202",
   "swo_aws_extension/swo/rql/query_builder.py: WPS110 WPS111 WPS115 WPS210 WPS211 WPS214 WPS221 WPS231 WPS237 WPS478",
   "swo_aws_extension/swo/finops/client.py: WPS231 WPS505 WPS111 WPS121 WPS122 WPS214 WPS420 WPS430 WPS432 WPS458",
-  "swo_aws_extension/swo/mpt/sync/syncer.py: WPS210 WPS213",
+  "swo_aws_extension/swo/mpt/sync/syncer.py: WPS202 WPS204 WPS210 WPS213",
   "tests/aws/test_config.py: WPS202",
   "tests/aws/test_errors.py: WPS202",
   "tests/flows/validation/test_base.py: WPS118",
@@ -270,7 +244,26 @@ convention = "google"
 known-third-party = ["swo"]
 
 [tool.mypy]
-warn_no_return = false
+# The mypy configurations: http://bit.ly/2zEl9WI
+enable_error_code = [
+  "truthy-bool",
+  "truthy-iterable",
+  "redundant-expr",
+  "unused-awaitable",
+  "ignore-without-code",
+  "possibly-undefined",
+  "redundant-self",
+  "explicit-override",
+  "mutable-override",
+  "unimported-reveal",
+  "deprecated",
+]
+exclude = ["tests"]
+exclude_gitignore = true
+ignore_missing_imports = true
+local_partial_types = true
+strict = true
+warn_unreachable = true
 
 [[tool.mypy.overrides]]
 module = "django.*"

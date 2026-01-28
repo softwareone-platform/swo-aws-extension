@@ -17,6 +17,11 @@ updates:
       prefix: "deps"
       include: "scope"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "django"
+        versions: ["*"]
+      - dependency-name: "opentelemetry-instrumentation-botocore"
+        versions: ["*"]
   - package-ecosystem: "docker"
     directory: "/"
     schedule:

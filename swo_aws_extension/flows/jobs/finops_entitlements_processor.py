@@ -7,12 +7,12 @@ from mpt_extension_sdk.mpt_http.mpt import get_agreements_by_query
 from swo_aws_extension.airtable.finops_table import FinOpsEntitlementsTable
 from swo_aws_extension.airtable.models import FinOpsRecord
 from swo_aws_extension.aws.client import MINIMUM_DAYS_MONTH, AWSClient
-from swo_aws_extension.aws.config import Config
 from swo_aws_extension.aws.errors import AWSError
-from swo_aws_extension.constants import SWO_EXTENSION_MANAGEMENT_ROLE, FinOpsStatusEnum
-from swo_aws_extension.notifications import TeamsNotificationManager
+from swo_aws_extension.config import Config
+from swo_aws_extension.constants import FinOpsStatusEnum
 from swo_aws_extension.swo.finops.client import get_ffc_client
 from swo_aws_extension.swo.finops.errors import FinOpsError
+from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 logger = logging.getLogger(__name__)
@@ -115,7 +115,7 @@ class FinOpsEntitlementsProcessor:  # noqa: WPS214
         buyer_id: str,
         finops_entitlements: list[FinOpsRecord],
     ):
-        aws_client = AWSClient(self.config, pma_account_id, SWO_EXTENSION_MANAGEMENT_ROLE)
+        aws_client = AWSClient(self.config, pma_account_id, self.config.management_role_name)
         billing_views = aws_client.get_current_billing_view_by_account_id(mpa_account_id)
         accounts = self._get_accounts_with_usage(agreement_id, billing_views, aws_client)
         for account_id in accounts:

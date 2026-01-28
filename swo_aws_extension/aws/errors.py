@@ -1,3 +1,4 @@
+import datetime as dt
 import json
 import logging
 from collections.abc import Callable
@@ -42,6 +43,15 @@ class AWSOpenIdError(AWSHttpError):
             error_details = ", ".join(self.details)
             message = f"{message}: {error_details}"
         return message
+
+
+class InvalidDateInTerminateResponsibilityError(AWSError):
+    """Raised when date in terminate responsibility is invalid."""
+
+    def __init__(self, message: str, date: dt.datetime) -> None:
+        self.message = message
+        self.date = date
+        super().__init__(message)
 
 
 def wrap_http_error(func: Callable[FuncParams, RetType]) -> Callable[FuncParams, RetType]:  # noqa: UP047

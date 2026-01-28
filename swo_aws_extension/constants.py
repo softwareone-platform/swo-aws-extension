@@ -8,9 +8,6 @@ CCP_SECRET_NOT_FOUND_IN_KEY_VAULT = "CCP secret not found in key vault"  # noqa:
 FAILED_TO_GET_SECRET = "Failed to get secret"  # noqa: S105
 FAILED_TO_SAVE_SECRET_TO_KEY_VAULT = "Failed to save secret to key vault"  # noqa: S105
 
-SWO_EXTENSION_MANAGEMENT_ROLE = "swo/mpt/SWOExtensionManagementRole"
-# TODO: Update to the correct role once created
-ONBOARD_CUSTOMER_ROLE = "SWOExtensionDevelopmentRole11"
 
 CRM_EXTERNAL_EMAIL = "marketplace@softwareone.com"
 CRM_EXTERNAL_USERNAME = "mpt@marketplace.com"
@@ -22,6 +19,7 @@ CRM_SUB_SERVICE = "Service Activation"
 BASIC_PRICING_PLAN_ARN = "arn:aws:billingconductor::aws:pricingplan/BasicPricingPlan"
 
 CRM_TICKET_RESOLVED_STATE = "Resolved"
+MONTHS_PER_YEAR = 12
 
 
 class SubscriptionStatus(StrEnum):
@@ -66,8 +64,12 @@ class PhasesEnum(StrEnum):
     CREATE_NEW_AWS_ENVIRONMENT = "createAccount"
     CREATE_BILLING_TRANSFER_INVITATION = "createBillingTransferInvitation"
     CHECK_BILLING_TRANSFER_INVITATION = "checkBillingTransferInvitation"
+    CONFIGURE_APN_PROGRAM = "configureApnProgram"
+    CREATE_CHANNEL_HANDSHAKE = "createChannelHandshake"
+    CHECK_CHANNEL_HANDSHAKE_STATUS = "checkChannelHandshakeStatus"
     CHECK_CUSTOMER_ROLES = "checkCustomerRoles"
     ONBOARD_SERVICES = "onboardServices"
+    CHECK_ONBOARD_SERVICES_STATUS = "checkOnboardServicesStatus"
     CREATE_SUBSCRIPTION = "createSubscription"
     COMPLETED = "completed"
 
@@ -82,7 +84,6 @@ class ParamPhasesEnum(StrEnum):
 class OrderParametersEnum(StrEnum):
     """Ordering parameters external Ids."""
 
-    RESOLD_SUPPORT_PLANS = "resoldSupportPlans"
     SUPPORT_TYPE = "supportType"
     ACCOUNT_TYPE = "accountType"
     MASTER_PAYER_ACCOUNT_ID = "masterPayerID"
@@ -102,6 +103,11 @@ class FulfillmentParametersEnum(StrEnum):
     CRM_CUSTOMER_ROLE_TICKET_ID = "crmCustomerRoleTicketId"
     CUSTOMER_ROLES_DEPLOYED = "customerRolesDeployed"
     BILLING_GROUP_ARN = "billingGroupArn"
+    RELATIONSHIP_ID = "relationshipId"
+    CHANNEL_HANDSHAKE_ID = "channelHandshakeId"
+    CHANNEL_HANDSHAKE_APPROVED = "channelHandshakeApproved"
+    CRM_PLS_TICKET_ID = "crmPLSTicketId"
+    CRM_ORDER_FAILED_TICKET_ID = "crmOrderFailedTicketId"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
@@ -121,6 +127,7 @@ class OrderQueryingTemplateEnum(StrEnum):
     INVALID_ACCOUNT_ID = "Order querying template - invalid Account ID"
     NEW_ACCOUNT_CREATION = "AWS Billing Transfer New AWS account creation"
     WAITING_FOR_CUSTOMER_ROLES = "AWS Billing Transfer Waiting for roles deployment template"
+    HANDSHAKE_AWAITING_ACCEPTANCE = "AWS Billing Transfer APN Channel Handshake pending acceptance"
 
 
 class OrderCompletedTemplate(StrEnum):
@@ -157,106 +164,21 @@ class SupportTypesEnum(StrEnum):
     AWS_RESOLD_SUPPORT = "ResoldSupport"
 
 
-class ResoldSupportPlansEnum(StrEnum):
-    """AWS type of support enum."""
+class ChannelHandshakeStatusEnum(StrEnum):
+    """Channel Handshake Status Enum."""
 
-    ENTERPRISE_SUPPORT = "EnterpriseSupport"
-    BUSINESS_SUPPORT = "BusinessSupport"
-    CURRENT_SUPPORT = "ResoldCurrentSupport"
+    PENDING = "PENDING"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+    CANCELED = "CANCELED"
+    EXPIRED = "EXPIRED"
 
 
-CRM_NEW_ACCOUNT_TITLE = "New AWS Onboarding in Marketplace"
-CRM_NEW_ACCOUNT_ADDITIONAL_INFO = "AWS New AWS linked account created"
-CRM_NEW_ACCOUNT_SUMMARY = (
-    "Dear MCoE Team,<br><br>"
-    "Good News!! New customer for AWS is being onboarded in Marketplace.<br><br>"
-    "Please check the order details and get in touch with the sales team and customer "
-    "primary contact for the next steps.<br><br>"
-    "<b>Order Details:</b><br>"
-    "<ul>"
-    "<li><b>Customer:</b> {customer_name}</li>"
-    "<li><b>SCU:</b> {buyer_external_id}</li>"
-    "<li><b>Order:</b> {order_id}</li>"
-    "<li><b>New Account Name:</b> {order_account_name}</li>"
-    "<li><b>New Account E-mail:</b> {order_account_email}</li>"
-    "</ul>"
-    "<b>Technical Point of Contact:</b><br>"
-    "<ul>"
-    "<li><b>Name:</b> {technical_contact_name}</li>"
-    "<li><b>Email:</b> {technical_contact_email}</li>"
-    "<li><b>Phone:</b> {technical_contact_phone}</li>"
-    "</ul>"
-    "<b>Support Information:</b><br>"
-    "<ul>"
-    "<li><b>Support Type:</b> {support_type}</li>"
-    "<li><b>AWS Resold Support Option:</b> {resold_support_plans}</li>"
-    "</ul>"
-    "<b>Additional Services:</b><br>"
-    "<ul>"
-    "<li><b>SWO Additional Services:</b> {supplementary_services}</li>"
-    "</ul>"
-    "Thank you, team, for your attention and taking all necessary steps!<br><br>"
-    "Best Regards,<br>"
-    "Marketplace Platform Team"
-)
+class ChannelHandshakeDeployed(StrEnum):
+    """Channel Handshake deployed status."""
 
-CRM_DEPLOY_ROLES_TITLE = "Action Required: Roles not deployed yet"
-CRM_DEPLOY_ROLES_ADDITIONAL_INFO = "New customer joining SWO but no service roles deployed"
-CRM_DEPLOY_ROLES_SUMMARY = (
-    "Dear MCoE Team,<br><br>"
-    "Please get in touch with the customer as we have noticed that the required service roles "
-    "for AWS essentials have not been deployed yet.<br><br>"
-    "<b>Transfer Details:</b><br>"
-    "<ul>"
-    "<li><b>Customer:</b> {customer_name}</li>"
-    "<li><b>SCU:</b> {buyer_external_id}</li>"
-    "<li><b>Order:</b> {order_id}</li>"
-    "<li><b>MasterPayerId:</b> {master_payer_id}</li>"
-    "</ul>"
-    "<b>Technical Point of Contact:</b><br>"
-    "<ul>"
-    "<li><b>Name:</b> {technical_contact_name}</li>"
-    "<li><b>Email:</b> {technical_contact_email}</li>"
-    "<li><b>Phone:</b> {technical_contact_phone}</li>"
-    "</ul>"
-    "Thank you for your attention.<br><br>"
-    "Best Regards,<br>"
-    "Marketplace Platform Team"
-)
-
-CRM_ONBOARD_TITLE = "New AWS on-boarding in Marketplace existing AWS customer"
-CRM_ONBOARD_ADDITIONAL_INFO = "New customer joining SWO through billing transfer"
-CRM_ONBOARD_SUMMARY = (
-    "Dear MCoE Team,<br><br>"
-    "Good News!! A new customer for AWS is being onboarded in the SWO Marketplace.<br>"
-    "Please check the order details and get in touch with the sales team and customer "
-    "primary contact for the next steps.<br><br>"
-    "<b>Order Details:</b><br>"
-    "<ul>"
-    "<li><b>Customer:</b> {customer_name}</li>"
-    "<li><b>SCU:</b> {buyer_external_id}</li>"
-    "<li><b>Order:</b> {order_id}</li>"
-    "<li><b>MasterPayerId:</b> {master_payer_id}</li>"
-    "</ul>"
-    "<b>Technical Point of Contact:</b><br>"
-    "<ul>"
-    "<li><b>Name:</b> {technical_contact_name}</li>"
-    "<li><b>Email:</b> {technical_contact_email}</li>"
-    "<li><b>Phone:</b> {technical_contact_phone}</li>"
-    "</ul>"
-    "<b>Support Information:</b><br>"
-    "<ul>"
-    "<li><b>Support Type:</b> {support_type}</li>"
-    "<li><b>AWS Resold Support Option:</b> {resold_support_plans}</li>"
-    "</ul>"
-    "<b>Additional Services:</b><br>"
-    "<ul>"
-    "<li><b>SWO Additional Services:</b> {supplementary_services}</li>"
-    "</ul>"
-    "Thank you for your attention.<br><br>"
-    "Best Regards,<br>"
-    "Marketplace Platform Team"
-)
+    YES = "yes"
+    NO_DEPLOYED = "no"
 
 
 CUSTOMER_ROLES_NOT_DEPLOYED_MESSAGE = (

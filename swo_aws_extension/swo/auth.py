@@ -1,8 +1,8 @@
 import requests
 
 
-def get_openid_token(endpoint, client_id, client_secret, scope, audience=None):
-    """Get an access token from an OpenID Connect provider."""
+def get_auth_token(endpoint, client_id, client_secret, scope, audience=None):
+    """Get an auth token from the specified endpoint."""
     payload = {
         "client_id": client_id,
         "client_secret": client_secret,
@@ -12,5 +12,5 @@ def get_openid_token(endpoint, client_id, client_secret, scope, audience=None):
     }
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     response = requests.post(endpoint, headers=headers, data=payload, timeout=60)
-    response.raise_for_status()  # Raise an error for bad status codes
+    response.raise_for_status()
     return response.json()
