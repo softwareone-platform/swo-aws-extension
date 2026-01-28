@@ -25,7 +25,7 @@ class CRMTicketOnboardServices(BaseCRMTicketStep):
 
     @override
     def pre_step(self, context: PurchaseContext) -> None:
-        if context.phase != PhasesEnum.ONBOARD_SERVICES:
+        if context.phase != PhasesEnum.COMPLETED:
             raise SkipStepError(
                 f"{context.order_id} - Next - Current phase is '{context.phase}', skipping "
                 f"create onboard services ticket"
