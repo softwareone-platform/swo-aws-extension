@@ -636,3 +636,30 @@ def test_get_channel_handshakes_error(config, aws_client_factory, mock_get_paged
         mock_aws_client.get_channel_handshakes_by_resource(resource_identifier="rel-123456")
 
     mock_get_paged_response.assert_called_once()
+
+
+def test_delete_pc_relationship_success(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_delete_relationship = mock_client.delete_relationship
+
+    mock_aws_client.delete_pc_relationship(pm_identifier="pm-1", relationship_id="rel-1")  # act
+
+    mock_delete_relationship.assert_called_once_with(
+        catalog="AWS",
+        identifier="rel-1",
+        programManagementAccountIdentifier="pm-1",
+    )
+
+
+def test_delete_pc_relationship_error(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.delete_relationship.side_effect = AWSError("API error")
+
+    with pytest.raises(AWSError, match="API error"):
+        mock_aws_client.delete_pc_relationship(pm_identifier="pm-1", relationship_id="rel-1")
+
+    mock_client.delete_relationship.assert_called_once_with(
+        catalog="AWS",
+        identifier="rel-1",
+        programManagementAccountIdentifier="pm-1",
+    )

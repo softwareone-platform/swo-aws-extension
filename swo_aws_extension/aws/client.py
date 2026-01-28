@@ -256,6 +256,16 @@ class AWSClient:
         )
 
     @wrap_boto3_error
+    def delete_pc_relationship(self, pm_identifier: str, relationship_id: str):
+        """Delete relationship in Partner Central."""
+        partner_central_client = self._get_partner_central_client()
+        return partner_central_client.delete_relationship(
+            catalog="AWS",
+            identifier=relationship_id,
+            programManagementAccountIdentifier=pm_identifier,
+        )
+
+    @wrap_boto3_error
     def get_channel_handshakes_by_resource(
         self,
         resource_identifier: str,

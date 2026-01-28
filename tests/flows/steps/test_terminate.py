@@ -299,3 +299,131 @@ def test_full_step_execution(
 
     mock_aws_client.terminate_responsibility_transfer.assert_called_once()
     mock_step.assert_called_once_with(mpt_client, context)
+
+
+def test_remove_billing_group_success(
+    order_factory,
+    fulfillment_parameters_factory,
+    config,
+    mock_aws_client,
+    agreement_factory,
+):
+    billing_group_arn = "arn:aws:billingconductor::123:billinggroup/test-group"
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            billing_group_arn=billing_group_arn,
+        )
+    )
+    agreement = agreement_factory()
+    context = InitialAWSContext(aws_client=mock_aws_client, order=order, agreement=agreement)
+    step = TerminateResponsibilityTransferStep(config)
+
+    step.remove_billing_group(context)  # act
+
+    mock_aws_client.delete_billing_group.assert_called_once_with(billing_group_arn)
+
+
+def test_remove_relationship_success(
+    order_factory,
+    fulfillment_parameters_factory,
+    config,
+    mock_aws_client,
+    aws_client_factory,
+):
+    relationship_id = "rel-123456"
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            relationship_id=relationship_id,
+        )
+    )
+    context = InitialAWSContext.from_order_data(order)
+    context.aws_client = mock_aws_client
+    _, mock_apn_client = aws_client_factory(config, "pma-id", "role-name")
+    context.aws_apn_client = mock_apn_client
+    mock_apn_client.get_program_management_id_by_account.return_value = "pma-identifier-123"
+    step = TerminateResponsibilityTransferStep(config)
+
+    step.remove_relationship(context)  # act
+
+    mock_apn_client.get_program_management_id_by_account.assert_called_once_with(
+        context.pm_account_id
+    )
+    mock_apn_client.delete_pc_relationship.assert_called_once_with(
+        "pma-identifier-123", relationship_id
+    )
+
+
+def test_remove_relationship_fail_program_id(
+    order_factory,
+    fulfillment_parameters_factory,
+    config,
+    mock_aws_client,
+    aws_client_factory,
+):
+    relationship_id = "rel-123456"
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            relationship_id=relationship_id,
+        )
+    )
+    context = InitialAWSContext.from_order_data(order)
+    context.aws_client = mock_aws_client
+    _, mock_apn_client = aws_client_factory(config, "pma-id", "role-name")
+    context.aws_apn_client = mock_apn_client
+    mock_apn_client.get_program_management_id_by_account.side_effect = AWSError("AWS API error")
+    step = TerminateResponsibilityTransferStep(config)
+
+    step.remove_relationship(context)  # act
+
+    mock_apn_client.get_program_management_id_by_account.assert_called_once_with(
+        context.pm_account_id
+    )
+    mock_apn_client.delete_pc_relationship.assert_not_called()
+
+
+def test_remove_relationship_fail_delete(
+    order_factory,
+    fulfillment_parameters_factory,
+    config,
+    mock_aws_client,
+    aws_client_factory,
+):
+    relationship_id = "rel-123456"
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            relationship_id=relationship_id,
+        )
+    )
+    context = InitialAWSContext.from_order_data(order)
+    context.aws_client = mock_aws_client
+    _, mock_apn_client = aws_client_factory(config, "pma-id", "role-name")
+    context.aws_apn_client = mock_apn_client
+    step = TerminateResponsibilityTransferStep(config)
+    mock_apn_client.delete_pc_relationship.side_effect = AWSError("AWS API error")
+
+    step.remove_relationship(context)  # act
+
+
+@freeze_time("2025-06-15")
+def test_terminate_relationship_transfer_success(
+    config,
+    mock_aws_client,
+    order_factory,
+    fulfillment_parameters_factory,
+):
+    rt_id = "rt-8lr3q6sn"
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id=rt_id,
+        )
+    )
+    context = InitialAWSContext(aws_client=mock_aws_client, order=order)
+    step = TerminateResponsibilityTransferStep(config)
+
+    step.terminate_relationship_transfer(context, rt_id)  # act
+
+    expected_end = _get_end_of_month(JUNE_YEAR, 7)
+    mock_aws_client.terminate_responsibility_transfer.assert_called_once_with(
+        rt_id,
+        end_timestamp=expected_end,
+    )

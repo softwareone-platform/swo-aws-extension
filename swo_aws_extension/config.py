@@ -158,7 +158,7 @@ class Config:
 _CONFIG = None
 
 
-def get_config():
+def get_config() -> Config:
     """Get configuration."""
     global _CONFIG  # noqa: PLW0603 WPS420
     if not _CONFIG:
