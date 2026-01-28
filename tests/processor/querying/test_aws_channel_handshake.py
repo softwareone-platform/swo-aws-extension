@@ -1,4 +1,3 @@
-import datetime as dt
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -33,50 +32,6 @@ def mock_context() -> MagicMock:
     context.order_id = "ORD-123"
     context.aws_apn_client = MagicMock()
     return context
-
-
-def test_is_querying_timeout_no_audit(
-    processor: AWSChannelHandshakeProcessor, mock_context: MagicMock
-) -> None:
-    mock_context.order = {}
-
-    result = processor.is_querying_timeout(mock_context)
-
-    assert result is False
-
-
-def test_is_querying_timeout_no_querying_at(
-    processor: AWSChannelHandshakeProcessor, mock_context: MagicMock
-) -> None:
-    mock_context.order = {"audit": {}}
-
-    result = processor.is_querying_timeout(mock_context)
-
-    assert result is False
-
-
-def test_is_querying_timeout_not_reached(
-    processor: AWSChannelHandshakeProcessor, mock_context: MagicMock
-) -> None:
-    now = dt.datetime.now(dt.UTC)
-    querying_at = (now - dt.timedelta(days=3)).isoformat()
-    mock_context.order = {"audit": {"querying": {"at": querying_at}}}
-
-    result = processor.is_querying_timeout(mock_context)
-
-    assert result is False
-
-
-def test_is_querying_timeout_reached(
-    processor: AWSChannelHandshakeProcessor, mock_context: MagicMock
-) -> None:
-    now = dt.datetime.now(dt.UTC)
-    querying_at = (now - dt.timedelta(days=5)).isoformat()
-    mock_context.order = {"audit": {"querying": {"at": querying_at}}}
-
-    result = processor.is_querying_timeout(mock_context)
-
-    assert result is True
 
 
 def test_can_process_true(processor: AWSChannelHandshakeProcessor, mock_context: MagicMock) -> None:
@@ -148,13 +103,15 @@ def test_process_handshake_not_pending(
     mock_setup_aws_apn_client = mocker.patch(
         "swo_aws_extension.processors.querying.aws_channel_handshake.AWSChannelHandshakeProcessor.setup_apn_client"
     )
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_channel_handshake.get_template_name",
+        return_value="TEMPLATE_NAME",
+    )
 
     processor.process(mock_context)  # act
 
-    mock_switch.assert_called_once_with(
-        processor.client, mock_context, OrderProcessingTemplateEnum.EXISTING_ACCOUNT
-    )
-    mock_setup_aws_apn_client.assert_called_once()
+    mock_switch.assert_called_once_with(processor.client, mock_context, "TEMPLATE_NAME")
+    mock_setup_aws_apn_client.assert_called_once_with(mock_context)
 
 
 def test_timeout_reached(
@@ -179,18 +136,27 @@ def test_timeout_reached(
     mock_context.aws_apn_client.get_channel_handshakes_by_resource.return_value = [
         {"id": "hs-123", "status": ChannelHandshakeStatusEnum.PENDING.value}
     ]
-    mocker.patch.object(processor, "is_querying_timeout", return_value=True)
+    mock_update_order = mocker.patch(
+        "swo_aws_extension.processors.querying.aws_channel_handshake.update_order"
+    )
     mock_setup_aws_apn_client = mocker.patch(
         "swo_aws_extension.processors.querying.aws_channel_handshake.AWSChannelHandshakeProcessor.setup_apn_client"
+    )
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_channel_handshake.is_querying_timeout",
+        return_value=True,
+    )
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_channel_handshake.get_template_name",
+        return_value="TEMPLATE_NAME",
     )
 
     processor.process(mock_context)  # act
 
-    mock_switch.assert_called_once_with(
-        processor.client, mock_context, OrderProcessingTemplateEnum.EXISTING_ACCOUNT
-    )
+    mock_switch.assert_called_once_with(processor.client, mock_context, "TEMPLATE_NAME")
     mock_set_phase.assert_called_once_with({}, PhasesEnum.CHECK_CUSTOMER_ROLES)
-    mock_setup_aws_apn_client.assert_called_once()
+    mock_setup_aws_apn_client.assert_called_once_with(mock_context)
+    mock_update_order.assert_called_once()
 
 
 def test_timeout_not_reached(
@@ -212,7 +178,10 @@ def test_timeout_not_reached(
     mock_context.aws_apn_client.get_channel_handshakes_by_resource.return_value = [
         {"id": "hs-123", "status": ChannelHandshakeStatusEnum.PENDING.value}
     ]
-    mocker.patch.object(processor, "is_querying_timeout", return_value=False)
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_channel_handshake.is_querying_timeout",
+        return_value=False,
+    )
     mock_setup_aws_apn_client = mocker.patch(
         "swo_aws_extension.processors.querying.aws_channel_handshake.AWSChannelHandshakeProcessor.setup_apn_client"
     )
@@ -220,4 +189,20 @@ def test_timeout_not_reached(
     processor.process(mock_context)  # act
 
     mock_switch.assert_not_called()
-    mock_setup_aws_apn_client.assert_called_once()
+    mock_setup_aws_apn_client.assert_called_once_with(mock_context)
+
+
+def test_setup_apn_client(
+    processor: AWSChannelHandshakeProcessor,
+    mock_context: MagicMock,
+    mocker: Any,
+) -> None:
+    mock_aws_client = MagicMock()
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_channel_handshake.AWSClient",
+        return_value=mock_aws_client,
+    )
+
+    processor.setup_apn_client(mock_context)  # act
+
+    assert mock_context.aws_apn_client == mock_aws_client
