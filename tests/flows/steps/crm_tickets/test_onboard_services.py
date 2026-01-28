@@ -45,7 +45,7 @@ def test_pre_step_skips_ticket_exists(order_factory, fulfillment_parameters_fact
 def test_pre_step_proceeds_conditions_met(order_factory, fulfillment_parameters_factory, config):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.ONBOARD_SERVICES.value,
+            phase=PhasesEnum.COMPLETED.value,
             crm_onboard_ticket_id="",
         )
     )
