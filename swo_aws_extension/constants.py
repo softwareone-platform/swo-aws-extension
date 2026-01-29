@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import IntEnum, StrEnum
 
 MPT_DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:00Z"
 
@@ -136,6 +136,7 @@ class OrderCompletedTemplate(StrEnum):
 
     PURCHASE = "AWS Billing Transfer - Order Completed"
     TERMINATION = "AWS Billing Transfer Termination order approved"
+    TERMINATION_WITHOUT_HANDSHAKE = "AWS Billing Transfer Termination order approved - wt handshake"
 
 
 class MptOrderStatus(StrEnum):
@@ -187,3 +188,10 @@ CUSTOMER_ROLES_NOT_DEPLOYED_MESSAGE = (
     "been created yet. The SWO support team will contact you. Please move the order to "
     "'processing' status once the roles are created."
 )
+
+
+class ExpirationPeriodEnum(IntEnum):
+    """Expiration period enum."""
+
+    CURRENT_MONTH = 1
+    NEXT_MONTH = 2
