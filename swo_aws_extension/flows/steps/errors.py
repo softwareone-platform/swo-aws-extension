@@ -30,6 +30,11 @@ class ConfigurationStepError(Exception):
 class FailStepError(Exception):
     """The step has failed and cannot proceed."""
 
+    def __init__(self, message_id: str, message: str) -> None:
+        self.id = message_id
+        self.message = message
+        super().__init__(message)
+
 
 class QueryStepError(Exception):
     """The step cannot proceed and requires querying."""

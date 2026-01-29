@@ -117,7 +117,7 @@ def test_query_step_error(mocker, initial_context):
 
 def test_fail_step_error(mocker, initial_context):
     step = DummyStep()
-    error = FailStepError("Error")
+    error = FailStepError("Error_id", "Error")
     step.proc_exc = error
     switch_mock = mocker.patch(
         "swo_aws_extension.flows.steps.base.switch_order_status_to_failed_and_notify",
@@ -125,7 +125,9 @@ def test_fail_step_error(mocker, initial_context):
 
     client, next_step = _run_step(mocker, step, initial_context)  # act
 
-    switch_mock.assert_called_once_with(client, initial_context, str(error))
+    switch_mock.assert_called_once_with(
+        client, initial_context, {"id": error.id, "message": error.message}
+    )
     next_step.assert_not_called()
 
 
