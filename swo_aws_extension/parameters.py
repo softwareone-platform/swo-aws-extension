@@ -196,10 +196,13 @@ def get_formatted_technical_contact(source: dict[str, Any]) -> dict[str, str]:
     first_name = contact.get("firstName", "")
     last_name = contact.get("lastName", "")
     full_name = f"{first_name} {last_name}".strip()
+    phone = contact.get("phone", "")
+    if isinstance(phone, dict):
+        phone = f"{phone.get('prefix', '')}{phone.get('number', '')}"
     return {
         "name": full_name or "N/A",
         "email": contact.get("email") or "N/A",
-        "phone": contact.get("phone") or "N/A",
+        "phone": phone or "N/A",
     }
 
 
@@ -413,6 +416,26 @@ def set_crm_order_failed_ticket_id(order: dict, ticket_id: str) -> dict[str, Any
     updated_order = copy.deepcopy(order)
     fulfillment_param = get_fulfillment_parameter(
         FulfillmentParametersEnum.CRM_ORDER_FAILED_TICKET_ID,
+        updated_order,
+    )
+    fulfillment_param["value"] = ticket_id
+    return updated_order
+
+
+def get_crm_terminate_order_ticket_id(source: dict[str, Any]) -> str | None:
+    """Get the CRM terminate order ticket ID from the fulfillment parameter."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CRM_TERMINATE_ORDER_TICKET_ID.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def set_crm_terminate_order_ticket_id(order: dict, ticket_id: str) -> dict[str, Any]:
+    """Set the CRM terminate order ticket ID on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CRM_TERMINATE_ORDER_TICKET_ID,
         updated_order,
     )
     fulfillment_param["value"] = ticket_id
