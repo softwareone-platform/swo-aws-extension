@@ -6,7 +6,11 @@ from dateutil.relativedelta import relativedelta
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.aws.errors import AWSError, InvalidDateInTerminateResponsibilityError
-from swo_aws_extension.constants import ResponsibilityTransferStatus
+from swo_aws_extension.constants import (
+    ChannelHandshakeDeployed,
+    ExpirationPeriodEnum,
+    ResponsibilityTransferStatus,
+)
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import (
@@ -15,6 +19,7 @@ from swo_aws_extension.flows.steps.errors import (
     UnexpectedStopError,
 )
 from swo_aws_extension.parameters import (
+    get_channel_handshake_approval_status,
     get_responsibility_transfer_id,
 )
 
@@ -65,10 +70,15 @@ class TerminateResponsibilityTransferStep(BasePhaseStep):  # noqa: WPS214
         self, context: InitialAWSContext, responsibility_transfer_id
     ):
         """Terminates the responsibility transfer."""
+        handshake_approved = (
+            get_channel_handshake_approval_status(context.order) == ChannelHandshakeDeployed.YES
+        )
+        end_timestamp = self._get_responsibility_transfer_end_timestamp(
+            handshake_approved=handshake_approved
+        )
         try:
             context.aws_client.terminate_responsibility_transfer(
-                responsibility_transfer_id,
-                end_timestamp=self._get_last_day_of_the_next_month_timestamp(),
+                responsibility_transfer_id, end_timestamp=end_timestamp
             )
         except InvalidDateInTerminateResponsibilityError as exception:
             raise FailStepError(
@@ -95,13 +105,23 @@ class TerminateResponsibilityTransferStep(BasePhaseStep):  # noqa: WPS214
         """Executes actions after a particular step in the process."""
         logger.info("%s - responsibility transfer completed successfully", context.order_id)
 
-    def _get_last_day_of_the_next_month_timestamp(self) -> dt.datetime:
-        # The end date must be the end of the last day of the next month (23.59.59.999).
-
+    def _get_responsibility_transfer_end_timestamp(
+        self, *, handshake_approved: bool
+    ) -> dt.datetime:
         now = dt.datetime.now(dt.UTC)
 
-        first_day_month_after_next = (now + relativedelta(months=2)).replace(
-            day=1, hour=0, minute=0, second=0, microsecond=0
+        delta = (
+            relativedelta(months=ExpirationPeriodEnum.NEXT_MONTH)
+            if handshake_approved
+            else relativedelta(months=ExpirationPeriodEnum.CURRENT_MONTH)
         )
 
-        return first_day_month_after_next - dt.timedelta(milliseconds=1)
+        target_month = now + delta
+        first_day_month = target_month.replace(
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+        return first_day_month - dt.timedelta(milliseconds=1)

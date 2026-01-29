@@ -1,6 +1,11 @@
 import pytest
 
-from swo_aws_extension.constants import AccountTypesEnum, OrderCompletedTemplate, PhasesEnum
+from swo_aws_extension.constants import (
+    AccountTypesEnum,
+    ChannelHandshakeDeployed,
+    OrderCompletedTemplate,
+    PhasesEnum,
+)
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.steps.complete_order import CompleteOrder, CompleteTerminationOrder
 from swo_aws_extension.flows.steps.errors import SkipStepError
@@ -86,11 +91,11 @@ def test_termination_pre_step_logs_start(order_factory, caplog, initial_context,
 
 
 def test_termination_process(
-    mocker, order_factory, order_parameters_factory, mpt_client, initial_context, config
+    mocker, order_factory, fulfillment_parameters_factory, mpt_client, initial_context, config
 ):
     order = order_factory(
-        order_parameters=order_parameters_factory(
-            account_type=AccountTypesEnum.NEW_AWS_ENVIRONMENT.value
+        fulfillment_parameters=fulfillment_parameters_factory(
+            channel_handshake_approved=ChannelHandshakeDeployed.YES,
         ),
     )
     mock_switch = mocker.patch(
@@ -102,6 +107,27 @@ def test_termination_process(
     step.process(mpt_client, context)  # act
 
     mock_switch.assert_called_once_with(mpt_client, context, OrderCompletedTemplate.TERMINATION)
+
+
+def test_termination_process_without_handshake(
+    mocker, order_factory, fulfillment_parameters_factory, mpt_client, initial_context, config
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            channel_handshake_approved=ChannelHandshakeDeployed.NO_DEPLOYED,
+        ),
+    )
+    mock_switch = mocker.patch(
+        "swo_aws_extension.flows.steps.complete_order.switch_order_status_to_complete_and_notify"
+    )
+    context = initial_context(order)
+    step = CompleteTerminationOrder(config)
+
+    step.process(mpt_client, context)  # act
+
+    mock_switch.assert_called_once_with(
+        mpt_client, context, OrderCompletedTemplate.TERMINATION_WITHOUT_HANDSHAKE
+    )
 
 
 def test_termination_post_step_logs(

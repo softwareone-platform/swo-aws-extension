@@ -5,12 +5,16 @@ from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_agreement
 
 from swo_aws_extension.config import Config
-from swo_aws_extension.constants import OrderCompletedTemplate, PhasesEnum
+from swo_aws_extension.constants import ChannelHandshakeDeployed, OrderCompletedTemplate, PhasesEnum
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.order_utils import switch_order_status_to_complete_and_notify
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import SkipStepError
-from swo_aws_extension.parameters import get_mpa_account_id, get_phase
+from swo_aws_extension.parameters import (
+    get_channel_handshake_approval_status,
+    get_mpa_account_id,
+    get_phase,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +68,10 @@ class CompleteTerminationOrder(BasePhaseStep):
 
     @override
     def process(self, client: MPTClient, context: InitialAWSContext) -> None:
-        template = OrderCompletedTemplate.TERMINATION
+        if get_channel_handshake_approval_status(context.order) == ChannelHandshakeDeployed.YES:
+            template = OrderCompletedTemplate.TERMINATION
+        else:
+            template = OrderCompletedTemplate.TERMINATION_WITHOUT_HANDSHAKE
         switch_order_status_to_complete_and_notify(client, context, template)
 
     @override
