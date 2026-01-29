@@ -364,6 +364,7 @@ def fulfillment_parameters_factory():
         crm_customer_role_ticket_id="",
         crm_pls_ticket_id="",
         crm_order_failed_ticket_id="",
+        crm_terminate_order_ticket_id="",
         customer_roles_deployed="no",
         billing_group_arn="",
         channel_handshake_id="",
@@ -400,6 +401,10 @@ def fulfillment_parameters_factory():
             {
                 "externalId": FulfillmentParametersEnum.CRM_ORDER_FAILED_TICKET_ID.value,
                 "value": crm_order_failed_ticket_id,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.CRM_TERMINATE_ORDER_TICKET_ID.value,
+                "value": crm_terminate_order_ticket_id,
             },
             {
                 "externalId": FulfillmentParametersEnum.CUSTOMER_ROLES_DEPLOYED.value,
