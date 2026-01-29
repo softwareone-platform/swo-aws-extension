@@ -235,9 +235,7 @@ class AWSClient:
     def create_channel_handshake(
         self,
         pma_identifier: str,
-        note: str,
         relationship_identifier: str,
-        end_date: dt.datetime,
     ) -> dict:
         """Create channel handshake in Partner Central."""
         partner_central_client = self._get_partner_central_client()
@@ -248,9 +246,8 @@ class AWSClient:
             payload={
                 "startServicePeriodPayload": {
                     "programManagementAccountIdentifier": pma_identifier,
-                    "note": note,
-                    "servicePeriodType": "FIXED_COMMITMENT_PERIOD",
-                    "endDate": end_date,
+                    "servicePeriodType": "MINIMUM_NOTICE_PERIOD",
+                    "minimumNoticeDays": "30",
                 }
             },
         )

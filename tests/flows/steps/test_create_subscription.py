@@ -1,9 +1,12 @@
 import pytest
 
-from swo_aws_extension.constants import PhasesEnum
+from swo_aws_extension.constants import (
+    CustomerRolesDeployed,
+    PhasesEnum,
+)
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.create_subscription import CreateSubscription
-from swo_aws_extension.flows.steps.errors import SkipStepError
+from swo_aws_extension.flows.steps.errors import ConfigurationStepError, SkipStepError
 from swo_aws_extension.parameters import get_phase
 
 
@@ -48,6 +51,7 @@ def test_pre_step_proceeds(order_factory, fulfillment_parameters_factory, purcha
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
             phase=PhasesEnum.CREATE_SUBSCRIPTION.value,
+            customer_roles_deployed=CustomerRolesDeployed.YES.value,
         )
     )
     context = purchase_context(order)
@@ -56,6 +60,28 @@ def test_pre_step_proceeds(order_factory, fulfillment_parameters_factory, purcha
     step.pre_step(context)  # act
 
     assert context.order is not None
+
+
+def test_pre_step_raises_conf_error_when_pls(
+    order_factory,
+    fulfillment_parameters_factory,
+    purchase_context,
+    config,
+    order_parameters_factory,
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_SUBSCRIPTION.value,
+            customer_roles_deployed=CustomerRolesDeployed.NO_DEPLOYED.value,
+        )
+    )
+    context = purchase_context(order)
+    step = CreateSubscription(config)
+
+    with pytest.raises(ConfigurationStepError) as error:
+        step.pre_step(context)
+
+    assert "Error - The order has been flagged to fail" in str(error.value)
 
 
 def test_process_creates_subscription(

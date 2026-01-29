@@ -9,11 +9,17 @@ from mpt_extension_sdk.mpt_http.mpt import (
 )
 
 from swo_aws_extension.config import Config
-from swo_aws_extension.constants import PhasesEnum
+from swo_aws_extension.constants import CustomerRolesDeployed, PhasesEnum, SupportTypesEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
-from swo_aws_extension.flows.steps.errors import SkipStepError
-from swo_aws_extension.parameters import get_mpa_account_id, get_phase, set_phase
+from swo_aws_extension.flows.steps.errors import ConfigurationStepError, SkipStepError
+from swo_aws_extension.parameters import (
+    get_customer_roles_deployed,
+    get_mpa_account_id,
+    get_phase,
+    get_support_type,
+    set_phase,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +37,16 @@ class CreateSubscription(BasePhaseStep):
             raise SkipStepError(
                 f"{context.order_id} - Next - Current phase is '{phase}', skipping as it"
                 f" is not '{PhasesEnum.CREATE_SUBSCRIPTION}'"
+            )
+        if (
+            get_customer_roles_deployed(context.order) == CustomerRolesDeployed.NO_DEPLOYED
+            and get_support_type(context.order) == SupportTypesEnum.PARTNER_LED_SUPPORT
+        ):
+            raise ConfigurationStepError(
+                "Action Required: Order must be failed manually",
+                f"{context.order_id} - Error - The order has been flagged to fail on the "
+                f"marketplace because the customer are not deployed the roles required for "
+                f"PLS support.",
             )
 
     @override

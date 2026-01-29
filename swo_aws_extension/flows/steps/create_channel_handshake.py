@@ -1,8 +1,6 @@
-import datetime as dt
 import logging
 from typing import override
 
-from dateutil.relativedelta import relativedelta
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
@@ -55,16 +53,10 @@ class CreateChannelHandshake(BasePhaseStep):
             context.pm_account_id
         )
 
-        now = dt.datetime.now(dt.UTC)
-        first_of_next_month = (now.replace(day=1) + relativedelta(months=1)).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
         try:
             handshake = context.aws_apn_client.create_channel_handshake(
                 pma_identifier=pm_identifier,
-                note="Initial channel handshake",  # TODO pending note message from services
                 relationship_identifier=get_relationship_id(context.order),
-                end_date=first_of_next_month + relativedelta(years=1),
             )
         except AWSError as error:
             raise UnexpectedStopError(

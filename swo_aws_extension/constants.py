@@ -108,6 +108,7 @@ class FulfillmentParametersEnum(StrEnum):
     CHANNEL_HANDSHAKE_APPROVED = "channelHandshakeApproved"
     CRM_PLS_TICKET_ID = "crmPLSTicketId"
     CRM_ORDER_FAILED_TICKET_ID = "crmOrderFailedTicketId"
+    CRM_TERMINATE_ORDER_TICKET_ID = "crmTerminateOrderTicketId"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
@@ -133,7 +134,7 @@ class OrderQueryingTemplateEnum(StrEnum):
 class OrderCompletedTemplate(StrEnum):
     """Order completion templates."""
 
-    PURCHASE = "AWS Billing Transfer Order Completed"
+    PURCHASE = "AWS Billing Transfer - Order Completed"
     TERMINATION = "AWS Billing Transfer Termination order approved"
 
 
