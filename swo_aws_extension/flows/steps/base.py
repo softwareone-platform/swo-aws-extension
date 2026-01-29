@@ -101,6 +101,11 @@ class BasePhaseStep(Step, ABC):
             return False
         except FailStepError as error:
             logger.info("%s - Fail Order: %s", context.order_id, error)
-            switch_order_status_to_failed_and_notify(self._client, context, str(error))
+            # TODO create dataclass to manage fail order errors
+            fail_error = {
+                "id": error.id,
+                "message": error.message,
+            }
+            switch_order_status_to_failed_and_notify(self._client, context, fail_error)
             return False
         return True

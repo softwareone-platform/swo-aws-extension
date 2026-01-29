@@ -91,7 +91,10 @@ class CheckBillingTransferInvitation(BasePhaseStep):
             )
             context.order = set_billing_group_arn(context.order, billing_group["Arn"])
         elif status in INVALID_RESPONSIBILITY_TRANSFER_STATUS:
-            raise FailStepError(f"Billing transfer invitation {transfer_id} has status: {status}")
+            raise FailStepError(
+                "INVALID_RESPONSIBILITY_TRANSFER_STATUS",
+                f"Billing transfer invitation {transfer_id} has status: {status}",
+            )
         else:
             raise QueryStepError(
                 f"Billing transfer invitation {transfer_id} is still pending",
