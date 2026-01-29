@@ -5,7 +5,7 @@ from dateutil.relativedelta import relativedelta
 from freezegun import freeze_time
 
 from swo_aws_extension.aws.errors import AWSError, InvalidDateInTerminateResponsibilityError
-from swo_aws_extension.constants import ResponsibilityTransferStatus
+from swo_aws_extension.constants import ChannelHandshakeDeployed, ResponsibilityTransferStatus
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.steps.errors import FailStepError, SkipStepError, UnexpectedStopError
 from swo_aws_extension.flows.steps.terminate import TerminateResponsibilityTransferStep
@@ -17,11 +17,19 @@ DECEMBER_MONTH = 12
 TEST_DAY = 15
 
 
-def _get_end_of_next_month(base_date):
-    first_day_month_after_next = (base_date + relativedelta(months=2)).replace(
+def _get_end_of_month(base_date, months_delta):
+    first_day_target_month = (base_date + relativedelta(months=months_delta)).replace(
         day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=dt.UTC
     )
-    return first_day_month_after_next - dt.timedelta(milliseconds=1)
+    return first_day_target_month - dt.timedelta(milliseconds=1)
+
+
+def _get_end_of_next_month(base_date):
+    return _get_end_of_month(base_date, months_delta=2)
+
+
+def _get_end_of_current_month(base_date):
+    return _get_end_of_month(base_date, months_delta=1)
 
 
 def test_pre_step_skips_when_no_transfer_id(
@@ -89,7 +97,7 @@ def test_process_terminates_accepted_transfer(
 
     step.process(mpt_client, context)  # act
 
-    expected_end = _get_end_of_next_month(
+    expected_end = _get_end_of_current_month(
         dt.datetime(JUNE_YEAR, JUNE_MONTH, TEST_DAY, tzinfo=dt.UTC)
     )
     mock_aws_client.terminate_responsibility_transfer.assert_called_once_with(
@@ -122,7 +130,7 @@ def test_process_success_december(
 
     step.process(mpt_client, context)  # act
 
-    expected_end = _get_end_of_next_month(
+    expected_end = _get_end_of_current_month(
         dt.datetime(JUNE_YEAR, DECEMBER_MONTH, TEST_DAY, tzinfo=dt.UTC)
     )
     mock_aws_client.terminate_responsibility_transfer.assert_called_once_with(
@@ -289,8 +297,120 @@ def test_terminate_relationship_transfer_success(
 
     step.terminate_relationship_transfer(context, rt_id)  # act
 
+    expected_end = _get_end_of_current_month(
+        dt.datetime(JUNE_YEAR, JUNE_MONTH, TEST_DAY, tzinfo=dt.UTC)
+    )
+    mock_aws_client.terminate_responsibility_transfer.assert_called_once_with(
+        rt_id,
+        end_timestamp=expected_end,
+    )
+
+
+@freeze_time("2025-06-15")
+def test_terminate_transfer_with_handshake(
+    config,
+    mock_aws_client,
+    order_factory,
+    fulfillment_parameters_factory,
+):
+    rt_id = "rt-8lr3q6sn"
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id=rt_id,
+            channel_handshake_approved=ChannelHandshakeDeployed.YES,
+        )
+    )
+    context = InitialAWSContext(aws_client=mock_aws_client, order=order)
+    step = TerminateResponsibilityTransferStep(config)
+
+    step.terminate_relationship_transfer(context, rt_id)  # act
+
     expected_end = _get_end_of_next_month(
         dt.datetime(JUNE_YEAR, JUNE_MONTH, TEST_DAY, tzinfo=dt.UTC)
+    )
+    mock_aws_client.terminate_responsibility_transfer.assert_called_once_with(
+        rt_id,
+        end_timestamp=expected_end,
+    )
+
+
+@freeze_time("2025-06-15")
+def test_terminate_transfer_without_handshake(
+    config,
+    mock_aws_client,
+    order_factory,
+    fulfillment_parameters_factory,
+):
+    rt_id = "rt-8lr3q6sn"
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id=rt_id,
+            channel_handshake_approved=ChannelHandshakeDeployed.NO_DEPLOYED,
+        )
+    )
+    context = InitialAWSContext(aws_client=mock_aws_client, order=order)
+    step = TerminateResponsibilityTransferStep(config)
+
+    step.terminate_relationship_transfer(context, rt_id)  # act
+
+    expected_end = _get_end_of_current_month(
+        dt.datetime(JUNE_YEAR, JUNE_MONTH, TEST_DAY, tzinfo=dt.UTC)
+    )
+    mock_aws_client.terminate_responsibility_transfer.assert_called_once_with(
+        rt_id,
+        end_timestamp=expected_end,
+    )
+
+
+@freeze_time("2025-12-15")
+def test_terminate_transfer_dec_with_handshake(
+    config,
+    mock_aws_client,
+    order_factory,
+    fulfillment_parameters_factory,
+):
+    rt_id = "rt-8lr3q6sn"
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id=rt_id,
+            channel_handshake_approved=ChannelHandshakeDeployed.YES,
+        )
+    )
+    context = InitialAWSContext(aws_client=mock_aws_client, order=order)
+    step = TerminateResponsibilityTransferStep(config)
+
+    step.terminate_relationship_transfer(context, rt_id)  # act
+
+    expected_end = _get_end_of_next_month(
+        dt.datetime(JUNE_YEAR, DECEMBER_MONTH, TEST_DAY, tzinfo=dt.UTC)
+    )
+    mock_aws_client.terminate_responsibility_transfer.assert_called_once_with(
+        rt_id,
+        end_timestamp=expected_end,
+    )
+
+
+@freeze_time("2025-12-15")
+def test_terminate_transfer_dec_without_handshake(
+    config,
+    mock_aws_client,
+    order_factory,
+    fulfillment_parameters_factory,
+):
+    rt_id = "rt-8lr3q6sn"
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id=rt_id,
+            channel_handshake_approved=ChannelHandshakeDeployed.NO_DEPLOYED,
+        )
+    )
+    context = InitialAWSContext(aws_client=mock_aws_client, order=order)
+    step = TerminateResponsibilityTransferStep(config)
+
+    step.terminate_relationship_transfer(context, rt_id)  # act
+
+    expected_end = _get_end_of_current_month(
+        dt.datetime(JUNE_YEAR, DECEMBER_MONTH, TEST_DAY, tzinfo=dt.UTC)
     )
     mock_aws_client.terminate_responsibility_transfer.assert_called_once_with(
         rt_id,
