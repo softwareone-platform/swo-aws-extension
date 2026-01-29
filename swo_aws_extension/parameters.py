@@ -371,6 +371,15 @@ def set_channel_handshake_id(order: dict, handshake_id: str) -> dict[str, Any]:
     return updated_order
 
 
+def get_channel_handshake_approval_status(source: dict[str, Any]) -> str | None:
+    """Get the channel handshake approved flag from the fulfillment parameter."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CHANNEL_HANDSHAKE_APPROVED.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
 def set_channel_handshake_approved(order: dict, approved: str) -> dict[str, Any]:
     """Set the channel handshake approved flag on the fulfillment parameters."""
     updated_order = copy.deepcopy(order)

@@ -368,6 +368,7 @@ def fulfillment_parameters_factory():
         customer_roles_deployed="no",
         billing_group_arn="",
         channel_handshake_id="",
+        channel_handshake_approved="",
         relationship_id="",
     ):
         return [
@@ -417,6 +418,10 @@ def fulfillment_parameters_factory():
             {
                 "externalId": FulfillmentParametersEnum.CHANNEL_HANDSHAKE_ID.value,
                 "value": channel_handshake_id,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.CHANNEL_HANDSHAKE_APPROVED.value,
+                "value": channel_handshake_approved,
             },
             {
                 "externalId": FulfillmentParametersEnum.RELATIONSHIP_ID.value,
