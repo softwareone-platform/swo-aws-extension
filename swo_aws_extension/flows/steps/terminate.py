@@ -82,8 +82,9 @@ class TerminateResponsibilityTransferStep(BasePhaseStep):  # noqa: WPS214
             )
         except InvalidDateInTerminateResponsibilityError as exception:
             raise FailStepError(
+                "INVALID_END_DATE",
                 f"Order failed due to invalid date in terminate responsibility agreement"
-                f" with reason: {exception.message}"
+                f" with reason: {exception.message}",
             ) from exception
 
         except AWSError as exception:

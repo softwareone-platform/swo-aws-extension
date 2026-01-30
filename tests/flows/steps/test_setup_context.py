@@ -153,7 +153,7 @@ def test_init_template_new_account(
     step(mpt_client_mock, context, next_step_mock)  # act
 
     update_template_mock.assert_called_once_with(
-        mpt_client_mock, context, OrderProcessingTemplateEnum.NEW_ACCOUNT
+        mpt_client_mock, context, OrderProcessingTemplateEnum.NEW_ACCOUNT, notify=False
     )
 
 
@@ -185,7 +185,7 @@ def test_init_template_existing_account(
     step(mpt_client_mock, context, next_step_mock)  # act
 
     update_template_mock.assert_called_once_with(
-        mpt_client_mock, context, OrderProcessingTemplateEnum.EXISTING_ACCOUNT
+        mpt_client_mock, context, OrderProcessingTemplateEnum.EXISTING_ACCOUNT, notify=False
     )
 
 
@@ -212,7 +212,39 @@ def test_init_template_terminate(mocker, config, order_factory, fulfillment_para
     step(mpt_client_mock, context, next_step_mock)  # act
 
     update_template_mock.assert_called_once_with(
-        mpt_client_mock, context, OrderProcessingTemplateEnum.TERMINATE
+        mpt_client_mock, context, OrderProcessingTemplateEnum.TERMINATE, notify=False
+    )
+
+
+def test_init_template_notify_when_no_phase(
+    mocker, config, order_factory, fulfillment_parameters_factory, order_parameters_factory
+):
+    mpt_client_mock = mocker.MagicMock(spec=MPTClient)
+    next_step_mock = mocker.MagicMock(spec=Step)
+    mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
+    update_template_mock = mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
+    )
+    order = order_factory(
+        order_type="Purchase",
+        order_parameters=order_parameters_factory(
+            account_type=AccountTypesEnum.NEW_AWS_ENVIRONMENT
+        ),
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase="",
+        ),
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.update_order",
+        return_value=order,
+    )
+    context = PurchaseContext.from_order_data(order)
+    step = SetupContext(config)
+
+    step(mpt_client_mock, context, next_step_mock)  # act
+
+    update_template_mock.assert_called_once_with(
+        mpt_client_mock, context, OrderProcessingTemplateEnum.NEW_ACCOUNT, notify=True
     )
 
 

@@ -87,4 +87,6 @@ class SetupContext(BasePhaseStep):
             template_name = OrderProcessingTemplateEnum.TERMINATE
 
         if template_name and context.template["name"] != template_name:
-            update_processing_template_and_notify(client, context, template_name)
+            # Only notify the first time the template is set
+            notify = not get_phase(context.order)
+            update_processing_template_and_notify(client, context, template_name, notify=notify)
