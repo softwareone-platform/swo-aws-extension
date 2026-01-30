@@ -88,7 +88,7 @@ def switch_order_status_to_query_and_notify(
 
 
 def switch_order_status_to_failed_and_notify(
-    client: MPTClient, context: InitialAWSContext, error: str
+    client: MPTClient, context: InitialAWSContext, error: dict
 ):
     """Switch the order status to 'Failed'."""
     kwargs = {
@@ -149,7 +149,7 @@ def switch_order_status_to_complete_and_notify(
 
 
 def update_processing_template_and_notify(
-    client: MPTClient, context: InitialAWSContext, template_name: str
+    client: MPTClient, context: InitialAWSContext, template_name: str, *, notify: bool = True
 ):
     """Update the order parameters and template from a template name."""
     context.order = set_order_template(client, context, MPT_ORDER_STATUS_PROCESSING, template_name)
@@ -160,4 +160,5 @@ def update_processing_template_and_notify(
     }
 
     context.order = update_order(client, context.order_id, **kwargs)
-    MPTNotificationManager(client).send_notification(context)
+    if notify:
+        MPTNotificationManager(client).send_notification(context)

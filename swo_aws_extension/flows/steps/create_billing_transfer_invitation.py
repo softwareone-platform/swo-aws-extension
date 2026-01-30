@@ -79,7 +79,10 @@ class CreateBillingTransferInvitation(BasePhaseStep):
             context.order_id,
             mpa_id,
         )
-        relationship_name = f"Transfer Billing - {context.buyer['name']}"
+        buyer_description = context.buyer.get("externalIds", {}).get(
+            "erpCustomer", context.buyer["name"]
+        )
+        relationship_name = f"Transfer Billing - {buyer_description}"
         try:
             invitation_handshake = context.aws_client.invite_organization_to_transfer_billing(
                 customer_id=mpa_id,

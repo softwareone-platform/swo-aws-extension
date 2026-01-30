@@ -245,3 +245,36 @@ def test_update_processing_template_and_notify(
         template=new_template,
     )
     notification_mock.assert_called_once()
+
+
+def test_update_processing_template_no_notify(
+    mocker, order_factory, fulfillment_parameters_factory, template_factory
+):
+    client = mocker.MagicMock(spec=MPTClient)
+    default_template = template_factory(name="Default")
+    new_template = template_factory(name="Processing")
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(), template=default_template
+    )
+    context = PurchaseContext.from_order_data(order)
+    mocker.patch(
+        "swo_aws_extension.flows.order_utils.get_product_template_or_default",
+        return_value=new_template,
+    )
+    update_order_mock = mocker.patch(
+        "swo_aws_extension.flows.order_utils.update_order",
+        return_value=order,
+    )
+    notification_mock = mocker.patch(
+        "swo_aws_extension.flows.order_utils.MPTNotificationManager",
+    )
+
+    update_processing_template_and_notify(client, context, "TemplateName", notify=False)  # act
+
+    update_order_mock.assert_called_once_with(
+        client,
+        context.order_id,
+        parameters=context.order["parameters"],
+        template=new_template,
+    )
+    notification_mock.assert_not_called()
