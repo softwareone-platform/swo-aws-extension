@@ -299,7 +299,7 @@ def get_customer_roles_deployed(source: dict[str, Any]) -> str | None:
         FulfillmentParametersEnum.CUSTOMER_ROLES_DEPLOYED.value,
         source,
     )
-    return fulfillment_param.get("value", None)
+    return fulfillment_param.get("value", "")
 
 
 def get_supplementary_services(source: dict[str, Any]) -> str | None:
@@ -377,7 +377,7 @@ def get_channel_handshake_approval_status(source: dict[str, Any]) -> str | None:
         FulfillmentParametersEnum.CHANNEL_HANDSHAKE_APPROVED.value,
         source,
     )
-    return fulfillment_param.get("value", None)
+    return fulfillment_param.get("value", "")
 
 
 def set_channel_handshake_approved(order: dict, approved: str) -> dict[str, Any]:

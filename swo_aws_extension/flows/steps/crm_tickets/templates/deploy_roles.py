@@ -14,6 +14,8 @@ DEPLOY_ROLES_TEMPLATE = CRMTicketTemplate(
         "<li><b>Customer:</b> {customer_name}</li>"
         "<li><b>Buyer:</b> {buyer_id}</li>"
         "<li><b>SCU:</b> {buyer_external_id}</li>"
+        "<li><b>Seller Country:</b> {seller_country}</li>"
+        "<li><b>PMA:</b> {pm_account_id}</li>"
         "<li><b>Order:</b> {order_id}</li>"
         "<li><b>MasterPayerId:</b> {master_payer_id}</li>"
         "</ul>"
