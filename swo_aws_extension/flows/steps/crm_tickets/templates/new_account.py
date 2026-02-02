@@ -15,6 +15,8 @@ NEW_ACCOUNT_TEMPLATE = CRMTicketTemplate(
         "<li><b>Customer:</b> {customer_name}</li>"
         "<li><b>Buyer:</b> {buyer_id}</li>"
         "<li><b>SCU:</b> {buyer_external_id}</li>"
+        "<li><b>Seller Country:</b> {seller_country}</li>"
+        "<li><b>PMA:</b> {pm_account_id}</li>"
         "<li><b>Order:</b> {order_id}</li>"
         "<li><b>New Account Name:</b> {order_account_name}</li>"
         "<li><b>New Account E-mail:</b> {order_account_email}</li>"

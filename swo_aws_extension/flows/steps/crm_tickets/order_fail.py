@@ -1,11 +1,15 @@
 from typing import override
 
-from swo_aws_extension.constants import CustomerRolesDeployed, SupportTypesEnum
+from swo_aws_extension.constants import (
+    CustomerRolesDeployed,
+    SupportTypesEnum,
+)
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.crm_tickets.base import BaseCRMTicketStep
 from swo_aws_extension.flows.steps.crm_tickets.templates.order_failed import ORDER_FAILED_TEMPLATE
 from swo_aws_extension.flows.steps.errors import SkipStepError
 from swo_aws_extension.parameters import (
+    get_channel_handshake_approval_status,
     get_crm_order_failed_ticket_id,
     get_customer_roles_deployed,
     get_formatted_supplementary_services,
@@ -45,6 +49,8 @@ class CRMTicketOrderFail(BaseCRMTicketStep):
             customer_name=context.buyer.get("name"),
             buyer_id=context.buyer.get("id"),
             buyer_external_id=context.buyer.get("externalIds", {}).get("erpCustomer", ""),
+            seller_country=context.seller.get("address", {}).get("country", ""),
+            pm_account_id=context.pm_account_id,
             order_id=context.order_id,
             master_payer_id=get_mpa_account_id(context.order),
             technical_contact_name=contact["name"],
@@ -52,6 +58,8 @@ class CRMTicketOrderFail(BaseCRMTicketStep):
             technical_contact_phone=contact["phone"],
             support_type=get_support_type(context.order),
             supplementary_services=get_formatted_supplementary_services(context.order),
+            handshake_approved=get_channel_handshake_approval_status(context.order).capitalize(),
+            customer_roles_deployed=get_customer_roles_deployed(context.order).capitalize(),
         )
 
     @override
