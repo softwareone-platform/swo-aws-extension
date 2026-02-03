@@ -50,10 +50,10 @@ class TestProcessOrderValidation:
         client,
         order_factory,
         jwt_token,
-        mock_update_parameters_visibility,
+        mock_validate_order,
     ):
         order = order_factory()
-        mock_update_parameters_visibility.return_value = order
+        mock_validate_order.return_value = order
 
         result = client.post(
             "/api/v1/orders/validate",
@@ -73,11 +73,11 @@ class TestProcessOrderValidation:
         client,
         order_factory,
         jwt_token,
-        mock_update_parameters_visibility,
+        mock_validate_order,
     ):
         order = order_factory()
         error_message = "Test validation error"
-        mock_update_parameters_visibility.side_effect = Exception(error_message)
+        mock_validate_order.side_effect = Exception(error_message)
 
         result = client.post(
             "/api/v1/orders/validate",

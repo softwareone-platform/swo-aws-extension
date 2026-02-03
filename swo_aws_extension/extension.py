@@ -12,7 +12,7 @@ from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 from ninja import Body
 
 from swo_aws_extension.flows.fulfillment.base import fulfill_order
-from swo_aws_extension.flows.validation.base import update_parameters_visibility
+from swo_aws_extension.flows.validation.base import validate_order
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ def process_order_fulfillment(client, event):
 def process_order_validation(request, order: Annotated[dict, Body()]):
     """Start order process validation."""
     try:
-        validated_order = update_parameters_visibility(order)
+        validated_order = validate_order(request.client, order)
     except Exception:
         logger.exception("Unexpected error during validation")
         return 400, {

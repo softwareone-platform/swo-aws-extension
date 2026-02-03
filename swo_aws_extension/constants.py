@@ -195,3 +195,6 @@ class ExpirationPeriodEnum(IntEnum):
 
     CURRENT_MONTH = 1
     NEXT_MONTH = 2
+
+
+AWS_ITEMS_SKUS = ("AWS Usage",)
