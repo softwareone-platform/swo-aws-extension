@@ -89,6 +89,8 @@ def test_process_creates_service_request(
             customer_name=context.buyer.get("name"),
             buyer_id=context.buyer.get("id"),
             buyer_external_id=context.buyer.get("externalIds", {}).get("erpCustomer", ""),
+            seller_country=context.seller.get("address", {}).get("country", ""),
+            pm_account_id=context.pm_account_id,
             order_id=context.order_id,
             master_payer_id=get_mpa_account_id(context.order),
             technical_contact_name=contact["name"],
@@ -96,6 +98,8 @@ def test_process_creates_service_request(
             technical_contact_phone=contact["phone"],
             support_type=get_support_type(context.order),
             supplementary_services=get_formatted_supplementary_services(context.order),
+            handshake_approved="No",
+            customer_roles_deployed="No",
         ),
         title=PLS_TEMPLATE.title,
     )

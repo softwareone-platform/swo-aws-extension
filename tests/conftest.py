@@ -368,7 +368,7 @@ def fulfillment_parameters_factory():
         customer_roles_deployed="no",
         billing_group_arn="",
         channel_handshake_id="",
-        channel_handshake_approved="",
+        channel_handshake_approved="no",
         relationship_id="",
     ):
         return [
