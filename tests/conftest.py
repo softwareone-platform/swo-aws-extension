@@ -833,8 +833,8 @@ def ffc_client_settings(extension_settings):
 
 
 @pytest.fixture
-def mock_update_parameters_visibility(mocker):
-    return mocker.patch("swo_aws_extension.extension.update_parameters_visibility", spec=True)
+def mock_validate_order(mocker):
+    return mocker.patch("swo_aws_extension.extension.validate_order", spec=True)
 
 
 @pytest.fixture

@@ -1,8 +1,14 @@
+from unittest.mock import MagicMock
+
 from swo_aws_extension.constants import (
     AccountTypesEnum,
     OrderParametersEnum,
 )
-from swo_aws_extension.flows.validation.base import update_parameters_visibility
+from swo_aws_extension.flows.validation.base import (
+    add_default_lines,
+    update_parameters_visibility,
+    validate_order,
+)
 from swo_aws_extension.parameters import get_ordering_parameter
 
 
@@ -55,7 +61,6 @@ def test_new_aws_environment(order_factory, order_parameters_factory):
 
 
 def test_existing_aws_environment(order_factory, order_parameters_factory):
-    """Test update params visibility for an existing AWS environment."""
     order = order_factory(
         order_parameters=order_parameters_factory(
             account_type=AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value,
@@ -104,7 +109,6 @@ def test_existing_aws_environment(order_factory, order_parameters_factory):
 
 
 def test_empty_values(order_factory, order_parameters_factory):
-    """Test the update_parameters_visibility function when parameter values are empty."""
     order = order_factory(order_parameters=order_parameters_factory(account_type=None))
 
     result = update_parameters_visibility(order)
@@ -114,3 +118,78 @@ def test_empty_values(order_factory, order_parameters_factory):
         "id": "AWS001",
         "message": "Invalid account type: None",
     }
+
+
+def test_add_default_lines_success(order_factory, mocker):
+    mock_client = MagicMock()
+    order = order_factory(lines=[])
+    mock_items = [
+        {
+            "id": "ITM-1234-1234-1234-0001",
+            "name": "AWS Usage",
+            "externalIds": {"vendor": "AWS Usage"},
+        }
+    ]
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
+        return_value=mock_items,
+    )
+
+    result = add_default_lines(mock_client, order)
+
+    assert result["lines"] == [{"item": mock_items[0], "quantity": 1}]
+
+
+def test_add_default_lines_no_product_id(caplog):
+    mock_client = MagicMock()
+    order = {"product": {}, "lines": []}
+
+    with caplog.at_level("WARNING"):
+        result = add_default_lines(mock_client, order)
+
+    assert result["lines"] == []
+    assert "No product ID found in order, skipping default lines" in caplog.text
+
+
+def test_add_default_lines_no_items_found(order_factory, mocker):
+    mock_client = MagicMock()
+    order = order_factory(lines=[{"existing": "line"}])
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
+        return_value=[],
+    )
+
+    result = add_default_lines(mock_client, order)
+
+    assert result["lines"] == [{"existing": "line"}]
+
+
+def test_validate_order_orchestrates_all_steps(order_factory, order_parameters_factory, mocker):
+    mock_client = MagicMock()
+    order = order_factory(
+        order_parameters=order_parameters_factory(
+            account_type=AccountTypesEnum.NEW_AWS_ENVIRONMENT.value,
+            constraints={"hidden": None, "required": None, "readonly": None},
+        ),
+        lines=[],
+    )
+    mock_items = [
+        {
+            "id": "ITM-1234-1234-1234-0001",
+            "name": "AWS Usage",
+            "externalIds": {"vendor": "AWS Usage"},
+        }
+    ]
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
+        return_value=mock_items,
+    )
+
+    result = validate_order(mock_client, order)
+
+    order_account_name_param = get_ordering_parameter(
+        OrderParametersEnum.ORDER_ACCOUNT_NAME.value, result
+    )
+    assert order_account_name_param["constraints"]["hidden"] is False
+    assert order_account_name_param["constraints"]["required"] is True
+    assert result["lines"] == [{"item": mock_items[0], "quantity": 1}]
