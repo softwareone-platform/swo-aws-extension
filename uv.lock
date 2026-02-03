@@ -127,15 +127,15 @@ wheels = [
 
 [[package]]
 name = "boto3-stubs"
-version = "1.42.34"
+version = "1.42.40"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore-stubs" },
     { name = "types-s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4d/e4/959e63b009194cae2fad6ddff8ef1c0e7e2f9113bca4c7ec20fa579e4d7a/boto3_stubs-1.42.34.tar.gz", hash = "sha256:fafcc3713c331bac11bf55fe913e5a3a01820f0cde640cfc4694df5a94aa9557", size = 100898, upload-time = "2026-01-23T20:42:10.353Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/89/87/190df0854bcacc31d58dab28721f855d928ddd1d20c0ca2c201731d4622b/boto3_stubs-1.42.40.tar.gz", hash = "sha256:2689e235ae0deb6878fced175f7c2701fd8c088e6764de65e8c14085c1fc1914", size = 100886, upload-time = "2026-02-02T23:19:28.917Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/c4/1aba1653afc3cf5ef985235cea05d3e9e6736033f10ebbf102a23fc0152d/boto3_stubs-1.42.34-py3-none-any.whl", hash = "sha256:eb98cf3cc0a74ed75ea4945152cf10da57c8c9628104a13db16cde10176219ab", size = 69782, upload-time = "2026-01-23T20:42:05.699Z" },
+    { url = "https://files.pythonhosted.org/packages/e7/09/e1d031ceae85688c13dd16d84a0e6e416def62c6b23e04f7d318837ee355/boto3_stubs-1.42.40-py3-none-any.whl", hash = "sha256:66679f1075e094b15b2032d8cfc4f070a472e066b04ee1edf61aa44884a6d2cd", size = 69782, upload-time = "2026-02-02T23:19:20.16Z" },
 ]
 
 [[package]]
@@ -154,14 +154,14 @@ wheels = [
 
 [[package]]
 name = "botocore-stubs"
-version = "1.42.34"
+version = "1.42.40"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "types-awscrt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8f/1e/024e45fb46a21d085b541ce0ad8f1bef97ce17c5e72d1dc0e4d09d29e399/botocore_stubs-1.42.34.tar.gz", hash = "sha256:f3d1c5b45c2cbe16f63719abe639b23a1eeb3fec9c3ea0a72688585b462e8ce3", size = 42408, upload-time = "2026-01-23T20:33:38.691Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/15/d0/e5b6d6e24c12730bc2c60efcd06cb86d95f35ffb7d78dee71503a0bd1afc/botocore_stubs-1.42.40.tar.gz", hash = "sha256:3ece9db3bfbf33152cbaff8f3360a791b936f3e55fd4b65f88bba4da2026ec09", size = 42410, upload-time = "2026-02-02T23:35:19.89Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4c/c8/3845c17b89ff19e2c2474801a6737d1766ee8e80cf38d7d97e1fedc28537/botocore_stubs-1.42.34-py3-none-any.whl", hash = "sha256:afc08661122eff6939d88cd250084ac148e392f8a1a389d51a31a4b9dab59358", size = 66760, upload-time = "2026-01-23T20:33:37.146Z" },
+    { url = "https://files.pythonhosted.org/packages/20/a9/c200b11c22f29c751ab88528cb7deb6c959ca61f999ecc866fcd7c87b2ac/botocore_stubs-1.42.40-py3-none-any.whl", hash = "sha256:3038388fb54db85ddccb1d2780cfe8fefed515a2c63bb98d877e6cbf338eb645", size = 66761, upload-time = "2026-02-02T23:35:18.794Z" },
 ]
 
 [[package]]
@@ -665,7 +665,7 @@ wheels = [
 
 [[package]]
 name = "ipython"
-version = "9.9.0"
+version = "9.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama", marker = "sys_platform == 'win32'" },
@@ -679,9 +679,9 @@ dependencies = [
     { name = "stack-data" },
     { name = "traitlets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/46/dd/fb08d22ec0c27e73c8bc8f71810709870d51cadaf27b7ddd3f011236c100/ipython-9.9.0.tar.gz", hash = "sha256:48fbed1b2de5e2c7177eefa144aba7fcb82dac514f09b57e2ac9da34ddb54220", size = 4425043, upload-time = "2026-01-05T12:36:46.233Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a6/60/2111715ea11f39b1535bed6024b7dec7918b71e5e5d30855a5b503056b50/ipython-9.10.0.tar.gz", hash = "sha256:cd9e656be97618a0676d058134cd44e6dc7012c0e5cb36a9ce96a8c904adaf77", size = 4426526, upload-time = "2026-02-02T10:00:33.594Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/86/92/162cfaee4ccf370465c5af1ce36a9eacec1becb552f2033bb3584e6f640a/ipython-9.9.0-py3-none-any.whl", hash = "sha256:b457fe9165df2b84e8ec909a97abcf2ed88f565970efba16b1f7229c283d252b", size = 621431, upload-time = "2026-01-05T12:36:44.669Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/aa/898dec789a05731cd5a9f50605b7b44a72bd198fd0d4528e11fc610177cc/ipython-9.10.0-py3-none-any.whl", hash = "sha256:c6ab68cc23bba8c7e18e9b932797014cc61ea7fd6f19de180ab9ba73e65ee58d", size = 622774, upload-time = "2026-02-02T10:00:31.503Z" },
 ]
 
 [[package]]
