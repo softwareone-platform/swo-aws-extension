@@ -36,6 +36,8 @@ ONBOARD_SERVICES_TEMPLATE = CRMTicketTemplate(
         "<ul>"
         "<li><b>SWO Additional Services:</b> {supplementary_services}</li>"
         "</ul>"
+        "<span style='color: red;'><b>CALL TO ACTION:</b></span> Please reach out the account "
+        "manager to contact the customer regarding additional services.!!<br><br>"
         "Thank you for your attention.<br><br>"
         "Best Regards,<br>"
         "Marketplace Platform Team"
