@@ -80,10 +80,6 @@ def _add_default_lines(client: MPTClient, order: dict) -> dict:
         The order with default lines added.
     """
     product_id = order.get("product", {}).get("id", "")
-    if not product_id:
-        logger.warning("No product ID found in order, skipping default lines")
-        return order
-
     aws_items = get_product_items_by_skus(client, product_id, AWS_ITEMS_SKUS)
     if not aws_items:
         logger.error(

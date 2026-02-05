@@ -5,6 +5,7 @@ from swo_aws_extension.constants import CRM_TICKET_RESOLVED_STATE, PhasesEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.crm_tickets.base import BaseCRMTicketStep
 from swo_aws_extension.flows.steps.crm_tickets.templates.deploy_roles import DEPLOY_ROLES_TEMPLATE
+from swo_aws_extension.flows.steps.crm_tickets.ticket_manager import TicketManager
 from swo_aws_extension.flows.steps.errors import SkipStepError, UnexpectedStopError
 from swo_aws_extension.parameters import (
     get_crm_customer_role_ticket_id,
@@ -32,7 +33,9 @@ class CRMTicketDeployCustomerRoles(BaseCRMTicketStep):
                 f"{context.order_id} - Next - Current phase is '{context.phase}', skipping "
                 f"create Deploy Customer Roles ticket"
             )
-        if self._has_open_ticket(context):
+        if TicketManager(
+            config=self._config, ticket_name=self.ticket_name, template=self.template
+        ).has_open_ticket(context):
             raise SkipStepError(
                 f"{context.order_id} - Next - CRM Deploy Customer Roles ticket is already created,"
                 f" skipping step"
