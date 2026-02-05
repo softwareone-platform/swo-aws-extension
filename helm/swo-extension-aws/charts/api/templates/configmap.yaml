@@ -36,6 +36,7 @@ data:
   EXT_APN_ROLE_NAME: {{ .Values.global.ApnRoleName | quote }}
   EXT_APN_ACCOUNT_ID: {{ .Values.global.ApnAccountId | quote }}
   EXT_QUERYING_TIMEOUT_DAYS: {{ .Values.global.QueryingTimeoutDays | quote }}
+  EXT_CUSTOMER_ROLES_QUERYING_TIMEOUT_DAYS: {{ .Values.global.CustomerRolesQueryingTimeoutDays | quote }}
   EXT_CLOUD_ORCHESTRATOR_API_BASE_URL: {{ .Values.global.CloudOrchestratorApiBaseUrl | quote }}
   EXT_AWS_SES_CREDENTIALS: {{ .Values.global.AwsSesCredentials | quote }}
   EXT_AWS_SES_REGION: {{ .Values.global.AwsSesRegion | quote }}

@@ -71,7 +71,7 @@ def test_process_handshake_not_found(
     mock_setup_aws_apn_client = mocker.patch(
         "swo_aws_extension.processors.querying.aws_channel_handshake.AWSChannelHandshakeProcessor.setup_apn_client"
     )
-    mock_context.aws_apn_client.get_channel_handshakes_by_resource.return_value = []
+    mock_context.aws_apn_client.get_channel_handshake_by_id.return_value = None
 
     processor.process(mock_context)  # act
 
@@ -97,9 +97,10 @@ def test_process_handshake_not_pending(
     mock_switch = mocker.patch(
         "swo_aws_extension.processors.querying.aws_channel_handshake.switch_order_status_to_process_and_notify"
     )
-    mock_context.aws_apn_client.get_channel_handshakes_by_resource.return_value = [
-        {"id": "hs-123", "status": ChannelHandshakeStatusEnum.ACCEPTED.value}
-    ]
+    mock_context.aws_apn_client.get_channel_handshake_by_id.return_value = {
+        "id": "hs-123",
+        "status": ChannelHandshakeStatusEnum.ACCEPTED.value,
+    }
     mock_setup_aws_apn_client = mocker.patch(
         "swo_aws_extension.processors.querying.aws_channel_handshake.AWSChannelHandshakeProcessor.setup_apn_client"
     )
@@ -133,9 +134,10 @@ def test_timeout_reached(
     mock_set_phase = mocker.patch(
         "swo_aws_extension.processors.querying.aws_channel_handshake.set_phase"
     )
-    mock_context.aws_apn_client.get_channel_handshakes_by_resource.return_value = [
-        {"id": "hs-123", "status": ChannelHandshakeStatusEnum.PENDING.value}
-    ]
+    mock_context.aws_apn_client.get_channel_handshake_by_id.return_value = {
+        "id": "hs-123",
+        "status": ChannelHandshakeStatusEnum.PENDING.value,
+    }
     mock_update_order = mocker.patch(
         "swo_aws_extension.processors.querying.aws_channel_handshake.update_order"
     )
@@ -175,9 +177,10 @@ def test_timeout_not_reached(
     mock_switch = mocker.patch(
         "swo_aws_extension.processors.querying.aws_channel_handshake.switch_order_status_to_process_and_notify"
     )
-    mock_context.aws_apn_client.get_channel_handshakes_by_resource.return_value = [
-        {"id": "hs-123", "status": ChannelHandshakeStatusEnum.PENDING.value}
-    ]
+    mock_context.aws_apn_client.get_channel_handshake_by_id.return_value = {
+        "id": "hs-123",
+        "status": ChannelHandshakeStatusEnum.PENDING.value,
+    }
     mocker.patch(
         "swo_aws_extension.processors.querying.aws_channel_handshake.is_querying_timeout",
         return_value=False,

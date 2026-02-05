@@ -16,6 +16,11 @@ def mock_aws_client(mocker):
 
 
 @pytest.fixture
+def mock_aws_apn_client(mocker):
+    return mocker.Mock(spec=AWSClient)
+
+
+@pytest.fixture
 def context_with_agreement(agreement_factory, order_factory, config, mock_aws_client):
     agreement = agreement_factory()
     return InitialAWSContext(aws_client=mock_aws_client, order=order_factory(), agreement=agreement)

@@ -1,5 +1,4 @@
 import logging
-from typing import Any
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
@@ -37,14 +36,14 @@ class AWSChannelHandshakeProcessor(Processor):
 
     def process(self, context: PurchaseContext) -> None:
         """Process AWS channel handshake timeout."""
-        relationship_id = get_relationship_id(context.order)
-        self.setup_apn_client(context)
-        handshakes = context.aws_apn_client.get_channel_handshakes_by_resource(relationship_id)
-        handshake_id = get_channel_handshake_id(context.order)
+        logger.info("%s - Checking channel handshake status.", context.order_id)
 
-        handshake: dict[str, Any] = next(
-            (hs for hs in handshakes if hs.get("id") == handshake_id),
-            None,
+        self.setup_apn_client(context)
+
+        relationship_id = get_relationship_id(context.order)
+        handshake_id = get_channel_handshake_id(context.order)
+        handshake = context.aws_apn_client.get_channel_handshake_by_id(
+            relationship_id, handshake_id
         )
 
         if not handshake:
@@ -71,26 +70,37 @@ class AWSChannelHandshakeProcessor(Processor):
             return
 
         if is_querying_timeout(context, self._config.querying_timeout_days):
-            logger.info(
-                "%s - Handshake timeout - Channel handshake %s has status: %s.",
-                context.order_id,
-                handshake_id,
-                handshake.get("status"),
-            )
-            logger.info(
-                "%s - Updating order to processing with Phase CHECK_CUSTOMER_ROLES.",
-                context.order_id,
-            )
-            switch_order_status_to_process_and_notify(
-                self.client, context, get_template_name(context)
-            )
-            context.order = set_phase(context.order, PhasesEnum.CHECK_CUSTOMER_ROLES)
-            context.order = update_order(
-                self.client, context.order_id, parameters=context.order["parameters"]
-            )
+            self._manage_querying_timeout(context, handshake, handshake_id)
+            return
+
+        logger.info(
+            "%s - Skip - Channel handshake %s is still in %s status and not timed out.",
+            context.order_id,
+            handshake_id,
+            handshake.get("status"),
+        )
 
     def setup_apn_client(self, context: PurchaseContext):
         """Setup AWS apn client in context."""
         apn_account_id = self._config.apn_account_id
         apn_role_name = self._config.apn_role_name
         context.aws_apn_client = AWSClient(self._config, apn_account_id, apn_role_name)
+
+    def _manage_querying_timeout(
+        self, context: PurchaseContext, handshake: dict, handshake_id: str | None
+    ):
+        logger.info(
+            "%s - Handshake timeout - Channel handshake %s has status: %s.",
+            context.order_id,
+            handshake_id,
+            handshake.get("status"),
+        )
+        logger.info(
+            "%s - Updating order to processing with Phase CHECK_CUSTOMER_ROLES.",
+            context.order_id,
+        )
+        context.order = set_phase(context.order, PhasesEnum.CHECK_CUSTOMER_ROLES)
+        context.order = update_order(
+            self.client, context.order_id, parameters=context.order["parameters"]
+        )
+        switch_order_status_to_process_and_notify(self.client, context, get_template_name(context))

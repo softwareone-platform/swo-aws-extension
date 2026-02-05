@@ -192,6 +192,13 @@ CUSTOMER_ROLES_NOT_DEPLOYED_MESSAGE = (
     "'processing' status once the roles are created."
 )
 
+COMMITMENT_ENABLED_ERROR_MESSAGE = (
+    "Order failed due to invalid date in terminate responsibility agreement"
+    " with reason: The selected withdrawal date doesn't meet the terms of your"
+    " partner agreement. Visit AWS Partner Central to view your "
+    "partner agreements or contact your AWS Partner for help."
+)
+
 
 class ExpirationPeriodEnum(IntEnum):
     """Expiration period enum."""

@@ -1,6 +1,8 @@
+import datetime as dt
 import logging
 from typing import override
 
+from dateutil.relativedelta import relativedelta
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
@@ -57,6 +59,7 @@ class CreateChannelHandshake(BasePhaseStep):
             handshake = context.aws_apn_client.create_channel_handshake(
                 pma_identifier=pm_identifier,
                 relationship_identifier=get_relationship_id(context.order),
+                end_date=dt.datetime.now(dt.UTC) + relativedelta(years=1),
             )
         except AWSError as error:
             raise UnexpectedStopError(
