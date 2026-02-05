@@ -197,6 +197,7 @@ EXTENSION_CONFIG = {
     "ONBOARD_CUSTOMER_ROLE": "OnboardCustomerRole",
     "MANAGEMENT_ROLE": "SWOExtensionManagementRole",
     "QUERYING_TIMEOUT_DAYS": 4,
+    "CUSTOMER_ROLES_QUERYING_TIMEOUT_DAYS": 2,
     "CLOUD_ORCHESTRATOR_API_BASE_URL": "https://cloud-orchestrator.test.com/",
     "CRM_API_BASE_URL": "https://crm.test.com/",
     "CRM_OAUTH_URL": "https://oauth.test.com/token",
