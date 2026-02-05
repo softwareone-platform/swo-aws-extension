@@ -625,6 +625,14 @@ def order_parameters_factory(dummy_constraints):
                 "value": support_type,
                 "constraints": constraints.copy() if constraints else dummy_constraints.copy(),
             },
+            {
+                "id": "PAR-1234-5682",
+                "name": "New Account Instructions",
+                "externalId": OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value,
+                "type": "heading",
+                "value": "Instructions",
+                "constraints": constraints.copy() if constraints else dummy_constraints.copy(),
+            },
         ]
 
     return factory
