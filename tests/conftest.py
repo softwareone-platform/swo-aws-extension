@@ -368,7 +368,7 @@ def fulfillment_parameters_factory():
         customer_roles_deployed="no",
         billing_group_arn="",
         channel_handshake_id="",
-        channel_handshake_approved="",
+        channel_handshake_approved="no",
         relationship_id="",
     ):
         return [
@@ -625,6 +625,14 @@ def order_parameters_factory(dummy_constraints):
                 "value": support_type,
                 "constraints": constraints.copy() if constraints else dummy_constraints.copy(),
             },
+            {
+                "id": "PAR-1234-5682",
+                "name": "New Account Instructions",
+                "externalId": OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value,
+                "type": "heading",
+                "value": "Instructions",
+                "constraints": constraints.copy() if constraints else dummy_constraints.copy(),
+            },
         ]
 
     return factory
@@ -833,8 +841,8 @@ def ffc_client_settings(extension_settings):
 
 
 @pytest.fixture
-def mock_update_parameters_visibility(mocker):
-    return mocker.patch("swo_aws_extension.extension.update_parameters_visibility", spec=True)
+def mock_validate_order(mocker):
+    return mocker.patch("swo_aws_extension.extension.validate_order", spec=True)
 
 
 @pytest.fixture

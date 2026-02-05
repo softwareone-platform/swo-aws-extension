@@ -82,6 +82,8 @@ def test_process_creates_service_request(
             customer_name=context.buyer.get("name"),
             buyer_id=context.buyer.get("id"),
             buyer_external_id=context.buyer.get("externalIds", {}).get("erpCustomer", ""),
+            seller_country=context.seller.get("address", {}).get("country", ""),
+            pm_account_id=context.pm_account_id,
             order_id=context.order_id,
             order_account_name=get_order_account_name(context.order),
             order_account_email=get_order_account_email(context.order),

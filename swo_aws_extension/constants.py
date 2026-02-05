@@ -91,6 +91,9 @@ class OrderParametersEnum(StrEnum):
     ORDER_ACCOUNT_NAME = "orderAccountName"
     ORDER_ACCOUNT_EMAIL = "orderAccountEmail"
     SUPPLEMENTARY_SERVICES = "supplementaryServices"
+    NEW_ACCOUNT_INSTRUCTIONS = "newAccountInstructions"
+    TECHNICAL_CONTACT_INFO = "technicalContactInfo"
+    CONNECT_AWS_BILLING_ACCOUNT = "connectAWSBillingAccount"
 
 
 class FulfillmentParametersEnum(StrEnum):
@@ -195,3 +198,6 @@ class ExpirationPeriodEnum(IntEnum):
 
     CURRENT_MONTH = 1
     NEXT_MONTH = 2
+
+
+AWS_ITEMS_SKUS = ("AWS Usage",)

@@ -1,116 +1,118 @@
+from unittest.mock import MagicMock
+
 from swo_aws_extension.constants import (
     AccountTypesEnum,
     OrderParametersEnum,
 )
-from swo_aws_extension.flows.validation.base import update_parameters_visibility
-from swo_aws_extension.parameters import get_ordering_parameter
+from swo_aws_extension.flows.validation.base import (
+    validate_order,
+)
+from swo_aws_extension.parameters import get_ordering_parameter, set_order_parameter_constraints
 
 
-def test_new_aws_environment(order_factory, order_parameters_factory):
+def test_validate_order_orchestrates_all_steps_new_aws_environment(
+    order_factory, order_parameters_factory, mocker
+):
+    mock_client = MagicMock()
     order = order_factory(
         order_parameters=order_parameters_factory(
             account_type=AccountTypesEnum.NEW_AWS_ENVIRONMENT.value,
             constraints={"hidden": None, "required": None, "readonly": None},
-        )
+        ),
+        lines=[],
+    )
+    mock_items = [
+        {
+            "id": "ITM-1234-1234-1234-0001",
+            "name": "AWS Usage",
+            "externalIds": {"vendor": "AWS Usage"},
+        }
+    ]
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
+        return_value=mock_items,
+    )
+    order = set_order_parameter_constraints(
+        order,
+        OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value,
+        constraints={"hidden": True, "required": False, "readonly": False},
+    )
+    new_account_instructions_param = get_ordering_parameter(
+        OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value, order
     )
 
-    result = update_parameters_visibility(order)
+    result = validate_order(mock_client, order)
 
-    order_account_name_param = get_ordering_parameter(
-        OrderParametersEnum.ORDER_ACCOUNT_NAME.value, result
+    new_account_instructions_param = get_ordering_parameter(
+        OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value, result
     )
-    assert order_account_name_param == {
-        "constraints": {"hidden": False, "readonly": False, "required": True},
-        "error": None,
-        "externalId": "orderAccountName",
-        "id": "PAR-1234-5680",
-        "name": "Order Account Name",
-        "type": "choice",
-        "value": "Order Account Name",
-    }
-    order_account_email = get_ordering_parameter(
-        OrderParametersEnum.ORDER_ACCOUNT_EMAIL.value, result
-    )
-    assert order_account_email == {
-        "constraints": {"hidden": False, "readonly": False, "required": True},
-        "error": None,
-        "externalId": "orderAccountEmail",
-        "id": "PAR-1234-5680",
-        "name": "Order Root Account Email",
-        "type": "choice",
-        "value": "example@example.com",
-    }
-    master_payer_param = get_ordering_parameter(
+    master_payer_account_id_param = get_ordering_parameter(
         OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value, result
     )
-    assert master_payer_param == {
-        "constraints": {"hidden": True, "readonly": False, "required": False},
-        "error": None,
-        "externalId": "masterPayerID",
-        "id": "PAR-1234-5680",
-        "name": "Master Payer Account ID",
-        "type": "choice",
-        "value": None,
-    }
+    assert new_account_instructions_param["constraints"]["hidden"] is False
+    assert new_account_instructions_param["constraints"]["required"] is True
+    assert master_payer_account_id_param["constraints"]["hidden"] is True
+    assert master_payer_account_id_param["constraints"]["required"] is False
+    assert result["lines"] == [{"item": mock_items[0], "quantity": 1}]
 
 
-def test_existing_aws_environment(order_factory, order_parameters_factory):
-    """Test update params visibility for an existing AWS environment."""
+def test_validate_order_orchestrates_all_steps_existing_aws_environment(
+    order_factory, order_parameters_factory, mocker
+):
+    mock_client = MagicMock()
     order = order_factory(
         order_parameters=order_parameters_factory(
             account_type=AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value,
             constraints={"hidden": None, "required": None, "readonly": None},
-        )
+        ),
+        lines=[],
+    )
+    mock_items = [
+        {
+            "id": "ITM-1234-1234-1234-0001",
+            "name": "AWS Usage",
+            "externalIds": {"vendor": "AWS Usage"},
+        }
+    ]
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
+        return_value=mock_items,
     )
 
-    result = update_parameters_visibility(order)
+    result = validate_order(mock_client, order)
 
-    master_payer_param = get_ordering_parameter(
+    new_account_instructions_param = get_ordering_parameter(
+        OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value, result
+    )
+    master_payer_account_id_param = get_ordering_parameter(
         OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value, result
     )
-    assert master_payer_param == {
-        "constraints": {"hidden": False, "readonly": False, "required": True},
-        "error": None,
-        "externalId": "masterPayerID",
-        "id": "PAR-1234-5680",
-        "name": "Master Payer Account ID",
-        "type": "choice",
-        "value": "651706759263",
-    }
-    order_account_name_param = get_ordering_parameter(
-        OrderParametersEnum.ORDER_ACCOUNT_NAME.value, result
+    assert new_account_instructions_param["constraints"]["hidden"] is True
+    assert new_account_instructions_param["constraints"]["required"] is False
+    assert master_payer_account_id_param["constraints"]["hidden"] is False
+    assert result["lines"] == [{"item": mock_items[0], "quantity": 1}]
+
+
+def test_validate_order_returns_error_when_new_account_instructions_visible(
+    order_factory, order_parameters_factory
+):
+    """Test that validate_order returns error when newAccountInstructions is visible."""
+    mock_client = MagicMock()
+    order = order_factory(
+        order_parameters=order_parameters_factory(
+            account_type=AccountTypesEnum.NEW_AWS_ENVIRONMENT.value,
+        ),
+        lines=[],
     )
-    assert order_account_name_param == {
-        "constraints": {"hidden": True, "readonly": False, "required": False},
-        "error": None,
-        "externalId": "orderAccountName",
-        "id": "PAR-1234-5680",
-        "name": "Order Account Name",
-        "type": "choice",
-        "value": None,
-    }
-    order_account_email = get_ordering_parameter(
-        OrderParametersEnum.ORDER_ACCOUNT_EMAIL.value, result
+    order = set_order_parameter_constraints(
+        order,
+        OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value,
+        constraints={"hidden": False, "required": False, "readonly": False},
     )
-    assert order_account_email == {
-        "constraints": {"hidden": True, "readonly": False, "required": False},
-        "error": None,
-        "externalId": "orderAccountEmail",
-        "id": "PAR-1234-5680",
-        "name": "Order Root Account Email",
-        "type": "choice",
-        "value": None,
-    }
 
+    result = validate_order(mock_client, order)
 
-def test_empty_values(order_factory, order_parameters_factory):
-    """Test the update_parameters_visibility function when parameter values are empty."""
-    order = order_factory(order_parameters=order_parameters_factory(account_type=None))
-
-    result = update_parameters_visibility(order)
-
-    account_type_param = get_ordering_parameter(OrderParametersEnum.ACCOUNT_TYPE.value, result)
-    assert account_type_param["error"] == {
-        "id": "AWS001",
-        "message": "Invalid account type: None",
-    }
+    new_account_instructions_param = get_ordering_parameter(
+        OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value, result
+    )
+    assert new_account_instructions_param["error"]["id"] == "AWS002"
