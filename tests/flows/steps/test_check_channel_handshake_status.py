@@ -77,14 +77,15 @@ def test_process_handshake_accepted(
     context = PurchaseContext.from_order_data(order)
     _, aws_client_mock = aws_client_factory(config, "pma-id", "role-name")
     context.aws_apn_client = aws_client_mock
-    aws_client_mock.get_channel_handshakes_by_resource.return_value = [
-        {"id": "hs-123456", "status": ChannelHandshakeStatusEnum.ACCEPTED.value}
-    ]
+    aws_client_mock.get_channel_handshake_by_id.return_value = {
+        "id": "hs-123456",
+        "status": ChannelHandshakeStatusEnum.ACCEPTED.value,
+    }
 
     result = CheckChannelHandshakeStatus(config).process(mpt_client, context)
 
     assert result is None
-    aws_client_mock.get_channel_handshakes_by_resource.assert_called_once_with("rel-123456")
+    aws_client_mock.get_channel_handshake_by_id.assert_called_once_with("rel-123456", "hs-123456")
 
 
 def test_process_handshake_pending(
@@ -104,9 +105,10 @@ def test_process_handshake_pending(
     context = PurchaseContext.from_order_data(order)
     _, aws_client_mock = aws_client_factory(config, "pma-id", "role-name")
     context.aws_apn_client = aws_client_mock
-    aws_client_mock.get_channel_handshakes_by_resource.return_value = [
-        {"id": "hs-123456", "status": ChannelHandshakeStatusEnum.PENDING.value}
-    ]
+    aws_client_mock.get_channel_handshake_by_id.return_value = {
+        "id": "hs-123456",
+        "status": ChannelHandshakeStatusEnum.PENDING.value,
+    }
 
     with pytest.raises(QueryStepError) as error:
         CheckChannelHandshakeStatus(config).process(mpt_client, context)
@@ -131,7 +133,7 @@ def test_process_handshake_not_found(
     context = PurchaseContext.from_order_data(order)
     _, aws_client_mock = aws_client_factory(config, "pma-id", "role-name")
     context.aws_apn_client = aws_client_mock
-    aws_client_mock.get_channel_handshakes_by_resource.return_value = []
+    aws_client_mock.get_channel_handshake_by_id.return_value = None
 
     with pytest.raises(UnexpectedStopError):
         CheckChannelHandshakeStatus(config).process(mpt_client, context)
@@ -154,9 +156,10 @@ def test_process_handshake_other_status(
     context = PurchaseContext.from_order_data(order)
     _, aws_client_mock = aws_client_factory(config, "pma-id", "role-name")
     context.aws_apn_client = aws_client_mock
-    aws_client_mock.get_channel_handshakes_by_resource.return_value = [
-        {"id": "hs-123456", "status": "REJECTED"}
-    ]
+    aws_client_mock.get_channel_handshake_by_id.return_value = {
+        "id": "hs-123456",
+        "status": "REJECTED",
+    }
 
     result = CheckChannelHandshakeStatus(config).process(mpt_client, context)
 

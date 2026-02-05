@@ -40,6 +40,11 @@ class AWSCustomerRolesProcessor(Processor):
         """Process AWS customer roles timeout."""
         co_client = CloudOrchestratorClient(self._config)
         mpa_account_id = get_mpa_account_id(context.order)
+        logger.info(
+            "%s - Checking customer roles deployment status for MPA account ID %s.",
+            context.order_id,
+            mpa_account_id,
+        )
 
         try:
             bootstrap_roles_status = co_client.get_bootstrap_role_status(mpa_account_id)
@@ -60,22 +65,27 @@ class AWSCustomerRolesProcessor(Processor):
             self._manage_customer_roles_ticket_timeout(context)
 
         if is_querying_timeout(context, self._config.querying_timeout_days):
-            logger.info(
-                "%s - Check customer roles timeout.",
-                context.order_id,
-            )
-            logger.info(
-                "%s - Updating order to processing with Phase CREATE_SUBSCRIPTION.",
-                context.order_id,
-            )
+            self._manage_querying_timeout(context)
+            return
+        logger.info(
+            "%s - Customer roles are not deployed yet. Waiting for next check.", context.order_id
+        )
 
-            switch_order_status_to_process_and_notify(
-                self.client, context, get_template_name(context)
-            )
-            context.order = set_phase(context.order, PhasesEnum.CREATE_SUBSCRIPTION)
-            context.order = update_order(
-                self.client, context.order_id, parameters=context.order["parameters"]
-            )
+    def _manage_querying_timeout(self, context: PurchaseContext):
+        logger.info(
+            "%s - Check customer roles timeout.",
+            context.order_id,
+        )
+        logger.info(
+            "%s - Updating order to processing with Phase CREATE_SUBSCRIPTION.",
+            context.order_id,
+        )
+        context.order = set_phase(context.order, PhasesEnum.CREATE_SUBSCRIPTION)
+        context.order = update_order(
+            self.client, context.order_id, parameters=context.order["parameters"]
+        )
+
+        switch_order_status_to_process_and_notify(self.client, context, get_template_name(context))
 
     def _manage_customer_roles_ticket_timeout(self, context: PurchaseContext) -> None:
         """Manage customer roles ticket timeout."""
@@ -102,4 +112,7 @@ class AWSCustomerRolesProcessor(Processor):
         context.order = set_crm_customer_role_ticket_id(context.order, ticket_id)
         context.order = update_order(
             self.client, context.order_id, parameters=context.order["parameters"]
+        )
+        logger.info(
+            "%s - Created CRM ticket %s for customer roles deployment.", context.order_id, ticket_id
         )
