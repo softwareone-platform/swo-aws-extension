@@ -86,6 +86,11 @@ class Config:
         return int(settings.EXTENSION_CONFIG["QUERYING_TIMEOUT_DAYS"])
 
     @property
+    def customer_roles_querying_timeout_days(self) -> int:
+        """Get the timeout for customer roles querying in days."""
+        return int(settings.EXTENSION_CONFIG["CUSTOMER_ROLES_QUERYING_TIMEOUT_DAYS"])
+
+    @property
     def cloud_orchestrator_api_base_url(self) -> str:
         """Get the base URL for the Cloud Orchestrator API."""
         return settings.EXTENSION_CONFIG["CLOUD_ORCHESTRATOR_API_BASE_URL"]

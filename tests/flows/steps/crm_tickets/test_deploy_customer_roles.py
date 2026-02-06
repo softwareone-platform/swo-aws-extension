@@ -46,7 +46,7 @@ def test_pre_step_skips_wrong_phase(order_factory, fulfillment_parameters_factor
 def test_pre_step_skips_when_ticket_is_open(
     order_factory,
     fulfillment_parameters_factory,
-    mock_deploy_roles_crm_client,
+    mock_crm_client,
     config,
 ):
     order = order_factory(
@@ -56,7 +56,7 @@ def test_pre_step_skips_when_ticket_is_open(
         )
     )
     context = PurchaseContext.from_order_data(order)
-    mock_deploy_roles_crm_client.return_value.get_service_request.return_value = {"state": "Open"}
+    mock_crm_client.return_value.get_service_request.return_value = {"state": "Open"}
 
     with pytest.raises(SkipStepError):
         CRMTicketDeployCustomerRoles(config).pre_step(context)
@@ -128,7 +128,7 @@ def test_pre_step_proceeds_roles_not_deployed(
 def test_pre_step_proceeds_ticket_resolved(
     order_factory,
     fulfillment_parameters_factory,
-    mock_deploy_roles_crm_client,
+    mock_crm_client,
     mock_cloud_orchestrator_client,
     config,
     caplog,
@@ -140,7 +140,7 @@ def test_pre_step_proceeds_ticket_resolved(
         )
     )
     context = PurchaseContext.from_order_data(order)
-    mock_deploy_roles_crm_client.return_value.get_service_request.return_value = {
+    mock_crm_client.return_value.get_service_request.return_value = {
         "state": CRM_TICKET_RESOLVED_STATE
     }
     mock_cloud_orchestrator_client.return_value.get_bootstrap_role_status.return_value = {

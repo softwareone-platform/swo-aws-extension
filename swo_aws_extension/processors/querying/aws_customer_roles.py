@@ -9,8 +9,12 @@ from swo_aws_extension.constants import (
 )
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.order_utils import switch_order_status_to_process_and_notify
+from swo_aws_extension.flows.steps.crm_tickets.templates.deploy_roles import DEPLOY_ROLES_TEMPLATE
+from swo_aws_extension.flows.steps.crm_tickets.ticket_manager import TicketManager
 from swo_aws_extension.parameters import (
+    get_formatted_technical_contact,
     get_mpa_account_id,
+    set_crm_customer_role_ticket_id,
     set_phase,
 )
 from swo_aws_extension.processors.processor import Processor
@@ -52,6 +56,9 @@ class AWSCustomerRolesProcessor(Processor):
             )
             return
 
+        if is_querying_timeout(context, self._config.customer_roles_querying_timeout_days):
+            self._manage_customer_roles_ticket_timeout(context)
+
         if is_querying_timeout(context, self._config.querying_timeout_days):
             logger.info(
                 "%s - Check customer roles timeout.",
@@ -69,3 +76,30 @@ class AWSCustomerRolesProcessor(Processor):
             context.order = update_order(
                 self.client, context.order_id, parameters=context.order["parameters"]
             )
+
+    def _manage_customer_roles_ticket_timeout(self, context: PurchaseContext) -> None:
+        """Manage customer roles ticket timeout."""
+        ticket_manager = TicketManager(
+            config=self._config, ticket_name="Deploy Customer Roles", template=DEPLOY_ROLES_TEMPLATE
+        )
+        if ticket_manager.has_open_ticket(context):
+            return
+
+        contact = get_formatted_technical_contact(context.order)
+        ticket_summary = ticket_manager.template.summary.format(
+            customer_name=context.buyer.get("name"),
+            buyer_id=context.buyer.get("id"),
+            buyer_external_id=context.buyer.get("externalIds", {}).get("erpCustomer", ""),
+            seller_country=context.seller.get("address", {}).get("country", ""),
+            pm_account_id=context.pm_account_id,
+            order_id=context.order_id,
+            master_payer_id=get_mpa_account_id(context.order),
+            technical_contact_name=contact["name"],
+            technical_contact_email=contact["email"],
+            technical_contact_phone=contact["phone"],
+        )
+        ticket_id = ticket_manager.create_new_ticket(context, ticket_summary)
+        context.order = set_crm_customer_role_ticket_id(context.order, ticket_id)
+        context.order = update_order(
+            self.client, context.order_id, parameters=context.order["parameters"]
+        )
