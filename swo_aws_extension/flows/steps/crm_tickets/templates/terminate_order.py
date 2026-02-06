@@ -9,7 +9,7 @@ ORDER_TERMINATION_TEMPLATE = CRMTicketTemplate(
         "Dear MCoE Team,<br><br>"
         "A notification has been generated on the Marketplace Platform for termination of an AWS"
         " account.<br><br>"
-        "Billing transfer relationship end date: <b>{end_date}</b><br><br>"
+        "Commitment term end date: <b>{end_date}</b><br><br>"
         "<b>Order Details:</b><br>"
         "<ul>"
         "<li><b>Customer:</b> {customer_name}</li>"

@@ -49,6 +49,7 @@ global:
   AwsSesCredentials: ZGVmYXVsdA==
   AwsSesRegion: default
   DeployServicesFeatureRecipients: default
+  CustomerRolesQueryingTimeoutDays: 2
 
   cronjobs:
     order-querying:
