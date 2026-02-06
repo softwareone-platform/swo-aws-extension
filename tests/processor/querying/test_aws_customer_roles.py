@@ -4,7 +4,10 @@ from unittest.mock import MagicMock
 import pytest
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
-from swo_aws_extension.constants import PhasesEnum
+from swo_aws_extension.constants import (
+    CRM_TICKET_RESOLVED_STATE,
+    PhasesEnum,
+)
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.processors.querying.aws_customer_roles import (
     AWSCustomerRolesProcessor,
@@ -107,7 +110,15 @@ def test_process_cr_not_deployed_timeout_reached(
     mocker: Any,
     processor: AWSCustomerRolesProcessor,
     mock_context: MagicMock,
+    mock_crm_client: MagicMock,
+    order_factory,
+    fulfillment_parameters_factory,
 ) -> None:
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            crm_customer_role_ticket_id="TICKET-123"
+        )
+    )
     mocker.patch(
         "swo_aws_extension.processors.querying.aws_customer_roles.get_mpa_account_id",
         return_value="mpa-account-123",
@@ -135,13 +146,66 @@ def test_process_cr_not_deployed_timeout_reached(
         "swo_aws_extension.processors.querying.aws_customer_roles.get_template_name",
         return_value="TEMPLATE_NAME",
     )
-    mock_context.order = {"parameters": {}}
-    mock_update_order.return_value = {"parameters": {}}
+    mock_context.order = order
+    mock_update_order.return_value = order
+    mock_crm_client.return_value.get_service_request.return_value = {
+        "state": "Active",
+    }
 
     processor.process(mock_context)  # act
 
     mock_switch.assert_called_once_with(processor.client, mock_context, "TEMPLATE_NAME")
     mock_set_phase.assert_called_once_with(mock_context.order, PhasesEnum.CREATE_SUBSCRIPTION)
+    mock_update_order.assert_called_once()
+
+
+def test_process_cr_not_deployed_timeout_reached_to_create_new_ticket(
+    mocker: Any,
+    processor: AWSCustomerRolesProcessor,
+    mock_context: MagicMock,
+    mock_crm_client: MagicMock,
+    order_factory,
+    fulfillment_parameters_factory,
+) -> None:
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            crm_customer_role_ticket_id="TICKET-123"
+        )
+    )
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.get_mpa_account_id",
+        return_value="mpa-account-123",
+    )
+    mock_co_client = MagicMock()
+    mock_co_client.get_bootstrap_role_status.return_value = {"deployed": False}
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.CloudOrchestratorClient",
+        return_value=mock_co_client,
+    )
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.is_querying_timeout",
+        side_effect=[True, False],
+    )
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process_and_notify"
+    )
+    mocker.patch("swo_aws_extension.processors.querying.aws_customer_roles.set_phase")
+    mock_update_order = mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.update_order"
+    )
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.get_template_name",
+        return_value="TEMPLATE_NAME",
+    )
+    mock_context.order = order
+    mock_update_order.return_value = order
+    mock_crm_client.return_value.get_service_request.return_value = {
+        "state": CRM_TICKET_RESOLVED_STATE,
+    }
+    mock_crm_client.return_value.create_service_request.return_value = {"id": "TICKET-999"}
+
+    processor.process(mock_context)  # act
+
     mock_update_order.assert_called_once()
 
 

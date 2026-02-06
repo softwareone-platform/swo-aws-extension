@@ -39,7 +39,7 @@ class PurchaseOrderQueryService:
         orders: list[dict[str, Any]] = []
         url = (
             f"/commerce/orders?{self.filter()}&select=audit,parameters,lines,subscriptions,"
-            f"subscriptions.lines,agreement,buyer,authorization.externalIds&order=audit.created.at"
+            f"subscriptions.lines,agreement,seller,buyer,authorization.externalIds&order=audit.created.at"
         )
         page = None
         offset = 0

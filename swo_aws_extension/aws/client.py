@@ -236,6 +236,7 @@ class AWSClient:
         self,
         pma_identifier: str,
         relationship_identifier: str,
+        end_date: dt.datetime,
     ) -> dict:
         """Create channel handshake in Partner Central."""
         partner_central_client = self._get_partner_central_client()
@@ -246,8 +247,8 @@ class AWSClient:
             payload={
                 "startServicePeriodPayload": {
                     "programManagementAccountIdentifier": pma_identifier,
-                    "servicePeriodType": "MINIMUM_NOTICE_PERIOD",
-                    "minimumNoticeDays": "30",
+                    "servicePeriodType": "FIXED_COMMITMENT_PERIOD",
+                    "endDate": end_date,
                 }
             },
         )
@@ -280,6 +281,15 @@ class AWSClient:
             },
             pagination_key="nextToken",
         )
+
+    def get_channel_handshake_by_id(
+        self, resource_identifier: str, handshake_id: str
+    ) -> dict | None:
+        """Get channel handshake by ID."""
+        handshakes = self.get_channel_handshakes_by_resource(
+            resource_identifier=resource_identifier
+        )
+        return next((hs for hs in handshakes if hs.get("id") == handshake_id), None)
 
     @wrap_boto3_error
     def _get_credentials(self):

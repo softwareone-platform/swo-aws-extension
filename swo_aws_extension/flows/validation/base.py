@@ -18,6 +18,7 @@ from swo_aws_extension.parameters import (
 logger = logging.getLogger(__name__)
 
 VISIBLE_REQUIRED = {"hidden": False, "required": True, "readonly": False}
+VISIBLE = {"hidden": False, "required": False, "readonly": False}
 
 
 ACCOUNT_TYPE_CONFIG = {
@@ -25,6 +26,7 @@ ACCOUNT_TYPE_CONFIG = {
         "visible_params": [
             OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value,
         ],
+        "required_params": [],
         "reset_params": [
             OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value,
             OrderParametersEnum.TECHNICAL_CONTACT_INFO.value,
@@ -34,9 +36,12 @@ ACCOUNT_TYPE_CONFIG = {
     },
     AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value: {
         "visible_params": [
+            OrderParametersEnum.TECHNICAL_CONTACT_INFO.value,
+            OrderParametersEnum.CONNECT_AWS_BILLING_ACCOUNT.value,
+        ],
+        "required_params": [
             OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value,
             OrderParametersEnum.CONTACT.value,
-            OrderParametersEnum.TECHNICAL_CONTACT_INFO.value,
         ],
         "reset_params": [
             OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value,
@@ -60,6 +65,9 @@ def _apply_account_type_constraints(order: dict, account_type: str | None) -> di
         )
 
     for param_property in config["visible_params"]:
+        order = set_order_parameter_constraints(order, param_property, constraints=VISIBLE)
+
+    for param_property in config["required_params"]:
         order = set_order_parameter_constraints(order, param_property, constraints=VISIBLE_REQUIRED)
 
     return reset_ordering_parameters(order, config["reset_params"])
@@ -80,10 +88,6 @@ def _add_default_lines(client: MPTClient, order: dict) -> dict:
         The order with default lines added.
     """
     product_id = order.get("product", {}).get("id", "")
-    if not product_id:
-        logger.warning("No product ID found in order, skipping default lines")
-        return order
-
     aws_items = get_product_items_by_skus(client, product_id, AWS_ITEMS_SKUS)
     if not aws_items:
         logger.error(

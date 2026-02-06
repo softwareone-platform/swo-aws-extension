@@ -56,12 +56,9 @@ class CheckChannelHandshakeStatus(BasePhaseStep):
             context.order, ChannelHandshakeDeployed.NO_DEPLOYED
         )
         relationship_id = get_relationship_id(context.order)
-        handshakes = context.aws_apn_client.get_channel_handshakes_by_resource(relationship_id)
         handshake_id = get_channel_handshake_id(context.order)
-
-        handshake = next(
-            (hs for hs in handshakes if hs.get("id") == handshake_id),
-            None,
+        handshake = context.aws_apn_client.get_channel_handshake_by_id(
+            relationship_id, handshake_id
         )
 
         if not handshake:

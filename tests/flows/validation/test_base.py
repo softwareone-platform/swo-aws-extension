@@ -50,7 +50,7 @@ def test_validate_order_orchestrates_all_steps_new_aws_environment(
         OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value, result
     )
     assert new_account_instructions_param["constraints"]["hidden"] is False
-    assert new_account_instructions_param["constraints"]["required"] is True
+    assert new_account_instructions_param["constraints"]["required"] is False
     assert master_payer_account_id_param["constraints"]["hidden"] is True
     assert master_payer_account_id_param["constraints"]["required"] is False
     assert result["lines"] == [{"item": mock_items[0], "quantity": 1}]
@@ -96,7 +96,6 @@ def test_validate_order_orchestrates_all_steps_existing_aws_environment(
 def test_validate_order_returns_error_when_new_account_instructions_visible(
     order_factory, order_parameters_factory
 ):
-    """Test that validate_order returns error when newAccountInstructions is visible."""
     mock_client = MagicMock()
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -116,3 +115,43 @@ def test_validate_order_returns_error_when_new_account_instructions_visible(
         OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value, result
     )
     assert new_account_instructions_param["error"]["id"] == "AWS002"
+
+
+def test_validate_order_with_invalid_account_type(order_factory, order_parameters_factory, mocker):
+    mock_client = MagicMock()
+    order = order_factory(
+        order_parameters=order_parameters_factory(
+            account_type="INVALID_TYPE",
+        ),
+        lines=[],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
+        return_value=[],
+    )
+
+    result = validate_order(mock_client, order)
+
+    account_type_param = get_ordering_parameter(OrderParametersEnum.ACCOUNT_TYPE.value, result)
+    assert account_type_param["error"]["id"] == "AWS001"
+
+
+def test_validate_order_when_product_items_not_found(
+    order_factory, order_parameters_factory, mocker
+):
+    mock_client = MagicMock()
+    order = order_factory(
+        order_parameters=order_parameters_factory(
+            account_type=AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value,
+            constraints={"hidden": None, "required": None, "readonly": None},
+        ),
+        lines=[],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
+        return_value=[],
+    )
+
+    result = validate_order(mock_client, order)
+
+    assert result["lines"] == []

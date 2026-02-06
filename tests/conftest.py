@@ -847,4 +847,6 @@ def mock_validate_order(mocker):
 
 @pytest.fixture
 def mock_crm_client(mocker):
-    return mocker.patch("swo_aws_extension.flows.steps.crm_tickets.base.get_service_client")
+    return mocker.patch(
+        "swo_aws_extension.flows.steps.crm_tickets.ticket_manager.get_service_client"
+    )
