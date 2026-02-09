@@ -545,6 +545,7 @@ def test_create_channel_handshake_success(config, aws_client_factory):
         pma_identifier="pma-123456",
         relationship_identifier="rel-123456",
         end_date=end_date,
+        note="Please accept your Service Terms contract with SoftwareOne",
     )
 
     assert result == expected_response
@@ -557,6 +558,7 @@ def test_create_channel_handshake_success(config, aws_client_factory):
                 "programManagementAccountIdentifier": "pma-123456",
                 "servicePeriodType": "FIXED_COMMITMENT_PERIOD",
                 "endDate": end_date,
+                "note": "Please accept your Service Terms contract with SoftwareOne",
             }
         },
     )
@@ -572,6 +574,7 @@ def test_create_channel_handshake_error(config, aws_client_factory):
             pma_identifier="pma-123456",
             relationship_identifier="rel-123456",
             end_date=end_date,
+            note="Please accept your Service Terms contract with SoftwareOne",
         )
 
     mock_client.create_channel_handshake.assert_called_once()

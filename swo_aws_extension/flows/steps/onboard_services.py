@@ -52,6 +52,7 @@ class OnboardServices(BasePhaseStep):
             customer_name=context.buyer.get("name"),
             buyer_id=context.buyer.get("id"),
             buyer_external_id=context.buyer.get("externalIds", {}).get("erpCustomer", ""),
+            pm_account_id=context.pm_account_id,
             order_id=context.order_id,
             master_payer_id=get_mpa_account_id(context.order),
             technical_contact_name=contact["name"],
