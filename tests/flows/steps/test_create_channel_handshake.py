@@ -96,6 +96,7 @@ def test_process_success(
         pma_identifier="pma-identifier-123",
         relationship_identifier="rel-123456",
         end_date=expected_end_date,
+        note="Please accept your Service Terms contract with SoftwareOne",
     )
     assert get_channel_handshake_id(context.order) == "hs-new-123456"
 
@@ -129,6 +130,7 @@ def test_process_end_date_year_boundary(
         pma_identifier="pma-identifier-123",
         relationship_identifier="rel-123456",
         end_date=expected_end_date,
+        note="Please accept your Service Terms contract with SoftwareOne",
     )
 
 
