@@ -12,62 +12,76 @@ Extension integrates AWS Marketplace Extension with the SoftwareONE Marketplace
 - Docker and Docker Compose plugin (`docker compose` CLI)
 - `make`
 - Valid `.env` file
-- Adobe credentials and authorizations JSON files in the project root
 - [CodeRabbit CLI](https://www.coderabbit.ai/cli) (optional. Used for running review check locally)
 
-Common development workflows are wrapped in the `makefile`:
 
-- `make help` – list available commands
-- `make bash` – start the app container and open a bash shell
-- `make build` – build the application image for development
-- `make check` – run code quality checks (ruff, flake8, lockfile check)
-- `make check-all` – run checks and tests
-- `make format` – apply formatting and import fixes
-- `make down` – stop and remove containers
-- `make review` –  check the code in the cli by running CodeRabbit
-- `make run` – run the service
-- `make shell` – open a Django shell inside the running app container
-- `make test` – run the test suite with pytest
+### Make targets overview
 
-## Running tests
+Common development workflows are wrapped in the `Makefile`. Run `make help` to see the list of available commands.
 
-Tests run inside Docker using the dev configuration.
+### How the Makefile works
 
-Run the full test suite:
+The project uses a modular Makefile structure that organizes commands into logical groups:
+
+- **Main Makefile** (`Makefile`): Entry point that automatically includes all `.mk` files from the `make/` directory
+- **Modular includes** (`make/*.mk`): Commands are organized by category:
+  - `common.mk` - Core development commands (build, test, format, etc.)
+  - `repo.mk` - Repository management and dependency commands
+  - `migrations.mk` - Database migration commands (Only available in extension repositories)
+  - `external_tools.mk` - Integration with external tools
+
+
+You can extend the Makefile with your own custom commands creating a `local.mk` file inside make folder. This file is
+automatically ignored by git, so your personal commands won't affect other developers or appear in version control.
+
+
+### Setup
+
+Follow these steps to set up the development environment:
+
+#### 1. Clone the repository
 
 ```bash
-make test
+git clone <repository-url>
 ```
-
-Pass additional arguments to pytest using the `args` variable:
-
 ```bash
-make test args="-k test_extension -vv"
-make test args="tests/flows/test_orders_flow.py"
+cd swo-aws-extension
 ```
 
-## Running the service
+#### 2. Create environment configuration
 
-### 1. Configuration files
-
-In the project root, create and configure the following files.
-
-#### Environment files
-
-Start from the sample file:
+Copy the sample environment file and update it with your values:
 
 ```bash
 cp .env.sample .env
 ```
 
-Update `.env` with your values. This file is used by all Docker Compose configurations and the `make run` target.
+Edit the `.env` file with your actual configuration values. See the [Configuration](#configuration) section for details on available variables.
 
-### 2. Running
+#### 3. Build the Docker images
 
-Run the service against real AWS and SoftwareONE Marketplace APIs. It uses `compose.yaml` and reads environment from `.env`.
+Build the development environment:
 
-Ensure:
-- `.env` is populated with real endpoints and tokens.
+```bash
+make build
+```
+
+This will create the Docker images with all required dependencies and the virtualenv.
+
+#### 4. Verify the setup
+
+Run the test suite to ensure everything is configured correctly:
+
+```bash
+make test
+```
+
+You're now ready to start developing! See [Running the service](#running-the-service) for next steps.
+
+
+## Running the service
+
+Before running, ensure your `.env` file is populated with real endpoints and tokens.
 
 Start the app:
 
@@ -80,28 +94,32 @@ The service will be available at `http://localhost:8080`.
 Example `.env` snippet for real services:
 
 ```env
-MPT_PRODUCTS_IDS=PRD-1111-1111,PRD-2222-2222
-EXT_WEBHOOKS_SECRETS={"PRD-1111-1111": "<webhook-secret-for-product>", "PRD-2222-2222": "<webhook-secret-for-product>"}
-MPT_PORTAL_BASE_URL=https://portal.s1.show
-MPT_API_BASE_URL=https://api.s1.show/public
-MPT_API_TOKEN=c0fdafd7-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-MPT_KEY_VAULT_NAME=https://mpt-key-vault-name.vault.azure.net/
-MPT_ORDERS_API_POLLING_INTERVAL_SECS=120
-EXT_AWS_OPENID_SCOPE=urn://dev.aws.services.softwareone.com/.default
-EXT_AWS_REGION=us-east-1
-EXT_CCP_CLIENT_ID=123456789
-EXT_CCP_KEY_VAULT_SECRET_NAME=ccp-key-vault-secret-name
-EXT_CCP_OAUTH_URL=https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token
-EXT_CCP_OAUTH_SCOPE=api://scope
-EXT_MSTEAMS_WEBHOOK_URL=https://whatever.webhook.office.com/webhookb2/<...>
 AZURE_CLIENT_ID=client-id-guid
 AZURE_TENANT_ID=tenant-id-guid
 AZURE_CLIENT_CERTIFICATE_PASSWORD=local-client-cert-pw
 AZURE_CLIENT_CERTIFICATE_PATH=xxxxxxx.PFX
+EXT_AWS_OPENID_SCOPE=urn://dev.aws.services.softwareone.com/.default
+EXT_AWS_REGION=us-east-1
+EXT_CCP_CLIENT_ID=123456789
+EXT_CCP_KEY_VAULT_SECRET_NAME=ccp-key-vault-secret-name
+EXT_CCP_OAUTH_SCOPE=api://scope
+EXT_CCP_OAUTH_URL=https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token
+EXT_MSTEAMS_WEBHOOK_URL=https://whatever.webhook.office.com/webhookb2/<...>
+EXT_WEBHOOKS_SECRETS={"PRD-1111-1111": "<webhook-secret-for-product>", "PRD-2222-2222": "<webhook-secret-for-product>"}
+MPT_API_BASE_URL=https://api.s1.show/public
+MPT_API_TOKEN=c0fdafd7-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+MPT_KEY_VAULT_NAME=https://mpt-key-vault-name.vault.azure.net/
+MPT_ORDERS_API_POLLING_INTERVAL_SECS=120
+MPT_PORTAL_BASE_URL=https://portal.s1.show
+MPT_PRODUCTS_IDS=PRD-1111-1111,PRD-2222-2222
+MPT_TOOL_STORAGE_TYPE=airtable
+MPT_TOOL_STORAGE_AIRTABLE_API_KEY=<fake-airtable-api-key>
+MPT_TOOL_STORAGE_AIRTABLE_BASE_ID=<fake-storage-airtable-base-id>
+MPT_TOOL_STORAGE_AIRTABLE_TABLE_NAME=<fake-storage-airtable-table-name>
 ```
 
 `MPT_PRODUCTS_IDS` is a comma-separated list of SWO Marketplace Product identifiers.
-For each product ID in the `MPT_PRODUCTS_IDS` list, define the corresponding entry in the `WEBHOOKS_SECRETS` JSON using the product ID as the key.
+For each product ID in the `MPT_PRODUCTS_IDS` list, define the corresponding entry in the `EXT_WEBHOOKS_SECRETS` JSON using the product ID as the key.
 
 
 ## Developer utilities
@@ -117,19 +135,38 @@ make review    # check the code in the cli by running CodeRabbit
 make shell     # open a Django shell in the app container
 ```
 
+### Migration commands
+
+The mpt-tool provides commands for managing database migrations:
+
+```bash
+make migrate-check                           # check migration status
+make migrate-data                            # run data migrations
+make migrate-schema                          # run schema migrations
+make migrate-list                            # list available migrations
+make migrate-new-data name=migration_id      # create a new data migration
+make migrate-new-schema name=migration_id    # create a new schema migration
+```
+
+
 ## Configuration
 
 The following environment variables are typically set in `.env`. Docker Compose reads them when using the Make targets described above.
 
 ### Application
 
-| Environment Variable            | Default                 | Example                                 | Description                                                                               |
-|---------------------------------|-------------------------|-----------------------------------------|-------------------------------------------------------------------------------------------|
-| `EXT_WEBHOOKS_SECRETS`          | -                       | {"PRD-1111-1111": "123qweasd3432234"}   | Webhook secret of the Draft validation Webhook in SoftwareONE Marketplace for the product |
-| `MPT_PRODUCTS_IDS`              | PRD-1111-1111           | PRD-1234-1234,PRD-4321-4321             | Comma-separated list of SoftwareONE Marketplace Product ID                                |
-| `MPT_API_BASE_URL`              | `http://localhost:8000` | `https://portal.softwareone.com/mpt`    | SoftwareONE Marketplace API URL                                                           |
-| `MPT_API_TOKEN`                 | -                       | eyJhbGciOiJSUzI1N...                    | SoftwareONE Marketplace API Token                                                         |
-| `MPT_NOTIFY_CATEGORIES`         | -                       | {"ORDERS": "NTC-XXXX-XXXX"}             | SoftwareONE Marketplace Notification Categories                                           |
+| Environment Variable                   | Default                 | Example                                   | Description                                                                               |
+|----------------------------------------|-------------------------|-------------------------------------------|-------------------------------------------------------------------------------------------|
+| `EXT_WEBHOOKS_SECRETS`                 | -                       | {"PRD-1111-1111": "123qweasd3432234"}     | Webhook secret of the Draft validation Webhook in SoftwareONE Marketplace for the product |
+| `MPT_API_BASE_URL`                     | `http://localhost:8000` | `https://portal.softwareone.com/mpt`      | SoftwareONE Marketplace API URL                                                           |
+| `MPT_API_TOKEN`                        | -                       | eyJhbGciOiJSUzI1N...                      | SoftwareONE Marketplace API Token                                                         |
+| `MPT_NOTIFY_CATEGORIES`                | -                       | {"ORDERS": "NTC-XXXX-XXXX"}               | SoftwareONE Marketplace Notification Categories                                           |
+| `MPT_PORTAL_BASE_URL`                  | `http://localhost:8000` | `https://portal.softwareone.com`          | SoftwareONE Marketplace Portal URL                                                        |
+| `MPT_PRODUCTS_IDS`                     | PRD-1111-1111           | PRD-1234-1234,PRD-4321-4321               | Comma-separated list of SoftwareONE Marketplace Product ID                                |
+| `MPT_TOOL_STORAGE_TYPE`                | `local`                 | `airtable`                                | Storage type for MPT tools (local or airtable)                                            |
+| `MPT_TOOL_STORAGE_AIRTABLE_API_KEY`    | -                       | patXXXXXXXXXXXXXX                         | Airtable API key for MPT tool storage (required when storage type is airtable)            |
+| `MPT_TOOL_STORAGE_AIRTABLE_BASE_ID`    | -                       | appXXXXXXXXXXXXXX                         | Airtable base ID for MPT tool storage (required when storage type is airtable)            |
+| `MPT_TOOL_STORAGE_AIRTABLE_TABLE_NAME` | -                       | MigrationTracking                         | Airtable table name for MPT tool storage (required when storage type is airtable)         |
 
 
 ## Azure AppInsights

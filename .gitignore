@@ -178,3 +178,9 @@ cython_debug/
 .ruff_cache
 
 *.pfx
+
+# Makefile
+make/local.mk
+
+# mpt-tool
+.migrations-state.json
