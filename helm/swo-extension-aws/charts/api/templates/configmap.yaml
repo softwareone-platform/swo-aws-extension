@@ -43,3 +43,5 @@ data:
   EXT_EMAIL_NOTIFICATIONS_ENABLED: {{ .Values.global.EmailNotificationsEnabled | quote }}
   EXT_EMAIL_NOTIFICATIONS_SENDER: {{ .Values.global.EmailNotificationsSender | quote }}
   EXT_DEPLOY_SERVICES_FEATURE_RECIPIENTS: {{ .Values.global.DeployServicesFeatureRecipients | quote }}
+  EXT_AZURE_STORAGE_CONTAINER: {{ .Values.global.AzureStorageContainer | quote }}
+  EXT_AZURE_STORAGE_SAS_EXPIRY_DAYS: {{ .Values.global.AzureStorageSasExpiryDays | quote }}
