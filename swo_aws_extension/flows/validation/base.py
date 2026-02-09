@@ -125,9 +125,8 @@ def _validate_new_account_constraints(order: dict) -> dict | None:
             ValidationError(
                 err_id="AWS002",
                 message=(
-                    "You should follow the instructions provided in the new account "
-                    "instructions parameter and get back to select existing AWS "
-                    "account type"
+                    "Please follow the instructions provided to create a new AWS account and "
+                    "return to select Transfer existing AWS account option."
                 ),
             ).to_dict(),
         )
