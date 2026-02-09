@@ -60,6 +60,7 @@ class CreateChannelHandshake(BasePhaseStep):
                 pma_identifier=pm_identifier,
                 relationship_identifier=get_relationship_id(context.order),
                 end_date=dt.datetime.now(dt.UTC) + relativedelta(years=1),
+                note="Please accept your Service Terms contract with SoftwareOne",
             )
         except AWSError as error:
             raise UnexpectedStopError(
