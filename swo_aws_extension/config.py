@@ -162,6 +162,11 @@ class Config:
         return settings.EXTENSION_CONFIG["AZURE_STORAGE_CONTAINER"]
 
     @property
+    def report_invitations_folder(self) -> str:
+        """Get the Azure Storage Blob container name for reports."""
+        return settings.EXTENSION_CONFIG["REPORT_INVITATIONS_FOLDER"]
+
+    @property
     def azure_storage_sas_expiry_days(self) -> int:
         """Get the Azure Storage SAS expiry days."""
         return int(settings.EXTENSION_CONFIG["AZURE_STORAGE_SAS_EXPIRY_DAYS"])
