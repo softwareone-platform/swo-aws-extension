@@ -1,7 +1,7 @@
 from django.conf import settings
 from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 from pyairtable import Api
-from pyairtable.formulas import EQUAL, FIELD, STR_VALUE
+from pyairtable.formulas import EQ, Field
 
 from swo_aws_extension.airtable.models import FinOpsFields, FinOpsRecord
 
@@ -20,7 +20,7 @@ class FinOpsEntitlementsTable:
     def get_by_agreement_id(self, agreement_id: str) -> list[FinOpsRecord]:
         """Get list of record by agreement id."""
         records = self._table.all(
-            formula=EQUAL(FIELD(FinOpsFields.AGREEMENT_ID.value), STR_VALUE(agreement_id))
+            formula=EQ(Field(FinOpsFields.AGREEMENT_ID.value), str(agreement_id))
         )
         if not records:
             return []
