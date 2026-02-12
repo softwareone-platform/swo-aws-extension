@@ -154,6 +154,7 @@ USE_APPLICATIONINSIGHTS = os.getenv("USE_APPLICATIONINSIGHTS", "False").lower() 
 }
 APPLICATIONINSIGHTS_CONNECTION_STRING = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "")
 
+
 MPT_API_BASE_URL = os.getenv("MPT_API_BASE_URL", "http://localhost:8000")
 MPT_API_TOKEN = os.getenv("MPT_API_TOKEN", "change-me!")
 MPT_PRODUCTS_IDS = ["PRD-1111-1111"]
@@ -209,6 +210,9 @@ EXTENSION_CONFIG = {
     "EMAIL_NOTIFICATIONS_ENABLED": 1,
     "EMAIL_NOTIFICATIONS_SENDER": "sender@example.com",
     "DEPLOY_SERVICES_FEATURE_RECIPIENTS": "services@example.com",
+    "AZURE_STORAGE_CONNECTION_STRING": "connection_string",
+    "AZURE_STORAGE_CONTAINER": "billingreports",
+    "AZURE_STORAGE_SAS_EXPIRY_DAYS": 7,
 }
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"
 

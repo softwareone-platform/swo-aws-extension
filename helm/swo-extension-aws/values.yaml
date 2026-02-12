@@ -50,7 +50,10 @@ global:
   AwsSesRegion: default
   DeployServicesFeatureRecipients: default
   CustomerRolesQueryingTimeoutDays: 2
-
+  AzureStorageConnectionString: ZGVmYXVsdA==
+  AzureStorageContainer: default
+  AzureStorageSasExpiryDays: 7
+  
   cronjobs:
     order-querying:
       schedule: ""
@@ -67,3 +70,6 @@ global:
     sync-finops:
       schedule: ""
       command: synchronize_finops_accounts
+    create-invitations-report:
+      schedule: ""
+      command: create_invitations_report
