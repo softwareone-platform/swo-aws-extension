@@ -213,6 +213,7 @@ EXTENSION_CONFIG = {
     "AZURE_STORAGE_CONNECTION_STRING": "connection_string",
     "AZURE_STORAGE_CONTAINER": "billingreports",
     "AZURE_STORAGE_SAS_EXPIRY_DAYS": 7,
+    "REPORT_INVITATIONS_FOLDER": "reports/aws/billing-transfer-invitations/",
 }
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"
 
