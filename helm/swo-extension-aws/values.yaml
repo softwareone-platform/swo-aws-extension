@@ -70,6 +70,6 @@ global:
     sync-finops:
       schedule: ""
       command: synchronize_finops_accounts
-    create-invitations-report:
+    invitations-report:
       schedule: ""
       command: create_invitations_report
