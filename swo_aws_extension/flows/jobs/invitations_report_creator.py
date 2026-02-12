@@ -243,7 +243,7 @@ class InvitationsReportCreator:
         connection_string = config.azure_storage_connection_string
         container_name = config.azure_storage_container
         today = dt.datetime.now(dt.UTC).strftime("%Y-%m-%d")
-        blob_name = f"{today}.xlsx"
+        blob_name = f"{config.report_invitations_folder}{today}.xlsx"
         sas_expiry_days = config.azure_storage_sas_expiry_days
 
         blob_service_client = BlobServiceClient.from_connection_string(connection_string)

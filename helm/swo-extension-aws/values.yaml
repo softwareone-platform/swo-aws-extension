@@ -51,8 +51,9 @@ global:
   DeployServicesFeatureRecipients: default
   CustomerRolesQueryingTimeoutDays: 2
   AzureStorageConnectionString: ZGVmYXVsdA==
-  AzureStorageContainer: default
+  AzureStorageContainer: private
   AzureStorageSasExpiryDays: 7
+  ReportInvitationsFolder: reports/aws/billing-transfer-invitations/
   
   cronjobs:
     order-querying:
