@@ -16,7 +16,7 @@ dependencies = [
   "mpt-extension-sdk==5.17.*",
   "openpyxl==3.1.*",
   "opentelemetry-instrumentation-botocore==0.60b0",  # fix version, because extension-sdk has opentelemetry-sdk==1.39.0 fixed
-  "pyairtable==2.3.*",
+  "pyairtable==3.3.*",
   "pymsteams==0.2.*",
   "requests==2.32.*",
 ]
@@ -137,7 +137,7 @@ per-file-ignores = [
   "tests/test_initializer.py: WPS111 WPS213 WPS218 WPS230 WPS431",
   "tests/swo/mpt/sync/conftest.py: WPS430 WPS202 WPS118",
   "tests/swo/rql/test_query_builder.py: AAA01 AAA05 WPS110 WPS111 WPS122 WPS202 WPS204 WPS210 WPS218 WPS221 WPS347 WPS420 WPS431 WPS432 WPS473 WPS604",
-  "tests/processor/querying/test_aws_customer_roles.py: WPS118 WPS202 WPS211", 
+  "tests/processor/querying/test_aws_customer_roles.py: WPS118 WPS202 WPS211",
   "tests/flows/steps/crm_tickets/test_ticket_manager.py: WPS118 WPS211",
   "tests/flows/jobs/test_invitations_report_creator.py:  WPS111 WPS118 WPS202 WPS204 WPS210 WPS211 WPS218 WPS219 WPS221 WPS404 WPS432"
 ]
