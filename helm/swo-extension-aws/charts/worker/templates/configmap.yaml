@@ -6,6 +6,7 @@ metadata:
   labels:
     {{- include "common.labels" . | nindent 4 }}
 data:
+  MPT_KEY_VAULT_NAME: {{ .Values.global.keyVaultUri | quote }}
   APPLICATIONINSIGHTS_CONNECTION_STRING: {{ .Values.global.AppInsightsConnectionString | quote }}
   OTEL_SERVICE_NAME: {{ .Values.global.OTELServiceName | quote }}
   MPT_PORTAL_BASE_URL: {{ .Values.global.MpPortalBaseUrl | quote }}
