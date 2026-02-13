@@ -14,6 +14,7 @@ dependencies = [
   "jinja2==3.1.*",
   "markdown-it-py==4.0.*",
   "mpt-extension-sdk==5.17.*",
+  "mpt-tool==5.3.*",
   "openpyxl==3.1.*",
   "opentelemetry-instrumentation-botocore==0.60b0",  # fix version, because extension-sdk has opentelemetry-sdk==1.39.0 fixed
   "pyairtable==3.3.*",
@@ -64,7 +65,7 @@ build-backend = "hatchling.build"
 [tool.pytest.ini_options]
 testpaths = "tests"
 pythonpath = "."
-addopts = "--cov=. --cov-report=term-missing --cov-report=html --cov-report=xml --import-mode=importlib"
+addopts = "--cov=. --cov-report=term-missing --cov-report=xml --import-mode=importlib"
 DJANGO_SETTINGS_MODULE = "tests.django.settings"
 log_cli = false
 filterwarnings = [
@@ -109,6 +110,7 @@ show-source = true
 statistics = false
 # To be fixed and removed
 per-file-ignores = [
+  "migrations/*.py: WPS102",
   "tests/**/*.py: WPS202 WPS204 WPS210 WPS211 WPS213 WPS402 WPS231",
   "tests/*.py: WPS202 WPS204 WPS210 WPS211 WPS213 WPS402 WPS231",
   "swo_aws_extension/apps.py: WPS300",
@@ -218,7 +220,7 @@ ignore = [
   "PT011", # pytest.raises({exception}) is too broad, set the match parameter or use a more specific exception
   "TRY003", # long exception messages from `tryceratops`
 ]
-external = ["AAA", "WPS"]
+external = [ "AAA", "WPS" ]
 
 # Plugin configs:
 [tool.ruff.lint.flake8-import-conventions]
@@ -286,3 +288,7 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "pymsteams.*"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "migrations.*"
+disallow_subclassing_any = false
