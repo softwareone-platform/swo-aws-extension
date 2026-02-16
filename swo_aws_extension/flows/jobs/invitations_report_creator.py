@@ -107,7 +107,7 @@ class InvitationsReportCreator:
 
         return rows
 
-    def _invitation_to_row(self, invitation: dict, agreements: dict) -> list[str]:
+    def _invitation_to_row(self, invitation: dict, agreements: list[dict]) -> list[str]:
         start_date = (
             invitation.get("StartTimestamp").strftime("%Y-%m-%d")
             if invitation.get("StartTimestamp")
@@ -162,7 +162,7 @@ class InvitationsReportCreator:
 
     def _agreements_without_invitations(
         self, agreements: list[dict], aws_invitations: list[dict]
-    ) -> list[dict]:
+    ) -> list[list[str]]:
         """Return agreements without invitations."""
         agreements_without_invitations = []
         for agreement in agreements:
@@ -172,12 +172,10 @@ class InvitationsReportCreator:
                 if invitation["Id"] == invitation_id:
                     break
             else:
-                agreements_without_invitations.append(
-                    self._agreement_to_row(agreement, aws_invitations)
-                )
+                agreements_without_invitations.append(self._agreement_to_row(agreement))
         return agreements_without_invitations
 
-    def _agreement_to_row(self, agreement: dict, aws_invitations: list[dict]) -> list[str]:
+    def _agreement_to_row(self, agreement: dict) -> list[str]:
         """Extract report row from a single agreement."""
         auth = agreement.get("authorization") or {}
         ext_ids = auth.get("externalIds") or {}
