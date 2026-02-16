@@ -15,6 +15,7 @@ from swo_aws_extension.constants import (
     OrderParametersEnum,
     SupportTypesEnum,
 )
+from swo_aws_extension.flows.jobs.invitations_report_creator import InvitationsReportCreator
 from swo_aws_extension.swo.ccp.client import CCPClient
 
 PARAM_COMPANY_NAME = "ACME Inc"
@@ -850,3 +851,8 @@ def mock_crm_client(mocker):
     return mocker.patch(
         "swo_aws_extension.flows.steps.crm_tickets.ticket_manager.get_service_client"
     )
+
+
+@pytest.fixture
+def report_creator(mpt_client):
+    return InvitationsReportCreator(mpt_client, ["PRD-1111-1111"])

@@ -151,6 +151,26 @@ class Config:
         recipients = settings.EXTENSION_CONFIG.get("DEPLOY_SERVICES_FEATURE_RECIPIENTS", "")
         return [email.strip() for email in recipients.split(",") if email.strip()]
 
+    @property
+    def azure_storage_connection_string(self) -> str:
+        """Get the Azure Storage account connection string."""
+        return settings.EXTENSION_CONFIG["AZURE_STORAGE_CONNECTION_STRING"]
+
+    @property
+    def azure_storage_container(self) -> str:
+        """Get the Azure Storage Blob container name for reports."""
+        return settings.EXTENSION_CONFIG["AZURE_STORAGE_CONTAINER"]
+
+    @property
+    def report_invitations_folder(self) -> str:
+        """Get the folder name in Azure Storage Blob container for invitations reports."""
+        return settings.EXTENSION_CONFIG["REPORT_INVITATIONS_FOLDER"]
+
+    @property
+    def azure_storage_sas_expiry_days(self) -> int:
+        """Get the Azure Storage SAS expiry days."""
+        return int(settings.EXTENSION_CONFIG["AZURE_STORAGE_SAS_EXPIRY_DAYS"])
+
     def _patch_path(self, file_path):
         """Fixes relative paths to be from the project root."""
         path = Path(file_path)
