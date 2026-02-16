@@ -22,11 +22,10 @@ spec:
         metadata:
           annotations:
             sidecar.istio.io/inject: "false"
+          labels:
+            azure.workload.identity/use: "true"
         spec:
-          volumes:
-            - name: pyra-keyvault-certificate
-              secret:
-                secretName: ops-pyc-cluster-teamsetup-pyra-keyvault-certificate
+          serviceAccountName: swo-extension-aws-sa
           containers:
             - name: {{ $name }}
               securityContext:
@@ -37,40 +36,8 @@ spec:
               args:
                 - django
                 - {{ $config.command }}
-              env:
-                - name: "AZURE_CLIENT_CERTIFICATE_PASSWORD"
-                  valueFrom:
-                    secretKeyRef:
-                      name: ops-pyc-cluster-teamsetup-pyra-keyvault-certificate
-                      key: keyvault-certificate-password
-                # Map shared config map keys to environment variables
-                - name: MPT_KEY_VAULT_NAME
-                  valueFrom:
-                    configMapKeyRef:
-                      name: ops-pyc-cluster-teamsetup-default-env-variables
-                      key: PYRA_PYRA__KEYVAULT__SOURCES__0__URI
-                - name: AZURE_CLIENT_ID
-                  valueFrom:
-                    secretKeyRef:
-                      name: ops-pyc-cluster-teamsetup-pyra-xcluster-credentials
-                      key: PYRA_PYRA__AZUREAD__AUTHENTICATION__APPLICATIONID
-                - name: AZURE_CLIENT_CERTIFICATE_PATH
-                  valueFrom:
-                    secretKeyRef:
-                      name: ops-pyc-cluster-teamsetup-pyra-xcluster-credentials
-                      key: PYRA_PYRA__AZUREAD__AUTHENTICATION__CERTIFICATEPATH
-                - name: AZURE_TENANT_ID
-                  value: {{ $.Values.global.AzureTenantId }}
-              volumeMounts:
-                - name: pyra-keyvault-certificate
-                  mountPath: "/app/pyra-keyvault-certificate"
-                  readOnly: true
               imagePullPolicy: {{ $.Values.image.pullPolicy }}
               envFrom:
-                - configMapRef:
-                    name: ops-pyc-cluster-teamsetup-default-env-variables
-                - secretRef:
-                    name: ops-pyc-cluster-teamsetup-pyra-xcluster-credentials
                 - configMapRef:
                     name: {{ include "common.fullname" $ }}
                 - secretRef:
