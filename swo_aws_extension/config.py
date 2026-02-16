@@ -163,7 +163,7 @@ class Config:
 
     @property
     def report_invitations_folder(self) -> str:
-        """Get the Azure Storage Blob container name for reports."""
+        """Get the folder name in Azure Storage Blob container for invitations reports."""
         return settings.EXTENSION_CONFIG["REPORT_INVITATIONS_FOLDER"]
 
     @property

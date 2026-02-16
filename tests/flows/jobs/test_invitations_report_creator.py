@@ -2,35 +2,39 @@ import datetime as dt
 from io import BytesIO
 
 import pytest
+from azure.storage.blob import BlobClient, BlobServiceClient
 from openpyxl import load_workbook
 
+from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.flows.jobs.invitations_report_creator import (
     INVITATIONS_REPORT_HEADERS,
 )
+from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
 MODULE = "swo_aws_extension.flows.jobs.invitations_report_creator"
 
 
 @pytest.fixture
 def external_mocks(mocker):
-    mock_aws_client = mocker.MagicMock()
-    mock_aws_cls = mocker.patch(f"{MODULE}.AWSClient", return_value=mock_aws_client)
+    mock_aws_client = mocker.MagicMock(spec=AWSClient)
+    mock_aws_cls = mocker.patch(f"{MODULE}.AWSClient", autospec=True, return_value=mock_aws_client)
 
-    mock_blob_client = mocker.MagicMock()
+    mock_blob_client = mocker.MagicMock(spec=BlobClient)
     mock_blob_client.url = "https://acc.blob.core.windows.net/container/blob.xlsx"
-    mock_blob_service = mocker.MagicMock()
+    mock_blob_service = mocker.MagicMock(spec=BlobServiceClient)
     mock_blob_service.get_blob_client.return_value = mock_blob_client
     mock_blob_service.account_name = "acc"
     mock_blob_service.credential = mocker.MagicMock(account_key="key")
     mocker.patch(
         f"{MODULE}.BlobServiceClient.from_connection_string",
+        autospec=True,
         return_value=mock_blob_service,
     )
-    mocker.patch(f"{MODULE}.generate_blob_sas", return_value="sas-token")
+    mocker.patch(f"{MODULE}.generate_blob_sas", autospec=True, return_value="sas-token")
 
-    mock_teams = mocker.MagicMock()
-    mocker.patch(f"{MODULE}.TeamsNotificationManager", return_value=mock_teams)
+    mock_teams = mocker.MagicMock(spec=TeamsNotificationManager)
+    mocker.patch(f"{MODULE}.TeamsNotificationManager", autospec=True, return_value=mock_teams)
 
     return {
         "aws_cls": mock_aws_cls,
@@ -61,7 +65,7 @@ def _make_invitation(
 
 def _patch_authorizations_and_agreements(mocker, report_creator, authorizations, agreements):
     mocker.patch.object(report_creator, "_get_authorizations", return_value=authorizations)
-    mocker.patch(f"{MODULE}.get_agreements_by_query", return_value=agreements)
+    mocker.patch(f"{MODULE}.get_agreements_by_query", autospec=True, return_value=agreements)
 
 
 def test_create_and_notify_teams_happy_path(
@@ -153,7 +157,7 @@ def test_aws_error_sends_teams_error_and_continues(
         {"id": "AUT-OK", "externalIds": {"operations": "222"}},
     ]
     mocker.patch.object(report_creator, "_get_authorizations", return_value=authorizations)
-    ok_client = mocker.MagicMock()
+    ok_client = mocker.MagicMock(spec=AWSClient)
     ok_client.get_inbound_responsibility_transfers.return_value = []
     mocker.patch(f"{MODULE}.AWSClient", side_effect=[AWSError("boom"), ok_client])
     mocker.patch(f"{MODULE}.get_agreements_by_query", return_value=[agreement])
