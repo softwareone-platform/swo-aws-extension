@@ -434,6 +434,306 @@ def fulfillment_parameters_factory():
 
 
 @pytest.fixture
+def product_parameters_factory():
+    def factory():
+        return [
+            {
+                "id": "PAR-3895-2913-0007",
+                "name": "PMA Account ID",
+                "scope": "Agreement",
+                "externalId": "pmAccountId",
+                "options": {"placeholderText": "PMA Account ID", "hintText": "PMA Account ID"},
+            },
+            {
+                "id": "PAR-3895-2913-0008",
+                "name": "Fulfilment phase",
+                "externalId": "phase",
+                "scope": "Agreement",
+                "options": {
+                    "placeholderText": "Fulfilment phase",
+                    "optionsList": [
+                        {"label": "Create Account", "value": "createAccount"},
+                        {
+                            "label": "Create Billing Transfer Invitation",
+                            "value": "createBillingTransferInvitation",
+                        },
+                        {
+                            "label": "Check Billing Transfer Invitation",
+                            "value": "checkBillingTransferInvitation",
+                        },
+                        {"label": "Configure APN Program", "value": "configureApnProgram"},
+                        {"label": "Create Channel Handshake", "value": "createChannelHandshake"},
+                        {
+                            "label": "Check Channel Handshake status",
+                            "value": "checkChannelHandshakeStatus",
+                        },
+                        {"label": "Check Customer Roles", "value": "checkCustomerRoles"},
+                        {"label": "Onboard Services", "value": "onboardServices"},
+                        {
+                            "label": "Check Onboard Services Status",
+                            "value": "checkOnboardServicesStatus",
+                        },
+                        {"label": "Create Subscriptions", "value": "createSubscription"},
+                        {"label": "Completed", "value": "completed"},
+                    ],
+                    "hintText": "Fulfilment phase",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0011",
+                "name": "Account Request Id",
+                "scope": "Agreement",
+                "externalId": "accountRequestId",
+                "options": {
+                    "placeholderText": "account_request_id",
+                    "hintText": "account_request_id",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0014",
+                "name": "MPA Email",
+                "scope": "Agreement",
+                "externalId": "mpaEmail",
+                "options": {"placeholderText": "AWS Master Payer Email", "hintText": "MPA Email"},
+            },
+            {
+                "id": "PAR-3895-2913-0015",
+                "name": "Service-Now Ticket CCP",
+                "scope": "Agreement",
+                "externalId": "crmCCPTicketId",
+                "options": {
+                    "placeholderText": "Service-Now Ticket CCP",
+                    "hintText": "Service-Now Ticket CCP",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0016",
+                "name": "Service-Now Ticket Keeper",
+                "scope": "Agreement",
+                "externalId": "crmKeeperTicketId",
+                "options": {
+                    "placeholderText": "Service-Now Ticket Keeper",
+                    "hintText": "Service-Now Ticket Keeper",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0017",
+                "name": "Service Request Onboard Ticket ID",
+                "scope": "Agreement",
+                "externalId": "crmOnboardTicketId",
+                "options": {
+                    "placeholderText": "Service Request Onboard Ticket ID",
+                    "hintText": "Service Request Onboard Ticket ID",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0018",
+                "name": "Service-Now Ticket Termination",
+                "scope": "Agreement",
+                "externalId": "crmTerminationTicketId",
+                "options": {
+                    "placeholderText": "Service-Now Ticket Termination",
+                    "hintText": "Service-Now Ticket Termination",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0019",
+                "name": "Service-Now Ticket Transfer Organization",
+                "scope": "Agreement",
+                "externalId": "crmTransferOrganizationTicketId",
+                "options": {
+                    "placeholderText": "Service-Now Ticket Transfer Organization",
+                    "hintText": "Service-Now Ticket Transfer Organization",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0020",
+                "name": "Account Email",
+                "scope": "Subscription",
+                "externalId": "accountEmail",
+                "options": {"placeholderText": "AWS Account Email", "hintText": "Account Email"},
+            },
+            {
+                "id": "PAR-3895-2913-0021",
+                "name": "Account Name",
+                "scope": "Subscription",
+                "externalId": "accountName",
+                "options": {"placeholderText": "AWS Account Name", "hintText": "AWS Account Name"},
+            },
+            {
+                "id": "PAR-3895-2913-0025",
+                "name": "CCP Engagement ID",
+                "scope": "Agreement",
+                "externalId": "ccpEngagementId",
+                "options": {
+                    "placeholderText": "CCP Engagement ID",
+                    "hintText": "CCP Engagement ID",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0027",
+                "name": "responsibility transfer id",
+                "scope": "Agreement",
+                "externalId": "responsibilityTransferId",
+                "options": {
+                    "placeholderText": "responsibility transfer id",
+                    "hintText": "responsibility transfer id",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0029",
+                "name": "New Account Ticket ID",
+                "scope": "Agreement",
+                "externalId": "crmNewAccountTicketId",
+                "options": {
+                    "placeholderText": "New Account Ticket ID",
+                    "hintText": "New Account Ticket ID",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0033",
+                "name": "Sevice Discount",
+                "scope": "Agreement",
+                "externalId": "serviceDiscount",
+                "options": {
+                    "placeholderText": "Sevice Discount",
+                    "defaultValue": "5",
+                    "hintText": "Sevice Discount",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0034",
+                "name": "Support Discount",
+                "scope": "Agreement",
+                "externalId": "supportDiscount",
+                "options": {
+                    "placeholderText": "Support Discount",
+                    "defaultValue": "5",
+                    "hintText": "Support Discount",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0035",
+                "name": "Services engament ID",
+                "scope": "Agreement",
+                "externalId": "ccpEngagementId",
+                "options": {
+                    "placeholderText": "Services engament ID",
+                    "hintText": "Services engament ID",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0036",
+                "name": "Customer Roles deployed",
+                "scope": "Agreement",
+                "externalId": "customerRolesDeployed",
+                "options": {
+                    "placeholderText": "Customer Roles deployed",
+                    "optionsList": [
+                        {"label": "Yes", "value": "yes"},
+                        {"label": "No", "value": "no"},
+                    ],
+                    "defaultValue": "no",
+                    "hintText": "Customer Roles deployed",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0037",
+                "name": "Deploy Customer Roles Ticket ID",
+                "scope": "Agreement",
+                "externalId": "crmCustomerRoleTicketId",
+                "options": {
+                    "placeholderText": "Deploy Customer Roles Ticket ID",
+                    "hintText": "Deploy Customer Roles Ticket ID",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0038",
+                "name": "Billing Group Arn",
+                "scope": "Agreement",
+                "externalId": "billingGroupArn",
+                "options": {
+                    "placeholderText": "Billing Group Arn",
+                    "hintText": "Billing Group Arn",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0039",
+                "name": "Relationship Id",
+                "scope": "Agreement",
+                "externalId": "relationshipId",
+                "options": {"placeholderText": "Relationship Id", "hintText": "Relationship Id"},
+            },
+            {
+                "id": "PAR-3895-2913-0040",
+                "name": "Channel Handshake ID",
+                "scope": "Agreement",
+                "externalId": "channelHandshakeId",
+                "options": {
+                    "placeholderText": "Channel Handshake ID",
+                    "hintText": "Channel Handshake ID",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0041",
+                "name": "Channel Handshake Approved",
+                "scope": "Agreement",
+                "externalId": "channelHandshakeApproved",
+                "options": {
+                    "placeholderText": "Channel Handshake Approved",
+                    "description": "Channel Handshake Approved",
+                    "optionsList": [
+                        {"label": "Yes", "value": "yes"},
+                        {"label": "No", "value": "no"},
+                    ],
+                    "defaultValue": "no",
+                    "hintText": "Channel Handshake Approved",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0042",
+                "name": "PLS ticket ID",
+                "scope": "Agreement",
+                "externalId": "crmPLSTicketId",
+                "options": {"placeholderText": "PLS ticket ID", "hintText": "PLS ticket ID"},
+            },
+            {
+                "id": "PAR-3895-2913-0043",
+                "name": "Order Failed ticket ID",
+                "scope": "Agreement",
+                "externalId": "crmOrderFailedTicketId",
+                "options": {
+                    "placeholderText": "Order Failed ticket ID",
+                    "hintText": "Order Failed ticket ID",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0044",
+                "name": "Order Termination ticket ID",
+                "scope": "Agreement",
+                "externalId": "crmTerminateOrderTicketId",
+                "options": {
+                    "placeholderText": "Order Termination ticket ID",
+                    "hintText": "Order Termination ticket ID",
+                },
+            },
+            {
+                "id": "PAR-3895-2913-0052",
+                "name": "PLS Discount",
+                "scope": "Agreement",
+                "externalId": "plsDiscount",
+                "options": {
+                    "placeholderText": "PLS Discount",
+                    "defaultValue": "7",
+                    "hintText": "PLS Discount",
+                },
+            },
+        ]
+
+    return factory
+
+
+@pytest.fixture
 def jwt_token(settings):
     now_ts = int(dt.datetime.now(tz=dt.UTC).timestamp())
     iat = now_ts

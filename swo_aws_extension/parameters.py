@@ -449,3 +449,16 @@ def set_crm_terminate_order_ticket_id(order: dict, ticket_id: str) -> dict[str, 
     )
     fulfillment_param["value"] = ticket_id
     return updated_order
+
+
+def set_fulfillment_parameter_value(
+    order: dict, parameter_id, parameter_value: str
+) -> dict[str, Any]:
+    """Set the value of a fulfillment parameter."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        parameter_id,
+        updated_order,
+    )
+    fulfillment_param["value"] = parameter_value
+    return updated_order

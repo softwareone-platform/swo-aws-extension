@@ -5,15 +5,22 @@ from mpt_extension_sdk.mpt_http.base import MPTClient
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import (
     AccountTypesEnum,
+    FulfillmentParametersEnum,
     OrderProcessingTemplateEnum,
     PhasesEnum,
 )
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.setup_context import SetupContext
+from swo_aws_extension.parameters import get_fulfillment_parameter
 
 
 def test_setup_context_with_pma(
-    mocker, config, aws_client_factory, order_factory, fulfillment_parameters_factory
+    mocker,
+    config,
+    aws_client_factory,
+    order_factory,
+    fulfillment_parameters_factory,
+    product_parameters_factory,
 ):
     mpt_client_mock = mocker.MagicMock(spec=MPTClient)
     next_step_mock = mocker.MagicMock(spec=Step)
@@ -30,6 +37,10 @@ def test_setup_context_with_pma(
     mocker.patch(
         "swo_aws_extension.flows.steps.setup_context.update_order",
         return_value=updated_order,
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context._paginated",
+        return_value=product_parameters_factory(),
     )
     context = PurchaseContext.from_order_data(order)
     step = SetupContext(config)
@@ -68,7 +79,12 @@ def test_setup_context_without_pma_exception(
 
 
 def test_setup_context_invalid_aws_credentials(
-    mocker, config, aws_client_factory, order_factory, fulfillment_parameters_factory
+    mocker,
+    config,
+    aws_client_factory,
+    order_factory,
+    fulfillment_parameters_factory,
+    product_parameters_factory,
 ):
     mpt_client_mock = mocker.MagicMock(spec=MPTClient)
     next_step_mock = mocker.MagicMock(spec=Step)
@@ -88,6 +104,10 @@ def test_setup_context_invalid_aws_credentials(
     mocker.patch(
         "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
     )
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context._paginated",
+        return_value=product_parameters_factory(),
+    )
     order = order_factory()
     context = PurchaseContext.from_order_data(order)
     step = SetupContext(config)
@@ -98,7 +118,9 @@ def test_setup_context_invalid_aws_credentials(
     assert "failing to provide valid AWS credentials" in one_time_notification_mock.call_args[0][1]
 
 
-def test_setup_context_invalid_apn_credentials(mocker, config, order_factory):
+def test_setup_context_invalid_apn_credentials(
+    mocker, config, order_factory, product_parameters_factory
+):
     mpt_client_mock = mocker.MagicMock(spec=MPTClient)
     next_step_mock = mocker.MagicMock(spec=Step)
     aws_client_mock = mocker.patch(
@@ -113,6 +135,10 @@ def test_setup_context_invalid_apn_credentials(mocker, config, order_factory):
     )
     mocker.patch(
         "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context._paginated",
+        return_value=product_parameters_factory(),
     )
     order = order_factory()
     context = PurchaseContext.from_order_data(order)
@@ -217,7 +243,12 @@ def test_init_template_terminate(mocker, config, order_factory, fulfillment_para
 
 
 def test_init_template_notify_when_no_phase(
-    mocker, config, order_factory, fulfillment_parameters_factory, order_parameters_factory
+    mocker,
+    config,
+    order_factory,
+    fulfillment_parameters_factory,
+    order_parameters_factory,
+    product_parameters_factory,
 ):
     mpt_client_mock = mocker.MagicMock(spec=MPTClient)
     next_step_mock = mocker.MagicMock(spec=Step)
@@ -237,6 +268,10 @@ def test_init_template_notify_when_no_phase(
     mocker.patch(
         "swo_aws_extension.flows.steps.setup_context.update_order",
         return_value=order,
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context._paginated",
+        return_value=product_parameters_factory(),
     )
     context = PurchaseContext.from_order_data(order)
     step = SetupContext(config)
@@ -283,3 +318,120 @@ def test_init_template_skipped_when_same(
     step(mpt_client_mock, context, next_step_mock)  # act
 
     update_template_mock.assert_not_called()
+
+
+def test_init_parameter_default_values_sets_fulfillment_defaults(
+    mocker, config, order_factory, fulfillment_parameters_factory, product_parameters_factory
+):
+    mpt_client_mock = mocker.MagicMock(spec=MPTClient)
+    next_step_mock = mocker.MagicMock(spec=Step)
+    mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
+    )
+    mocked_paginated = mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context._paginated",
+        return_value=product_parameters_factory(),
+    )
+    fulfillment_parameters = fulfillment_parameters_factory(
+        phase="",
+        customer_roles_deployed="",
+        channel_handshake_approved="",
+    )
+    fulfillment_parameters.extend([
+        {"externalId": FulfillmentParametersEnum.SERVICE_DISCOUNT.value, "value": ""},
+        {"externalId": FulfillmentParametersEnum.SUPPORT_DISCOUNT.value, "value": ""},
+        {"externalId": FulfillmentParametersEnum.PLS_DISCOUNT.value, "value": ""},
+    ])
+    order = order_factory(fulfillment_parameters=fulfillment_parameters)
+    context = PurchaseContext.from_order_data(order)
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.update_order",
+        side_effect=lambda *_args, **kwargs: {**context.order, "parameters": kwargs["parameters"]},
+    )
+    step = SetupContext(config)
+
+    step(mpt_client_mock, context, next_step_mock)  # act
+
+    mocked_paginated.assert_called_once_with(
+        mpt_client_mock, f"catalog/products/{context.product_id}/parameters?phase=Fulfillment"
+    )
+    next_step_mock.assert_called_once_with(mpt_client_mock, context)
+    assert (
+        get_fulfillment_parameter(
+            FulfillmentParametersEnum.SERVICE_DISCOUNT.value, context.order
+        ).get("value")
+        == "5"
+    )
+    assert (
+        get_fulfillment_parameter(
+            FulfillmentParametersEnum.SUPPORT_DISCOUNT.value, context.order
+        ).get("value")
+        == "5"
+    )
+    assert (
+        get_fulfillment_parameter(FulfillmentParametersEnum.PLS_DISCOUNT.value, context.order).get(
+            "value"
+        )
+        == "7"
+    )
+    assert (
+        get_fulfillment_parameter(
+            FulfillmentParametersEnum.CUSTOMER_ROLES_DEPLOYED.value, context.order
+        ).get("value")
+        == "no"
+    )
+    assert (
+        get_fulfillment_parameter(
+            FulfillmentParametersEnum.CHANNEL_HANDSHAKE_APPROVED.value, context.order
+        ).get("value")
+        == "no"
+    )
+
+
+def test_init_parameter_default_values_skipped_when_phase_is_informed(
+    mocker, config, order_factory, fulfillment_parameters_factory, product_parameters_factory
+):
+    mpt_client_mock = mocker.MagicMock(spec=MPTClient)
+    next_step_mock = mocker.MagicMock(spec=Step)
+    mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
+    )
+    mocked_paginated = mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context._paginated",
+        return_value=product_parameters_factory(),
+    )
+    fulfillment_parameters = fulfillment_parameters_factory(
+        phase=PhasesEnum.CREATE_NEW_AWS_ENVIRONMENT.value,
+        customer_roles_deployed="",
+        channel_handshake_approved="",
+    )
+    fulfillment_parameters.extend([
+        {"externalId": FulfillmentParametersEnum.SERVICE_DISCOUNT.value, "value": ""},
+        {"externalId": FulfillmentParametersEnum.SUPPORT_DISCOUNT.value, "value": ""},
+        {"externalId": FulfillmentParametersEnum.PLS_DISCOUNT.value, "value": ""},
+    ])
+    order = order_factory(fulfillment_parameters=fulfillment_parameters)
+    context = PurchaseContext.from_order_data(order)
+    step = SetupContext(config)
+
+    step(mpt_client_mock, context, next_step_mock)  # act
+
+    mocked_paginated.assert_not_called()
+    next_step_mock.assert_called_once_with(mpt_client_mock, context)
+    assert not get_fulfillment_parameter(
+        FulfillmentParametersEnum.SERVICE_DISCOUNT.value, context.order
+    ).get("value")
+    assert not get_fulfillment_parameter(
+        FulfillmentParametersEnum.SUPPORT_DISCOUNT.value, context.order
+    ).get("value")
+    assert not get_fulfillment_parameter(
+        FulfillmentParametersEnum.PLS_DISCOUNT.value, context.order
+    ).get("value")
+    assert not get_fulfillment_parameter(
+        FulfillmentParametersEnum.CUSTOMER_ROLES_DEPLOYED.value, context.order
+    ).get("value")
+    assert not get_fulfillment_parameter(
+        FulfillmentParametersEnum.CHANNEL_HANDSHAKE_APPROVED.value, context.order
+    ).get("value")
