@@ -2,7 +2,7 @@ import logging
 from typing import override
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
-from mpt_extension_sdk.mpt_http.mpt import update_order
+from mpt_extension_sdk.mpt_http.mpt import _paginated, update_order  # noqa: PLC2701
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
@@ -15,7 +15,7 @@ from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.order_utils import update_processing_template_and_notify
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import ConfigurationStepError, UnexpectedStopError
-from swo_aws_extension.parameters import get_phase, set_phase
+from swo_aws_extension.parameters import get_phase, set_fulfillment_parameter_value, set_phase
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,7 @@ class SetupContext(BasePhaseStep):
     @override
     def process(self, client: MPTClient, context: InitialAWSContext) -> None:
         self._init_processing_template(client, context)
+        self._init_parameter_default_values(client, context)
         try:
             context.aws_client = AWSClient(
                 self._config, context.pm_account_id, self._config.management_role_name
@@ -90,3 +91,21 @@ class SetupContext(BasePhaseStep):
             # Only notify the first time the template is set
             notify = not get_phase(context.order)
             update_processing_template_and_notify(client, context, template_name, notify=notify)
+
+    def _init_parameter_default_values(self, client: MPTClient, context: InitialAWSContext) -> None:
+        phase = get_phase(context.order)
+        if phase:
+            return
+
+        # TODO: SDK candidate
+        product_parameters = _paginated(
+            client, f"catalog/products/{context.product_id}/parameters?phase=Fulfillment"
+        )
+
+        for parameter in product_parameters:
+            if parameter.get("options", {}).get("defaultValue", None):
+                context.order = set_fulfillment_parameter_value(
+                    context.order,
+                    parameter.get("externalId"),
+                    parameter.get("options", {}).get("defaultValue"),
+                )
