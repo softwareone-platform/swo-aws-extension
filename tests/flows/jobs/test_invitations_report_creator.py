@@ -225,13 +225,13 @@ def test_agreement_without_matching_invitation(
     excel_bytes = external_mocks["blob_client"].upload_blob.call_args.args[0]
     wb = load_workbook(BytesIO(excel_bytes))
     ws = wb.active
-    assert ws.cell(row=2, column=1).value == "651706759263"
-    assert ws.cell(row=2, column=2).value == "111111111111"
-    assert ws.cell(row=2, column=3).value == "rt-orphan"
+    assert ws.cell(row=2, column=1).value is None
+    assert ws.cell(row=2, column=2).value is None
+    assert ws.cell(row=2, column=3).value is None
     assert ws.cell(row=2, column=4).value is None
-    assert ws.cell(row=2, column=5).value == agreement["id"]
-    assert ws.cell(row=2, column=10).value == "Yes"
-    assert ws.cell(row=2, column=11).value == "No"
+    assert ws.cell(row=2, column=5).value is None
+    assert ws.cell(row=2, column=10).value is None
+    assert ws.cell(row=2, column=11).value is None
 
 
 def test_invitation_with_no_dates(
@@ -289,8 +289,8 @@ def test_agreement_with_none_authorization(
     excel_bytes = external_mocks["blob_client"].upload_blob.call_args.args[0]
     wb = load_workbook(BytesIO(excel_bytes))
     ws = wb.active
-    assert ws.cell(row=2, column=1).value == "651706759263"
-    assert ws.cell(row=2, column=2).value == "mpa-123"
+    assert ws.cell(row=2, column=1).value is None
+    assert ws.cell(row=2, column=2).value is None
 
 
 def test_agreement_with_none_mpa_account_id(
@@ -318,7 +318,7 @@ def test_agreement_with_none_mpa_account_id(
     excel_bytes = external_mocks["blob_client"].upload_blob.call_args.args[0]
     wb = load_workbook(BytesIO(excel_bytes))
     ws = wb.active
-    assert ws.cell(row=2, column=2).value == "651706759263"
+    assert ws.cell(row=2, column=2).value is None
 
 
 def test_unmatched_invitation_with_no_dates(

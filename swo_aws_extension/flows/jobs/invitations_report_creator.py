@@ -100,11 +100,6 @@ class InvitationsReportCreator:
                 invitations_row = self._invitation_to_row(invitation, agreements)
                 rows.append(invitations_row)
 
-            agreements_without_invitations = self._agreements_without_invitations(
-                agreements, aws_invitations
-            )
-            rows.extend(agreements_without_invitations)
-
         return rows
 
     def _invitation_to_row(self, invitation: dict, agreements: list[dict]) -> list[str]:
@@ -123,6 +118,10 @@ class InvitationsReportCreator:
             if invitation_id == invitation["Id"]:
                 product = agreement.get("product") or {}
                 product_id = product.get("id", "")
+                pma_account_id = (
+                    agreement.get("authorization", {}).get("externalIds", {}).get("operations", "")
+                )
+                mpa_account_id = get_mpa_account_id(agreement) or ""
                 support_type = get_support_type(agreement)
                 roles = get_customer_roles_deployed(agreement).capitalize()
                 handshake_approval_status = get_channel_handshake_approval_status(
@@ -130,8 +129,8 @@ class InvitationsReportCreator:
                 ).capitalize()
                 invitation_id = get_responsibility_transfer_id(agreement)
                 return [
-                    invitation.get("Target", {}).get("ManagementAccountId", ""),
-                    invitation.get("Source", {}).get("ManagementAccountId", ""),
+                    pma_account_id,
+                    mpa_account_id,
                     invitation_id,
                     invitation["Status"],
                     agreement.get("id", ""),
@@ -158,50 +157,6 @@ class InvitationsReportCreator:
             "",
             start_date,
             end_date,
-        ]
-
-    def _agreements_without_invitations(
-        self, agreements: list[dict], aws_invitations: list[dict]
-    ) -> list[list[str]]:
-        """Return agreements without invitations."""
-        agreements_without_invitations = []
-        for agreement in agreements:
-            invitation_id = get_responsibility_transfer_id(agreement)
-
-            for invitation in aws_invitations:
-                if invitation["Id"] == invitation_id:
-                    break
-            else:
-                agreements_without_invitations.append(self._agreement_to_row(agreement))
-        return agreements_without_invitations
-
-    def _agreement_to_row(self, agreement: dict) -> list[str]:
-        """Extract report row from a single agreement."""
-        auth = agreement.get("authorization") or {}
-        ext_ids = auth.get("externalIds") or {}
-        pma_account_id = ext_ids.get("operations", "")
-        product = agreement.get("product") or {}
-        product_id = product.get("id", "")
-        mpa_account_id = get_mpa_account_id(agreement) or ""
-        support_type = get_support_type(agreement)
-        roles = get_customer_roles_deployed(agreement).capitalize()
-        handshake_approval_status = get_channel_handshake_approval_status(agreement).capitalize()
-        invitation_id = get_responsibility_transfer_id(agreement)
-
-        return [
-            str(pma_account_id),
-            str(mpa_account_id),
-            invitation_id,
-            "",
-            agreement.get("id", ""),
-            agreement.get("name", ""),
-            product_id,
-            agreement.get("status", ""),
-            support_type,
-            roles,
-            handshake_approval_status,
-            "",
-            "",
         ]
 
     def _build_excel(self, rows: list[list[str]]) -> bytes:
