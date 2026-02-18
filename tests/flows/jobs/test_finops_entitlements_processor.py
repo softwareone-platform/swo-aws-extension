@@ -9,7 +9,7 @@ from swo_aws_extension.flows.jobs.finops_entitlements_processor import (
 )
 from swo_aws_extension.swo.finops.errors import FinOpsError
 
-MPT_BASE_URL = "https://localhost"
+MPT_BASE_URL = "https://localhost/public"
 AGREEMENTS_URL = (
     f"{MPT_BASE_URL}/v1/commerce/agreements?"
     "and(eq(status,Active),in(product.id,(PRD-1111-1111)))"
