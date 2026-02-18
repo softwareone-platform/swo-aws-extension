@@ -112,6 +112,9 @@ class FulfillmentParametersEnum(StrEnum):
     CRM_PLS_TICKET_ID = "crmPLSTicketId"
     CRM_ORDER_FAILED_TICKET_ID = "crmOrderFailedTicketId"
     CRM_TERMINATE_ORDER_TICKET_ID = "crmTerminateOrderTicketId"
+    PLS_DISCOUNT = "plsDiscount"
+    SUPPORT_DISCOUNT = "supportDiscount"
+    SERVICE_DISCOUNT = "serviceDiscount"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
