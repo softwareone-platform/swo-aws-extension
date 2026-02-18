@@ -6,11 +6,6 @@ from swo_aws_extension.flows.order import InitialAWSContext
 
 
 @pytest.fixture
-def mock_teams_notification_manager(mocker):
-    return mocker.patch("swo_aws_extension.flows.steps.base.TeamsNotificationManager", spec=True)
-
-
-@pytest.fixture
 def mock_aws_client(mocker):
     return mocker.Mock(spec=AWSClient)
 

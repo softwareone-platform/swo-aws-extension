@@ -24,6 +24,12 @@ class FactsSection:
     data: dict  # noqa: WPS110
 
 
+@functools.cache
+def notify_one_time_error(title: str, message: str) -> None:
+    """Send a one-time error notification once per (title, message) pair."""
+    TeamsNotificationManager().send_exception(title, message)
+
+
 class TeamsNotificationManager:
     """Notification manager used by business logic to send notifications to MS Teams."""
 
@@ -90,11 +96,6 @@ class TeamsNotificationManager:
             button=button,
             facts=facts,
         )
-
-    @functools.cache  # noqa: B019
-    def notify_one_time_error(self, title: str, message: str) -> None:
-        """Send a one-time error notification once per (title, message) pair."""
-        self.send_exception(title, message)
 
     def _send_notification(  # noqa: WPS213
         self,

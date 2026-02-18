@@ -70,7 +70,7 @@ def test_pipeline_error_handler(mocker):
     context = Context({"id": "order-id"})
     error = ValueError("Test exception")
     one_time_notification_mock = mocker.patch(
-        "swo_aws_extension.flows.fulfillment.pipelines.TeamsNotificationManager.notify_one_time_error",
+        "swo_aws_extension.flows.fulfillment.pipelines.notify_one_time_error",
     )
 
     with pytest.raises(ValueError):
