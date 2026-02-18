@@ -28,7 +28,9 @@ from swo_aws_extension.flows.steps.finops_entitlement import TerminateFinOpsEnti
 from swo_aws_extension.flows.steps.onboard_services import OnboardServices
 from swo_aws_extension.flows.steps.setup_context import SetupContext
 from swo_aws_extension.flows.steps.terminate import TerminateResponsibilityTransferStep
-from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
+from swo_aws_extension.swo.notifications.teams import (
+    notify_one_time_error,
+)
 
 config = Config()
 logger = logging.getLogger(__name__)
@@ -47,7 +49,7 @@ def pipeline_error_handler(error: Exception, context: Context, next_step):
     """Custom error handler for AWS pipelines."""
     logger.error("%s - Unexpected error in AWS pipeline: %s", context.order_id, error)
     traceback_id = strip_trace_id(traceback.format_exc())
-    TeamsNotificationManager().notify_one_time_error(
+    notify_one_time_error(
         "Order fulfillment unhandled exception!",
         f"An unhandled exception has been raised while performing fulfillment "
         f"of the order **{context.order_id}**:\n\n"

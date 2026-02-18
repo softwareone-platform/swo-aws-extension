@@ -14,7 +14,9 @@ from swo_aws_extension.flows.order_utils import switch_order_status_to_process_a
 from swo_aws_extension.parameters import get_responsibility_transfer_id
 from swo_aws_extension.processors.processor import Processor
 from swo_aws_extension.processors.querying.helper import get_template_name
-from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
+from swo_aws_extension.swo.notifications.teams import (
+    notify_one_time_error,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +63,7 @@ class AWSBillingTransferInvitationProcessor(Processor):
                 transfer_id,
                 error,
             )
-            TeamsNotificationManager().notify_one_time_error(
+            notify_one_time_error(
                 "Error processing AWS billing transfer invitations",
                 f"{context.order_id} - Error getting billing transfer invitation "
                 f"{transfer_id} details: {error!s}",

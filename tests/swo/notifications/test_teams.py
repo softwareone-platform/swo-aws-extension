@@ -3,7 +3,12 @@ import logging
 import pymsteams
 import pytest
 
-from swo_aws_extension.swo.notifications.teams import Button, FactsSection, TeamsNotificationManager
+from swo_aws_extension.swo.notifications.teams import (
+    Button,
+    FactsSection,
+    TeamsNotificationManager,
+    notify_one_time_error,
+)
 
 
 def test_send_notification_full(mocker, settings):
@@ -143,9 +148,8 @@ def test_notify_one_time_exception_in_teams(mocker):
     mocked_send_exc = mocker.patch(
         "swo_aws_extension.swo.notifications.teams.TeamsNotificationManager.send_exception"
     )
-    teams_notification_manager = TeamsNotificationManager()
 
-    teams_notification_manager.notify_one_time_error("title", "error-message")  # act
+    notify_one_time_error("title", "error-message")  # act
 
     mocked_send_exc.assert_called_once_with(
         "title",

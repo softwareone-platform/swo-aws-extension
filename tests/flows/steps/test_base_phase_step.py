@@ -78,7 +78,7 @@ def test_configuration_error_stops_pipeline(mocker, initial_context):
     step = DummyStep()
     step.pre_exc = ConfigurationStepError("error", "cfg")
     notify_mock = mocker.patch(
-        "swo_aws_extension.flows.steps.base.TeamsNotificationManager.notify_one_time_error",
+        "swo_aws_extension.flows.steps.base.notify_one_time_error",
     )
 
     _, next_step = _run_step(mocker, step, initial_context)  # act
@@ -92,7 +92,7 @@ def test_unexpected_stop_notifies_and_stops(mocker, initial_context):
     error = UnexpectedStopError("title", "message")
     step.proc_exc = error
     notify_mock = mocker.patch(
-        "swo_aws_extension.flows.steps.base.TeamsNotificationManager.notify_one_time_error",
+        "swo_aws_extension.flows.steps.base.notify_one_time_error",
     )
 
     _, next_step = _run_step(mocker, step, initial_context)  # act

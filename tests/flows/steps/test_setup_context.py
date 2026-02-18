@@ -58,24 +58,23 @@ def test_setup_context_without_pma_exception(
     aws_client_factory,
     order_factory,
     fulfillment_parameters_factory,
-    mock_teams_notification_manager,
 ):
     mpt_client_mock = mocker.MagicMock(spec=MPTClient)
     next_step_mock = mocker.MagicMock(spec=Step)
     order = order_factory(authorization_external_id="")
+    notify_mock = mocker.patch(
+        "swo_aws_extension.flows.steps.base.notify_one_time_error", spec=True
+    )
     context = PurchaseContext.from_order_data(order)
     step = SetupContext(config)
 
     step(mpt_client_mock, context, next_step_mock)  # act
 
     next_step_mock.assert_not_called()
-    assert mock_teams_notification_manager.mock_calls == [
-        mocker.call(),
-        mocker.call().notify_one_time_error(
-            "Setup context",
-            "SetupContextError - PMA account is required to setup AWS Client in context",
-        ),
-    ]
+    notify_mock.assert_called_once_with(
+        "Setup context",
+        "SetupContextError - PMA account is required to setup AWS Client in context",
+    )
 
 
 def test_setup_context_invalid_aws_credentials(
@@ -99,7 +98,7 @@ def test_setup_context_invalid_aws_credentials(
         error_response, "get_caller_identity"
     )
     one_time_notification_mock = mocker.patch(
-        "swo_aws_extension.flows.steps.base.TeamsNotificationManager.notify_one_time_error",
+        "swo_aws_extension.flows.steps.base.notify_one_time_error",
     )
     mocker.patch(
         "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
@@ -131,7 +130,7 @@ def test_setup_context_invalid_apn_credentials(
         AWSError("Invalid credentials for APN account"),
     ]
     one_time_notification_mock = mocker.patch(
-        "swo_aws_extension.flows.steps.base.TeamsNotificationManager.notify_one_time_error",
+        "swo_aws_extension.flows.steps.base.notify_one_time_error",
     )
     mocker.patch(
         "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
