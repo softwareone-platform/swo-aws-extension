@@ -22,7 +22,9 @@ from swo_aws_extension.flows.steps.errors import (
     SkipStepError,
     UnexpectedStopError,
 )
-from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
+from swo_aws_extension.swo.notifications.teams import (
+    notify_one_time_error,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +86,7 @@ class BasePhaseStep(Step, ABC):
                 context.order_id,
                 error,
             )
-            TeamsNotificationManager().notify_one_time_error(error.title, error.message)
+            notify_one_time_error(error.title, error.message)
             return False
         return True
 
@@ -93,7 +95,7 @@ class BasePhaseStep(Step, ABC):
             self.process(self._client, context)
         except UnexpectedStopError as error:
             logger.info("%s - Unexpected Stop: %s", context.order_id, error)
-            TeamsNotificationManager().notify_one_time_error(error.title, error.message)
+            notify_one_time_error(error.title, error.message)
             return False
         except QueryStepError as error:
             logger.info("%s - Query Order: %s", context.order_id, error.message)

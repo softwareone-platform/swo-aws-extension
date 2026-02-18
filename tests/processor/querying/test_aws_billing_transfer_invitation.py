@@ -123,8 +123,8 @@ def test_process_invitation_aws_error(
 ) -> None:
     mock_context.aws_client.get_responsibility_transfer_details.side_effect = AWSError("AWS Error")
     mock_notify = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_billing_transfer_invitation.TeamsNotificationManager"
-    ).return_value.notify_one_time_error
+        "swo_aws_extension.processors.querying.aws_billing_transfer_invitation.notify_one_time_error"
+    )
 
     processor.process_invitation(mock_context, "tr-123")  # act
 
