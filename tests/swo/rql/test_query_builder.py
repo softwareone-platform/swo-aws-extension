@@ -20,14 +20,14 @@ def test_create_with_field():
 
     result.eq("value")
     assert result.op == RQLQuery.OP_EXPR
-    assert str(result) == "eq(field,value)"
+    assert str(result) == "eq(field,'value')"
 
 
 def test_create_single_kwarg():
     result = RQLQuery(id="ID")
 
     assert result.op == RQLQuery.OP_EXPR
-    assert str(result) == "eq(id,ID)"
+    assert str(result) == "eq(id,'ID')"
     assert result.children == []
     assert result.negated is False
 
@@ -36,17 +36,17 @@ def test_create_multiple_kwargs():
     result = RQLQuery(id="ID", status__in=("a", "b"), ok=True)
 
     assert result.op == RQLQuery.AND
-    assert str(result) == "and(eq(id,ID),in(status,(a,b)),eq(ok,true))"
+    assert str(result) == "and(eq(id,'ID'),in(status,(a,b)),eq(ok,'true'))"
     assert len(result.children) == 3
     assert result.children[0].op == RQLQuery.OP_EXPR
     assert result.children[0].children == []
-    assert str(result.children[0]) == "eq(id,ID)"
+    assert str(result.children[0]) == "eq(id,'ID')"
     assert result.children[1].op == RQLQuery.OP_EXPR
     assert result.children[1].children == []
     assert str(result.children[1]) == "in(status,(a,b))"
     assert result.children[2].op == RQLQuery.OP_EXPR
     assert result.children[2].children == []
-    assert str(result.children[2]) == "eq(ok,true)"
+    assert str(result.children[2]) == "eq(ok,'true')"
 
 
 @pytest.mark.parametrize(
@@ -157,7 +157,7 @@ def test_or_merge():
     r3 = r1 | r2
 
     assert r3.op == RQLQuery.OR
-    assert str(r3) == "or(eq(id,ID),eq(field,value))"
+    assert str(r3) == "or(eq(id,'ID'),eq(field,'value'))"
 
 
 def test_and():
@@ -213,23 +213,25 @@ def test_and_or():
     r5 = r1 & r2 & (r3 | r4)
 
     assert r5.op == RQLQuery.AND
-    assert str(r5) == "and(eq(id,ID),eq(field,value),or(eq(other,value2),in(inop,(a,b))))"
+    assert str(r5) == "and(eq(id,'ID'),eq(field,'value'),or(eq(other,'value2'),in(inop,(a,b))))"
 
     r5 = r1 & r2 | r3
 
-    assert str(r5) == "or(and(eq(id,ID),eq(field,value)),eq(other,value2))"
+    assert str(r5) == "or(and(eq(id,'ID'),eq(field,'value')),eq(other,'value2'))"
 
     r5 = r1 & (r2 | r3)
 
-    assert str(r5) == "and(eq(id,ID),or(eq(field,value),eq(other,value2)))"
+    assert str(r5) == "and(eq(id,'ID'),or(eq(field,'value'),eq(other,'value2')))"
 
     r5 = (r1 & r2) | (r3 & r4)
 
-    assert str(r5) == "or(and(eq(id,ID),eq(field,value)),and(eq(other,value2),in(inop,(a,b))))"
+    assert (
+        str(r5) == "or(and(eq(id,'ID'),eq(field,'value')),and(eq(other,'value2'),in(inop,(a,b))))"
+    )
 
     r5 = (r1 & r2) | ~r3
 
-    assert str(r5) == "or(and(eq(id,ID),eq(field,value)),not(eq(other,value2)))"
+    assert str(r5) == "or(and(eq(id,'ID'),eq(field,'value')),not(eq(other,'value2')))"
 
 
 def test_and_merge():
@@ -252,20 +254,20 @@ def test_and_merge():
 
 @pytest.mark.parametrize("op", ["eq", "ne", "gt", "ge", "le", "lt"])
 def test_dotted_path_comp(op):
-    assert str(getattr(RQLQuery().asset.id, op)("value")) == f"{op}(asset.id,value)"
-    assert str(getattr(RQLQuery().asset.id, op)(True)) == f"{op}(asset.id,true)"  # noqa: FBT003
-    assert str(getattr(RQLQuery().asset.id, op)(False)) == f"{op}(asset.id,false)"  # noqa: FBT003
-    assert str(getattr(RQLQuery().asset.id, op)(10)) == f"{op}(asset.id,10)"
-    assert str(getattr(RQLQuery().asset.id, op)(10.678937)) == f"{op}(asset.id,10.678937)"
+    assert str(getattr(RQLQuery().asset.id, op)("value")) == f"{op}(asset.id,'value')"
+    assert str(getattr(RQLQuery().asset.id, op)(True)) == f"{op}(asset.id,'true')"  # noqa: FBT003
+    assert str(getattr(RQLQuery().asset.id, op)(False)) == f"{op}(asset.id,'false')"  # noqa: FBT003
+    assert str(getattr(RQLQuery().asset.id, op)(10)) == f"{op}(asset.id,'10')"
+    assert str(getattr(RQLQuery().asset.id, op)(10.678937)) == f"{op}(asset.id,'10.678937')"
 
     d = Decimal("32983.328238273")
-    assert str(getattr(RQLQuery().asset.id, op)(d)) == f"{op}(asset.id,{d})"
+    assert str(getattr(RQLQuery().asset.id, op)(d)) == f"{op}(asset.id,'{d}')"
 
     d = dt.datetime.now(tz=dt.UTC).date()
-    assert str(getattr(RQLQuery().asset.id, op)(d)) == f"{op}(asset.id,{d.isoformat()})"
+    assert str(getattr(RQLQuery().asset.id, op)(d)) == f"{op}(asset.id,'{d.isoformat()}')"
 
     d = dt.datetime.now(tz=dt.UTC)
-    assert str(getattr(RQLQuery().asset.id, op)(d)) == f"{op}(asset.id,{d.isoformat()})"
+    assert str(getattr(RQLQuery().asset.id, op)(d)) == f"{op}(asset.id,'{d.isoformat()}')"
 
     class Test:
         pass
@@ -329,9 +331,9 @@ def test_dotted_path_already_evaluated():
 
 
 def test_str():
-    assert str(RQLQuery(id="ID")) == "eq(id,ID)"
-    assert str(~RQLQuery(id="ID")) == "not(eq(id,ID))"
-    assert str(~RQLQuery(id="ID", field="value")) == "not(and(eq(id,ID),eq(field,value)))"
+    assert str(RQLQuery(id="ID")) == "eq(id,'ID')"
+    assert str(~RQLQuery(id="ID")) == "not(eq(id,'ID'))"
+    assert str(~RQLQuery(id="ID", field="value")) == "not(and(eq(id,'ID'),eq(field,'value')))"
     assert not str(RQLQuery())
 
 
@@ -363,7 +365,7 @@ def test_in_and_namespaces():
 def test_query_expression_get_querying_orders():
     products = ["PRD-1", "PRD-2"]
     products_str = ",".join(products)
-    expected_rql_query = f"and(in(agreement.product.id,({products_str})),eq(status,Querying))"
+    expected_rql_query = f"and(in(agreement.product.id,({products_str})),eq(status,'Querying'))"
     expected_url = (
         f"/commerce/orders?{expected_rql_query}&select=audit,parameters,lines,subscriptions,"
         f"subscriptions.lines,agreement,buyer&order=audit.created.at"
@@ -386,7 +388,7 @@ def test_in():
 def test_parse_kwargs_non_keyword_op():
     result = parse_kwargs({"agreement__product__id__custom": "PRD-1"})
 
-    assert result == ["eq(agreement.product.id.custom,PRD-1)"]
+    assert result == ["eq(agreement.product.id.custom,'PRD-1')"]
 
 
 @pytest.mark.parametrize(
@@ -408,5 +410,5 @@ def test_repr_for_expr_and_non_expr():
     q_expr = RQLQuery(id="ID")
     q_and = RQLQuery(id="ID", status__in=("a", "b"))
 
-    assert repr(q_expr) == "<R(expr) eq(id,ID)>"
+    assert repr(q_expr) == "<R(expr) eq(id,'ID')>"
     assert repr(q_and) == "<R(and)>"
