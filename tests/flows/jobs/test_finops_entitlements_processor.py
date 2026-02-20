@@ -12,13 +12,13 @@ from swo_aws_extension.swo.finops.errors import FinOpsError
 MPT_BASE_URL = "https://localhost/public"
 AGREEMENTS_URL = (
     f"{MPT_BASE_URL}/v1/commerce/agreements?"
-    "and(eq(status,Active),in(product.id,(PRD-1111-1111)))"
+    "and(eq(status,'Active'),in(product.id,(PRD-1111-1111)))"
     "&select=parameters,subscriptions,authorization.externalIds.operations"
     "&limit=10&offset=0"
 )
 AGREEMENTS_WITH_IDS_URL = (
     f"{MPT_BASE_URL}/v1/commerce/agreements?"
-    "and(in(id,(AGR-0001)),eq(status,Active),in(product.id,(PRD-1111-1111)))"
+    "and(in(id,(AGR-0001)),eq(status,'Active'),in(product.id,(PRD-1111-1111)))"
     "&select=parameters,subscriptions,authorization.externalIds.operations"
     "&limit=10&offset=0"
 )

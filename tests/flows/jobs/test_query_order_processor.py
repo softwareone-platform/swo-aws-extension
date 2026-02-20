@@ -79,7 +79,7 @@ def test_filter(service: PurchaseOrderQueryService) -> None:
 
     assert (
         str(result)
-        == "and(in(agreement.product.id,(PRD-1111-1111)),eq(status,Querying),eq(type,Purchase))"
+        == "and(in(agreement.product.id,(PRD-1111-1111)),eq(status,'Querying'),eq(type,'Purchase'))"
     )
 
 
