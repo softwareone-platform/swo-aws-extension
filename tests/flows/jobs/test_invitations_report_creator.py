@@ -63,9 +63,12 @@ def _make_invitation(
     }
 
 
-def _patch_authorizations_and_agreements(mocker, report_creator, authorizations, agreements):
+def _patch_authorizations_and_agreements(
+    mocker, report_creator, authorizations, agreements, orders
+):
     mocker.patch.object(report_creator, "_get_authorizations", return_value=authorizations)
     mocker.patch(f"{MODULE}.get_agreements_by_query", autospec=True, return_value=agreements)
+    mocker.patch.object(report_creator, "_get_orders_by_query", autospec=True, return_value=orders)
 
 
 def test_create_and_notify_teams_happy_path(
@@ -73,6 +76,7 @@ def test_create_and_notify_teams_happy_path(
     report_creator,
     external_mocks,
     agreement_factory,
+    order_factory,
     fulfillment_parameters_factory,
     order_parameters_factory,
 ):
@@ -87,9 +91,18 @@ def test_create_and_notify_teams_happy_path(
             support_type="Partner Led Support",
         ),
     )
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="rt-8lr3q6sn",
+            customer_roles_deployed="yes",
+            channel_handshake_approved="yes",
+        ),
+    )
     invitation = _make_invitation()
     authorizations = [{"id": "AUT-1", "externalIds": {"operations": "651706759263"}}]
-    _patch_authorizations_and_agreements(mocker, report_creator, authorizations, [agreement])
+    _patch_authorizations_and_agreements(
+        mocker, report_creator, authorizations, [agreement], [order]
+    )
     external_mocks["aws_client"].get_inbound_responsibility_transfers.return_value = [invitation]
 
     report_creator.create_and_notify_teams()  # act
@@ -125,7 +138,7 @@ def test_create_and_notify_teams_happy_path(
 
 
 def test_no_authorizations(mocker, report_creator, external_mocks):
-    _patch_authorizations_and_agreements(mocker, report_creator, [], [])
+    _patch_authorizations_and_agreements(mocker, report_creator, [], [], [])
 
     report_creator.create_and_notify_teams()  # act
 
@@ -141,6 +154,7 @@ def test_aws_error_sends_teams_error_and_continues(
     report_creator,
     external_mocks,
     agreement_factory,
+    order_factory,
     fulfillment_parameters_factory,
     order_parameters_factory,
 ):
@@ -152,6 +166,13 @@ def test_aws_error_sends_teams_error_and_continues(
         ),
         ordering_parameters=order_parameters_factory(),
     )
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="rt-ok",
+            customer_roles_deployed="no",
+            channel_handshake_approved="no",
+        ),
+    )
     authorizations = [
         {"id": "AUT-FAIL", "externalIds": {"operations": "111"}},
         {"id": "AUT-OK", "externalIds": {"operations": "222"}},
@@ -161,6 +182,7 @@ def test_aws_error_sends_teams_error_and_continues(
     ok_client.get_inbound_responsibility_transfers.return_value = []
     mocker.patch(f"{MODULE}.AWSClient", side_effect=[AWSError("boom"), ok_client])
     mocker.patch(f"{MODULE}.get_agreements_by_query", return_value=[agreement])
+    mocker.patch.object(report_creator, "_get_orders_by_query", return_value=[order])
 
     report_creator.create_and_notify_teams()  # act
 
@@ -173,6 +195,7 @@ def test_invitation_without_matching_agreement(
     report_creator,
     external_mocks,
     agreement_factory,
+    order_factory,
     fulfillment_parameters_factory,
     order_parameters_factory,
 ):
@@ -184,9 +207,18 @@ def test_invitation_without_matching_agreement(
         ),
         ordering_parameters=order_parameters_factory(),
     )
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="rt-other",
+            customer_roles_deployed="no",
+            channel_handshake_approved="no",
+        ),
+    )
     invitation = _make_invitation(invitation_id="rt-unmatched")
     authorizations = [{"id": "AUT-1", "externalIds": {"operations": "651706759263"}}]
-    _patch_authorizations_and_agreements(mocker, report_creator, authorizations, [agreement])
+    _patch_authorizations_and_agreements(
+        mocker, report_creator, authorizations, [agreement], [order]
+    )
     external_mocks["aws_client"].get_inbound_responsibility_transfers.return_value = [invitation]
 
     report_creator.create_and_notify_teams()  # act
@@ -205,6 +237,7 @@ def test_agreement_without_matching_invitation(
     report_creator,
     external_mocks,
     agreement_factory,
+    order_factory,
     fulfillment_parameters_factory,
     order_parameters_factory,
 ):
@@ -216,8 +249,17 @@ def test_agreement_without_matching_invitation(
         ),
         ordering_parameters=order_parameters_factory(mpa_id="111111111111"),
     )
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="rt-orphan",
+            customer_roles_deployed="yes",
+            channel_handshake_approved="no",
+        ),
+    )
     authorizations = [{"id": "AUT-1", "externalIds": {"operations": "651706759263"}}]
-    _patch_authorizations_and_agreements(mocker, report_creator, authorizations, [agreement])
+    _patch_authorizations_and_agreements(
+        mocker, report_creator, authorizations, [agreement], [order]
+    )
     external_mocks["aws_client"].get_inbound_responsibility_transfers.return_value = []
 
     report_creator.create_and_notify_teams()  # act
@@ -239,6 +281,7 @@ def test_invitation_with_no_dates(
     report_creator,
     external_mocks,
     agreement_factory,
+    order_factory,
     fulfillment_parameters_factory,
     order_parameters_factory,
 ):
@@ -250,9 +293,18 @@ def test_invitation_with_no_dates(
         ),
         ordering_parameters=order_parameters_factory(),
     )
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="rt-8lr3q6sn",
+            customer_roles_deployed="no",
+            channel_handshake_approved="no",
+        ),
+    )
     invitation = _make_invitation(start=None, end=None)
     authorizations = [{"id": "AUT-1", "externalIds": {"operations": "651706759263"}}]
-    _patch_authorizations_and_agreements(mocker, report_creator, authorizations, [agreement])
+    _patch_authorizations_and_agreements(
+        mocker, report_creator, authorizations, [agreement], [order]
+    )
     external_mocks["aws_client"].get_inbound_responsibility_transfers.return_value = [invitation]
 
     report_creator.create_and_notify_teams()  # act
@@ -269,6 +321,7 @@ def test_agreement_with_none_authorization(
     report_creator,
     external_mocks,
     agreement_factory,
+    order_factory,
     fulfillment_parameters_factory,
     order_parameters_factory,
 ):
@@ -280,8 +333,17 @@ def test_agreement_with_none_authorization(
         ),
         ordering_parameters=order_parameters_factory(mpa_id="mpa-123", support_type="PLS"),
     )
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="rt-x",
+            customer_roles_deployed="no",
+            channel_handshake_approved="no",
+        ),
+    )
     authorizations = [{"id": "AUT-1", "externalIds": {"operations": "651706759263"}}]
-    _patch_authorizations_and_agreements(mocker, report_creator, authorizations, [agreement])
+    _patch_authorizations_and_agreements(
+        mocker, report_creator, authorizations, [agreement], [order]
+    )
     external_mocks["aws_client"].get_inbound_responsibility_transfers.return_value = []
 
     report_creator.create_and_notify_teams()  # act
@@ -298,6 +360,7 @@ def test_agreement_with_none_mpa_account_id(
     report_creator,
     external_mocks,
     agreement_factory,
+    order_factory,
     fulfillment_parameters_factory,
     order_parameters_factory,
 ):
@@ -309,8 +372,17 @@ def test_agreement_with_none_mpa_account_id(
         ),
         ordering_parameters=order_parameters_factory(),
     )
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="rt-y",
+            customer_roles_deployed="no",
+            channel_handshake_approved="no",
+        ),
+    )
     authorizations = [{"id": "AUT-1", "externalIds": {"operations": "651706759263"}}]
-    _patch_authorizations_and_agreements(mocker, report_creator, authorizations, [agreement])
+    _patch_authorizations_and_agreements(
+        mocker, report_creator, authorizations, [agreement], [order]
+    )
     external_mocks["aws_client"].get_inbound_responsibility_transfers.return_value = []
 
     report_creator.create_and_notify_teams()  # act
@@ -326,6 +398,7 @@ def test_unmatched_invitation_with_no_dates(
     report_creator,
     external_mocks,
     agreement_factory,
+    order_factory,
     fulfillment_parameters_factory,
     order_parameters_factory,
 ):
@@ -337,9 +410,18 @@ def test_unmatched_invitation_with_no_dates(
         ),
         ordering_parameters=order_parameters_factory(),
     )
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="rt-other",
+            customer_roles_deployed="no",
+            channel_handshake_approved="no",
+        ),
+    )
     invitation = _make_invitation(invitation_id="rt-no-match", start=None, end=None)
     authorizations = [{"id": "AUT-1", "externalIds": {"operations": "651706759263"}}]
-    _patch_authorizations_and_agreements(mocker, report_creator, authorizations, [agreement])
+    _patch_authorizations_and_agreements(
+        mocker, report_creator, authorizations, [agreement], [order]
+    )
     external_mocks["aws_client"].get_inbound_responsibility_transfers.return_value = [invitation]
 
     report_creator.create_and_notify_teams()  # act
@@ -349,3 +431,53 @@ def test_unmatched_invitation_with_no_dates(
     ws = wb.active
     assert ws.cell(row=2, column=12).value is None
     assert ws.cell(row=2, column=13).value is None
+
+
+def test_invitation_uses_order_data_when_agreement_has_no_matching_transfer_id(
+    mocker,
+    report_creator,
+    external_mocks,
+    agreement_factory,
+    order_factory,
+    fulfillment_parameters_factory,
+    order_parameters_factory,
+):
+    agreement_without_transfer_id = agreement_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="",
+            customer_roles_deployed="no",
+            channel_handshake_approved="no",
+        ),
+        ordering_parameters=order_parameters_factory(support_type="Basic Support"),
+    )
+    order_with_transfer_id = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="rt-from-order",
+            customer_roles_deployed="yes",
+            channel_handshake_approved="yes",
+        ),
+        order_parameters=order_parameters_factory(support_type="Enterprise On-Ramp"),
+    )
+    invitation = _make_invitation(invitation_id="rt-from-order")
+    authorizations = [{"id": "AUT-1", "externalIds": {"operations": "651706759263"}}]
+    _patch_authorizations_and_agreements(
+        mocker,
+        report_creator,
+        authorizations,
+        [agreement_without_transfer_id],
+        [order_with_transfer_id],
+    )
+    external_mocks["aws_client"].get_inbound_responsibility_transfers.return_value = [invitation]
+
+    report_creator.create_and_notify_teams()  # act
+
+    excel_bytes = external_mocks["blob_client"].upload_blob.call_args.args[0]
+    wb = load_workbook(BytesIO(excel_bytes))
+    ws = wb.active
+    assert ws.cell(row=2, column=3).value == "rt-from-order"
+    assert ws.cell(row=2, column=5).value == order_with_transfer_id["agreement"]["id"]
+    assert ws.cell(row=2, column=6).value == order_with_transfer_id["agreement"]["name"]
+    assert ws.cell(row=2, column=7).value == order_with_transfer_id["product"]["id"]
+    assert ws.cell(row=2, column=9).value == "Enterprise On-Ramp"
+    assert ws.cell(row=2, column=10).value == "Yes"
+    assert ws.cell(row=2, column=11).value == "Yes"

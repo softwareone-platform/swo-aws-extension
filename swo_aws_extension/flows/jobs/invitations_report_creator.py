@@ -14,7 +14,6 @@ from swo_aws_extension.config import get_config
 from swo_aws_extension.parameters import (
     get_channel_handshake_approval_status,
     get_customer_roles_deployed,
-    get_mpa_account_id,
     get_responsibility_transfer_id,
     get_support_type,
 )
@@ -65,16 +64,10 @@ class InvitationsReportCreator:
         """Fetch agreements and collect report rows."""
         rql_query = RQLQuery(product__id__in=self.product_ids)
         authorizations = self._get_authorizations(self.mpt_client, rql_query, 10)
-
         rows: list[list[str]] = []
         for authorization in authorizations:
-            select = "&select=parameters,authorization.externalIds.operations"
-            rql_filter = RQLQuery(authorization__id__eq=authorization["id"]) & RQLQuery(
-                status__ne="Draft"
-            )
-            query_str = f"{rql_filter}{select}"
-            agreements = get_agreements_by_query(self.mpt_client, query_str)
-
+            orders = self._get_orders(authorization)
+            agreements = self._get_agreements(authorization)
             try:
                 aws_client = AWSClient(
                     get_config(),
@@ -96,13 +89,35 @@ class InvitationsReportCreator:
                 )
                 continue
 
+            processed_data = self._process_mpt_data(agreements, orders)
             for invitation in aws_invitations:
-                invitations_row = self._invitation_to_row(invitation, agreements)
+                invitations_row = self._invitation_to_row(invitation, processed_data)
                 rows.append(invitations_row)
 
         return rows
 
-    def _invitation_to_row(self, invitation: dict, agreements: list[dict]) -> list[str]:
+    def _get_agreements(self, authorization: dict) -> list[dict]:
+        select = "&select=parameters,authorization.externalIds.operations"
+        rql_filter = RQLQuery(authorization__id__eq=authorization["id"]) & RQLQuery(
+            status__ne="Draft"
+        )
+        query_str = f"{rql_filter}{select}"
+        return get_agreements_by_query(self.mpt_client, query_str, limit=100)
+
+    def _get_orders(self, authorization: dict) -> list[dict]:
+        select = "&select=parameters,authorization.externalIds.operations"
+        rql_filter = (
+            RQLQuery(authorization__id__eq=authorization["id"])
+            & RQLQuery(product__id__in=self.product_ids)
+            & RQLQuery().status.out([
+                "Completed",
+                "Draft",
+            ])
+        )
+        query_str = f"{rql_filter}{select}"
+        return self._get_orders_by_query(query_str, limit=100)
+
+    def _invitation_to_row(self, invitation: dict, mpt_data: dict) -> list[str]:
         start_date = (
             invitation.get("StartTimestamp").strftime("%Y-%m-%d")
             if invitation.get("StartTimestamp")
@@ -113,48 +128,20 @@ class InvitationsReportCreator:
             if invitation.get("EndTimestamp")
             else ""
         )
-        for agreement in agreements:
-            invitation_id = get_responsibility_transfer_id(agreement)
-            if invitation_id == invitation["Id"]:
-                product = agreement.get("product") or {}
-                product_id = product.get("id", "")
-                pma_account_id = (
-                    agreement.get("authorization", {}).get("externalIds", {}).get("operations", "")
-                )
-                mpa_account_id = get_mpa_account_id(agreement) or ""
-                support_type = get_support_type(agreement)
-                roles = get_customer_roles_deployed(agreement).capitalize()
-                handshake_approval_status = get_channel_handshake_approval_status(
-                    agreement
-                ).capitalize()
-                invitation_id = get_responsibility_transfer_id(agreement)
-                return [
-                    pma_account_id,
-                    mpa_account_id,
-                    invitation_id,
-                    invitation["Status"],
-                    agreement.get("id", ""),
-                    agreement.get("name", ""),
-                    product_id,
-                    agreement.get("status", ""),
-                    support_type,
-                    roles,
-                    handshake_approval_status,
-                    start_date,
-                    end_date,
-                ]
+        mpt_item = mpt_data.get(invitation.get("Id"), {})
+        mpt_item_data = mpt_item.get("data", {})
         return [
             invitation.get("Target", {}).get("ManagementAccountId", ""),
             invitation.get("Source", {}).get("ManagementAccountId", ""),
             invitation.get("Id", ""),
             invitation.get("Status", ""),
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
+            mpt_item_data.get("id", ""),
+            mpt_item_data.get("name", ""),
+            mpt_item_data.get("product_id", ""),
+            mpt_item_data.get("status", ""),
+            mpt_item_data.get("support_type", ""),
+            mpt_item_data.get("customer_roles_deployed", ""),
+            mpt_item_data.get("channel_handshake_approval_status", ""),
             start_date,
             end_date,
         ]
@@ -219,6 +206,60 @@ class InvitationsReportCreator:
         )
         return f"{blob_client.url}?{sas_token}"
 
+    def _process_mpt_data(self, agreements: list[dict], orders: list[dict]) -> list[dict]:
+        processed_data: list[dict] = {}
+
+        for agreement in agreements:
+            invitation_id = get_responsibility_transfer_id(agreement)
+            if not invitation_id:
+                continue
+
+            invitation_data = processed_data.setdefault(
+                invitation_id,
+                {
+                    "data": {},
+                },
+            )
+
+            invitation_data["data"] = {
+                "id": agreement.get("id", ""),
+                "name": agreement.get("name", ""),
+                "status": agreement.get("status", ""),
+                "product_id": agreement.get("product", {}).get("id", ""),
+                "support_type": get_support_type(agreement) or "",
+                "customer_roles_deployed": get_customer_roles_deployed(agreement).capitalize()
+                or "",
+                "channel_handshake_approval_status": get_channel_handshake_approval_status(
+                    agreement
+                ).capitalize()
+                or "",
+            }
+
+        for order in orders:
+            invitation_id = get_responsibility_transfer_id(order)
+            if not invitation_id:
+                continue
+
+            if invitation_id in processed_data:
+                continue
+
+            invitation_data = processed_data.setdefault(invitation_id, {"data": {}})
+
+            invitation_data["data"] = {
+                "id": order.get("agreement", {}).get("id", ""),
+                "name": order.get("agreement", {}).get("name", ""),
+                "status": order.get("agreement", {}).get("status", ""),
+                "product_id": order.get("product", {}).get("id", ""),
+                "support_type": get_support_type(order) or "",
+                "customer_roles_deployed": get_customer_roles_deployed(order).capitalize() or "",
+                "channel_handshake_approval_status": get_channel_handshake_approval_status(
+                    order
+                ).capitalize()
+                or "",
+            }
+
+        return processed_data
+
     def _notify_teams(self, row_count: int, download_url: str) -> None:
         """Send a Teams notification with a download link for the report.
 
@@ -231,7 +272,7 @@ class InvitationsReportCreator:
         button = Button(label="Download report", url=download_url)
         TeamsNotificationManager().send_success(title, text, button=button)
 
-    def _get_authorizations(self, mpt_client, rql_query, limit=10):
+    def _get_authorizations(self, mpt_client, rql_query, limit=10):  # pragma: no cover
         """
         Retrieve authorizations based on the provided RQL query.
 
@@ -243,9 +284,25 @@ class InvitationsReportCreator:
         Returns:
             list or None: List of authorizations or None if request fails.
         """
+        # TODO: SDK candidate
         url = (
             f"/catalog/authorizations?{rql_query}&select=externalIds,product"
             if rql_query
             else "/catalog/authorizations?select=externalIds,product"
         )
         return _paginated(mpt_client, url, limit=limit)
+
+    def _get_orders_by_query(self, query: str, limit: int = 10) -> list[dict]:  # pragma: no cover
+        """
+        This method is used to get the orders by query.
+
+        Args:
+            query (str): Query to filter orders.
+            limit (int): Maximum number of orders to retrieve.
+
+        Returns:
+            list[dict]: List of orders.
+        """
+        # TODO: SDK candidate
+        url = f"/commerce/orders?{query}"
+        return _paginated(self.mpt_client, url, limit=limit)
