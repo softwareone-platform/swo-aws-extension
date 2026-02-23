@@ -45,7 +45,7 @@ dev = [
   "pytest-randomly==4.0.*",
   "pytest-xdist==3.8.*",
   "requests-mock==1.12.*",
-  "responses==0.25.*",
+  "responses==0.26.*",
   "ruff==0.15.*", # force ruff version to have same formatting everywhere
   "types-openpyxl==3.1.*",
   "types-requests==2.32.*",
