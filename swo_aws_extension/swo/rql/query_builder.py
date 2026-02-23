@@ -37,7 +37,7 @@ def parse_kwargs(query_dict: dict) -> list[str]:
     return query
 
 
-def rql_encode(op: str, value: str | list) -> str:  # noqa: C901
+def rql_encode(op: str, value: str | list) -> str:
     """
     Encodes the value for the RQL string and converts it to the str.
 
@@ -49,17 +49,30 @@ def rql_encode(op: str, value: str | list) -> str:  # noqa: C901
         Encoded value string
     """
     if op not in constants.LIST:
-        if isinstance(value, str):
-            return value
-        if isinstance(value, bool):
-            return "true" if value else "false"
-        if isinstance(value, int | float | Decimal):
-            return str(value)
-        if isinstance(value, dt.date | dt.datetime):
-            return value.isoformat()
-    elif op in constants.LIST and isinstance(value, list | tuple | set):
+        encoded = _encode_scalar(value)
+        if op in constants.COMP:
+            return _quote(encoded)
+        return encoded
+    if op in constants.LIST and isinstance(value, list | tuple | set):
         return ",".join(str(el) for el in value)
     raise TypeError(f"the `{op}` operator doesn't support the {type(value)} type.")
+
+
+def _encode_scalar(value: str | bool | int | float | Decimal | dt.date | dt.datetime) -> str:  # noqa: FBT001
+    if isinstance(value, str):
+        return value
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int | float | Decimal):
+        return str(value)
+    if isinstance(value, dt.date | dt.datetime):
+        return value.isoformat()
+    raise TypeError(f"unsupported value type: {type(value)}")
+
+
+def _quote(value: str) -> str:
+    escaped = value.replace("'", r"\'")
+    return f"'{escaped}'"
 
 
 class RQLQuery:
