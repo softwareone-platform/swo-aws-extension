@@ -14,7 +14,7 @@ dependencies = [
   "jinja2==3.1.*",
   "markdown-it-py==4.0.*",
   "mpt-extension-sdk==5.20.*",
-  "mpt-tool==5.3.*",
+  "mpt-tool==5.4.*",
   "openpyxl==3.1.*",
   "opentelemetry-instrumentation-botocore==0.60b0",  # fix version, because extension-sdk has opentelemetry-sdk==1.39.0 fixed
   "pyairtable==3.3.*",
