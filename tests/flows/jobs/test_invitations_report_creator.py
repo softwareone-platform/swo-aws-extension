@@ -481,3 +481,52 @@ def test_invitation_uses_order_data_when_agreement_has_no_matching_transfer_id(
     assert ws.cell(row=2, column=9).value == "Enterprise On-Ramp"
     assert ws.cell(row=2, column=10).value == "Yes"
     assert ws.cell(row=2, column=11).value == "Yes"
+
+
+def test_order_without_transfer_id_is_skipped(
+    mocker,
+    report_creator,
+    external_mocks,
+    agreement_factory,
+    order_factory,
+    fulfillment_parameters_factory,
+    order_parameters_factory,
+):
+    agreement = agreement_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="",
+            customer_roles_deployed="no",
+            channel_handshake_approved="no",
+        ),
+        ordering_parameters=order_parameters_factory(),
+    )
+    order_without_transfer_id = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="",
+            customer_roles_deployed="yes",
+            channel_handshake_approved="yes",
+        ),
+        order_parameters=order_parameters_factory(support_type="Basic Support"),
+    )
+    invitation = _make_invitation(invitation_id="rt-invitation-only")
+    authorizations = [{"id": "AUT-1", "externalIds": {"operations": "651706759263"}}]
+    _patch_authorizations_and_agreements(
+        mocker,
+        report_creator,
+        authorizations,
+        [agreement],
+        [order_without_transfer_id],
+    )
+    external_mocks["aws_client"].get_inbound_responsibility_transfers.return_value = [invitation]
+
+    report_creator.create_and_notify_teams()  # act
+
+    excel_bytes = external_mocks["blob_client"].upload_blob.call_args.args[0]
+    wb = load_workbook(BytesIO(excel_bytes))
+    ws = wb.active
+    assert ws.cell(row=2, column=3).value == "rt-invitation-only"
+    assert ws.cell(row=2, column=5).value is None
+    assert ws.cell(row=2, column=6).value is None
+    assert ws.cell(row=2, column=9).value is None
+    assert ws.cell(row=2, column=10).value is None
+    assert ws.cell(row=2, column=11).value is None

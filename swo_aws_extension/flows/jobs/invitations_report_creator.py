@@ -66,8 +66,6 @@ class InvitationsReportCreator:
         authorizations = self._get_authorizations(self.mpt_client, rql_query, 10)
         rows: list[list[str]] = []
         for authorization in authorizations:
-            orders = self._get_orders(authorization)
-            agreements = self._get_agreements(authorization)
             try:
                 aws_client = AWSClient(
                     get_config(),
@@ -89,7 +87,10 @@ class InvitationsReportCreator:
                 )
                 continue
 
-            processed_data = self._process_mpt_data(agreements, orders)
+            processed_agreements = self._get_processed_agreement_data(authorization)
+            processed_orders = self._get_processed_order_data(authorization, processed_agreements)
+
+            processed_data = processed_agreements | processed_orders
             for invitation in aws_invitations:
                 invitations_row = self._invitation_to_row(invitation, processed_data)
                 rows.append(invitations_row)
@@ -206,60 +207,6 @@ class InvitationsReportCreator:
         )
         return f"{blob_client.url}?{sas_token}"
 
-    def _process_mpt_data(self, agreements: list[dict], orders: list[dict]) -> list[dict]:
-        processed_data: list[dict] = {}
-
-        for agreement in agreements:
-            invitation_id = get_responsibility_transfer_id(agreement)
-            if not invitation_id:
-                continue
-
-            invitation_data = processed_data.setdefault(
-                invitation_id,
-                {
-                    "data": {},
-                },
-            )
-
-            invitation_data["data"] = {
-                "id": agreement.get("id", ""),
-                "name": agreement.get("name", ""),
-                "status": agreement.get("status", ""),
-                "product_id": agreement.get("product", {}).get("id", ""),
-                "support_type": get_support_type(agreement) or "",
-                "customer_roles_deployed": get_customer_roles_deployed(agreement).capitalize()
-                or "",
-                "channel_handshake_approval_status": get_channel_handshake_approval_status(
-                    agreement
-                ).capitalize()
-                or "",
-            }
-
-        for order in orders:
-            invitation_id = get_responsibility_transfer_id(order)
-            if not invitation_id:
-                continue
-
-            if invitation_id in processed_data:
-                continue
-
-            invitation_data = processed_data.setdefault(invitation_id, {"data": {}})
-
-            invitation_data["data"] = {
-                "id": order.get("agreement", {}).get("id", ""),
-                "name": order.get("agreement", {}).get("name", ""),
-                "status": order.get("agreement", {}).get("status", ""),
-                "product_id": order.get("product", {}).get("id", ""),
-                "support_type": get_support_type(order) or "",
-                "customer_roles_deployed": get_customer_roles_deployed(order).capitalize() or "",
-                "channel_handshake_approval_status": get_channel_handshake_approval_status(
-                    order
-                ).capitalize()
-                or "",
-            }
-
-        return processed_data
-
     def _notify_teams(self, row_count: int, download_url: str) -> None:
         """Send a Teams notification with a download link for the report.
 
@@ -306,3 +253,63 @@ class InvitationsReportCreator:
         # TODO: SDK candidate
         url = f"/commerce/orders?{query}"
         return _paginated(self.mpt_client, url, limit=limit)
+
+    def _get_processed_agreement_data(self, authorization: dict) -> dict:
+        agreements = self._get_agreements(authorization)
+        processed_data = {}
+
+        for agreement in agreements:
+            invitation_id = get_responsibility_transfer_id(agreement)
+            if not invitation_id:
+                continue
+
+            invitation_data = processed_data.setdefault(
+                invitation_id,
+                {
+                    "data": {},
+                },
+            )
+
+            invitation_data["data"] = {
+                "id": agreement.get("id", ""),
+                "name": agreement.get("name", ""),
+                "status": agreement.get("status", ""),
+                "product_id": agreement.get("product", {}).get("id", ""),
+                "support_type": get_support_type(agreement) or "",
+                "customer_roles_deployed": get_customer_roles_deployed(agreement).capitalize()
+                or "",
+                "channel_handshake_approval_status": get_channel_handshake_approval_status(
+                    agreement
+                ).capitalize()
+                or "",
+            }
+        return processed_data
+
+    def _get_processed_order_data(self, authorization: dict, already_processed: dict) -> dict:
+        orders = self._get_orders(authorization)
+        processed_data = {}
+
+        for order in orders:
+            invitation_id = get_responsibility_transfer_id(order)
+            if not invitation_id:
+                continue
+
+            if invitation_id in already_processed:
+                continue
+
+            invitation_data = processed_data.setdefault(invitation_id, {"data": {}})
+
+            invitation_data["data"] = {
+                "id": order.get("agreement", {}).get("id", ""),
+                "name": order.get("agreement", {}).get("name", ""),
+                "status": order.get("agreement", {}).get("status", ""),
+                "product_id": order.get("product", {}).get("id", ""),
+                "support_type": get_support_type(order) or "",
+                "customer_roles_deployed": get_customer_roles_deployed(order).capitalize() or "",
+                "channel_handshake_approval_status": get_channel_handshake_approval_status(
+                    order
+                ).capitalize()
+                or "",
+            }
+
+        return processed_data
