@@ -4,7 +4,7 @@ from mpt_extension_sdk.mpt_http.base import MPTClient
 from swo_aws_extension.flows.jobs.invitations_report_creator import InvitationsReportCreator
 
 
-def test_create_invitations_report(mocker, settings):
+def test_create_invitations_report(mocker, settings, config):
     settings.MPT_PRODUCTS_IDS = ["PRD-1111-1111", "PRD-2222-2222"]
     mock_mpt_client = mocker.MagicMock(spec=MPTClient)
     mock_creator = mocker.MagicMock(spec=InvitationsReportCreator)
@@ -25,5 +25,6 @@ def test_create_invitations_report(mocker, settings):
     mocked_creator_class.assert_called_once_with(
         mock_mpt_client,
         settings.MPT_PRODUCTS_IDS,
+        config,
     )
     mock_creator.create_and_notify_teams.assert_called_once()
