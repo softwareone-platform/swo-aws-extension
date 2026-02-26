@@ -1,29 +1,31 @@
 import datetime as dt
 import logging
-from io import BytesIO
+from dataclasses import dataclass
 
-from azure.storage.blob import BlobSasPermissions, BlobServiceClient, generate_blob_sas
 from mpt_extension_sdk.mpt_http.base import MPTClient
-from mpt_extension_sdk.mpt_http.mpt import _paginated, get_agreements_by_query  # NoQA: PLC2701
-from openpyxl import Workbook
-from openpyxl.styles import Font
+from mpt_extension_sdk.mpt_http.mpt import _paginated, get_agreements_by_query  # noqa: PLC2701
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
-from swo_aws_extension.config import get_config
+from swo_aws_extension.config import Config
 from swo_aws_extension.parameters import (
     get_channel_handshake_approval_status,
     get_customer_roles_deployed,
     get_responsibility_transfer_id,
     get_support_type,
 )
+from swo_aws_extension.swo.azure_blob_uploader import AzureBlobUploader
+from swo_aws_extension.swo.excel_report_builder import ExcelReportBuilder
 from swo_aws_extension.swo.notifications.teams import Button, TeamsNotificationManager
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 logger = logging.getLogger(__name__)
 
+ReportRow = list[str]
+ReportRows = list[ReportRow]
+ErrorMessages = list[str]
 
-INVITATIONS_REPORT_HEADERS = [
+INVITATIONS_REPORT_HEADERS = (
     "PMA Account ID",
     "MPA Account ID",
     "Invitation ID",
@@ -37,15 +39,85 @@ INVITATIONS_REPORT_HEADERS = [
     "Channel Handshake Approval Status",
     "Start Date",
     "End Date",
-]
+)
+
+
+@dataclass
+class ReportEntityData:
+    """Data extracted from an agreement or order."""
+
+    id: str = ""
+    name: str = ""
+    status: str = ""
+    product_id: str = ""
+    support_type: str = ""
+    customer_roles_deployed: str = ""
+    channel_handshake_approval_status: str = ""
+
+
+# TODO: SDK candidate
+def get_authorizations(
+    mpt_client: MPTClient, rql_query: RQLQuery | None, limit: int = 10
+) -> list[dict]:  # pragma: no cover
+    """
+    Retrieve authorizations based on the provided RQL query.
+
+    Args:
+        mpt_client (MPTClient): MPT API client instance.
+        rql_query (RQLQuery): Query to filter authorizations.
+        limit (int): Maximum number of authorizations to retrieve.
+
+    Returns:
+        list or None: List of authorizations or None if request fails.
+    """
+    url = (
+        f"/catalog/authorizations?{rql_query}&select=externalIds,product"
+        if rql_query
+        else "/catalog/authorizations?select=externalIds,product"
+    )
+    return _paginated(mpt_client, url, limit=limit)
+
+
+# TODO: SDK candidate
+def get_orders_by_query(
+    mpt_client: MPTClient, query: str, limit: int = 10
+) -> list[dict]:  # pragma: no cover
+    """
+    This method is used to get the orders by query.
+
+    Args:
+        mpt_client (MPTClient): MPT API client instance.
+        query (str): Query to filter orders.
+        limit (int): Maximum number of orders to retrieve.
+
+    Returns:
+        list[dict]: List of orders.
+    """
+    url = f"/commerce/orders?{query}"
+    return _paginated(mpt_client, url, limit=limit)
 
 
 class InvitationsReportCreator:
     """Create invitations report."""
 
-    def __init__(self, mpt_client: MPTClient, product_ids: list[str]):
+    def __init__(self, mpt_client: MPTClient, product_ids: list[str], config: Config):
+        """Initialize InvitationsReportCreator.
+
+        Args:
+            mpt_client: MPT API client instance.
+            product_ids: List of product IDs to filter authorizations.
+            config: Config object
+        """
         self.mpt_client = mpt_client
         self.product_ids = product_ids
+        self.config = config
+        self.notifier = TeamsNotificationManager()
+        self.excel_builder = ExcelReportBuilder(list(INVITATIONS_REPORT_HEADERS))
+        self.blob_uploader = AzureBlobUploader(
+            connection_string=self.config.azure_storage_connection_string,
+            container_name=self.config.azure_storage_container,
+            sas_expiry_days=self.config.azure_storage_sas_expiry_days,
+        )
 
     def create_and_notify_teams(self) -> None:
         """Create invitations report, upload to Azure Storage and notify via Teams.
@@ -54,48 +126,92 @@ class InvitationsReportCreator:
         notification with a download link (SAS URL valid for a configured period of time) is sent.
         """
         logger.info("Creating invitations report for Teams notification...")
-        rows = self._collect_rows()
-        excel_bytes = self._build_excel(rows)
-        download_url = self._upload_to_azure(excel_bytes)
-        self._notify_teams(len(rows), download_url)
+
+        authorizations = get_authorizations(
+            self.mpt_client, RQLQuery(product__id__in=self.product_ids), 10
+        )
+
+        rows, errors = self._process_authorizations_into_rows(authorizations)
+        if errors:
+            error_message = "\n".join(errors)
+            self.notifier.send_error(
+                "Error getting AWS invitations",
+                f"Errors occurred while fetching AWS invitations:\n{error_message}",
+            )
+
+        download_url = self._upload_report(rows)
+        self.notifier.send_success(
+            "AWS Billing Transfer Invitations Report",
+            f"The report has been generated with **{len(rows)}** agreement(s).",
+            button=Button(label="Download report", url=download_url),
+        )
         logger.info("Invitations report uploaded and Teams notification sent.")
 
-    def _collect_rows(self) -> list[list[str]]:
-        """Fetch agreements and collect report rows."""
-        rql_query = RQLQuery(product__id__in=self.product_ids)
-        authorizations = self._get_authorizations(self.mpt_client, rql_query, 10)
-        rows: list[list[str]] = []
+    def _upload_report(self, rows: ReportRows) -> str:
+        excel_bytes = self.excel_builder.build_from_rows(rows)
+        date_str = dt.datetime.now(dt.UTC).strftime("%Y-%m-%d")
+        report_folder = self.config.report_invitations_folder
+        blob_name = f"{report_folder}{date_str}.xlsx"
+        return self.blob_uploader.upload_and_get_sas_url(excel_bytes, blob_name)
+
+    def _process_authorizations_into_rows(
+        self, authorizations: list[dict]
+    ) -> tuple[ReportRows, ErrorMessages]:
+        """Process authorizations into report rows and collect errors."""
+        rows: ReportRows = []
+        errors: ErrorMessages = []
+
         for authorization in authorizations:
-            try:
-                aws_client = AWSClient(
-                    get_config(),
-                    authorization["externalIds"]["operations"],
-                    get_config().management_role_name,
-                )
-                aws_invitations = aws_client.get_inbound_responsibility_transfers()
-            except AWSError as error:
-                logger.warning(
-                    "Error getting AWS invitations for authorization %s: %s",
-                    authorization["id"],
-                    error,
-                )
-                error_message = (
-                    f"Error getting AWS invitations for authorization {authorization['id']}:{error}"
-                )
-                TeamsNotificationManager().send_error(
-                    "Error getting AWS invitations ", error_message
-                )
-                continue
+            auth_rows, auth_error = self._process_single_authorization(authorization)
+            rows.extend(auth_rows)
+            if auth_error:
+                errors.append(auth_error)
 
-            processed_agreements = self._get_processed_agreement_data(authorization)
-            processed_orders = self._get_processed_order_data(authorization, processed_agreements)
+        return rows, errors
 
-            processed_data = processed_agreements | processed_orders
-            for invitation in aws_invitations:
-                invitations_row = self._invitation_to_row(invitation, processed_data)
-                rows.append(invitations_row)
+    def _process_single_authorization(self, authorization: dict) -> tuple[ReportRows, str | None]:
+        """Process a single authorization and return rows and optional error."""
+        try:
+            aws_client = AWSClient(
+                self.config,
+                authorization["externalIds"]["operations"],
+                self.config.management_role_name,
+            )
+        except AWSError as error:
+            logger.warning(
+                "Error getting AWS invitations for authorization %s: %s",
+                authorization["id"],
+                error,
+            )
+            return [], f"Authorization {authorization['id']}: {error}"
 
-        return rows
+        return self._build_rows_from_authorization(authorization, aws_client), None
+
+    def _build_rows_from_authorization(
+        self, authorization: dict, aws_client: AWSClient
+    ) -> ReportRows:
+        """Build report rows from authorization data."""
+        aws_invitations = aws_client.get_inbound_responsibility_transfers()
+        processed_data = self._get_processed_data(authorization)
+
+        return [
+            self._invitation_to_row(invitation, processed_data) for invitation in aws_invitations
+        ]
+
+    def _get_processed_data(self, authorization: dict) -> dict[str, ReportEntityData]:
+        """Get processed data combining agreements and orders."""
+        agreements = self._get_agreements(authorization)
+        invitation_agreements = self._process_entities(agreements)
+
+        mpt_orders = self._get_orders(authorization)
+        filtered_orders = [
+            order
+            for order in mpt_orders
+            if get_responsibility_transfer_id(order) not in invitation_agreements
+        ]
+        invitation_orders = self._process_entities(filtered_orders, is_order=True)
+
+        return invitation_agreements | invitation_orders
 
     def _get_agreements(self, authorization: dict) -> list[dict]:
         select = "&select=parameters,authorization.externalIds.operations"
@@ -116,9 +232,11 @@ class InvitationsReportCreator:
             ])
         )
         query_str = f"{rql_filter}{select}"
-        return self._get_orders_by_query(query_str, limit=100)
+        return get_orders_by_query(self.mpt_client, query_str, limit=100)
 
-    def _invitation_to_row(self, invitation: dict, mpt_data: dict) -> list[str]:
+    def _invitation_to_row(
+        self, invitation: dict, mpt_data: dict[str, ReportEntityData]
+    ) -> list[str]:
         start_date = (
             invitation.get("StartTimestamp").strftime("%Y-%m-%d")
             if invitation.get("StartTimestamp")
@@ -129,187 +247,47 @@ class InvitationsReportCreator:
             if invitation.get("EndTimestamp")
             else ""
         )
-        mpt_item = mpt_data.get(invitation.get("Id"), {})
-        mpt_item_data = mpt_item.get("data", {})
+        mpt_item_data = mpt_data.get(invitation.get("Id"), ReportEntityData())
         return [
             invitation.get("Target", {}).get("ManagementAccountId", ""),
             invitation.get("Source", {}).get("ManagementAccountId", ""),
             invitation.get("Id", ""),
             invitation.get("Status", ""),
-            mpt_item_data.get("id", ""),
-            mpt_item_data.get("name", ""),
-            mpt_item_data.get("product_id", ""),
-            mpt_item_data.get("status", ""),
-            mpt_item_data.get("support_type", ""),
-            mpt_item_data.get("customer_roles_deployed", ""),
-            mpt_item_data.get("channel_handshake_approval_status", ""),
+            mpt_item_data.id,
+            mpt_item_data.name,
+            mpt_item_data.product_id,
+            mpt_item_data.status,
+            mpt_item_data.support_type,
+            mpt_item_data.customer_roles_deployed,
+            mpt_item_data.channel_handshake_approval_status,
             start_date,
             end_date,
         ]
 
-    def _build_excel(self, rows: list[list[str]]) -> bytes:
-        """Build an Excel workbook in memory and return its raw bytes."""
-        wb = Workbook()
-        ws = wb.active
-        if ws.title == "Sheet":
-            ws.title = "Invitations"
-
-        header_font = Font(bold=True)
-        for col, header in enumerate(INVITATIONS_REPORT_HEADERS, start=1):
-            cell = ws.cell(row=1, column=col, value=header)
-            cell.font = header_font
-
-        for row_idx, row_data in enumerate(rows, start=2):
-            for col_idx, cell_value in enumerate(row_data, start=1):
-                ws.cell(row=row_idx, column=col_idx, value=cell_value)
-
-        ws.auto_filter.ref = ws.dimensions
-
-        buffer = BytesIO()
-        wb.save(buffer)
-        return buffer.getvalue()
-
-    def _upload_to_azure(self, excel_data: bytes) -> str:
-        """Upload the in-memory Excel to Azure Blob Storage and return a SAS download URL.
-
-        The blob is stored under configured container.
-
-        Args:
-            excel_data: Raw bytes of the Excel workbook.
-
-        Returns:
-            A publicly accessible SAS URL valid for the number of days specified in config.
-        """
-        config = get_config()
-        connection_string = config.azure_storage_connection_string
-        container_name = config.azure_storage_container
-        today = dt.datetime.now(dt.UTC).strftime("%Y-%m-%d")
-        blob_name = f"{config.report_invitations_folder}{today}.xlsx"
-        sas_expiry_days = config.azure_storage_sas_expiry_days
-
-        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
-        blob_client = blob_service_client.get_blob_client(
-            container=container_name,
-            blob=blob_name,
+    def _extract_entity_data(self, entity: dict, *, is_order: bool = False) -> ReportEntityData:
+        source = entity.get("agreement", {}) if is_order else entity
+        return ReportEntityData(
+            id=source.get("id", ""),
+            name=source.get("name", ""),
+            status=source.get("status", ""),
+            product_id=entity.get("product", {}).get("id", ""),
+            support_type=get_support_type(entity) or "",
+            customer_roles_deployed=(get_customer_roles_deployed(entity) or "").capitalize(),
+            channel_handshake_approval_status=(
+                get_channel_handshake_approval_status(entity) or ""
+            ).capitalize(),
         )
-        blob_client.upload_blob(excel_data, overwrite=True)
-        logger.info("Report uploaded to Azure Blob: %s/%s", container_name, blob_name)
 
-        account_name = blob_service_client.account_name
-        account_key = blob_service_client.credential.account_key
-        sas_token = generate_blob_sas(
-            account_name=account_name,
-            container_name=container_name,
-            blob_name=blob_name,
-            account_key=account_key,
-            permission=BlobSasPermissions(read=True),
-            expiry=dt.datetime.now(dt.UTC) + dt.timedelta(days=sas_expiry_days),
-        )
-        return f"{blob_client.url}?{sas_token}"
+    def _process_entities(
+        self, entities: list[dict], *, is_order: bool = False
+    ) -> dict[str, ReportEntityData]:
+        processed_data: dict[str, ReportEntityData] = {}
 
-    def _notify_teams(self, row_count: int, download_url: str) -> None:
-        """Send a Teams notification with a download link for the report.
-
-        Args:
-            row_count: Number of agreement rows in the report.
-            download_url: SAS URL for downloading the report from Azure Storage.
-        """
-        title = "AWS Billing Transfer Invitations Report"
-        text = f"The report has been generated with **{row_count}** agreement(s)."
-        button = Button(label="Download report", url=download_url)
-        TeamsNotificationManager().send_success(title, text, button=button)
-
-    def _get_authorizations(self, mpt_client, rql_query, limit=10):  # pragma: no cover
-        """
-        Retrieve authorizations based on the provided RQL query.
-
-        Args:
-            mpt_client (MPTClient): MPT API client instance.
-            rql_query (RQLQuery): Query to filter authorizations.
-            limit (int): Maximum number of authorizations to retrieve.
-
-        Returns:
-            list or None: List of authorizations or None if request fails.
-        """
-        # TODO: SDK candidate
-        url = (
-            f"/catalog/authorizations?{rql_query}&select=externalIds,product"
-            if rql_query
-            else "/catalog/authorizations?select=externalIds,product"
-        )
-        return _paginated(mpt_client, url, limit=limit)
-
-    def _get_orders_by_query(self, query: str, limit: int = 10) -> list[dict]:  # pragma: no cover
-        """
-        This method is used to get the orders by query.
-
-        Args:
-            query (str): Query to filter orders.
-            limit (int): Maximum number of orders to retrieve.
-
-        Returns:
-            list[dict]: List of orders.
-        """
-        # TODO: SDK candidate
-        url = f"/commerce/orders?{query}"
-        return _paginated(self.mpt_client, url, limit=limit)
-
-    def _get_processed_agreement_data(self, authorization: dict) -> dict:
-        agreements = self._get_agreements(authorization)
-        processed_data = {}
-
-        for agreement in agreements:
-            invitation_id = get_responsibility_transfer_id(agreement)
+        for entity in entities:
+            invitation_id = get_responsibility_transfer_id(entity)
             if not invitation_id:
                 continue
 
-            invitation_data = processed_data.setdefault(
-                invitation_id,
-                {
-                    "data": {},
-                },
-            )
-
-            invitation_data["data"] = {
-                "id": agreement.get("id", ""),
-                "name": agreement.get("name", ""),
-                "status": agreement.get("status", ""),
-                "product_id": agreement.get("product", {}).get("id", ""),
-                "support_type": get_support_type(agreement) or "",
-                "customer_roles_deployed": get_customer_roles_deployed(agreement).capitalize()
-                or "",
-                "channel_handshake_approval_status": get_channel_handshake_approval_status(
-                    agreement
-                ).capitalize()
-                or "",
-            }
-        return processed_data
-
-    def _get_processed_order_data(self, authorization: dict, already_processed: dict) -> dict:
-        orders = self._get_orders(authorization)
-        processed_data = {}
-
-        for order in orders:
-            invitation_id = get_responsibility_transfer_id(order)
-            if not invitation_id:
-                continue
-
-            if invitation_id in already_processed:
-                continue
-
-            invitation_data = processed_data.setdefault(invitation_id, {"data": {}})
-
-            invitation_data["data"] = {
-                "id": order.get("agreement", {}).get("id", ""),
-                "name": order.get("agreement", {}).get("name", ""),
-                "status": order.get("agreement", {}).get("status", ""),
-                "product_id": order.get("product", {}).get("id", ""),
-                "support_type": get_support_type(order) or "",
-                "customer_roles_deployed": get_customer_roles_deployed(order).capitalize() or "",
-                "channel_handshake_approval_status": get_channel_handshake_approval_status(
-                    order
-                ).capitalize()
-                or "",
-            }
+            processed_data[invitation_id] = self._extract_entity_data(entity, is_order=is_order)
 
         return processed_data
