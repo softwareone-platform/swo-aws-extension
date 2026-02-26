@@ -55,6 +55,9 @@ global:
   AzureStorageContainer: private
   AzureStorageSasExpiryDays: 7
   ReportInvitationsFolder: reports/aws/billing-transfer-invitations/
+  MptToolStorageType: default
+  MptToolStorageAirtableBaseId: default
+  MptToolStorageAirtableTableName: default
 
   cronjobs:
     order-querying:

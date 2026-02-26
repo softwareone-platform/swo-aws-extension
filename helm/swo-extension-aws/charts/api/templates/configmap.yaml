@@ -13,6 +13,9 @@ data:
   MPT_API_BASE_URL: {{ .Values.global.MpBaseUrl | quote }}
   MPT_PRODUCTS_IDS: {{ .Values.global.MpProductsIds | quote }}
   MPT_SETUP_CONTEXTS_FUNC: {{ .Values.global.MpSetupContextsFunc | quote }}
+  MPT_TOOL_STORAGE_TYPE: {{ .Values.global.MptToolStorageType | quote }}
+  MPT_TOOL_STORAGE_AIRTABLE_BASE_ID: {{ .Values.global.MptToolStorageAirtableBaseId | quote }}
+  MPT_TOOL_STORAGE_AIRTABLE_TABLE_NAME: {{ .Values.global.MptToolStorageAirtableTableName | quote }}
   MPT_ORDERS_API_POLLING_INTERVAL_SECS: {{ .Values.global.MpOrdersApiPollingIntervalSecs | quote }}
   EXT_AWS_REGION: {{ .Values.global.AwsRegion | quote }}
   EXT_AWS_OPENID_SCOPE: {{ .Values.global.AwsOpenIdScope | quote }}
