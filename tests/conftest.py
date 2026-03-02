@@ -782,9 +782,10 @@ def lines_factory(agreement, deployment_id=None):
         unit_purchase_price=1234.55,
         deployment_id=deployment_id,
     ):
+        padded_item_id = str(item_id).zfill(4)
         line = {
             "item": {
-                "id": f"ITM-1234-1234-1234-{item_id:04d}",
+                "id": f"ITM-1234-1234-1234-{padded_item_id}",
                 "name": name,
                 "externalIds": {
                     "vendor": external_vendor_id,
@@ -797,7 +798,8 @@ def lines_factory(agreement, deployment_id=None):
             },
         }
         if line_id:
-            line["id"] = f"ALI-{agreement_id}-{line_id:04d}"
+            padded_line_id = str(line_id).zfill(4)
+            line["id"] = f"ALI-{agreement_id}-{padded_line_id}"
         if deployment_id:
             line["deploymentId"] = deployment_id
         return [line]
