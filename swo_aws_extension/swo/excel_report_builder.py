@@ -1,4 +1,5 @@
 from io import BytesIO
+from pathlib import Path
 
 from openpyxl import Workbook
 from openpyxl.styles import Font
@@ -32,3 +33,7 @@ class ExcelReportBuilder:
         buffer = BytesIO()
         wb.save(buffer)
         return buffer.getvalue()
+
+    def save(self, file_path: str, file_content: bytes) -> None:
+        """Save the provided bytes to the specified file path."""
+        Path(file_path).write_bytes(file_content)

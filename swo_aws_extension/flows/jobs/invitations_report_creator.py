@@ -3,7 +3,7 @@ import logging
 from dataclasses import dataclass
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
-from mpt_extension_sdk.mpt_http.mpt import _paginated, get_agreements_by_query  # noqa: PLC2701
+from mpt_extension_sdk.mpt_http.mpt import get_agreements_by_query
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
@@ -16,6 +16,8 @@ from swo_aws_extension.parameters import (
 )
 from swo_aws_extension.swo.azure_blob_uploader import AzureBlobUploader
 from swo_aws_extension.swo.excel_report_builder import ExcelReportBuilder
+from swo_aws_extension.swo.mpt.authorization import get_authorizations
+from swo_aws_extension.swo.mpt.order import get_orders_by_query
 from swo_aws_extension.swo.notifications.teams import Button, TeamsNotificationManager
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
@@ -53,48 +55,6 @@ class ReportEntityData:
     support_type: str = ""
     customer_roles_deployed: str = ""
     channel_handshake_approval_status: str = ""
-
-
-# TODO: SDK candidate
-def get_authorizations(
-    mpt_client: MPTClient, rql_query: RQLQuery | None, limit: int = 10
-) -> list[dict]:  # pragma: no cover
-    """
-    Retrieve authorizations based on the provided RQL query.
-
-    Args:
-        mpt_client (MPTClient): MPT API client instance.
-        rql_query (RQLQuery): Query to filter authorizations.
-        limit (int): Maximum number of authorizations to retrieve.
-
-    Returns:
-        list or None: List of authorizations or None if request fails.
-    """
-    url = (
-        f"/catalog/authorizations?{rql_query}&select=externalIds,product"
-        if rql_query
-        else "/catalog/authorizations?select=externalIds,product"
-    )
-    return _paginated(mpt_client, url, limit=limit)
-
-
-# TODO: SDK candidate
-def get_orders_by_query(
-    mpt_client: MPTClient, query: str, limit: int = 10
-) -> list[dict]:  # pragma: no cover
-    """
-    This method is used to get the orders by query.
-
-    Args:
-        mpt_client (MPTClient): MPT API client instance.
-        query (str): Query to filter orders.
-        limit (int): Maximum number of orders to retrieve.
-
-    Returns:
-        list[dict]: List of orders.
-    """
-    url = f"/commerce/orders?{query}"
-    return _paginated(mpt_client, url, limit=limit)
 
 
 class InvitationsReportCreator:

@@ -1004,13 +1004,20 @@ def order_factory(
             "product": {"id": "PRD-1111-1111", "name": "AWS"},
             "seller": seller,
             "buyer": buyer or buyer_factory(),
-            "client": {"id": "CLI-1111-1111"},
+            "client": {
+                "id": "CLI-1111-1111",
+                "name": "Client Name",
+            },
             "licensee": {"id": "LCE-1111-2222"},
             "vendor": {"id": "VEN-1111-2222", "name": "Vendor Name"},
+            "assignee": {"id": "USR-0000-0001", "name": "Assignee Name"},
             "audit": {
                 "created": {
                     "at": CREATED_AT,
-                    "by": {"id": "USR-0000-0001"},
+                    "by": {
+                        "id": "USR-0000-0001",
+                        "name": "John Doe",
+                    },
                 },
                 "updated": {
                     "at": CREATED_AT,
