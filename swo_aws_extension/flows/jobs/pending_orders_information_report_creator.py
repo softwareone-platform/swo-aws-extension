@@ -2,7 +2,6 @@ import logging
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
-from swo_aws_extension.config import Config
 from swo_aws_extension.parameters import get_mpa_account_id, get_order_account_email, get_phase
 from swo_aws_extension.swo.mpt.order import get_orders_by_query
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
@@ -36,15 +35,13 @@ PENDING_ORDERS_INFORMATION_REPORT_HEADERS = (
 class PendingOrdersInformationReportCreator:
     """Create pending orders information report."""
 
-    def __init__(self, mpt_client: MPTClient, config: Config):
+    def __init__(self, mpt_client: MPTClient):
         """Initialize PendingOrdersInformationReportCreator.
 
         Args:
             mpt_client: MPTClient instance to interact with MPT API.
-            config: Config instance with necessary configuration values.
         """
         self.mpt_client = mpt_client
-        self.config = config
 
     def create(self) -> ReportRows:
         """Create pending orders information report and return its path.
