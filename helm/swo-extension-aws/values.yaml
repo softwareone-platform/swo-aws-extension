@@ -58,6 +58,8 @@ global:
   MptToolStorageType: default
   MptToolStorageAirtableBaseId: default
   MptToolStorageAirtableTableName: default
+  ConfluenceUser: default
+  ConfluenceToken: ZGVmYXVsdA==
 
   cronjobs:
     order-querying:
