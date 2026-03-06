@@ -25,3 +25,13 @@ def test_build_from_rows_creates_valid_excel():
     for row_idx, expected_row in enumerate(expected_data, start=1):
         assert ws.cell(row=row_idx, column=1).value == expected_row[0]
         assert ws.cell(row=row_idx, column=2).value == expected_row[1]
+
+
+def test_save_writes_bytes_to_file(tmp_path):
+    builder = ExcelReportBuilder(["Header 1"], "TestSheet")
+    file_content = b"fake excel content"
+    output_file = tmp_path / "report.xlsx"
+
+    builder.save(str(output_file), file_content)  # act
+
+    assert output_file.read_bytes() == file_content
