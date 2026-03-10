@@ -116,6 +116,10 @@ MPT_TOOL_STORAGE_TYPE=airtable
 MPT_TOOL_STORAGE_AIRTABLE_API_KEY=<fake-airtable-api-key>
 MPT_TOOL_STORAGE_AIRTABLE_BASE_ID=<fake-storage-airtable-base-id>
 MPT_TOOL_STORAGE_AIRTABLE_TABLE_NAME=<fake-storage-airtable-table-name>
+EXT_PENDING_ORDERS_INFORMATION_REPORT_PAGE_ID=1234567890
+EXT_CONFLUENCE_USER=<confluence service user account>
+EXT_CONFLUENCE_TOKEN=<confluence token>
+EXT_CONFLUENCE_BASE_URL=<softwareone confluence base url>
 ```
 
 `MPT_PRODUCTS_IDS` is a comma-separated list of SWO Marketplace Product identifiers.

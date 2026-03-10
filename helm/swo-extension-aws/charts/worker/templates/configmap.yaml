@@ -18,7 +18,6 @@ data:
   MPT_TOOL_STORAGE_AIRTABLE_TABLE_NAME: {{ .Values.global.MptToolStorageAirtableTableName | quote }}
   MPT_ORDERS_API_POLLING_INTERVAL_SECS: {{ .Values.global.MpOrdersApiPollingIntervalSecs | quote }}
   EXT_AWS_REGION: {{ .Values.global.AwsRegion | quote }}
-  EXT_AWS_OPENID_SCOPE: {{ .Values.global.AwsOpenIdScope | quote }}
   EXT_CRM_OAUTH_URL: {{ .Values.global.CrmOauthUrl | quote }}
   EXT_CRM_CLIENT_ID: {{ .Values.global.CrmClientId | quote }}
   EXT_CRM_AUDIENCE: {{ .Values.global.CrmAudience | quote }}
@@ -49,4 +48,5 @@ data:
   EXT_DEPLOY_SERVICES_FEATURE_RECIPIENTS: {{ .Values.global.DeployServicesFeatureRecipients | quote }}
   EXT_AZURE_STORAGE_CONTAINER: {{ .Values.global.AzureStorageContainer | quote }}
   EXT_AZURE_STORAGE_SAS_EXPIRY_DAYS: {{ .Values.global.AzureStorageSasExpiryDays | quote }}
-  EXT_REPORT_INVITATIONS_FOLDER: {{ .Values.global.ReportInvitationsFolder | quote }}
+  EXT_PENDING_ORDERS_INFORMATION_REPORT_PAGE_ID: {{ .Values.global.PendingOrdersInformationReportPageId | quote }}
+  EXT_CONFLUENCE_BASE_URL: {{ .Values.global.ConfluenceBaseUrl | quote }}

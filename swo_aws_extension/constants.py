@@ -227,3 +227,5 @@ COMMAND_INVALID_BILLING_DATE_FUTURE = "Invalid billing date. Future months are n
 BILLING_JOURNAL_SUCCESS_TITLE = "AWS Billing Journal Synchronization Success"
 BILLING_JOURNAL_ERROR_TITLE = "AWS Billing Journal Synchronization Error"
 COST_EXPLORER_DATE_FORMAT = "%Y-%m-%d"
+
+EXCEL_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

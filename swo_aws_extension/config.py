@@ -171,6 +171,26 @@ class Config:
         """Get the Azure Storage SAS expiry days."""
         return int(settings.EXTENSION_CONFIG["AZURE_STORAGE_SAS_EXPIRY_DAYS"])
 
+    @property
+    def confluence_base_url(self) -> str:
+        """Get the Confluence base URL."""
+        return settings.EXTENSION_CONFIG["CONFLUENCE_BASE_URL"]
+
+    @property
+    def confluence_user(self) -> str:
+        """Get the Confluence user."""
+        return settings.EXTENSION_CONFIG["CONFLUENCE_USER"]
+
+    @property
+    def confluence_token(self) -> str:
+        """Get the Confluence API token."""
+        return settings.EXTENSION_CONFIG["CONFLUENCE_TOKEN"]
+
+    @property
+    def pending_orders_information_report_page_id(self) -> str:
+        """Get the Confluence page ID for pending orders information report."""
+        return settings.EXTENSION_CONFIG["PENDING_ORDERS_INFORMATION_REPORT_PAGE_ID"]
+
     def _patch_path(self, file_path):
         """Fixes relative paths to be from the project root."""
         path = Path(file_path)

@@ -8,6 +8,7 @@ from swo_aws_extension.flows.jobs.pending_orders_information_report_creator impo
     PendingOrdersInformationReportCreator,
 )
 from swo_aws_extension.management.commands_helpers import StyledPrintCommand
+from swo_aws_extension.swo.confluence_client import ConfluenceClient
 from swo_aws_extension.swo.excel_report_builder import ExcelReportBuilder
 
 
@@ -24,14 +25,26 @@ class Command(StyledPrintCommand):
         filename = f"orders-{today}.xlsx"
 
         mpt_client = setup_client()
+        config = get_config()
 
-        report_creator = PendingOrdersInformationReportCreator(mpt_client, get_config())
+        report_creator = PendingOrdersInformationReportCreator(mpt_client)
         excel_builder = ExcelReportBuilder(
             list(PENDING_ORDERS_INFORMATION_REPORT_HEADERS), sheet_name="Pending Orders"
         )
+        confluence_client = ConfluenceClient(config)
+
+        confluence_page_id = config.pending_orders_information_report_page_id
 
         report_rows = report_creator.create()
         excel_bytes = excel_builder.build_from_rows(report_rows)
-        excel_builder.save(filename, excel_bytes)
+        attachment_comment = f"Total orders {len(report_rows)}"
 
-        self.info(f"Pending orders information report created at {filename}")
+        is_report_uploaded = confluence_client.attach_content(
+            page_id=confluence_page_id,
+            filename=filename,
+            file_content=excel_bytes,
+            comment=attachment_comment,
+        )
+
+        if not is_report_uploaded:
+            self.error("Failed to upload pending orders information report to Confluence")

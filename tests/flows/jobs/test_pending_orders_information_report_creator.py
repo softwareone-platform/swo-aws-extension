@@ -12,8 +12,8 @@ CREATED_AT = "2023-12-14T18:02:16.9359"
 
 
 @pytest.fixture
-def report_creator(mpt_client, config):
-    return PendingOrdersInformationReportCreator(mpt_client, config)
+def report_creator(mpt_client):
+    return PendingOrdersInformationReportCreator(mpt_client)
 
 
 def _patch_orders(mocker, orders):
