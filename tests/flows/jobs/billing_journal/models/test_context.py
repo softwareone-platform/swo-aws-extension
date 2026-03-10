@@ -9,6 +9,7 @@ def test_initialization():
 
     result = BillingJournalContext(
         mpt_client="mpt_client",
+        billing_api_client="billing_client",
         config="config",
         billing_period=billing_period,
         product_ids=["PROD-1"],
@@ -18,6 +19,7 @@ def test_initialization():
 
     expected = {
         "mpt_client": "mpt_client",
+        "billing_api_client": "billing_client",
         "config": "config",
         "billing_period": asdict(billing_period),
         "product_ids": ["PROD-1"],
@@ -32,6 +34,7 @@ def test_authorizations_defaults_to_none():
 
     result = BillingJournalContext(
         mpt_client="mock",
+        billing_api_client="mock_billing",
         config="mock",
         billing_period=billing_period,
         product_ids=[],

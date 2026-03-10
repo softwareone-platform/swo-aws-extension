@@ -3,7 +3,7 @@
 import json
 from dataclasses import asdict, dataclass, field
 from decimal import Decimal
-from typing import Any
+from typing import Any, Self
 
 from swo_aws_extension.flows.jobs.billing_journal.models.search import (
     Search,
@@ -114,7 +114,7 @@ class JournalLine:
         invoice_details: InvoiceDetails,
         quantity: int = 1,
         segment: str = "COM",
-    ) -> "JournalLine":
+    ) -> Self:
         """Create a new journal line for billing purposes.
 
         Args:

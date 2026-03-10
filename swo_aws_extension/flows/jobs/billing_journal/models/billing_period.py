@@ -2,6 +2,7 @@
 
 import datetime as dt
 from dataclasses import dataclass
+from typing import Self
 
 from swo_aws_extension.constants import COST_EXPLORER_DATE_FORMAT, MONTHS_PER_YEAR
 
@@ -13,8 +14,18 @@ class BillingPeriod:
     start_date: str
     end_date: str
 
+    @property
+    def year(self) -> int:
+        """Extract year from start_date."""
+        return int(self.start_date.split("-")[0])
+
+    @property
+    def month(self) -> int:
+        """Extract month from start_date."""
+        return int(self.start_date.split("-")[1])
+
     @classmethod
-    def from_year_month(cls, year: int, month: int) -> "BillingPeriod":
+    def from_year_month(cls, year: int, month: int) -> Self:
         """Create a BillingPeriod from a year and month.
 
         Args:

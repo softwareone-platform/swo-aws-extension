@@ -9,6 +9,7 @@ class BillingJournalContext:
     """Context holding necessary components for billing journal generation."""
 
     mpt_client: Any
+    billing_api_client: Any
     config: Any
     billing_period: BillingPeriod
     product_ids: list[str]

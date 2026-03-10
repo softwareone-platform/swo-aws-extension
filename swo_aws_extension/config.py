@@ -191,6 +191,11 @@ class Config:
         """Get the Confluence page ID for pending orders information report."""
         return settings.EXTENSION_CONFIG["PENDING_ORDERS_INFORMATION_REPORT_PAGE_ID"]
 
+    @property
+    def mpt_portal_base_url(self) -> str:
+        """Get the base URL for the MPT Portal."""
+        return settings.MPT_PORTAL_BASE_URL
+
     def _patch_path(self, file_path):
         """Fixes relative paths to be from the project root."""
         path = Path(file_path)

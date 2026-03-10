@@ -2,6 +2,7 @@ from swo_aws_extension.constants import BILLING_JOURNAL_ERROR_TITLE
 from swo_aws_extension.flows.jobs.billing_journal.generators.authorization import (
     AuthorizationJournalGenerator,
 )
+from swo_aws_extension.flows.jobs.billing_journal.journal_manager import JournalManager
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.swo.mpt.authorization import get_authorizations
@@ -19,6 +20,7 @@ class BillingJournalService:
         self._product_ids = job_context.product_ids
         self._authorizations = job_context.authorizations
         self._notifier = job_context.notifier
+        self._generator = AuthorizationJournalGenerator(job_context)
 
     def run(self) -> None:
         """Entry point for generating billing journals for all selected authorizations."""
@@ -32,22 +34,45 @@ class BillingJournalService:
             logger.info("No authorizations found")
             return
 
-        generator = AuthorizationJournalGenerator(self._context)
         for authorization in authorizations:
-            authorization_id = authorization.get("id")
-            try:
-                # TODO: Handle journal with the generated lines
-                generator.run(authorization)
-            # TODO: Catch specific exceptions and handle them accordingly
-            except Exception:
-                logger.exception(
-                    "Failed to generate billing journals for authorization %s",
-                    authorization_id,
-                )
-                self._notifier.send_error(
-                    BILLING_JOURNAL_ERROR_TITLE,
-                    f"Failed to generate billing journals for authorization {authorization_id}",
-                )
+            self._process_authorization(authorization)
+
+    def _process_authorization(self, authorization: dict) -> None:
+        authorization_id = authorization.get("id")
+        journal_manager = JournalManager(self._context, authorization_id)
+
+        journal = journal_manager.get_pending_journal()
+        if not journal:
+            journal = journal_manager.create_new_journal()
+            logger.info("Created new journal: %s", journal.name)
+
+        journal_lines = self._generate_journal_lines(authorization, authorization_id)
+        logger.info(
+            "Generated %d journal lines for authorization %s",
+            len(journal_lines),
+            authorization_id,
+        )
+        if journal_lines:
+            journal_manager.upload_journal(journal.id, journal_lines)
+        else:
+            logger.info(
+                "No journal lines generated for authorization %s. Skipping upload.",
+                authorization_id,
+            )
+
+    def _generate_journal_lines(self, authorization: dict, authorization_id: str) -> list:
+        try:
+            return self._generator.run(authorization)
+        except Exception:  # TODO: Catch specific exceptions and handle them accordingly
+            logger.exception(
+                "Failed to generate billing journals for authorization %s",
+                authorization_id,
+            )
+            self._notifier.send_error(
+                BILLING_JOURNAL_ERROR_TITLE,
+                f"Failed to generate billing journals for authorization {authorization_id}",
+            )
+            return []
 
     def _build_rql_query(self) -> RQLQuery:
         rql_query = RQLQuery(product__id__in=self._product_ids)
