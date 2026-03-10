@@ -22,6 +22,13 @@ CRM_TICKET_RESOLVED_STATE = "Resolved"
 MONTHS_PER_YEAR = 12
 
 
+class AgreementStatusEnum(StrEnum):
+    """Agreement status enum."""
+
+    ACTIVE = "Active"
+    UPDATING = "Updating"
+
+
 class SubscriptionStatus(StrEnum):
     """MPT subscription status."""
 
@@ -211,3 +218,12 @@ class ExpirationPeriodEnum(IntEnum):
 
 
 AWS_ITEMS_SKUS = ("AWS Usage",)
+COMMAND_INVALID_BILLING_DATE = (
+    "Invalid billing date. The billing date must be in the past. "
+    "You can't generate the billing of the current month until the 5th."
+)
+COMMAND_INVALID_BILLING_DATE_FUTURE = "Invalid billing date. Future months are not allowed."
+
+BILLING_JOURNAL_SUCCESS_TITLE = "AWS Billing Journal Synchronization Success"
+BILLING_JOURNAL_ERROR_TITLE = "AWS Billing Journal Synchronization Error"
+COST_EXPLORER_DATE_FORMAT = "%Y-%m-%d"
