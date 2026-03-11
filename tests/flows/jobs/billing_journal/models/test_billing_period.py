@@ -43,3 +43,35 @@ def test_from_year_month_parametrized(year, month, expected_start, expected_end)
 
     assert result.start_date == expected_start
     assert result.end_date == expected_end
+
+
+def test_year_property():
+    billing_period = BillingPeriod(start_date="2025-10-01", end_date="2025-11-01")
+
+    result = billing_period.year
+
+    assert result == TEST_YEAR
+
+
+def test_month_property():
+    billing_period = BillingPeriod(start_date="2025-10-01", end_date="2025-11-01")
+
+    result = billing_period.month
+
+    assert result == MONTH_OCTOBER
+
+
+def test_last_day_property():
+    billing_period = BillingPeriod(start_date="2025-10-01", end_date="2025-11-01")
+
+    result = billing_period.last_day
+
+    assert result == "2025-10-31"
+
+
+def test_last_day_property_february():
+    billing_period = BillingPeriod(start_date="2025-02-01", end_date="2025-03-01")
+
+    result = billing_period.last_day
+
+    assert result == "2025-02-28"

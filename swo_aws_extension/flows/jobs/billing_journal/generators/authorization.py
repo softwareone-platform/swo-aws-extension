@@ -1,12 +1,16 @@
 from mpt_extension_sdk.mpt_http.mpt import get_agreements_by_query
 from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
 
+from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import (
     BILLING_JOURNAL_ERROR_TITLE,
     AgreementStatusEnum,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
     AgreementJournalGenerator,
+)
+from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
+    CostExplorerUsageGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
 from swo_aws_extension.logger import get_logger
@@ -41,7 +45,7 @@ class AuthorizationJournalGenerator:
             List of journal line dictionaries.
         """
         auth_id = authorization.get("id")
-        pma_account = authorization.get("externalIds", {}).get("vendor", "")
+        pma_account = authorization.get("externalIds", {}).get("operations", "")
 
         logger.info(
             "Generating billing journals for %s and PMA account %s",
@@ -54,17 +58,24 @@ class AuthorizationJournalGenerator:
             logger.info("No agreements found")
             return []
         logger.info("Found %d agreements", len(agreements))
-        return self._process_agreements(agreements, authorization.get("currency", ""))
+        cost_explorer_usage_generator = CostExplorerUsageGenerator(
+            AWSClient(self._config, pma_account, self._config.management_role_name)
+        )
+        return self._process_agreements(
+            agreements, authorization.get("currency", ""), cost_explorer_usage_generator
+        )
 
     def _process_agreements(
         self,
         agreements: list[dict],
         auth_currency: str,
+        cost_explorer_usage_generator: CostExplorerUsageGenerator,
     ) -> list[dict]:
         journal_file_lines: list[dict] = []
         generator = AgreementJournalGenerator(
             auth_currency,
             self._context,
+            cost_explorer_usage_generator,
         )
         for agreement in agreements:
             agreement_id = agreement.get("id")

@@ -3,7 +3,7 @@ import datetime as dt
 import pytest
 from botocore.exceptions import ClientError
 
-from swo_aws_extension.aws.client import get_paged_response
+from swo_aws_extension.aws.client import MAX_RESULTS_PER_PAGE, get_paged_response
 from swo_aws_extension.aws.errors import (
     AWSError,
     InvalidDateInTerminateResponsibilityError,
@@ -48,7 +48,7 @@ def test_get_inbound_transfers_success(config, aws_client_factory, mock_get_page
     mock_get_paged_response.assert_called_once_with(
         mock_client.list_inbound_responsibility_transfers,
         "ResponsibilityTransfers",
-        {"Type": "BILLING", "MaxResults": 20},
+        {"Type": "BILLING", "MaxResults": MAX_RESULTS_PER_PAGE},
     )
 
 
@@ -62,7 +62,7 @@ def test_get_inbound_transfers_empty(config, aws_client_factory, mock_get_paged_
     mock_get_paged_response.assert_called_once_with(
         mock_client.list_inbound_responsibility_transfers,
         "ResponsibilityTransfers",
-        {"Type": "BILLING", "MaxResults": 20},
+        {"Type": "BILLING", "MaxResults": MAX_RESULTS_PER_PAGE},
     )
 
 
@@ -76,7 +76,7 @@ def test_get_inbound_transfers_error(config, aws_client_factory, mock_get_paged_
     mock_get_paged_response.assert_called_once_with(
         mock_client.list_inbound_responsibility_transfers,
         "ResponsibilityTransfers",
-        {"Type": "BILLING", "MaxResults": 20},
+        {"Type": "BILLING", "MaxResults": MAX_RESULTS_PER_PAGE},
     )
 
 
@@ -601,7 +601,7 @@ def test_get_channel_handshakes_success(config, aws_client_factory, mock_get_pag
             "participantType": "SENDER",
             "handshakeType": "START_SERVICE_PERIOD",
             "associatedResourceIdentifiers": ["rel-123456"],
-            "maxResults": 20,
+            "maxResults": MAX_RESULTS_PER_PAGE,
         },
         pagination_key="nextToken",
     )
@@ -622,7 +622,7 @@ def test_get_channel_handshakes_empty(config, aws_client_factory, mock_get_paged
             "participantType": "SENDER",
             "handshakeType": "START_SERVICE_PERIOD",
             "associatedResourceIdentifiers": ["rel-123456"],
-            "maxResults": 20,
+            "maxResults": MAX_RESULTS_PER_PAGE,
         },
         pagination_key="nextToken",
     )

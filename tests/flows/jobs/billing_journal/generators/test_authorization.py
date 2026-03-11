@@ -1,5 +1,6 @@
 import pytest
 
+from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import BILLING_JOURNAL_ERROR_TITLE
 from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
     AgreementJournalGenerator,
@@ -7,13 +8,16 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
 from swo_aws_extension.flows.jobs.billing_journal.generators.authorization import (
     AuthorizationJournalGenerator,
 )
+from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
+    CostExplorerUsageGenerator,
+)
 
 MODULE = "swo_aws_extension.flows.jobs.billing_journal.generators.authorization"
 
 
 @pytest.fixture
 def authorization():
-    return {"id": "AUTH-1", "currency": "USD", "externalIds": {"vendor": "MPA-123"}}
+    return {"id": "AUTH-1", "currency": "USD", "externalIds": {"operations": "MPA-123"}}
 
 
 @pytest.fixture
@@ -26,10 +30,26 @@ def mock_agreement_generator_cls(mocker):
     return mocker.patch(f"{MODULE}.AgreementJournalGenerator", autospec=True)
 
 
+@pytest.fixture
+def mock_usage_generator_cls(mocker):
+    mock = mocker.patch(f"{MODULE}.CostExplorerUsageGenerator", autospec=True)
+    mock.return_value = mocker.MagicMock(spec=CostExplorerUsageGenerator)
+    return mock
+
+
+@pytest.fixture
+def mock_aws_client_cls(mocker):
+    mock = mocker.patch(f"{MODULE}.AWSClient", autospec=True)
+    mock.return_value = mocker.MagicMock(spec=AWSClient)
+    return mock
+
+
 def test_no_agreements_returns_empty_list(
     mock_context,
     mock_get_agreements,
     mock_agreement_generator_cls,
+    mock_usage_generator_cls,
+    mock_aws_client_cls,
     authorization,
 ):
     mock_get_agreements.return_value = []
@@ -46,6 +66,8 @@ def test_processes_agreements(
     mock_context,
     mock_get_agreements,
     mock_agreement_generator_cls,
+    mock_usage_generator_cls,
+    mock_aws_client_cls,
     authorization,
 ):
     mock_get_agreements.return_value = [{"id": "AGR-1"}, {"id": "AGR-2"}]
@@ -65,6 +87,8 @@ def test_exception_sends_error(
     mock_context,
     mock_get_agreements,
     mock_agreement_generator_cls,
+    mock_usage_generator_cls,
+    mock_aws_client_cls,
     authorization,
 ):
     mock_get_agreements.return_value = [{"id": "AGR-1"}]
