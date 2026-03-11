@@ -50,3 +50,4 @@ data:
   EXT_AZURE_STORAGE_SAS_EXPIRY_DAYS: {{ .Values.global.AzureStorageSasExpiryDays | quote }}
   EXT_PENDING_ORDERS_INFORMATION_REPORT_PAGE_ID: {{ .Values.global.PendingOrdersInformationReportPageId | quote }}
   EXT_CONFLUENCE_BASE_URL: {{ .Values.global.ConfluenceBaseUrl | quote }}
+  EXT_CONFLUENCE_USER: {{ .Values.global.ConfluenceUser | quote }}
