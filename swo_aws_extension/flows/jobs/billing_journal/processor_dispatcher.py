@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Self
 
 from swo_aws_extension.config import Config
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
@@ -33,7 +33,7 @@ class JournalProcessorDispatcher:
         cls,
         config: Config,
         job_parameters: list[dict],
-    ) -> "JournalProcessorDispatcher":
+    ) -> Self:
         """Build a dispatcher using config and agreement parameters.
 
         Args:

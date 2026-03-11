@@ -15,6 +15,7 @@ from swo_aws_extension.flows.jobs.billing_journal.billing_journal_service import
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
 from swo_aws_extension.management.commands_helpers import StyledPrintCommand
+from swo_aws_extension.swo.mpt.billing.billing_client import BillingClient
 from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
 MIN_BILLING_YEAR = 2025
@@ -75,8 +76,10 @@ class Command(StyledPrintCommand):
         notifier = TeamsNotificationManager()
         billing_period = BillingPeriod.from_year_month(year, month)
 
+        client = setup_client()
         job_context = BillingJournalContext(
-            mpt_client=setup_client(),
+            mpt_client=client,
+            billing_api_client=BillingClient(client),
             config=config,
             billing_period=billing_period,
             product_ids=settings.MPT_PRODUCTS_IDS,

@@ -1,7 +1,7 @@
 """Billing journal models."""
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Self
 
 
 @dataclass
@@ -13,7 +13,7 @@ class Journal:
     status: str | None = None
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "Journal":
+    def from_dict(cls, payload: dict[str, Any]) -> Self:
         """Instantiate a Journal from a dictionary representation."""
         return cls(
             id=payload.get("id", ""),

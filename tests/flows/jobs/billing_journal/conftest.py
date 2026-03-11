@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from swo_aws_extension.flows.jobs.billing_journal.journal_manager import JournalManager
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import (
@@ -20,15 +21,31 @@ from swo_aws_extension.flows.jobs.billing_journal.models.search import (
 
 
 @pytest.fixture
-def mock_context():
+def mock_mpt_client():
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_billing_client():
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_context(mock_mpt_client, mock_billing_client):
     context = MagicMock(spec=BillingJournalContext)
-    context.mpt_client = MagicMock()
+    context.mpt_client = mock_mpt_client
+    context.billing_api_client = mock_billing_client
     context.billing_period = BillingPeriod(start_date="2025-10-01", end_date="2025-11-01")
     context.config = MagicMock()
     context.config.mpt_portal_base_url = "https://mpt.test"
     context.notifier = MagicMock()
     context.product_ids = ["PROD-1"]
     return context
+
+
+@pytest.fixture
+def manager(mock_context):
+    return JournalManager(mock_context, "AUTH-123")
 
 
 @pytest.fixture
