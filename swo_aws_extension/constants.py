@@ -1,13 +1,12 @@
+from decimal import Decimal
 from enum import IntEnum, StrEnum
 
 MPT_DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:00Z"
-
 
 ACCESS_TOKEN_NOT_FOUND_IN_RESPONSE = "Access token not found in the response"  # noqa: S105
 CCP_SECRET_NOT_FOUND_IN_KEY_VAULT = "CCP secret not found in key vault"  # noqa: S105
 FAILED_TO_GET_SECRET = "Failed to get secret"  # noqa: S105
 FAILED_TO_SAVE_SECRET_TO_KEY_VAULT = "Failed to save secret to key vault"  # noqa: S105
-
 
 CRM_EXTERNAL_EMAIL = "marketplace@softwareone.com"
 CRM_EXTERNAL_USERNAME = "mpt@marketplace.com"
@@ -20,6 +19,8 @@ BASIC_PRICING_PLAN_ARN = "arn:aws:billingconductor::aws:pricingplan/BasicPricing
 
 CRM_TICKET_RESOLVED_STATE = "Resolved"
 MONTHS_PER_YEAR = 12
+
+AWS_MARKETPLACE = "AWS Marketplace"
 
 
 class AgreementStatusEnum(StrEnum):
@@ -229,3 +230,17 @@ BILLING_JOURNAL_ERROR_TITLE = "AWS Billing Journal Synchronization Error"
 COST_EXPLORER_DATE_FORMAT = "%Y-%m-%d"
 
 EXCEL_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+DEC_ZERO = Decimal(0)
+
+
+class AWSRecordTypeEnum(StrEnum):
+    """Enum for AWS record types."""
+
+    USAGE = "Usage"
+    SOLUTION_PROVIDER_PROGRAM_DISCOUNT = "Solution Provider Program Discount"
+    SUPPORT = "Support"
+    REFUND = "Refund"
+    SAVING_PLAN_RECURRING_FEE = "SavingsPlanRecurringFee"
+    RECURRING = "Recurring"
+    CREDIT = "Credit"

@@ -24,6 +24,13 @@ class BillingPeriod:
         """Extract month from start_date."""
         return int(self.start_date.split("-")[1])
 
+    @property
+    def last_day(self) -> str:
+        """Get the last day of the billing period (end_date - 1 day)."""
+        end = dt.date.fromisoformat(self.end_date)
+        last = end - dt.timedelta(days=1)
+        return last.strftime(COST_EXPLORER_DATE_FORMAT)
+
     @classmethod
     def from_year_month(cls, year: int, month: int) -> Self:
         """Create a BillingPeriod from a year and month.

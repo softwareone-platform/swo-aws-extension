@@ -13,7 +13,7 @@ from swo_aws_extension.config import Config
 from swo_aws_extension.swo.openid.client import OpenIDClient
 
 MINIMUM_DAYS_MONTH = 28
-MAX_RESULTS_PER_PAGE = 20
+MAX_RESULTS_PER_PAGE = 100
 
 logger = logging.getLogger(__name__)
 
@@ -152,13 +152,44 @@ class AWSClient:
 
     @wrap_boto3_error
     def get_current_billing_view_by_account_id(self, account_id: str) -> list[dict]:
-        """Get billing view by account ID."""
-        billing_client = self._get_billing_client()
+        """Get billing views by account ID for the current month.
+
+        Args:
+            account_id: The AWS account ID.
+
+        Returns:
+            List of billing views for the current month.
+        """
         today = dt.datetime.now(dt.UTC).date()
-        first_day_of_month = today.replace(day=1)
+        first_day = today.replace(day=1)
         next_month = today.replace(day=MINIMUM_DAYS_MONTH) + dt.timedelta(days=4)
+        last_day = next_month.replace(day=1) - dt.timedelta(days=1)
+        return self.get_billing_views_by_account_id(
+            account_id=account_id, start_date=first_day.isoformat(), end_date=last_day.isoformat()
+        )
+
+    @wrap_boto3_error
+    def get_billing_views_by_account_id(
+        self,
+        account_id: str,
+        start_date: str,
+        end_date: str,
+    ) -> list[dict]:
+        """Get billing views by account ID for a date range.
+
+        Args:
+            account_id: The AWS account ID.
+            start_date: Start date in YYYY-MM-DD format (first day of month).
+            end_date: End date in YYYY-MM-DD format (last day of month).
+
+        Returns:
+            List of billing views for the date range.
+        """
+        billing_client = self._get_billing_client()
+        first_day = dt.datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=dt.UTC)
+        end_datetime = dt.datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=dt.UTC)
         last_day = dt.datetime.combine(
-            next_month.replace(day=1) - dt.timedelta(days=1),
+            end_datetime.date(),
             dt.time.max,
             tzinfo=dt.UTC,
         )
@@ -171,12 +202,11 @@ class AWSClient:
                 "sourceAccountId": account_id,
                 "maxResults": MAX_RESULTS_PER_PAGE,
                 "activeTimeRange": {
-                    "activeAfterInclusive": dt.datetime.combine(
-                        first_day_of_month, dt.time.min, tzinfo=dt.UTC
-                    ),
+                    "activeAfterInclusive": first_day,
                     "activeBeforeInclusive": last_day,
                 },
             },
+            pagination_key="nextToken",
         )
 
     @wrap_boto3_error
