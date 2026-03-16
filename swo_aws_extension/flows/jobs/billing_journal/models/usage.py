@@ -5,24 +5,33 @@ type AccountDataAlias = dict[str, list[dict]]
 
 
 @dataclass
-class ServiceUsage:
-    """Usage details and cost metrics for a single AWS Service."""
+class ServiceMetric:
+    """A single cost metric for a service (e.g., usage, support, refund, etc.)."""
 
-    marketplace: Decimal = field(default_factory=lambda: Decimal(0))
-    service_invoice_entity: str | None = None
-    usage: Decimal = field(default_factory=lambda: Decimal(0))
-    support: Decimal = field(default_factory=lambda: Decimal(0))
-    refund: Decimal = field(default_factory=lambda: Decimal(0))
-    saving_plans: Decimal = field(default_factory=lambda: Decimal(0))
-    provider_discount: Decimal = field(default_factory=lambda: Decimal(0))
-    recurring: Decimal = field(default_factory=lambda: Decimal(0))
+    service_name: str
+    record_type: str
+    amount: Decimal = field(default_factory=lambda: Decimal(0))
+    invoice_entity: str | None = None
+    invoice_id: str | None = None
 
 
 @dataclass
 class AccountUsage:
     """Processed metrics ready to generate billing Journal Lines."""
 
-    services: dict[str, ServiceUsage] = field(default_factory=dict)
+    metrics: list[ServiceMetric] = field(default_factory=list)
+
+    def add_metric(self, metric: ServiceMetric) -> None:
+        """Add a metric to the account usage."""
+        self.metrics.append(metric)
+
+    def get_metrics_by_record_type(self, record_type: str) -> list[ServiceMetric]:
+        """Get all metrics for a specific record type."""
+        return [metric for metric in self.metrics if metric.record_type == record_type]
+
+    def get_metrics_by_service(self, service_name: str) -> list[ServiceMetric]:
+        """Get all metrics for a specific service."""
+        return [metric for metric in self.metrics if metric.service_name == service_name]
 
 
 @dataclass
