@@ -16,7 +16,7 @@ from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import (
 from swo_aws_extension.flows.jobs.billing_journal.models.search import (
     Search,
     SearchItem,
-    SearchSubscription,
+    SearchSource,
 )
 
 
@@ -58,7 +58,7 @@ def sample_journal_line():
         quantity=2,
         search=Search(
             search_item=SearchItem("item.crit", "ITEM-1"),
-            subscription=SearchSubscription("sub.crit", "SUB-1"),
+            source=SearchSource("Subscription", "source.crit", "SRC-1"),
         ),
         segment="COM",
     )

@@ -13,6 +13,7 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
     CostExplorerUsageGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
+from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import JournalLine
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 from swo_aws_extension.utils.decorators import with_log_context
@@ -35,14 +36,14 @@ class AuthorizationJournalGenerator:
     @dynamic_trace_span(
         lambda _, authorization, **kwargs: f"Authorization {authorization.get('id')}",
     )
-    def run(self, authorization: dict) -> list[dict]:
+    def run(self, authorization: dict) -> list[JournalLine]:
         """Generate billing journal for the given authorization.
 
         Args:
             authorization: The authorization data to process.
 
         Returns:
-            List of journal line dictionaries.
+            List of JournalLine objects.
         """
         auth_id = authorization.get("id")
         pma_account = authorization.get("externalIds", {}).get("operations", "")
@@ -70,8 +71,8 @@ class AuthorizationJournalGenerator:
         agreements: list[dict],
         auth_currency: str,
         cost_explorer_usage_generator: CostExplorerUsageGenerator,
-    ) -> list[dict]:
-        journal_file_lines: list[dict] = []
+    ) -> list[JournalLine]:
+        journal_file_lines: list[JournalLine] = []
         generator = AgreementJournalGenerator(
             auth_currency,
             self._context,

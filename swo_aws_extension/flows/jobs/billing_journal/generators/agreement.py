@@ -1,12 +1,17 @@
 from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
 
+from swo_aws_extension.flows.jobs.billing_journal.generators.journal_line import (
+    JournalLineGenerator,
+)
 from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
     BaseOrganizationUsageGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
-from swo_aws_extension.flows.jobs.billing_journal.processor_dispatcher import (
-    JournalProcessorDispatcher,
+from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import (
+    JournalDetails,
+    JournalLine,
 )
+from swo_aws_extension.flows.jobs.billing_journal.models.usage import OrganizationUsageResult
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.utils.decorators import with_log_context
 
@@ -30,14 +35,14 @@ class AgreementJournalGenerator:
 
     @with_log_context(lambda _, agreement, **kwargs: agreement.get("id"))
     @dynamic_trace_span(lambda _, agreement, **kwargs: f"Agreement {agreement.get('id')}")
-    def run(self, agreement: dict) -> list[dict]:
+    def run(self, agreement: dict) -> list[JournalLine]:
         """Generate journal lines for the given agreement.
 
         Args:
             agreement: The agreement data to process.
 
         Returns:
-            List of journal line dictionaries.
+            List of JournalLine objects.
         """
         mpa_account = agreement.get("externalIds", {}).get("vendor", "")
         if not mpa_account:
@@ -45,15 +50,25 @@ class AgreementJournalGenerator:
             return []
 
         usage_result = self._usage_generator.run(
-            agreement.get("id"), mpa_account, self._billing_period
+            self._authorization_currency, mpa_account, self._billing_period
         )
 
-        # TODO: Generate journal lines for usage metrics per account
-        logger.info("Generated metrics for agreement %s", usage_result.usage_by_account)
+        journal_details = JournalDetails(
+            agreement_id=agreement.get("id", ""),
+            mpa_id=mpa_account,
+            start_date=self._billing_period.start_date,
+            end_date=self._billing_period.last_day,
+        )
 
-        # TODO: Upload usage reports as journal attachments
-        logger.info("Generated reports for agreement %s", usage_result.reports)
+        return self._generate_lines_for_accounts(usage_result, journal_details)
 
-        discount_params: list = []
-        dispatcher = JournalProcessorDispatcher.build_with_params(self._config, discount_params)
-        return dispatcher.process_all(agreement, self._billing_period)
+    def _generate_lines_for_accounts(
+        self,
+        usage_result: OrganizationUsageResult,
+        journal_details: JournalDetails,
+    ) -> list[JournalLine]:
+        line_generator = JournalLineGenerator()
+        all_lines: list[JournalLine] = []
+        for account_id, account_usage in usage_result.usage_by_account.items():
+            all_lines.extend(line_generator.generate(account_id, account_usage, journal_details))
+        return all_lines

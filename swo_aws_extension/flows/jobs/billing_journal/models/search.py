@@ -1,6 +1,7 @@
 """Billing charge search models."""
 
 from dataclasses import dataclass
+from typing import Literal
 
 
 @dataclass
@@ -12,9 +13,10 @@ class SearchItem:
 
 
 @dataclass
-class SearchSubscription:
-    """Billing charge search subscription."""
+class SearchSource:
+    """Billing charge search source."""
 
+    type: Literal["Agreement", "Asset", "Subscription"]
     criteria: str
     criteria_value: str
 
@@ -24,4 +26,4 @@ class Search:
     """Billing charge search."""
 
     search_item: SearchItem
-    subscription: SearchSubscription
+    source: SearchSource
