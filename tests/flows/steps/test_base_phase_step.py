@@ -106,7 +106,7 @@ def test_query_step_error(mocker, initial_context):
     error = QueryStepError("msg", "template-id")
     step.proc_exc = error
     switch_mock = mocker.patch(
-        "swo_aws_extension.flows.steps.base.switch_order_status_to_query_and_notify",
+        "swo_aws_extension.flows.steps.base.switch_order_status_to_query",
     )
 
     client, next_step = _run_step(mocker, step, initial_context)  # act
@@ -120,7 +120,7 @@ def test_fail_step_error(mocker, initial_context):
     error = FailStepError("Error_id", "Error")
     step.proc_exc = error
     switch_mock = mocker.patch(
-        "swo_aws_extension.flows.steps.base.switch_order_status_to_failed_and_notify",
+        "swo_aws_extension.flows.steps.base.switch_order_status_to_failed",
     )
 
     client, next_step = _run_step(mocker, step, initial_context)  # act

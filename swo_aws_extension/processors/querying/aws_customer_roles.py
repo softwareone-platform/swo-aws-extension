@@ -8,7 +8,7 @@ from swo_aws_extension.constants import (
     PhasesEnum,
 )
 from swo_aws_extension.flows.order import PurchaseContext
-from swo_aws_extension.flows.order_utils import switch_order_status_to_process_and_notify
+from swo_aws_extension.flows.order_utils import switch_order_status_to_process
 from swo_aws_extension.flows.steps.crm_tickets.templates.deploy_roles import DEPLOY_ROLES_TEMPLATE
 from swo_aws_extension.flows.steps.crm_tickets.ticket_manager import TicketManager
 from swo_aws_extension.parameters import (
@@ -56,9 +56,7 @@ class AWSCustomerRolesProcessor(Processor):
             logger.info(
                 "%s - Customer roles are deployed. Updating order to processing.", context.order_id
             )
-            switch_order_status_to_process_and_notify(
-                self.client, context, get_template_name(context)
-            )
+            switch_order_status_to_process(self.client, context, get_template_name(context))
             return
 
         if is_querying_timeout(context, self._config.customer_roles_querying_timeout_days):
@@ -85,7 +83,7 @@ class AWSCustomerRolesProcessor(Processor):
             self.client, context.order_id, parameters=context.order["parameters"]
         )
 
-        switch_order_status_to_process_and_notify(self.client, context, get_template_name(context))
+        switch_order_status_to_process(self.client, context, get_template_name(context))
 
     def _manage_customer_roles_ticket_timeout(self, context: PurchaseContext) -> None:
         """Manage customer roles ticket timeout."""

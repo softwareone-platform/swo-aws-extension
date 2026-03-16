@@ -141,7 +141,7 @@ def test_process_invitation_status_requested(
         "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.REQUESTED}
     }
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_billing_transfer_invitation.switch_order_status_to_process_and_notify"
+        "swo_aws_extension.processors.querying.aws_billing_transfer_invitation.switch_order_status_to_process"
     )
 
     processor.process_invitation(mock_context, "tr-123")  # act
@@ -158,7 +158,7 @@ def test_process_invitation_status_accepted(
         "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
     }
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_billing_transfer_invitation.switch_order_status_to_process_and_notify"
+        "swo_aws_extension.processors.querying.aws_billing_transfer_invitation.switch_order_status_to_process"
     )
 
     processor.process_invitation(mock_context, "tr-123")  # act

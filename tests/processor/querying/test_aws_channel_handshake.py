@@ -66,7 +66,7 @@ def test_process_handshake_not_found(
         return_value="hs-123",
     )
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_channel_handshake.switch_order_status_to_process_and_notify"
+        "swo_aws_extension.processors.querying.aws_channel_handshake.switch_order_status_to_process"
     )
     mock_setup_aws_apn_client = mocker.patch(
         "swo_aws_extension.processors.querying.aws_channel_handshake.AWSChannelHandshakeProcessor.setup_apn_client"
@@ -95,7 +95,7 @@ def test_process_handshake_not_pending(
         return_value="hs-123",
     )
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_channel_handshake.switch_order_status_to_process_and_notify"
+        "swo_aws_extension.processors.querying.aws_channel_handshake.switch_order_status_to_process"
     )
     mock_context.aws_apn_client.get_channel_handshake_by_id.return_value = {
         "id": "hs-123",
@@ -129,7 +129,7 @@ def test_timeout_reached(
         return_value="hs-123",
     )
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_channel_handshake.switch_order_status_to_process_and_notify"
+        "swo_aws_extension.processors.querying.aws_channel_handshake.switch_order_status_to_process"
     )
     mock_set_phase = mocker.patch(
         "swo_aws_extension.processors.querying.aws_channel_handshake.set_phase"
@@ -175,7 +175,7 @@ def test_timeout_not_reached(
         return_value="hs-123",
     )
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_channel_handshake.switch_order_status_to_process_and_notify"
+        "swo_aws_extension.processors.querying.aws_channel_handshake.switch_order_status_to_process"
     )
     mock_context.aws_apn_client.get_channel_handshake_by_id.return_value = {
         "id": "hs-123",

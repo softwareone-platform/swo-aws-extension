@@ -67,9 +67,7 @@ def set_order_template(
     return context.order
 
 
-def switch_order_status_to_query_and_notify(
-    client: MPTClient, context: InitialAWSContext, template_name: str
-):
+def switch_order_status_to_query(client: MPTClient, context: InitialAWSContext, template_name: str):
     """Switch the order status to 'Querying' if it is not already in that status."""
     context.order = set_order_template(client, context, MPT_ORDER_STATUS_QUERYING, template_name)
     kwargs = {
@@ -84,12 +82,9 @@ def switch_order_status_to_query_and_notify(
         context.order_id,
         **kwargs,
     )
-    MPTNotificationManager(client).send_notification(context)
 
 
-def switch_order_status_to_failed_and_notify(
-    client: MPTClient, context: InitialAWSContext, error: dict
-):
+def switch_order_status_to_failed(client: MPTClient, context: InitialAWSContext, error: dict):
     """Switch the order status to 'Failed'."""
     kwargs = {
         "parameters": context.order["parameters"],
@@ -101,10 +96,9 @@ def switch_order_status_to_failed_and_notify(
         error,
         **kwargs,
     )
-    MPTNotificationManager(client).send_notification(context)
 
 
-def switch_order_status_to_process_and_notify(
+def switch_order_status_to_process(
     client: MPTClient, context: InitialAWSContext, template_name: str
 ):
     """Switch the order status to 'Processing'."""
@@ -126,10 +120,9 @@ def switch_order_status_to_process_and_notify(
             error,
         )
         return
-    MPTNotificationManager(client).send_notification(context)
 
 
-def switch_order_status_to_complete_and_notify(
+def switch_order_status_to_complete(
     client: MPTClient, context: InitialAWSContext, template_name: str
 ):
     """Updates the order status to completed."""
@@ -144,7 +137,6 @@ def switch_order_status_to_complete_and_notify(
     }
 
     context.order = complete_order(client, context.order_id, **kwargs)
-    MPTNotificationManager(client).send_notification(context)
     logger.info("%s - Action - Set order to completed", context.order_id)
 
 

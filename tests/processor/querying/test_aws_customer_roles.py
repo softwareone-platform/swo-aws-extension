@@ -66,7 +66,7 @@ def test_process_customer_roles_deployed(
         return_value=mock_co_client,
     )
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process_and_notify"
+        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process"
     )
     mocker.patch(
         "swo_aws_extension.processors.querying.aws_customer_roles.get_template_name",
@@ -98,7 +98,7 @@ def test_process_cr_not_deployed_no_timeout(
         return_value=False,
     )
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process_and_notify"
+        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process"
     )
 
     processor.process(mock_context)  # act
@@ -134,7 +134,7 @@ def test_process_cr_not_deployed_timeout_reached(
         return_value=True,
     )
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process_and_notify"
+        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process"
     )
     mock_set_phase = mocker.patch(
         "swo_aws_extension.processors.querying.aws_customer_roles.set_phase"
@@ -187,7 +187,7 @@ def test_process_cr_not_deployed_timeout_reached_to_create_new_ticket(
         side_effect=[True, False],
     )
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process_and_notify"
+        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process"
     )
     mocker.patch("swo_aws_extension.processors.querying.aws_customer_roles.set_phase")
     mock_update_order = mocker.patch(
@@ -225,7 +225,7 @@ def test_process_cloud_orchestrator_error(
         return_value=mock_co_client,
     )
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process_and_notify"
+        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process"
     )
 
     processor.process(mock_context)  # act
