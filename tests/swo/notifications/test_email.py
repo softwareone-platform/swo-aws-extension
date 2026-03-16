@@ -36,7 +36,7 @@ def test_send_email_success(mocker, config, recipients):
     )
     manager = EmailNotificationManager(config)
 
-    manager.send_email(  # act
+    result = manager.send_email(  # act
         recipient=recipients,
         subject="Test Subject",
         body="<html><body>Test Body</body></html>",
@@ -54,6 +54,7 @@ def test_send_email_success(mocker, config, recipients):
             },
         },
     )
+    assert result is True
 
 
 def test_send_email_disabled(mocker, config, settings, caplog):
@@ -69,7 +70,7 @@ def test_send_email_disabled(mocker, config, settings, caplog):
     manager = EmailNotificationManager(config)
 
     with caplog.at_level(logging.INFO):
-        manager.send_email(  # act
+        result = manager.send_email(  # act
             recipient=["recipient@example.com"],
             subject="Test Subject",
             body="<html><body>Test Body</body></html>",
@@ -77,6 +78,7 @@ def test_send_email_disabled(mocker, config, settings, caplog):
 
     mock_ses_client.send_email.assert_not_called()
     assert "Email notifications are disabled" in caplog.text
+    assert result is False
 
 
 def test_send_email_botocore_error(mocker, config, caplog):
@@ -89,10 +91,11 @@ def test_send_email_botocore_error(mocker, config, caplog):
     manager = EmailNotificationManager(config)
 
     with caplog.at_level(logging.ERROR):
-        manager.send_email(  # act
+        result = manager.send_email(  # act
             recipient=["recipient@example.com"],
             subject="Test Subject",
             body="<html><body>Test Body</body></html>",
         )
 
     assert "Failed to send email notification" in caplog.text
+    assert result is False

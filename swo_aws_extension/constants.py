@@ -77,7 +77,7 @@ class PhasesEnum(StrEnum):
     CHECK_CHANNEL_HANDSHAKE_STATUS = "checkChannelHandshakeStatus"
     CHECK_CUSTOMER_ROLES = "checkCustomerRoles"
     ONBOARD_SERVICES = "onboardServices"
-    CHECK_ONBOARD_SERVICES_STATUS = "checkOnboardServicesStatus"
+    CHECK_ONBOARD_STATUS = "checkOnboardStatus"
     CREATE_SUBSCRIPTION = "createSubscription"
     COMPLETED = "completed"
 
@@ -123,6 +123,8 @@ class FulfillmentParametersEnum(StrEnum):
     PLS_DISCOUNT = "plsDiscount"
     SUPPORT_DISCOUNT = "supportDiscount"
     SERVICE_DISCOUNT = "serviceDiscount"
+    EXECUTION_ARN = "executionArn"
+    FEATURE_VERSION_DEPLOYMENT_ERROR_NOTIFIED = "featureVersionDeploymentErrorNotified"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
@@ -244,3 +246,25 @@ class AWSRecordTypeEnum(StrEnum):
     SAVING_PLAN_RECURRING_FEE = "SavingsPlanRecurringFee"
     RECURRING = "Recurring"
     CREDIT = "Credit"
+
+
+class DeploymentStatusEnum(StrEnum):
+    """Enum for deployment status."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
+class TeamsNotificationType(StrEnum):
+    """Enum for Teams notification types."""
+
+    SUCCESS = "success"
+    WARNING = "warning"
+    ERROR = "error"
+    EXCEPTION = "exception"
+
+
+CLOUD_ORCHESTRATOR_ONBOARDING_TYPE = "FullCMS"
+DEFAULT_SCU = "DM-SCU-000000"

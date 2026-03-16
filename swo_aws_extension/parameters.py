@@ -500,3 +500,43 @@ def get_support_discount(source: dict[str, Any]) -> str | None:
         source,
     )
     return fulfillment_param.get("value", None)
+
+
+def set_execution_arn(order: dict, execution_arn: str) -> dict[str, Any]:
+    """Set the execution ARN on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.EXECUTION_ARN.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = execution_arn
+    return updated_order
+
+
+def get_execution_arn(source: dict[str, Any]) -> str | None:
+    """Get the execution ARN from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.EXECUTION_ARN.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def set_feature_version_deployment_error_notified(order: dict, notified: str) -> dict[str, Any]:
+    """Set the feature version deployment error notified flag on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.FEATURE_VERSION_DEPLOYMENT_ERROR_NOTIFIED.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = notified
+    return updated_order
+
+
+def get_feature_version_deployment_error_notified(source: dict[str, Any]) -> str | None:
+    """Get the feature version deployment error notified flag from the fulfillment parameter."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.FEATURE_VERSION_DEPLOYMENT_ERROR_NOTIFIED.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)

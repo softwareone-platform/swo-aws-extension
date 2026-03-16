@@ -28,11 +28,11 @@ class EmailNotificationManager:
         recipient: list[str],
         subject: str,
         body: str,
-    ) -> None:
-        """Send an email notification using a template."""
+    ) -> bool:
+        """Send an email notification using a template. Returns True if sent, False otherwise."""
         if not self.email_notifications_enabled:
             logger.info("Email notifications are disabled. Skipping sending email.")
-            return
+            return False
         try:
             self.client.send_email(
                 Source=self.sender,
@@ -48,3 +48,5 @@ class EmailNotificationManager:
             )
         except (boto_exceptions.ClientError, boto_exceptions.BotoCoreError):
             logger.exception("Failed to send email notification")
+            return False
+        return True

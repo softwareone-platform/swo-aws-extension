@@ -370,6 +370,8 @@ def fulfillment_parameters_factory():
         channel_handshake_id="",
         channel_handshake_approved="no",
         relationship_id="",
+        feature_version_deployment_error_notified="no",
+        execution_arn="",
     ):
         return [
             {
@@ -427,6 +429,16 @@ def fulfillment_parameters_factory():
                 "externalId": FulfillmentParametersEnum.RELATIONSHIP_ID.value,
                 "value": relationship_id,
             },
+            {
+                "externalId": (
+                    FulfillmentParametersEnum.FEATURE_VERSION_DEPLOYMENT_ERROR_NOTIFIED.value
+                ),
+                "value": feature_version_deployment_error_notified,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.EXECUTION_ARN.value,
+                "value": execution_arn,
+            },
         ]
 
     return factory
@@ -469,8 +481,8 @@ def product_parameters_factory():
                         {"label": "Check Customer Roles", "value": "checkCustomerRoles"},
                         {"label": "Onboard Services", "value": "onboardServices"},
                         {
-                            "label": "Check Onboard Services Status",
-                            "value": "checkOnboardServicesStatus",
+                            "label": "Check Onboard Status",
+                            "value": "checkOnboardStatus",
                         },
                         {"label": "Create Subscriptions", "value": "createSubscription"},
                         {"label": "Completed", "value": "completed"},

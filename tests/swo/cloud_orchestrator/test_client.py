@@ -1,6 +1,7 @@
 """Tests for Cloud Orchestrator client."""
 
 from http import HTTPStatus
+from urllib.parse import quote
 
 import pytest
 import responses
@@ -123,6 +124,98 @@ def test_authorization_header_is_set(cloud_orchestrator_client, mock_api, mock_o
     cloud_orchestrator_client.get_bootstrap_role_status("123")  # act
 
     assert cloud_orchestrator_client.headers["Authorization"] == "Bearer test-token"
+
+
+def test_onboard_customer_success(cloud_orchestrator_client, mock_api, mock_openid_client):
+    expected_response = {"execution_arn": "arn:aws:states:us-east-1:123456789012:execution:test"}
+    payload = {
+        "customer": "Acme Corp",
+        "scu": "US-SCU-999999",
+        "pma": "123456789012",
+        "master_payer_id": "987654321098",
+        "support_type": "PartnerLedSupport",
+        "onboarding_type": "FullCMS",
+    }
+    mock_api.add(
+        responses.POST,
+        f"{BASE_URL}api/v1/marketplace/onboard",
+        json=expected_response,
+        status=HTTPStatus.OK,
+    )
+
+    result = cloud_orchestrator_client.onboard_customer(payload)
+
+    assert result == expected_response
+
+
+def test_onboard_customer_http_error(cloud_orchestrator_client, mock_api, mock_openid_client):
+    mock_api.add(
+        responses.POST,
+        f"{BASE_URL}api/v1/marketplace/onboard",
+        json={"error": "Internal Server Error"},
+        status=HTTPStatus.INTERNAL_SERVER_ERROR,
+    )
+
+    with pytest.raises(CloudOrchestratorHttpError) as exc_info:
+        cloud_orchestrator_client.onboard_customer({})
+
+    assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+
+
+def test_onboard_customer_not_found(cloud_orchestrator_client, mock_api, mock_openid_client):
+    mock_api.add(
+        responses.POST,
+        f"{BASE_URL}api/v1/marketplace/onboard",
+        json={"error": "Not found"},
+        status=HTTPStatus.NOT_FOUND,
+    )
+
+    with pytest.raises(CloudOrchestratorNotFoundError):
+        cloud_orchestrator_client.onboard_customer({})
+
+
+def test_get_deployment_status_success(cloud_orchestrator_client, mock_api, mock_openid_client):
+    execution_arn = "arn:aws:states:us-east-1:123456789012:execution:test"
+    expected_response = {"status": "succeeded"}
+    mock_api.add(
+        responses.GET,
+        f"{BASE_URL}api/v1/deployments/execution-arn/{quote(execution_arn, safe='')}",
+        json=expected_response,
+        status=HTTPStatus.OK,
+    )
+
+    result = cloud_orchestrator_client.get_deployment_status(execution_arn)
+
+    assert result == expected_response
+    assert result["status"] == "succeeded"
+
+
+def test_get_deployment_status_http_error(cloud_orchestrator_client, mock_api, mock_openid_client):
+    execution_arn = "arn:aws:states:us-east-1:123456789012:execution:test"
+    mock_api.add(
+        responses.GET,
+        f"{BASE_URL}api/v1/deployments/execution-arn/{quote(execution_arn, safe='')}",
+        json={"error": "Internal Server Error"},
+        status=HTTPStatus.INTERNAL_SERVER_ERROR,
+    )
+
+    with pytest.raises(CloudOrchestratorHttpError) as exc_info:
+        cloud_orchestrator_client.get_deployment_status(execution_arn)
+
+    assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+
+
+def test_get_deployment_status_not_found(cloud_orchestrator_client, mock_api, mock_openid_client):
+    execution_arn = "arn:aws:states:us-east-1:123456789012:execution:test"
+    mock_api.add(
+        responses.GET,
+        f"{BASE_URL}api/v1/deployments/execution-arn/{quote(execution_arn, safe='')}",
+        json={"error": "Not found"},
+        status=HTTPStatus.NOT_FOUND,
+    )
+
+    with pytest.raises(CloudOrchestratorNotFoundError):
+        cloud_orchestrator_client.get_deployment_status(execution_arn)
 
 
 def test_request_strips_leading_slash_from_url(
