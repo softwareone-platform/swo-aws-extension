@@ -8,9 +8,6 @@ from swo_aws_extension.flows.jobs.billing_journal.models.invoice import (
     OrganizationInvoice,
     OrganizationInvoiceResult,
 )
-from swo_aws_extension.logger import get_logger
-
-logger = get_logger(__name__)
 
 SPP_DISCOUNT_DESCRIPTION = "Discount (AWS SPP Discount)"
 
@@ -80,7 +77,6 @@ class InvoiceGenerator:
         invoice_summaries = self._aws_client.list_invoice_summaries_by_account_id(
             mpa_account, billing_period.year, billing_period.month
         )
-        logger.info("List of invoices for account %s: %s", mpa_account, invoice_summaries)
         raw_invoices = [inv for inv in invoice_summaries if inv.get("AccountId") == mpa_account]
 
         invoice = self._build_organization_invoice(raw_invoices, authorization_currency)

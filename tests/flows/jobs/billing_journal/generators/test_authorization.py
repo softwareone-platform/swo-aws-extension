@@ -11,6 +11,7 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.authorization impor
 from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
     CostExplorerUsageGenerator,
 )
+from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import JournalLine
 
 MODULE = "swo_aws_extension.flows.jobs.billing_journal.generators.authorization"
 
@@ -71,15 +72,16 @@ def test_processes_agreements(
     authorization,
 ):
     mock_get_agreements.return_value = [{"id": "AGR-1"}, {"id": "AGR-2"}]
+    mock_journal_line = mocker.MagicMock(spec=JournalLine)
     mock_agr_gen = mocker.MagicMock(spec=AgreementJournalGenerator)
-    mock_agr_gen.run.return_value = [{"line": 1}]
+    mock_agr_gen.run.return_value = [mock_journal_line]
     mock_agreement_generator_cls.return_value = mock_agr_gen
     generator = AuthorizationJournalGenerator(mock_context)
 
     result = generator.run(authorization)
 
     assert mock_agr_gen.run.call_count == 2
-    assert result == [{"line": 1}, {"line": 1}]
+    assert result == [mock_journal_line, mock_journal_line]
 
 
 def test_exception_sends_error(

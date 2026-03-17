@@ -20,7 +20,7 @@ def test_to_dict(sample_journal_line):
         "segment": "COM",
         "search": {
             "item": {"criteria": "item.crit", "value": "ITEM-1"},
-            "subscription": {"criteria": "sub.crit", "value": "SUB-1"},
+            "source": {"type": "Subscription", "criteria": "source.crit", "value": "SRC-1"},
         },
     }
     assert result == expected
@@ -51,7 +51,14 @@ def test_to_jsonl(sample_journal_line):
 
 def test_build():
     journal_details = JournalDetails("AGR-123", "MPA-456", "2025-10-01", "2025-10-31")
-    invoice_details = InvoiceDetails("AWS S3", "ACC-789", "ENT-0", "INV-111", Decimal("99.99"))
+    invoice_details = InvoiceDetails(
+        item_sku="AWS Usage",
+        service_name="AWS S3",
+        amount=Decimal("99.99"),
+        account_id="ACC-789",
+        invoice_entity="ENT-0",
+        invoice_id="INV-111",
+    )
 
     result = JournalLine.build(
         item_external_id="EXT-1",
@@ -70,7 +77,11 @@ def test_build():
         "segment": "EDU",
         "search": {
             "item": {"criteria": "item.externalIds.vendor", "value": "EXT-1"},
-            "subscription": {"criteria": "subscription.externalIds.vendor", "value": "ACC-789"},
+            "source": {
+                "type": "Subscription",
+                "criteria": "externalIds.vendor",
+                "value": "ACC-789",
+            },
         },
     }
     assert result.to_dict() == expected
@@ -78,11 +89,18 @@ def test_build():
 
 def test_build_with_error_and_no_item():
     journal_details = JournalDetails("AGR", "MPA", "START", "END")
-    invoice_details = InvoiceDetails("SVC", "ACC", "ENT", "INV", Decimal(0), error="Missing Item")
+    invoice_details = InvoiceDetails(
+        item_sku="AWS Usage",
+        service_name="SVC",
+        amount=Decimal(0),
+        account_id="ACC",
+        invoice_entity="ENT",
+        invoice_id="INV",
+        error="Missing Item",
+    )
 
     result = JournalLine.build(None, journal_details, invoice_details)
 
-    expected_search_item_value = "Item Not Found"
-    assert result.search.search_item.criteria_value == expected_search_item_value
+    assert result.search.search_item.criteria_value == "Item Not Found"
     assert result.error == "Missing Item"
     assert result.is_valid() is False

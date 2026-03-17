@@ -8,7 +8,7 @@ from typing import Any, Self
 from swo_aws_extension.flows.jobs.billing_journal.models.search import (
     Search,
     SearchItem,
-    SearchSubscription,
+    SearchSource,
 )
 
 
@@ -59,11 +59,12 @@ class JournalDetails:
 class InvoiceDetails:
     """Details specific to an invoice line."""
 
+    item_sku: str
     service_name: str
+    amount: Decimal
     account_id: str
     invoice_entity: str
-    invoice_id: str
-    amount: Decimal
+    invoice_id: str = ""
     error: str | None = None
 
 
@@ -90,7 +91,7 @@ class JournalLine:
         search_data = line_payload.pop("search")
         search_data["item"] = search_data.pop("search_item")
         search_data["item"]["value"] = search_data["item"].pop("criteria_value")
-        search_data["subscription"]["value"] = search_data["subscription"].pop("criteria_value")
+        search_data["source"]["value"] = search_data["source"].pop("criteria_value")
         line_payload["search"] = search_data
 
         if self.error is None:
@@ -151,8 +152,9 @@ class JournalLine:
                     criteria="item.externalIds.vendor",
                     criteria_value=item_external_id or "Item Not Found",
                 ),
-                subscription=SearchSubscription(
-                    criteria="subscription.externalIds.vendor",
+                source=SearchSource(
+                    type="Subscription",
+                    criteria="externalIds.vendor",
                     criteria_value=invoice_details.account_id,
                 ),
             ),
