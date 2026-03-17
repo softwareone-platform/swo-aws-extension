@@ -3,7 +3,9 @@ import logging
 from collections.abc import Callable
 
 import boto3
+from botocore.exceptions import ClientError
 
+from swo_aws_extension.aws.constants import DEFAULT_BILLING_EXPORT_QUERY_STATEMENT
 from swo_aws_extension.aws.errors import (
     AWSError,
     InvalidDateInTerminateResponsibilityError,
@@ -14,6 +16,7 @@ from swo_aws_extension.swo.openid.client import OpenIDClient
 
 MINIMUM_DAYS_MONTH = 28
 MAX_RESULTS_PER_PAGE = 100
+
 
 logger = logging.getLogger(__name__)
 
@@ -346,6 +349,203 @@ class AWSClient:
             },
         )
 
+    def create_s3_bucket(self, bucket_name: str, region: str) -> None:
+        """Create an S3 bucket in the given region, ignoring it if already owned.
+
+        Args:
+            bucket_name: Name of the S3 bucket to create.
+            region: AWS region where the bucket will be created.
+
+        Raises:
+            AWSError: If the bucket creation fails for any reason other than it already being
+                owned by this account.
+        """
+        try:
+            s3_client = self._get_s3_client()
+            create_kwargs: dict = {"Bucket": bucket_name}
+            if region != "us-east-1":
+                create_kwargs["CreateBucketConfiguration"] = {"LocationConstraint": region}
+            s3_client.create_bucket(**create_kwargs)
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] == "BucketAlreadyOwnedByYou":
+                logger.info(
+                    "S3 bucket %s already exists and is owned by this account.", bucket_name
+                )
+                return
+            raise AWSError(f"Failed to create S3 bucket {bucket_name}: {exc}") from exc
+        except Exception as exc:
+            raise AWSError(f"Unexpected error creating S3 bucket {bucket_name}: {exc}") from exc
+
+    @wrap_boto3_error
+    def create_billing_export(
+        self,
+        billing_view_arn: str,
+        export_name: str,
+        s3_bucket: str,
+        s3_prefix: str,
+        region: str = "us-east-1",
+    ) -> str:
+        """Create a CUR2 export for a billing transfer view.
+
+        Args:
+            billing_view_arn: ARN of the BILLING_TRANSFER view to export.
+            export_name: Name for the export (must be unique per account).
+            s3_bucket: Destination S3 bucket name.
+            s3_prefix: Destination S3 key prefix.
+            region: AWS region for the S3 destination and BCM client.
+
+        Returns:
+            The ARN of the created export.
+        """
+        bcm_client = self._get_bcm_data_exports_client()
+        response = bcm_client.create_export(
+            Export={
+                "Name": export_name,
+                "DataQuery": {
+                    "QueryStatement": DEFAULT_BILLING_EXPORT_QUERY_STATEMENT,
+                    "TableConfigurations": {
+                        "COST_AND_USAGE_REPORT": {
+                            "TIME_GRANULARITY": "HOURLY",
+                            "INCLUDE_RESOURCES": "FALSE",
+                            "INCLUDE_MANUAL_DISCOUNT_COMPATIBILITY": "FALSE",
+                            "INCLUDE_SPLIT_COST_ALLOCATION_DATA": "FALSE",
+                            "BILLING_VIEW_ARN": billing_view_arn,
+                        }
+                    },
+                },
+                "DestinationConfigurations": {
+                    "S3Destination": {
+                        "S3Bucket": s3_bucket,
+                        "S3Prefix": s3_prefix,
+                        "S3Region": region,
+                        "S3OutputConfigurations": {
+                            "OutputType": "CUSTOM",
+                            "Format": "PARQUET",
+                            "Compression": "PARQUET",
+                            "Overwrite": "OVERWRITE_REPORT",
+                        },
+                    }
+                },
+                "RefreshCadence": {
+                    "Frequency": "SYNCHRONOUS",
+                },
+            }
+        )
+        return str(response.get("ExportArn", ""))
+
+    @wrap_boto3_error
+    def list_s3_objects(self, bucket: str, prefix: str) -> list[str]:
+        """List all S3 object keys under the given bucket and prefix.
+
+        Args:
+            bucket: The S3 bucket name.
+            prefix: The S3 key prefix to filter by.
+
+        Returns:
+            List of S3 object keys matching the prefix.
+        """
+        paginator = self._get_s3_client().get_paginator("list_objects_v2")
+        return [
+            s3_item.get("Key", "")
+            for page in paginator.paginate(Bucket=bucket, Prefix=prefix)
+            for s3_item in page.get("Contents", [])
+            if s3_item.get("Key", "")
+        ]
+
+    @wrap_boto3_error
+    def download_s3_object(self, bucket: str, key: str) -> bytes:
+        """Download an S3 object and return its content as bytes.
+
+        Args:
+            bucket: The S3 bucket name.
+            key: The S3 object key.
+
+        Returns:
+            The raw content of the S3 object.
+        """
+        s3_client = self._get_s3_client()
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        return response["Body"].read()
+
+    @wrap_boto3_error
+    def list_existing_billing_exports(self, s3_bucket: str, s3_prefix: str) -> set[str]:
+        """Return the set of billing-view ARNs that already have CUR2 exports.
+
+        Inspects all existing BCM exports and returns those whose destination
+        matches the given bucket/prefix and whose query targets a BILLING_TRANSFER view.
+
+        Args:
+            s3_bucket: S3 bucket name to filter by.
+            s3_prefix: S3 prefix to filter by (checked with ``in``).
+
+        Returns:
+            Set of billing-view ARNs that already have an export configured.
+        """
+        bcm_client = self._get_bcm_data_exports_client()
+        export_arns = [
+            summary.get("ExportArn", "")
+            for summary in get_paged_response(bcm_client.list_exports, "Exports")
+            if summary.get("ExportArn")
+        ]
+        return self._collect_matching_export_arns(bcm_client, export_arns, s3_bucket, s3_prefix)
+
+    def _collect_matching_export_arns(
+        self,
+        bcm_client,
+        export_arns: list[str],
+        s3_bucket: str,
+        s3_prefix: str,
+    ) -> set[str]:
+        """Collect billing-view ARNs from exports that match the given bucket and prefix."""
+        existing_arns: set[str] = set()
+        for export_arn in export_arns:
+            billing_view_arn = self._get_billing_view_arn_from_export(
+                bcm_client, export_arn, s3_bucket, s3_prefix
+            )
+            if billing_view_arn:
+                existing_arns.add(billing_view_arn)
+        return existing_arns
+
+    def _get_billing_view_arn_from_export(
+        self,
+        bcm_client,
+        export_arn: str,
+        s3_bucket: str,
+        s3_prefix: str,
+    ) -> str:
+        """Return the billing-view ARN of an export if it matches bucket/prefix, or empty string.
+
+        Args:
+            bcm_client: The BCM Data Exports client.
+            export_arn: The ARN of the export to inspect.
+            s3_bucket: The S3 bucket name to match against.
+            s3_prefix: The S3 key prefix to match against.
+
+        Returns:
+            The billing-view ARN if the export matches the bucket/prefix, otherwise empty string.
+
+        Raises:
+            AWSError: If the export details cannot be retrieved from BCM.
+        """
+        try:
+            detail = bcm_client.get_export(ExportArn=export_arn).get("Export", {})
+        except ClientError as exc:
+            raise AWSError(f"Failed to retrieve export details for {export_arn}: {exc}") from exc
+        except Exception as exc:
+            raise AWSError(
+                f"Unexpected error retrieving export details for {export_arn}: {exc}"
+            ) from exc
+        dest = detail.get("DestinationConfigurations", {}).get("S3Destination", {})
+        if dest.get("S3Bucket") != s3_bucket:
+            return ""
+        if s3_prefix not in dest.get("S3Prefix", ""):
+            return ""
+        table_config = detail.get("DataQuery", {}).get("TableConfigurations", {})
+        billing_view_arn = table_config.get("COST_AND_USAGE_REPORT", {}).get("BILLING_VIEW_ARN", "")
+        if billing_view_arn and "billing-transfer" in billing_view_arn:
+            return billing_view_arn
+        return ""
+
     @wrap_boto3_error
     def _get_credentials(self):
         if not self.account_id:
@@ -443,17 +643,44 @@ class AWSClient:
             region_name="us-east-1",
         )
 
-    def _get_invoicing_client(self):
+    def _get_s3_client(self):
+        """Get the S3 client.
+
+        Returns:
+            The S3 client.
         """
-        Get the Invoicing client.
+        return self._get_client("s3")
+
+    def _get_bcm_data_exports_client(self):
+        """Get the BCM Data Exports client.
+
+        Returns:
+            The BCM Data Exports client.
+        """
+        return self._get_client_in_region("bcm-data-exports", "us-east-1")
+
+    def _get_invoicing_client(self):
+        """Get the Invoicing client.
 
         Returns:
             The Invoicing client.
         """
+        return self._get_client_in_region("invoicing", "us-east-1")
+
+    def _get_client_in_region(self, service_name: str, region_name: str):
+        """Get a boto3 client for the given service and region using session credentials.
+
+        Args:
+            service_name: The AWS service name (e.g. ``"billing"``).
+            region_name: The AWS region (e.g. ``"us-east-1"``).
+
+        Returns:
+            A boto3 client configured with the current session credentials.
+        """
         return boto3.client(
-            "invoicing",
+            service_name,
             aws_access_key_id=self.credentials["AccessKeyId"],
             aws_secret_access_key=self.credentials["SecretAccessKey"],
             aws_session_token=self.credentials["SessionToken"],
-            region_name="us-east-1",
+            region_name=region_name,
         )

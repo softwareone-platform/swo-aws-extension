@@ -724,3 +724,226 @@ def test_list_invoice_summaries_success(config, aws_client_factory, mock_get_pag
     assert len(result) == 1
     assert result[0]["InvoiceId"] == "INV-001"
     mock_get_paged_response.assert_called_once()
+
+
+def test_list_s3_objects_returns_all_keys(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_paginator = mock_client.get_paginator.return_value
+    mock_paginator.paginate.return_value = [
+        {
+            "Contents": [
+                {"Key": "billing/BILLING_PERIOD%3D2026-03/file1.parquet"},
+                {"Key": "billing/BILLING_PERIOD%3D2026-03/file2.parquet"},
+            ]
+        },
+        {"Contents": [{"Key": "billing/BILLING_PERIOD%3D2026-04/file3.parquet"}]},
+    ]
+
+    result = mock_aws_client.list_s3_objects("my-bucket", "billing/")
+
+    assert result == [
+        "billing/BILLING_PERIOD%3D2026-03/file1.parquet",
+        "billing/BILLING_PERIOD%3D2026-03/file2.parquet",
+        "billing/BILLING_PERIOD%3D2026-04/file3.parquet",
+    ]
+    mock_client.get_paginator.assert_called_once_with("list_objects_v2")
+    mock_paginator.paginate.assert_called_once_with(Bucket="my-bucket", Prefix="billing/")
+
+
+def test_list_s3_objects_empty_when_no_contents(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_paginator = mock_client.get_paginator.return_value
+    mock_paginator.paginate.return_value = [{}]
+
+    result = mock_aws_client.list_s3_objects("my-bucket", "billing/")
+
+    assert result == []
+
+
+def test_list_s3_objects_wraps_boto3_error(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.get_paginator.side_effect = ClientError(
+        {"Error": {"Code": "NoSuchBucket", "Message": "Not found"}}, "ListObjectsV2"
+    )
+
+    with pytest.raises(AWSError):
+        mock_aws_client.list_s3_objects("missing-bucket", "billing/")
+
+
+def test_download_s3_object_returns_bytes(config, aws_client_factory, mocker):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    expected_bytes = b"parquet-data"
+    mock_body = mocker.MagicMock()
+    mock_body.read.return_value = expected_bytes
+    mock_client.get_object.return_value = {"Body": mock_body}
+
+    result = mock_aws_client.download_s3_object("my-bucket", "billing/file.parquet")
+
+    assert result == expected_bytes
+    mock_client.get_object.assert_called_once_with(Bucket="my-bucket", Key="billing/file.parquet")
+
+
+def test_download_s3_object_wraps_boto3_error(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.get_object.side_effect = ClientError(
+        {"Error": {"Code": "NoSuchKey", "Message": "Not found"}}, "GetObject"
+    )
+
+    with pytest.raises(AWSError):
+        mock_aws_client.download_s3_object("my-bucket", "missing-key.parquet")
+
+
+def test_create_s3_bucket_success(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.create_bucket.return_value = {}
+
+    mock_aws_client.create_s3_bucket("swo-cur2-123456789012", "us-east-1")  # act
+
+    assert mock_client.create_bucket.call_count == 1
+    mock_client.create_bucket.assert_called_once_with(Bucket="swo-cur2-123456789012")
+
+
+def test_create_s3_bucket_eu_region(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.create_bucket.return_value = {}
+
+    mock_aws_client.create_s3_bucket("swo-cur2-123456789012", "eu-west-1")  # act
+
+    assert mock_client.create_bucket.call_count == 1
+    mock_client.create_bucket.assert_called_once_with(
+        Bucket="swo-cur2-123456789012",
+        CreateBucketConfiguration={"LocationConstraint": "eu-west-1"},
+    )
+
+
+def test_create_s3_bucket_already_owned(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.create_bucket.side_effect = ClientError(
+        {"Error": {"Code": "BucketAlreadyOwnedByYou", "Message": "already owned"}},
+        "CreateBucket",
+    )
+
+    mock_aws_client.create_s3_bucket("swo-cur2-123456789012", "us-east-1")  # act
+
+    assert mock_client.create_bucket.call_count == 1
+
+
+def test_create_s3_bucket_error(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.create_bucket.side_effect = ClientError(
+        {"Error": {"Code": "AccessDenied", "Message": "Access denied"}},
+        "CreateBucket",
+    )
+
+    with pytest.raises(AWSError):
+        mock_aws_client.create_s3_bucket("swo-cur2-123456789012", "us-east-1")
+
+
+def test_create_billing_export_success(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.create_export.return_value = {
+        "ExportArn": "arn:aws:bcm-data-exports::123456789012:export/exp-001"
+    }
+
+    result = mock_aws_client.create_billing_export(
+        billing_view_arn="arn:aws:billing::123456789012:billingview/billing-transfer-abc123",
+        export_name="123456789012-abc123",
+        s3_bucket="swo-cur2-123456789012",
+        s3_prefix="cur2/123456789012/abc123",
+    )
+
+    assert result == "arn:aws:bcm-data-exports::123456789012:export/exp-001"
+    mock_client.create_export.assert_called_once()
+    call_kwargs = mock_client.create_export.call_args[1]
+    table_configs = call_kwargs["Export"]["DataQuery"]["TableConfigurations"]
+    assert (
+        table_configs["COST_AND_USAGE_REPORT"]["BILLING_VIEW_ARN"]
+        == "arn:aws:billing::123456789012:billingview/billing-transfer-abc123"
+    )
+    assert (
+        call_kwargs["Export"]["DestinationConfigurations"]["S3Destination"]["S3Bucket"]
+        == "swo-cur2-123456789012"
+    )
+
+
+def test_create_billing_export_error(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.create_export.side_effect = ClientError(
+        {"Error": {"Code": "ValidationException", "Message": "Invalid export"}},
+        "CreateExport",
+    )
+
+    with pytest.raises(AWSError):
+        mock_aws_client.create_billing_export(
+            billing_view_arn="arn:aws:billing::123456789012:billingview/billing-transfer-abc123",
+            export_name="123456789012-abc123",
+            s3_bucket="swo-cur2-123456789012",
+            s3_prefix="cur2/123456789012/abc123",
+        )
+
+
+
+def test_list_existing_exports_matches_arns(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    billing_view_arn = "arn:aws:billing::123456789012:billingview/billing-transfer-abc123"
+    mock_client.list_exports.return_value = {
+        "Exports": [{"ExportArn": "arn:aws:bcm-data-exports::123:export/exp-001"}]
+    }
+    mock_client.get_export.return_value = {
+        "Export": {
+            "DestinationConfigurations": {
+                "S3Destination": {
+                    "S3Bucket": "swo-cur2-123456789012",
+                    "S3Prefix": "cur2/123456789012/abc123",
+                }
+            },
+            "DataQuery": {
+                "TableConfigurations": {
+                    "COST_AND_USAGE_REPORT": {"BILLING_VIEW_ARN": billing_view_arn}
+                }
+            },
+        }
+    }
+
+    result = mock_aws_client.list_existing_billing_exports(
+        s3_bucket="swo-cur2-123456789012", s3_prefix="cur2"
+    )
+
+    assert billing_view_arn in result
+
+
+def test_list_existing_exports_wrong_bucket(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.list_exports.return_value = {
+        "Exports": [{"ExportArn": "arn:aws:bcm-data-exports::123:export/exp-001"}]
+    }
+    mock_client.get_export.return_value = {
+        "Export": {
+            "DestinationConfigurations": {
+                "S3Destination": {
+                    "S3Bucket": "other-bucket",
+                    "S3Prefix": "cur2/123456789012/abc123",
+                }
+            },
+            "DataQuery": {
+                "TableConfigurations": {"COST_AND_USAGE_REPORT": {"BILLING_VIEW_ARN": "arn:..."}}
+            },
+        }
+    }
+
+    result = mock_aws_client.list_existing_billing_exports(
+        s3_bucket="swo-cur2-123456789012", s3_prefix="cur2"
+    )
+
+    assert result == set()
+
+
+def test_list_existing_exports_empty(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.list_exports.return_value = {"Exports": []}
+
+    result = mock_aws_client.list_existing_billing_exports(
+        s3_bucket="swo-cur2-123456789012", s3_prefix="cur2"
+    )
+
+    assert result == set()

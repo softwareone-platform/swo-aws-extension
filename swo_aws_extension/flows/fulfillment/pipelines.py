@@ -13,6 +13,7 @@ from swo_aws_extension.flows.steps.check_channel_handshake_status import CheckCh
 from swo_aws_extension.flows.steps.check_customer_roles import CheckCustomerRoles
 from swo_aws_extension.flows.steps.complete_order import CompleteOrder, CompleteTerminationOrder
 from swo_aws_extension.flows.steps.configure_apn_program import ConfigureAPNProgram
+from swo_aws_extension.flows.steps.create_billing_export_bucket import CreateBillingExportBucket
 from swo_aws_extension.flows.steps.create_billing_transfer_invitation import (
     CreateBillingTransferInvitation,
 )
@@ -26,6 +27,7 @@ from swo_aws_extension.flows.steps.crm_tickets.pls import CRMTicketPLS
 from swo_aws_extension.flows.steps.crm_tickets.terminate_order import CRMTicketTerminateOrder
 from swo_aws_extension.flows.steps.finops_entitlement import TerminateFinOpsEntitlementStep
 from swo_aws_extension.flows.steps.onboard_services import OnboardServices
+from swo_aws_extension.flows.steps.setup_billing_transfer_exports import SetupBillingTransferExports
 from swo_aws_extension.flows.steps.setup_context import SetupContext
 from swo_aws_extension.flows.steps.terminate import TerminateResponsibilityTransferStep
 from swo_aws_extension.swo.notifications.teams import (
@@ -73,6 +75,8 @@ purchase_new_aws_environment = Pipeline(
     CreateSubscription(config),
     CRMTicketPLS(config),
     CRMTicketOnboardServices(config),
+    CreateBillingExportBucket(config),
+    SetupBillingTransferExports(config),
     CompleteOrder(config),
 )
 
@@ -89,6 +93,8 @@ purchase_existing_aws_environment = Pipeline(
     CreateSubscription(config),
     CRMTicketPLS(config),
     CRMTicketOnboardServices(config),
+    CreateBillingExportBucket(config),
+    SetupBillingTransferExports(config),
     CompleteOrder(config),
 )
 terminate = Pipeline(

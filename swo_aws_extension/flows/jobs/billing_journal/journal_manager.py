@@ -60,7 +60,7 @@ class JournalManager:  # noqa: WPS214
         """Upload the journal lines as a file to the MPT API."""
         journal_file = "".join(entry.to_jsonl() for entry in journal_file_lines)
         final_file = BytesIO(journal_file.encode("utf-8"))
-
+        logger.info("Uploading journal file for journal ID %s", journal_id)
         self._billing_api_client.journal.upload(journal_id, final_file, "journal.jsonl")
 
         logger.info(

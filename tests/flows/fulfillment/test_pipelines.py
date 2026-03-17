@@ -21,6 +21,8 @@ def test_purchase_new_steps():
         "CreateSubscription",
         "CRMTicketPLS",
         "CRMTicketOnboardServices",
+        "CreateBillingExportBucket",
+        "SetupBillingTransferExports",
         "CompleteOrder",
     ]
 
@@ -43,6 +45,8 @@ def test_purchase_existing_steps():
         "CreateSubscription",
         "CRMTicketPLS",
         "CRMTicketOnboardServices",
+        "CreateBillingExportBucket",
+        "SetupBillingTransferExports",
         "CompleteOrder",
     ]
 

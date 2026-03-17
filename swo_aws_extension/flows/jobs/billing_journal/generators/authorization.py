@@ -1,3 +1,6 @@
+from collections.abc import Callable
+from typing import Any, cast
+
 from mpt_extension_sdk.mpt_http.mpt import get_agreements_by_query
 from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
 
@@ -9,10 +12,6 @@ from swo_aws_extension.constants import (
 from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
     AgreementJournalGenerator,
 )
-from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import InvoiceGenerator
-from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
-    CostExplorerUsageGenerator,
-)
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     AuthorizationJournalResult,
@@ -23,9 +22,20 @@ from swo_aws_extension.utils.decorators import with_log_context
 
 logger = get_logger(__name__)
 
+type AuthorizationData = dict[str, Any]
+type AgreementData = dict[str, Any]
+type TraceDecorator = Callable[[Callable[..., Any]], Callable[..., Any]]
+
+authorization_trace_span = cast(
+    TraceDecorator,
+    dynamic_trace_span(
+        lambda _, authorization, **kwargs: f"Authorization {authorization.get('id')}",
+    ),
+)
+
 
 class AuthorizationJournalGenerator:
-    """Generates a billing journal for Authorizations."""
+    """Generates a billing journal for authorizations."""
 
     def __init__(self, context: BillingJournalContext) -> None:
         self._context = context
@@ -36,10 +46,8 @@ class AuthorizationJournalGenerator:
         self._notifier = context.notifier
 
     @with_log_context(lambda _, authorization, **kwargs: authorization.get("id"))
-    @dynamic_trace_span(
-        lambda _, authorization, **kwargs: f"Authorization {authorization.get('id')}",
-    )
-    def run(self, authorization: dict) -> AuthorizationJournalResult:
+    @authorization_trace_span
+    def run(self, authorization: AuthorizationData) -> AuthorizationJournalResult:
         """Generate billing journal for the given authorization.
 
         Args:
@@ -61,37 +69,36 @@ class AuthorizationJournalGenerator:
         if not agreements:
             logger.info("No agreements found")
             return AuthorizationJournalResult()
+
         logger.info("Found %d agreements", len(agreements))
         aws_client = AWSClient(self._config, pma_account, self._config.management_role_name)
-        return self._process_agreements(
-            agreements,
-            authorization.get("currency", ""),
-            CostExplorerUsageGenerator(aws_client),
-            InvoiceGenerator(aws_client),
-        )
+        return self._process_agreements(agreements, authorization.get("currency", ""), aws_client)
 
     def _process_agreements(
         self,
-        agreements: list[dict],
+        agreements: list[AgreementData],
         auth_currency: str,
-        cost_explorer_usage_generator: CostExplorerUsageGenerator,
-        invoice_generator: InvoiceGenerator,
+        aws_client: AWSClient,
     ) -> AuthorizationJournalResult:
         result = AuthorizationJournalResult()
         generator = AgreementJournalGenerator(
             auth_currency,
             self._context,
-            cost_explorer_usage_generator,
-            invoice_generator,
+            aws_client,
+            aws_client.account_id,
         )
         for agreement in agreements:
-            agreement_id = agreement.get("id")
+            agreement_id_raw = agreement.get("id", "")
+            agreement_id: str
+            if isinstance(agreement_id_raw, str):
+                agreement_id = agreement_id_raw
+            else:
+                agreement_id = ""
             try:
                 agreement_result = generator.run(agreement)
-            # TODO: Catch specific exceptions and handle them accordingly
             except Exception as exc:
                 logger.exception(
-                    "%s - Failed to synchronize agreement",
+                    "%s - Failed to generate billing journal for agreement",
                     agreement_id,
                 )
                 self._notifier.send_error(
@@ -102,17 +109,20 @@ class AuthorizationJournalGenerator:
 
             logger.info("Generated %d journal lines", len(agreement_result.lines))
             result.lines.extend(agreement_result.lines)
-            if agreement_result.report:
-                result.reports_by_agreement[agreement_id] = agreement_result.report
+            report = agreement_result.report
+            if report is not None and agreement_id:
+                result.reports_by_agreement[agreement_id] = report
 
         return result
 
-    def _get_authorization_agreements(self, authorization: dict) -> list[dict]:
+    def _get_authorization_agreements(
+        self, authorization: AuthorizationData
+    ) -> list[AgreementData]:
         select = "&select=subscriptions,subscriptions.lines,parameters"
         rql_filter = (
-            RQLQuery(authorization__id=authorization.get("id"))
-            & RQLQuery(status__in=[AgreementStatusEnum.ACTIVE, AgreementStatusEnum.UPDATING])
-            & RQLQuery(product__id__in=self._product_ids)
+            RQLQuery(authorization__id=authorization.get("id"))  # type: ignore[no-untyped-call]
+            & RQLQuery(status__in=[AgreementStatusEnum.ACTIVE, AgreementStatusEnum.UPDATING])  # type: ignore[no-untyped-call]
+            & RQLQuery(product__id__in=self._product_ids)  # type: ignore[no-untyped-call]
         )
         rql_query = f"{rql_filter}{select}"
-        return get_agreements_by_query(self._mpt_client, rql_query)
+        return cast(list[AgreementData], get_agreements_by_query(self._mpt_client, rql_query))

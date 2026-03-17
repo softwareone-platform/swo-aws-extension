@@ -79,6 +79,7 @@ class PhasesEnum(StrEnum):
     ONBOARD_SERVICES = "onboardServices"
     CHECK_ONBOARD_SERVICES_STATUS = "checkOnboardServicesStatus"
     CREATE_SUBSCRIPTION = "createSubscription"
+    SETUP_BILLING_TRANSFER_EXPORTS = "setupBillingTransferExports"
     COMPLETED = "completed"
 
 
@@ -232,6 +233,10 @@ COST_EXPLORER_DATE_FORMAT = "%Y-%m-%d"
 EXCEL_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 DEC_ZERO = Decimal(0)
+
+S3_BILLING_EXPORT_BUCKET_TEMPLATE = "mpt-billing-{pm_account_id}"
+S3_BILLING_EXPORT_PREFIX_TEMPLATE = "cur-{mpa_account_id}"
+S3_BILLING_EXPORT_REGION = "us-east-1"
 
 
 class AWSRecordTypeEnum(StrEnum):
