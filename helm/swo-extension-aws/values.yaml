@@ -82,3 +82,6 @@ global:
     invitations-report:
       schedule: ""
       command: create_invitations_report
+    pending-report:
+      schedule: ""
+      command: create_pending_orders_information_report
