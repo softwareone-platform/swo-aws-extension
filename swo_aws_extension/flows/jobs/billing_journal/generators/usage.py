@@ -3,13 +3,18 @@ from decimal import Decimal
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
-from swo_aws_extension.constants import AWS_MARKETPLACE, DEC_ZERO, AWSRecordTypeEnum
+from swo_aws_extension.constants import AWS_MARKETPLACE
+from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import InvoiceGenerator
+from swo_aws_extension.flows.jobs.billing_journal.generators.report_processor import (
+    ReportProcessor,
+)
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
+from swo_aws_extension.flows.jobs.billing_journal.models.invoice import OrganizationInvoiceResult
 from swo_aws_extension.flows.jobs.billing_journal.models.usage import (
     AccountUsage,
     OrganizationReport,
     OrganizationUsageResult,
-    ServiceUsage,
+    ServiceMetric,
 )
 from swo_aws_extension.logger import get_logger
 
@@ -111,7 +116,7 @@ class BaseOrganizationUsageGenerator(ABC):
 
     @abstractmethod
     def run(
-        self, agreement_id: str, mpa_account: str, billing_period: BillingPeriod
+        self, currency: str, mpa_account: str, billing_period: BillingPeriod
     ) -> OrganizationUsageResult:
         """Extract RAW information and process it into AccountUsage."""
 
@@ -122,21 +127,33 @@ class CostExplorerUsageGenerator(BaseOrganizationUsageGenerator):
     def __init__(self, aws_client):
         super().__init__(aws_client)
         self._report_fetcher = None
+        self._invoice_result: OrganizationInvoiceResult | None = None
+        self._processor = ReportProcessor()
 
     def run(
-        self, agreement_id: str, mpa_account: str, billing_period: BillingPeriod
+        self, currency: str, mpa_account: str, billing_period: BillingPeriod
     ) -> OrganizationUsageResult:
         """Extract usage from Cost Explorer and process it."""
         self._usage_by_account = {}
         self._reports = OrganizationReport()
 
         self._report_fetcher = CostExplorerReportFetcher(self._aws_client)
+
+        invoice_generator = InvoiceGenerator(self._aws_client)
+        self._invoice_result = invoice_generator.run(mpa_account, billing_period, currency)
+        self._reports.organization_data["INVOICES"] = self._invoice_result.raw_data
+
+        logger.info(
+            "Found %d invoice entities",
+            len(self._invoice_result.invoice.entities),
+        )
+
         billing_views = self._aws_client.get_billing_views_by_account_id(
             mpa_account,
             start_date=billing_period.start_date,
             end_date=billing_period.last_day,
         )
-        logger.info("Found %d billing views for agreement %s", len(billing_views), agreement_id)
+        logger.info("Found %d billing views", len(billing_views))
 
         for billing_view in billing_views:
             self._process_billing_view(billing_view, billing_period)
@@ -163,11 +180,19 @@ class CostExplorerUsageGenerator(BaseOrganizationUsageGenerator):
         marketplace_report = self._report_fetcher.get_marketplace_usage_report(
             billing_view.get("arn"), billing_period
         )
+        self._reports.organization_data["MARKETPLACE"] = marketplace_report
 
-        self._reports.organization_data["MARKETPLACE"] = (
-            self._reports.organization_data.get("MARKETPLACE", []) + marketplace_report
+        self._process_accounts_for_billing_view(
+            accounts, billing_view, billing_period, marketplace_report
         )
 
+    def _process_accounts_for_billing_view(
+        self,
+        accounts: list[str],
+        billing_view: dict,
+        billing_period: BillingPeriod,
+        marketplace_report: list[dict],
+    ) -> None:
         for account_id in accounts:
             logger.info("Getting usage for account: %s", account_id)
             if account_id not in self._reports.accounts_data:
@@ -201,64 +226,43 @@ class CostExplorerUsageGenerator(BaseOrganizationUsageGenerator):
         service_invoice_entity: list[dict],
         record_type_report: list[dict],
     ) -> AccountUsage:
-        metrics = {
-            "marketplace": self._extract_metrics(marketplace_report, account_id),
-            "invoice_entity": self._extract_invoice_entities(service_invoice_entity),
-            "provider": self._extract_metrics(
-                record_type_report, AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT
-            ),
-            "usage": self._extract_metrics(record_type_report, AWSRecordTypeEnum.USAGE),
-            "support": self._extract_metrics(record_type_report, AWSRecordTypeEnum.SUPPORT),
-            "refund": self._extract_metrics(record_type_report, AWSRecordTypeEnum.REFUND),
-            "saving": self._extract_metrics(
-                record_type_report, AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE
-            ),
-            "recurring": self._extract_metrics(record_type_report, AWSRecordTypeEnum.RECURRING),
-        }
+        invoice_entities = self._processor.extract_invoice_entities(service_invoice_entity)
 
-        all_services: set[str] = set()
-        for metric_data in metrics.values():
-            all_services.update(metric_data.keys())
+        account_usage = AccountUsage()
+        marketplace_metrics = self._processor.extract_metrics(marketplace_report, account_id)
+        all_metrics = self._processor.extract_all_metrics_by_record_type(record_type_report)
 
-        services: dict[str, ServiceUsage] = {}
+        self._add_metrics_to_account_usage(
+            account_usage,
+            marketplace_metrics,
+            all_metrics,
+            invoice_entities,
+        )
 
-        for service in all_services:
-            services[service] = ServiceUsage(
-                marketplace=metrics["marketplace"].get(service, DEC_ZERO),
-                service_invoice_entity=metrics["invoice_entity"].get(service),
-                provider_discount=metrics["provider"].get(service, DEC_ZERO),
-                usage=metrics["usage"].get(service, DEC_ZERO),
-                support=metrics["support"].get(service, DEC_ZERO),
-                refund=metrics["refund"].get(service, DEC_ZERO),
-                saving_plans=metrics["saving"].get(service, DEC_ZERO),
-                recurring=metrics["recurring"].get(service, DEC_ZERO),
+        return account_usage
+
+    def _add_metrics_to_account_usage(
+        self,
+        account_usage: AccountUsage,
+        marketplace_metrics: dict[str, Decimal],
+        all_metrics: dict[str, dict[str, Decimal]],
+        invoice_entities: dict[str, str],
+    ) -> None:
+        for service_name, amount in marketplace_metrics.items():
+            metric = ServiceMetric(
+                service_name=service_name,
+                record_type="MARKETPLACE",
+                amount=amount,
+                invoice_entity=invoice_entities.get(service_name),
             )
+            account_usage.add_metric(metric)
 
-        return AccountUsage(services=services)
-
-    def _extract_invoice_entities(self, report: list[dict]) -> dict[str, str]:
-        result: dict[str, str] = {}
-        for result_by_time in report:
-            for group in result_by_time.get("Groups", []):
-                keys = group.get("Keys", [])
-                if len(keys) >= 2:
-                    result[keys[0]] = keys[1]
-        return result
-
-    def _extract_metrics(self, report: list[dict], key: str) -> dict[str, Decimal]:
-        result: dict[str, Decimal] = {}
-        for result_by_time in report:
-            for group in result_by_time.get("Groups", []):
-                keys = group.get("Keys", [])
-                if key not in keys:
-                    continue
-                amount = self._parse_amount(
-                    group.get("Metrics", {}).get("UnblendedCost", {}).get("Amount", "0")
+        for record_type, metrics in all_metrics.items():
+            for service_name, amount in metrics.items():
+                metric = ServiceMetric(
+                    service_name=service_name,
+                    record_type=record_type,
+                    amount=amount,
+                    invoice_entity=invoice_entities.get(service_name),
                 )
-                if amount != Decimal(0):
-                    result[keys[1]] = amount
-        return result
-
-    def _parse_amount(self, amount: str) -> Decimal:
-        """Convert a string amount to Decimal, handling comma and dot separators."""
-        return Decimal(amount.replace(",", ".") if "," in amount else amount)
+                account_usage.add_metric(metric)

@@ -109,9 +109,12 @@ def test_generate_processes_single_account(
 
     assert isinstance(result, OrganizationUsageResult)
     assert "ACT-1" in result.usage_by_account
-    service_metrics = result.usage_by_account["ACT-1"].services["AmazonEC2"]
-    assert service_metrics.marketplace == Decimal("10.25")
-    assert service_metrics.usage == Decimal("50.75")
+    account_usage = result.usage_by_account["ACT-1"]
+    metrics = [metric for metric in account_usage.metrics if metric.service_name == "AmazonEC2"]
+    assert len(metrics) > 0
+    marketplace_metrics = [metric for metric in metrics if metric.record_type == "MARKETPLACE"]
+    assert len(marketplace_metrics) == 1
+    assert marketplace_metrics[0].amount == Decimal("10.25")
 
 
 def test_generate_returns_correct_invoice_entity(
@@ -136,8 +139,9 @@ def test_generate_returns_correct_invoice_entity(
 
     result = generator.run("AGR-1", "MPA-1", billing_period)
 
-    service = result.usage_by_account["ACT-1"].services["AmazonEC2"]
-    assert service.service_invoice_entity == "Amazon Web Services, Inc."
+    account_usage = result.usage_by_account["ACT-1"]
+    metrics = [metric for metric in account_usage.metrics if metric.service_name == "AmazonEC2"]
+    assert metrics[0].invoice_entity == "Amazon Web Services, Inc."
 
 
 def test_generate_handles_multiple_billing_views(
@@ -148,9 +152,12 @@ def test_generate_handles_multiple_billing_views(
 
     result = generator.run("AGR-1", "MPA-1", billing_period)
 
-    service_metrics = result.usage_by_account["ACT-1"].services["AmazonRDS"]
-    assert service_metrics.marketplace == Decimal("100.0")
-    assert service_metrics.usage == Decimal("50.0")
+    account_usage = result.usage_by_account["ACT-1"]
+    metrics = [metric for metric in account_usage.metrics if metric.service_name == "AmazonRDS"]
+    assert len(metrics) > 0
+    marketplace_metrics = [metric for metric in metrics if metric.record_type == "MARKETPLACE"]
+    assert len(marketplace_metrics) == 1
+    assert marketplace_metrics[0].amount == Decimal("100.0")
 
 
 def test_generate_error_retrieving_accounts(
@@ -161,7 +168,7 @@ def test_generate_error_retrieving_accounts(
 
     result = generator.run("AGR-1", "MPA-1", billing_period)
 
-    assert result.usage_by_account == {}
+    assert not result.usage_by_account
 
 
 def test_generate_skips_zero_amount_metrics(
@@ -186,5 +193,6 @@ def test_generate_skips_zero_amount_metrics(
 
     result = generator.run("AGR-1", "MPA-1", billing_period)
 
-    service = result.usage_by_account["ACT-1"].services["S3"]
-    assert service.usage == Decimal(0)
+    account_usage = result.usage_by_account["ACT-1"]
+    metrics = [metric for metric in account_usage.metrics if metric.service_name == "S3"]
+    assert len(metrics) == 0

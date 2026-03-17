@@ -324,6 +324,29 @@ class AWSClient:
         return next((hs for hs in handshakes if hs.get("id") == handshake_id), None)
 
     @wrap_boto3_error
+    def list_invoice_summaries_by_account_id(
+        self, account_id: str, year: int, month: int
+    ) -> list[dict]:
+        """List invoice summaries for the specified date range.
+
+        Args:
+            account_id: The AWS account ID for which to list invoice summaries.
+            year: The year of the billing period.
+            month: The month of the billing period (1-12).
+
+        Returns:
+            A list of invoice summaries for the specified account and billing period.
+        """
+        return get_paged_response(
+            self._get_invoicing_client().list_invoice_summaries,
+            "InvoiceSummaries",
+            {
+                "Selector": {"ResourceType": "ACCOUNT_ID", "Value": account_id},
+                "Filter": {"BillingPeriod": {"Month": month, "Year": year}},
+            },
+        )
+
+    @wrap_boto3_error
     def _get_credentials(self):
         if not self.account_id:
             raise AWSError("Parameter 'account_id' must be provided to assume the role.")
@@ -414,6 +437,21 @@ class AWSClient:
         """
         return boto3.client(
             "partnercentral-channel",
+            aws_access_key_id=self.credentials["AccessKeyId"],
+            aws_secret_access_key=self.credentials["SecretAccessKey"],
+            aws_session_token=self.credentials["SessionToken"],
+            region_name="us-east-1",
+        )
+
+    def _get_invoicing_client(self):
+        """
+        Get the Invoicing client.
+
+        Returns:
+            The Invoicing client.
+        """
+        return boto3.client(
+            "invoicing",
             aws_access_key_id=self.credentials["AccessKeyId"],
             aws_secret_access_key=self.credentials["SecretAccessKey"],
             aws_session_token=self.credentials["SessionToken"],

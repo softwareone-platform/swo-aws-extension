@@ -705,3 +705,22 @@ def test_get_channel_handshake_by_id_empty_list(
     )
 
     assert result is None
+
+
+def test_list_invoice_summaries_success(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = [
+        {
+            "AccountId": "123456789",
+            "InvoiceId": "INV-001",
+            "InvoicingEntity": "AWS Inc.",
+            "BillingPeriod": "2026-03",
+            "InvoiceAmount": "100.00",
+        }
+    ]
+
+    result = mock_aws_client.list_invoice_summaries_by_account_id("123456789", 2026, 3)
+
+    assert len(result) == 1
+    assert result[0]["InvoiceId"] == "INV-001"
+    mock_get_paged_response.assert_called_once()
