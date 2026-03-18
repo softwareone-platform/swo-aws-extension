@@ -9,6 +9,7 @@ from swo_aws_extension.constants import (
 from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
     AgreementJournalGenerator,
 )
+from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import InvoiceGenerator
 from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
     CostExplorerUsageGenerator,
 )
@@ -59,11 +60,12 @@ class AuthorizationJournalGenerator:
             logger.info("No agreements found")
             return []
         logger.info("Found %d agreements", len(agreements))
-        cost_explorer_usage_generator = CostExplorerUsageGenerator(
-            AWSClient(self._config, pma_account, self._config.management_role_name)
-        )
+        aws_client = AWSClient(self._config, pma_account, self._config.management_role_name)
         return self._process_agreements(
-            agreements, authorization.get("currency", ""), cost_explorer_usage_generator
+            agreements,
+            authorization.get("currency", ""),
+            CostExplorerUsageGenerator(aws_client),
+            InvoiceGenerator(aws_client),
         )
 
     def _process_agreements(
@@ -71,12 +73,14 @@ class AuthorizationJournalGenerator:
         agreements: list[dict],
         auth_currency: str,
         cost_explorer_usage_generator: CostExplorerUsageGenerator,
+        invoice_generator: InvoiceGenerator,
     ) -> list[JournalLine]:
         journal_file_lines: list[JournalLine] = []
         generator = AgreementJournalGenerator(
             auth_currency,
             self._context,
             cost_explorer_usage_generator,
+            invoice_generator,
         )
         for agreement in agreements:
             agreement_id = agreement.get("id")

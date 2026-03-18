@@ -9,6 +9,10 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
     CostExplorerUsageGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
+from swo_aws_extension.flows.jobs.billing_journal.models.invoice import (
+    InvoiceEntity,
+    OrganizationInvoice,
+)
 from swo_aws_extension.flows.jobs.billing_journal.models.usage import (
     OrganizationUsageResult,
 )
@@ -22,6 +26,11 @@ def mock_aws_client(mocker):
 @pytest.fixture
 def billing_period():
     return BillingPeriod(start_date="2025-10-01", end_date="2025-11-01")
+
+
+@pytest.fixture
+def organization_invoice():
+    return OrganizationInvoice()
 
 
 @pytest.fixture
@@ -100,12 +109,17 @@ def duplicate_account_usage():
 
 
 def test_generate_processes_single_account(
-    generator, mock_aws_client, billing_period, single_billing_view, single_account_usage
+    generator,
+    mock_aws_client,
+    billing_period,
+    organization_invoice,
+    single_billing_view,
+    single_account_usage,
 ):
     mock_aws_client.get_billing_views_by_account_id.return_value = single_billing_view
     mock_aws_client.get_cost_and_usage.side_effect = single_account_usage
 
-    result = generator.run("AGR-1", "MPA-1", billing_period)
+    result = generator.run("USD", "MPA-1", billing_period, organization_invoice)
 
     assert isinstance(result, OrganizationUsageResult)
     assert "ACT-1" in result.usage_by_account
@@ -118,7 +132,11 @@ def test_generate_processes_single_account(
 
 
 def test_generate_returns_correct_invoice_entity(
-    generator, mock_aws_client, billing_period, single_billing_view
+    generator,
+    mock_aws_client,
+    billing_period,
+    organization_invoice,
+    single_billing_view,
 ):
     mock_aws_client.get_billing_views_by_account_id.return_value = single_billing_view
     mock_aws_client.get_cost_and_usage.side_effect = [
@@ -137,7 +155,7 @@ def test_generate_returns_correct_invoice_entity(
         ],
     ]
 
-    result = generator.run("AGR-1", "MPA-1", billing_period)
+    result = generator.run("USD", "MPA-1", billing_period, organization_invoice)
 
     account_usage = result.usage_by_account["ACT-1"]
     metrics = [metric for metric in account_usage.metrics if metric.service_name == "AmazonEC2"]
@@ -145,12 +163,17 @@ def test_generate_returns_correct_invoice_entity(
 
 
 def test_generate_handles_multiple_billing_views(
-    generator, mock_aws_client, billing_period, duplicate_billing_views, duplicate_account_usage
+    generator,
+    mock_aws_client,
+    billing_period,
+    organization_invoice,
+    duplicate_billing_views,
+    duplicate_account_usage,
 ):
     mock_aws_client.get_billing_views_by_account_id.return_value = duplicate_billing_views
     mock_aws_client.get_cost_and_usage.side_effect = duplicate_account_usage
 
-    result = generator.run("AGR-1", "MPA-1", billing_period)
+    result = generator.run("USD", "MPA-1", billing_period, organization_invoice)
 
     account_usage = result.usage_by_account["ACT-1"]
     metrics = [metric for metric in account_usage.metrics if metric.service_name == "AmazonRDS"]
@@ -161,18 +184,26 @@ def test_generate_handles_multiple_billing_views(
 
 
 def test_generate_error_retrieving_accounts(
-    generator, mock_aws_client, billing_period, single_billing_view
+    generator,
+    mock_aws_client,
+    billing_period,
+    organization_invoice,
+    single_billing_view,
 ):
     mock_aws_client.get_billing_views_by_account_id.return_value = single_billing_view
     mock_aws_client.get_cost_and_usage.side_effect = AWSError("AWS API Error")
 
-    result = generator.run("AGR-1", "MPA-1", billing_period)
+    result = generator.run("USD", "MPA-1", billing_period, organization_invoice)
 
     assert not result.usage_by_account
 
 
 def test_generate_skips_zero_amount_metrics(
-    generator, mock_aws_client, billing_period, single_billing_view
+    generator,
+    mock_aws_client,
+    billing_period,
+    organization_invoice,
+    single_billing_view,
 ):
     mock_aws_client.get_billing_views_by_account_id.return_value = single_billing_view
     mock_aws_client.get_cost_and_usage.side_effect = [
@@ -191,8 +222,35 @@ def test_generate_skips_zero_amount_metrics(
         ],
     ]
 
-    result = generator.run("AGR-1", "MPA-1", billing_period)
+    result = generator.run("USD", "MPA-1", billing_period, organization_invoice)
 
     account_usage = result.usage_by_account["ACT-1"]
     metrics = [metric for metric in account_usage.metrics if metric.service_name == "S3"]
     assert len(metrics) == 0
+
+
+def test_generate_sets_invoice_id_from_organization_invoice(
+    generator,
+    mock_aws_client,
+    billing_period,
+    single_billing_view,
+    single_account_usage,
+):
+    mock_aws_client.get_billing_views_by_account_id.return_value = single_billing_view
+    mock_aws_client.get_cost_and_usage.side_effect = single_account_usage
+    organization_invoice = OrganizationInvoice(
+        entities={
+            "Amazon Web Services, Inc.": InvoiceEntity(invoice_id="INV-001,INV-002"),
+        },
+    )
+
+    result = generator.run(
+        "USD",
+        "MPA-1",
+        billing_period,
+        organization_invoice=organization_invoice,
+    )
+
+    account_usage = result.usage_by_account["ACT-1"]
+    metrics = [metric for metric in account_usage.metrics if metric.service_name == "AmazonEC2"]
+    assert metrics[0].invoice_id == "INV-001,INV-002"

@@ -30,7 +30,7 @@ def test_service_metric_default_values():
     assert result.record_type == "Usage"
     assert result.amount == Decimal(0)
     assert result.invoice_entity is None
-    assert result.invoice_id is None
+    assert not result.invoice_id
 
 
 def test_service_metric_with_values():

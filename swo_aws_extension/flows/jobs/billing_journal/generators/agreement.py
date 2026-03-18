@@ -1,5 +1,6 @@
 from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
 
+from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import InvoiceGenerator
 from swo_aws_extension.flows.jobs.billing_journal.generators.journal_line import (
     JournalLineGenerator,
 )
@@ -26,12 +27,14 @@ class AgreementJournalGenerator:
         authorization_currency: str,
         context: BillingJournalContext,
         usage_generator: BaseOrganizationUsageGenerator,
+        invoice_generator: InvoiceGenerator,
     ) -> None:
         self._authorization_currency = authorization_currency
         self._config = context.config
         self._mpt_client = context.mpt_client
         self._billing_period = context.billing_period
         self._usage_generator = usage_generator
+        self._invoice_generator = invoice_generator
 
     @with_log_context(lambda _, agreement, **kwargs: agreement.get("id"))
     @dynamic_trace_span(lambda _, agreement, **kwargs: f"Agreement {agreement.get('id')}")
@@ -49,8 +52,21 @@ class AgreementJournalGenerator:
             logger.info("No PMA account found for agreement: %s", agreement.get("id"))
             return []
 
+        invoice_result = self._invoice_generator.run(
+            mpa_account,
+            self._billing_period,
+            self._authorization_currency,
+        )
+        logger.info(
+            "Found %d invoice entities",
+            len(invoice_result.invoice.entities),
+        )
+
         usage_result = self._usage_generator.run(
-            self._authorization_currency, mpa_account, self._billing_period
+            self._authorization_currency,
+            mpa_account,
+            self._billing_period,
+            organization_invoice=invoice_result.invoice,
         )
 
         journal_details = JournalDetails(
@@ -60,15 +76,27 @@ class AgreementJournalGenerator:
             end_date=self._billing_period.last_day,
         )
 
-        return self._generate_lines_for_accounts(usage_result, journal_details)
+        return self._generate_lines_for_accounts(
+            usage_result,
+            journal_details,
+            invoice_result.invoice,
+        )
 
     def _generate_lines_for_accounts(
         self,
         usage_result: OrganizationUsageResult,
         journal_details: JournalDetails,
+        organization_invoice,
     ) -> list[JournalLine]:
         line_generator = JournalLineGenerator()
         all_lines: list[JournalLine] = []
         for account_id, account_usage in usage_result.usage_by_account.items():
-            all_lines.extend(line_generator.generate(account_id, account_usage, journal_details))
+            all_lines.extend(
+                line_generator.generate(
+                    account_id,
+                    account_usage,
+                    journal_details,
+                    organization_invoice,
+                )
+            )
         return all_lines
