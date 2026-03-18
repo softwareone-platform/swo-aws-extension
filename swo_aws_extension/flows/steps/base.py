@@ -11,8 +11,8 @@ from swo_aws_extension.flows.order import (
     InitialAWSContext,
 )
 from swo_aws_extension.flows.order_utils import (
-    switch_order_status_to_failed_and_notify,
-    switch_order_status_to_query_and_notify,
+    switch_order_status_to_failed,
+    switch_order_status_to_query,
 )
 from swo_aws_extension.flows.steps.errors import (
     AlreadyProcessedStepError,
@@ -99,7 +99,7 @@ class BasePhaseStep(Step, ABC):
             return False
         except QueryStepError as error:
             logger.info("%s - Query Order: %s", context.order_id, error.message)
-            switch_order_status_to_query_and_notify(self._client, context, error.template_id)
+            switch_order_status_to_query(self._client, context, error.template_id)
             return False
         except FailStepError as error:
             logger.info("%s - Fail Order: %s", context.order_id, error)
@@ -108,6 +108,6 @@ class BasePhaseStep(Step, ABC):
                 "id": error.id,
                 "message": error.message,
             }
-            switch_order_status_to_failed_and_notify(self._client, context, fail_error)
+            switch_order_status_to_failed(self._client, context, fail_error)
             return False
         return True

@@ -10,7 +10,7 @@ from swo_aws_extension.constants import (
     ResponsibilityTransferStatus,
 )
 from swo_aws_extension.flows.order import PurchaseContext
-from swo_aws_extension.flows.order_utils import switch_order_status_to_process_and_notify
+from swo_aws_extension.flows.order_utils import switch_order_status_to_process
 from swo_aws_extension.parameters import get_responsibility_transfer_id
 from swo_aws_extension.processors.processor import Processor
 from swo_aws_extension.processors.querying.helper import get_template_name
@@ -80,9 +80,7 @@ class AWSBillingTransferInvitationProcessor(Processor):
                 transfer_id,
                 status,
             )
-            switch_order_status_to_process_and_notify(
-                self.client, context, get_template_name(context)
-            )
+            switch_order_status_to_process(self.client, context, get_template_name(context))
             return
 
         logger.info(
