@@ -8,6 +8,7 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
 from swo_aws_extension.flows.jobs.billing_journal.generators.authorization import (
     AuthorizationJournalGenerator,
 )
+from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import InvoiceGenerator
 from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
     CostExplorerUsageGenerator,
 )
@@ -39,6 +40,13 @@ def mock_usage_generator_cls(mocker):
 
 
 @pytest.fixture
+def mock_invoice_generator_cls(mocker):
+    mock = mocker.patch(f"{MODULE}.InvoiceGenerator", autospec=True)
+    mock.return_value = mocker.MagicMock(spec=InvoiceGenerator)
+    return mock
+
+
+@pytest.fixture
 def mock_aws_client_cls(mocker):
     mock = mocker.patch(f"{MODULE}.AWSClient", autospec=True)
     mock.return_value = mocker.MagicMock(spec=AWSClient)
@@ -50,6 +58,7 @@ def test_no_agreements_returns_empty_list(
     mock_get_agreements,
     mock_agreement_generator_cls,
     mock_usage_generator_cls,
+    mock_invoice_generator_cls,
     mock_aws_client_cls,
     authorization,
 ):
@@ -68,6 +77,7 @@ def test_processes_agreements(
     mock_get_agreements,
     mock_agreement_generator_cls,
     mock_usage_generator_cls,
+    mock_invoice_generator_cls,
     mock_aws_client_cls,
     authorization,
 ):
@@ -90,6 +100,7 @@ def test_exception_sends_error(
     mock_get_agreements,
     mock_agreement_generator_cls,
     mock_usage_generator_cls,
+    mock_invoice_generator_cls,
     mock_aws_client_cls,
     authorization,
 ):

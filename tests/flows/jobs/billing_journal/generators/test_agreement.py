@@ -3,11 +3,16 @@ import pytest
 from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
     AgreementJournalGenerator,
 )
+from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import InvoiceGenerator
 from swo_aws_extension.flows.jobs.billing_journal.generators.journal_line import (
     JournalLineGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
     CostExplorerUsageGenerator,
+)
+from swo_aws_extension.flows.jobs.billing_journal.models.invoice import (
+    OrganizationInvoice,
+    OrganizationInvoiceResult,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import (
     JournalDetails,
@@ -38,11 +43,21 @@ def test_run(mocker, mock_context, mock_line_generator_cls):
     mock_usage_result.reports = {}
     mock_usage_result.usage_by_account = {"ACC-1": mock_account_usage}
     mock_usage_generator.run.return_value = mock_usage_result
-    generator = AgreementJournalGenerator("USD", mock_context, mock_usage_generator)
+    mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
+    mock_invoice_generator.run.return_value = OrganizationInvoiceResult(
+        invoice=OrganizationInvoice(),
+    )
+    generator = AgreementJournalGenerator(
+        "USD",
+        mock_context,
+        mock_usage_generator,
+        mock_invoice_generator,
+    )
 
     result = generator.run(agreement)
 
     assert result == [mock_journal_line]
+    mock_invoice_generator.run.assert_called_once()
     mock_generator_instance.generate.assert_called_once()
     call_args = mock_generator_instance.generate.call_args
     assert call_args[0][0] == "ACC-1"
@@ -53,10 +68,17 @@ def test_run(mocker, mock_context, mock_line_generator_cls):
 def test_run_returns_empty_when_no_mpa_account(mocker, mock_context, mock_line_generator_cls):
     agreement = {"id": "AGR-1", "externalIds": {}, "parameters": {"ordering": []}}
     mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
-    generator = AgreementJournalGenerator("USD", mock_context, mock_usage_generator)
+    mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
+    generator = AgreementJournalGenerator(
+        "USD",
+        mock_context,
+        mock_usage_generator,
+        mock_invoice_generator,
+    )
 
     result = generator.run(agreement)
 
     assert result == []
     mock_usage_generator.run.assert_not_called()
+    mock_invoice_generator.run.assert_not_called()
     mock_line_generator_cls.assert_not_called()
