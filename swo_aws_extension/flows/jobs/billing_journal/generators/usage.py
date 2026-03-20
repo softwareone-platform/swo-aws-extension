@@ -28,14 +28,14 @@ class CostExplorerReportFetcher:
 
     def get_accounts_with_usage(
         self,
-        billing_view: dict,
+        billing_view_arn: str,
         billing_period: BillingPeriod,
     ) -> list[str]:
         """Get list of accounts with usage for a billing view."""
         cost_and_usage = self._aws_client.get_cost_and_usage(
             start_date=billing_period.start_date,
             end_date=billing_period.end_date,
-            view_arn=billing_view.get("arn"),
+            view_arn=billing_view_arn,
             group_by=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
         )
         return self._extract_account_keys(cost_and_usage)
@@ -166,7 +166,9 @@ class CostExplorerUsageGenerator(BaseOrganizationUsageGenerator):
         billing_period: BillingPeriod,
     ) -> None:
         try:
-            accounts = self._report_fetcher.get_accounts_with_usage(billing_view, billing_period)
+            accounts = self._report_fetcher.get_accounts_with_usage(
+                billing_view.get("arn"), billing_period
+            )
         except AWSError as error:
             logger.info(
                 "Error retrieving accounts with usage for billing view %s: %s",
