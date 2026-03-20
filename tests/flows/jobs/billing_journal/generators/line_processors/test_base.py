@@ -7,9 +7,35 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.bas
     LineProcessor,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.context import LineProcessorContext
-from swo_aws_extension.flows.jobs.billing_journal.models.invoice import OrganizationInvoice
+from swo_aws_extension.flows.jobs.billing_journal.models.invoice import (
+    InvoiceEntity,
+    OrganizationInvoice,
+)
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import JournalDetails
 from swo_aws_extension.flows.jobs.billing_journal.models.usage import AccountUsage, ServiceMetric
+
+
+def build_context_with_invoice(
+    journal_details,
+    payment_currency_code="",
+    base_currency_code="",
+    exchange_rate=0,
+):
+    organization_invoice = OrganizationInvoice(
+        entities={
+            "AWS Inc.": InvoiceEntity(
+                base_currency_code=base_currency_code,
+                payment_currency_code=payment_currency_code,
+                exchange_rate=Decimal(exchange_rate),
+            )
+        },
+    )
+    return LineProcessorContext(
+        account_id="ACC-001",
+        account_usage=AccountUsage(),
+        journal_details=journal_details,
+        organization_invoice=organization_invoice,
+    )
 
 
 @pytest.fixture
@@ -34,6 +60,16 @@ def context(journal_details):
         account_usage=AccountUsage(),
         journal_details=journal_details,
         organization_invoice=OrganizationInvoice(),
+    )
+
+
+@pytest.fixture
+def usage_metric():
+    return ServiceMetric(
+        service_name="Amazon S3",
+        record_type=AWSRecordTypeEnum.USAGE,
+        amount=Decimal("100.00"),
+        invoice_entity="AWS Inc.",
     )
 
 
@@ -95,3 +131,37 @@ def test_process_applies_name_affixes(context, prefix_name, suffix_name, expecte
     result = processor.process(metric, context)
 
     assert result[0].description.value1 == expected_name
+
+
+@pytest.mark.parametrize(
+    (
+        "payment_currency_code",
+        "base_currency_code",
+        "exchange_rate",
+        "expected_amount",
+    ),
+    [
+        ("EUR", "USD", "0.95", Decimal("95.000000")),
+        ("EUR", "EUR", "0.95", Decimal("100.00")),
+        ("EUR", "USD", "0", Decimal("100.00")),
+    ],
+)
+def test_process_resolves_amount_with_exchange_rate_rules(
+    processor,
+    usage_metric,
+    journal_details,
+    payment_currency_code,
+    base_currency_code,
+    exchange_rate,
+    expected_amount,
+):
+    context = build_context_with_invoice(
+        journal_details=journal_details,
+        payment_currency_code=payment_currency_code,
+        base_currency_code=base_currency_code,
+        exchange_rate=exchange_rate,
+    )
+
+    result = processor.process(usage_metric, context)
+
+    assert result[0].price.pp_x1 == expected_amount
