@@ -43,11 +43,18 @@ def mock_context(mock_mpt_client, mock_billing_client):
     context.product_ids = ["PROD-1"]
     context.pls_charge_percentage = Decimal("5.0")
     context.usage_source = BillingJournalUsageSourceEnum.COST_USAGE_REPORT
+    context.dry_run = False
     return context
 
 
 @pytest.fixture
 def manager(mock_context):
+    return JournalManager(mock_context, "AUTH-123")
+
+
+@pytest.fixture
+def manager_dry_run(mock_context):
+    mock_context.dry_run = True
     return JournalManager(mock_context, "AUTH-123")
 
 

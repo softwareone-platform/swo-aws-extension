@@ -22,6 +22,7 @@ class BillingJournalContext:
     authorizations: list[str] | None = None
     pls_charge_percentage: Decimal = Decimal("5.0")
     usage_source: BillingJournalUsageSourceEnum = BillingJournalUsageSourceEnum.COST_USAGE_REPORT
+    dry_run: bool = False
 
 
 @dataclass

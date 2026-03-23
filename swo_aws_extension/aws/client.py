@@ -9,6 +9,7 @@ from swo_aws_extension.aws.constants import DEFAULT_BILLING_EXPORT_QUERY_STATEME
 from swo_aws_extension.aws.errors import (
     AWSError,
     InvalidDateInTerminateResponsibilityError,
+    S3BucketAlreadyOwnedError,
     wrap_boto3_error,
 )
 from swo_aws_extension.config import Config
@@ -167,6 +168,12 @@ class AWSClient:
         first_day = today.replace(day=1)
         next_month = today.replace(day=MINIMUM_DAYS_MONTH) + dt.timedelta(days=4)
         last_day = next_month.replace(day=1) - dt.timedelta(days=1)
+        logger.info(
+            "Fetching current month billing view exports for account %s. Date range: %s to %s",
+            account_id,
+            first_day.isoformat(),
+            last_day.isoformat(),
+        )
         return self.get_billing_views_by_account_id(
             account_id=account_id, start_date=first_day.isoformat(), end_date=last_day.isoformat()
         )
@@ -188,6 +195,12 @@ class AWSClient:
         Returns:
             List of billing views for the date range.
         """
+        logger.info(
+            "Requesting billing view exports for account %s with date range %s to %s",
+            account_id,
+            start_date,
+            end_date,
+        )
         billing_client = self._get_billing_client()
         first_day = dt.datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=dt.UTC)
         end_datetime = dt.datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=dt.UTC)
@@ -196,8 +209,13 @@ class AWSClient:
             dt.time.max,
             tzinfo=dt.UTC,
         )
+        logger.debug(
+            "Parsed date range to UTC timestamps - Start: %s, End: %s",
+            first_day.isoformat(),
+            last_day.isoformat(),
+        )
 
-        return get_paged_response(
+        results = get_paged_response(
             billing_client.list_billing_views,
             "billingViews",
             {
@@ -211,6 +229,12 @@ class AWSClient:
             },
             pagination_key="nextToken",
         )
+        logger.info(
+            "Retrieved %d billing view exports for account %s",
+            len(results),
+            account_id,
+        )
+        return results
 
     @wrap_boto3_error
     def create_billing_group(
@@ -350,24 +374,37 @@ class AWSClient:
         )
 
     def create_s3_bucket(self, bucket_name: str, region: str) -> None:
-        """Create an S3 bucket in the given region, ignoring it if already owned.
+        """Create an S3 bucket in the given region.
 
         Args:
             bucket_name: Name of the S3 bucket to create.
             region: AWS region where the bucket will be created.
 
         Raises:
-            AWSError: If the bucket creation fails for any reason other than it already being
-                owned by this account.
+            S3BucketAlreadyOwnedError: If the bucket already exists and is owned by this account.
+            AWSError: If the bucket creation fails for any other reason.
         """
+        s3_client = self._get_s3_client()
+        try:
+            s3_client.head_bucket(Bucket=bucket_name)
+        except ClientError as exc:
+            error_code = str(exc.response.get("Error", {}).get("Code", ""))
+            if error_code not in {"404", "NoSuchBucket", "NotFound"}:
+                raise AWSError(
+                    f"Failed to check existence of S3 bucket {bucket_name}: {exc}"
+                ) from exc
+        else:
+            raise S3BucketAlreadyOwnedError(
+                f"S3 bucket {bucket_name} already exists and is owned by this account."
+            )
+
         try:
             self._create_s3_bucket(bucket_name, region)
         except ClientError as exc:
             if exc.response["Error"]["Code"] == "BucketAlreadyOwnedByYou":
-                logger.info(
-                    "S3 bucket %s already exists and is owned by this account.", bucket_name
-                )
-                return
+                raise S3BucketAlreadyOwnedError(
+                    f"S3 bucket {bucket_name} already exists and is owned by this account."
+                ) from exc
             raise AWSError(f"Failed to create S3 bucket {bucket_name}: {exc}") from exc
         except Exception as exc:
             raise AWSError(f"Unexpected error creating S3 bucket {bucket_name}: {exc}") from exc
@@ -391,14 +428,14 @@ class AWSClient:
         """Create a CUR2 export for a billing transfer view.
 
         Args:
-            billing_view_arn: ARN of the BILLING_TRANSFER view to export.
-            export_name: Name for the export (must be unique per account).
+            billing_view_arn: ARN of the billing transfer view.
+            export_name: Name of the export to create.
             s3_bucket: Destination S3 bucket name.
-            s3_prefix: Destination S3 key prefix.
-            region: AWS region for the S3 destination and BCM client.
+            s3_prefix: Destination S3 prefix.
+            region: AWS region for the S3 destination.
 
         Returns:
-            The ARN of the created export.
+            The created export ARN.
         """
         bcm_client = self._get_bcm_data_exports_client()
         response = bcm_client.create_export(
@@ -408,11 +445,8 @@ class AWSClient:
                     "QueryStatement": DEFAULT_BILLING_EXPORT_QUERY_STATEMENT,
                     "TableConfigurations": {
                         "COST_AND_USAGE_REPORT": {
-                            "TIME_GRANULARITY": "HOURLY",
-                            "INCLUDE_RESOURCES": "FALSE",
-                            "INCLUDE_MANUAL_DISCOUNT_COMPATIBILITY": "FALSE",
-                            "INCLUDE_SPLIT_COST_ALLOCATION_DATA": "FALSE",
                             "BILLING_VIEW_ARN": billing_view_arn,
+                            "TIME_GRANULARITY": "HOURLY",
                         }
                     },
                 },
@@ -432,7 +466,7 @@ class AWSClient:
                 "RefreshCadence": {
                     "Frequency": "SYNCHRONOUS",
                 },
-            }
+            },
         )
         return str(response.get("ExportArn", ""))
 

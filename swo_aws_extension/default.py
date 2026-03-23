@@ -212,7 +212,7 @@ EXTENSION_CONFIG = {
     "DUE_DATE_DAYS": "30",
     "BILLING_JOURNAL_USAGE_SOURCE": os.getenv(
         "BILLING_JOURNAL_USAGE_SOURCE",
-        "cost_usage_report",
+        "cost_explorer",
     ),
 }
 

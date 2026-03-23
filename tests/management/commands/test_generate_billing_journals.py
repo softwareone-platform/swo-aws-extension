@@ -112,7 +112,26 @@ def test_command_with_valid_year_and_month(mock_service, command_output):
     assert not error_output
     mock_service.return_value.run.assert_called_once()
     context = mock_service.call_args.args[0]
-    assert context.usage_source == BillingJournalUsageSourceEnum.COST_USAGE_REPORT
+    assert context.usage_source == BillingJournalUsageSourceEnum.COST_EXPLORER
+    assert context.dry_run is False
+
+
+@freeze_time("2025-07-07 23:59:59")
+def test_command_dry_run(mock_service, command_output):
+    result = call_command(
+        "generate_billing_journals",
+        dry_run=True,
+        stdout=command_output["out"],
+        stderr=command_output["err"],
+    )
+
+    assert result is None
+    output, error_output = _get_output(command_output)
+    assert "Start generate_billing_journals" in output
+    assert not error_output
+    mock_service.return_value.run.assert_called_once()
+    context = mock_service.call_args.args[0]
+    assert context.dry_run is True
 
 
 def test_command_uses_configured_usage_source(mock_service, command_output, settings):

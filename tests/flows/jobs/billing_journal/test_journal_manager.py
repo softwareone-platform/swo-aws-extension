@@ -1,5 +1,7 @@
 from io import BytesIO
+from typing import Any
 
+import pytest
 from requests import HTTPError
 
 from swo_aws_extension.constants import BILLING_JOURNAL_SUCCESS_TITLE
@@ -10,7 +12,7 @@ from swo_aws_extension.swo.notifications.teams import Button
 MODULE = "swo_aws_extension.flows.jobs.billing_journal.journal_manager"
 
 
-def test_get_pending_journal_returns_existing(manager, mock_billing_client):
+def test_get_pending_journal_returns_existing(manager: Any, mock_billing_client: Any) -> None:
     mock_billing_client.journal.query().page.return_value = {
         "data": [{"id": "JRN-001", "name": "Test", "status": "Draft"}],
     }
@@ -20,7 +22,10 @@ def test_get_pending_journal_returns_existing(manager, mock_billing_client):
     assert result.id == "JRN-001"
 
 
-def test_get_pending_journal_returns_none_when_no_journals(manager, mock_billing_client):
+def test_get_pending_journal_returns_none_when_no_journals(
+    manager: Any,
+    mock_billing_client: Any,
+) -> None:
     mock_billing_client.journal.query().page.return_value = {"data": []}
 
     result = manager.get_pending_journal()  # act
@@ -28,7 +33,7 @@ def test_get_pending_journal_returns_none_when_no_journals(manager, mock_billing
     assert result is None
 
 
-def test_create_new_journal(manager, mock_billing_client):
+def test_create_new_journal(manager: Any, mock_billing_client: Any) -> None:
     mock_billing_client.journal.query().page.return_value = {
         "$meta": {"pagination": {"total": 0}},
     }
@@ -49,7 +54,7 @@ def test_create_new_journal(manager, mock_billing_client):
     mock_billing_client.journal.create.assert_called_once_with(expected_payload)
 
 
-def test_create_new_journal_increments_index(manager, mock_billing_client):
+def test_create_new_journal_increments_index(manager: Any, mock_billing_client: Any) -> None:
     mock_billing_client.journal.query().page.return_value = {
         "$meta": {"pagination": {"total": 1}},
     }
@@ -70,7 +75,7 @@ def test_create_new_journal_increments_index(manager, mock_billing_client):
     mock_billing_client.journal.create.assert_called_once_with(expected_payload)
 
 
-def test_upload_journal(mocker, manager, mock_billing_client):
+def test_upload_journal(mocker: Any, manager: Any, mock_billing_client: Any) -> None:
     line_mock = mocker.MagicMock(spec=JournalLine)
     line_mock.to_jsonl.return_value = '{"test": 1}\n'
     expected_bytesio = BytesIO(b'{"test": 1}\n{"test": 1}\n')
@@ -83,7 +88,32 @@ def test_upload_journal(mocker, manager, mock_billing_client):
     )
 
 
-def test_notify_success(manager, mock_context):
+@pytest.mark.parametrize("line_count", [0, 1, 3])
+def test_upload_journal_dry_run(
+    mocker: Any,
+    manager_dry_run: Any,
+    mock_billing_client: Any,
+    mock_context: Any,
+    line_count: int,
+) -> None:
+    line_mock = mocker.MagicMock(spec=JournalLine)
+    line_mock.to_jsonl.return_value = '{"test": 1}\n'
+    mock_logger = mocker.patch(f"{MODULE}.logger")
+    lines = [line_mock] * line_count
+
+    manager_dry_run.upload_journal("JRN-123", lines)  # act
+
+    mock_billing_client.journal.upload.assert_not_called()
+    mock_context.notifier.send_success.assert_not_called()
+    assert mock_logger.info.call_count == 1 + line_count
+    mock_logger.info.assert_any_call(
+        "Dry run enabled. Skipping upload for journal %s (%d lines).",
+        "JRN-123",
+        line_count,
+    )
+
+
+def test_notify_success(manager: Any, mock_context: Any) -> None:
     expected_button = Button("Open journal JRN-123", "https://mpt.test/billing/journals/JRN-123")
 
     manager.notify_success("JRN-123", 2)  # act
@@ -95,7 +125,11 @@ def test_notify_success(manager, mock_context):
     )
 
 
-def test_upload_attachments_uploads_report_with_data(mocker, manager, mock_billing_client):
+def test_upload_attachments_uploads_report_with_data(
+    mocker: Any,
+    manager: Any,
+    mock_billing_client: Any,
+) -> None:
     report = OrganizationReport(
         organization_data={"usage": [{"key": "value"}]},
         accounts_data={},
@@ -113,7 +147,7 @@ def test_upload_attachments_uploads_report_with_data(mocker, manager, mock_billi
     )
 
 
-def test_upload_attachments_skips_empty_report(manager, mock_billing_client):
+def test_upload_attachments_skips_empty_report(manager: Any, mock_billing_client: Any) -> None:
     report = OrganizationReport()
 
     manager.upload_attachments("JRN-001", {"AGR-1": report})  # act
@@ -121,7 +155,10 @@ def test_upload_attachments_skips_empty_report(manager, mock_billing_client):
     mock_billing_client.journal.attachments.assert_not_called()
 
 
-def test_upload_attachments_logs_error_on_failure(manager, mock_billing_client):
+def test_upload_attachments_logs_error_on_failure(
+    manager: Any,
+    mock_billing_client: Any,
+) -> None:
     report = OrganizationReport(
         organization_data={"usage": [{"key": "value"}]},
     )

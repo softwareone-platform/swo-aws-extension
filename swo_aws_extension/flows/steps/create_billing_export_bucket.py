@@ -4,13 +4,15 @@ from typing import override
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
-from swo_aws_extension.aws.errors import AWSError
+from swo_aws_extension.aws.errors import AWSError, S3BucketAlreadyOwnedError
 from swo_aws_extension.config import Config
 from swo_aws_extension.constants import (
     S3_BILLING_EXPORT_BUCKET_TEMPLATE,
     S3_BILLING_EXPORT_PREFIX_TEMPLATE,
-    S3_BILLING_EXPORT_REGION,
     PhasesEnum,
+)
+from swo_aws_extension.flows.jobs.billing_journal.setup.cost_usage_reports import (
+    CostUsageReportsSetupService,
 )
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
@@ -37,6 +39,7 @@ class CreateBillingExportBucket(BasePhaseStep):
 
     def __init__(self, config: Config) -> None:
         self._config = config
+        self._setup_service = CostUsageReportsSetupService()
 
     @override
     def pre_step(self, context: PurchaseContext) -> None:
@@ -55,13 +58,25 @@ class CreateBillingExportBucket(BasePhaseStep):
         mpa_id = get_mpa_account_id(context.order)
         bucket_name = S3_BILLING_EXPORT_BUCKET_TEMPLATE.format(pm_account_id=pm_account_id)
         prefix = S3_BILLING_EXPORT_PREFIX_TEMPLATE.format(mpa_account_id=mpa_id)
+        if context.aws_client is None:
+            raise UnexpectedStopError(
+                title="S3 Billing Export Bucket Creation",
+                message=f"{context.order_id} - AWS client is not initialized",
+            )
         logger.info(
             "%s - Action - Creating S3 billing export bucket: %s",
             context.order_id,
             bucket_name,
         )
         try:
-            context.aws_client.create_s3_bucket(bucket_name, S3_BILLING_EXPORT_REGION)
+            self._setup_service.setup_s3_bucket(context.aws_client, pm_account_id)
+        except S3BucketAlreadyOwnedError:
+            logger.info(
+                "%s - S3 bucket: %s already exists and is owned by %s account",
+                context.order_id,
+                bucket_name,
+                pm_account_id,
+            )
         except AWSError as error:
             raise UnexpectedStopError(
                 title="S3 Billing Export Bucket Creation",
@@ -71,7 +86,7 @@ class CreateBillingExportBucket(BasePhaseStep):
             ) from error
 
         logger.info(
-            "%s - Next - S3 billing export bucket created: %s with prefix: %s",
+            "%s - Next - S3 billing export bucket setup completed: %s with prefix: %s",
             context.order_id,
             bucket_name,
             prefix,

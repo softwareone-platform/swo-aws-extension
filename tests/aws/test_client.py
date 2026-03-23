@@ -7,6 +7,7 @@ from swo_aws_extension.aws.client import MAX_RESULTS_PER_PAGE, get_paged_respons
 from swo_aws_extension.aws.errors import (
     AWSError,
     InvalidDateInTerminateResponsibilityError,
+    S3BucketAlreadyOwnedError,
 )
 
 
@@ -795,41 +796,70 @@ def test_download_s3_object_wraps_boto3_error(config, aws_client_factory):
 
 def test_create_s3_bucket_success(config, aws_client_factory):
     mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.head_bucket.side_effect = ClientError(
+        {"Error": {"Code": "404", "Message": "Not found"}},
+        "HeadBucket",
+    )
     mock_client.create_bucket.return_value = {}
 
     mock_aws_client.create_s3_bucket("swo-cur2-123456789012", "us-east-1")  # act
 
-    assert mock_client.create_bucket.call_count == 1
+    mock_client.head_bucket.assert_called_once_with(Bucket="swo-cur2-123456789012")
     mock_client.create_bucket.assert_called_once_with(Bucket="swo-cur2-123456789012")
 
 
 def test_create_s3_bucket_eu_region(config, aws_client_factory):
     mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.head_bucket.side_effect = ClientError(
+        {"Error": {"Code": "404", "Message": "Not found"}},
+        "HeadBucket",
+    )
     mock_client.create_bucket.return_value = {}
 
     mock_aws_client.create_s3_bucket("swo-cur2-123456789012", "eu-west-1")  # act
 
-    assert mock_client.create_bucket.call_count == 1
+    mock_client.head_bucket.assert_called_once_with(Bucket="swo-cur2-123456789012")
     mock_client.create_bucket.assert_called_once_with(
         Bucket="swo-cur2-123456789012",
         CreateBucketConfiguration={"LocationConstraint": "eu-west-1"},
     )
 
 
-def test_create_s3_bucket_already_owned(config, aws_client_factory):
+def test_create_s3_bucket_already_owned_from_head_bucket(config, aws_client_factory):
     mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.head_bucket.return_value = {}
+
+    with pytest.raises(S3BucketAlreadyOwnedError):
+        mock_aws_client.create_s3_bucket("swo-cur2-123456789012", "us-east-1")
+
+    mock_client.head_bucket.assert_called_once_with(Bucket="swo-cur2-123456789012")
+    mock_client.create_bucket.assert_not_called()
+
+
+def test_create_s3_bucket_already_owned_from_create_bucket_error(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.head_bucket.side_effect = ClientError(
+        {"Error": {"Code": "404", "Message": "Not found"}},
+        "HeadBucket",
+    )
     mock_client.create_bucket.side_effect = ClientError(
         {"Error": {"Code": "BucketAlreadyOwnedByYou", "Message": "already owned"}},
         "CreateBucket",
     )
 
-    mock_aws_client.create_s3_bucket("swo-cur2-123456789012", "us-east-1")  # act
+    with pytest.raises(S3BucketAlreadyOwnedError):
+        mock_aws_client.create_s3_bucket("swo-cur2-123456789012", "us-east-1")
 
+    mock_client.head_bucket.assert_called_once_with(Bucket="swo-cur2-123456789012")
     assert mock_client.create_bucket.call_count == 1
 
 
 def test_create_s3_bucket_error(config, aws_client_factory):
     mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.head_bucket.side_effect = ClientError(
+        {"Error": {"Code": "404", "Message": "Not found"}},
+        "HeadBucket",
+    )
     mock_client.create_bucket.side_effect = ClientError(
         {"Error": {"Code": "AccessDenied", "Message": "Access denied"}},
         "CreateBucket",
@@ -837,6 +867,19 @@ def test_create_s3_bucket_error(config, aws_client_factory):
 
     with pytest.raises(AWSError):
         mock_aws_client.create_s3_bucket("swo-cur2-123456789012", "us-east-1")
+
+
+def test_create_s3_bucket_head_bucket_error(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.head_bucket.side_effect = ClientError(
+        {"Error": {"Code": "403", "Message": "Access denied"}},
+        "HeadBucket",
+    )
+
+    with pytest.raises(AWSError):
+        mock_aws_client.create_s3_bucket("swo-cur2-123456789012", "us-east-1")
+
+    mock_client.create_bucket.assert_not_called()
 
 
 def test_create_billing_export_success(config, aws_client_factory):

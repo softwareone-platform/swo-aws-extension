@@ -166,9 +166,18 @@ class CostExplorerUsageGenerator(BaseOrganizationUsageGenerator):
                 end_date=billing_period.last_day,
             ),
         )
-        logger.info("Found %d billing views", len(billing_views))
+        logger.info(
+            "Found %d billing view exports for account %s",
+            len(billing_views),
+            mpa_account,
+        )
 
-        for billing_view in billing_views:
+        for index, billing_view in enumerate(billing_views, start=1):
+            logger.info(
+                "Processing billing view export %d of %d",
+                index,
+                len(billing_views),
+            )
             self._process_billing_view(billing_view, billing_period)
 
         return OrganizationUsageResult(
@@ -180,26 +189,45 @@ class CostExplorerUsageGenerator(BaseOrganizationUsageGenerator):
         billing_view: BillingView,
         billing_period: BillingPeriod,
     ) -> None:
+        view_arn = billing_view.get("arn")
+        logger.info(
+            "Processing billing view export %s for billing period %s",
+            view_arn,
+            billing_period,
+        )
         report_fetcher = self._report_fetcher
         if report_fetcher is None:
+            logger.warning(
+                "Skipping billing view export %s - Report fetcher is not initialized",
+                view_arn,
+            )
             return
         try:
             accounts = report_fetcher.get_accounts_with_usage(billing_view, billing_period)
-        except AWSError as error:
             logger.info(
-                "Error retrieving accounts with usage for billing view %s: %s",
-                billing_view.get("arn"),
+                "Retrieved %d accounts with usage for billing view export %s",
+                len(accounts),
+                view_arn,
+            )
+        except AWSError as error:
+            logger.warning(
+                "Skipping billing view export %s - Error retrieving accounts with usage: %s",
+                view_arn,
                 error,
             )
             return
 
         marketplace_report = report_fetcher.get_marketplace_usage_report(
-            billing_view.get("arn"), billing_period
+            view_arn, billing_period
         )
         self._reports.organization_data["MARKETPLACE"] = marketplace_report
 
         self._process_accounts_for_billing_view(
             accounts, billing_view, billing_period, marketplace_report
+        )
+        logger.info(
+            "Successfully processed billing view export %s",
+            view_arn,
         )
 
     def _process_accounts_for_billing_view(

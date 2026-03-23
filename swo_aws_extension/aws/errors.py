@@ -18,6 +18,10 @@ class AWSError(Exception):
     """AWS basic error."""
 
 
+class S3BucketAlreadyOwnedError(AWSError):
+    """Raised when an S3 bucket already exists and is owned by this account."""
+
+
 class AWSHttpError(AWSError):
     """AWS http error."""
 

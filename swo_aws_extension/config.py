@@ -175,7 +175,7 @@ class Config:
         """Get the configured usage source for billing journal generation."""
         return settings.EXTENSION_CONFIG.get(
             "BILLING_JOURNAL_USAGE_SOURCE",
-            BillingJournalUsageSourceEnum.COST_USAGE_REPORT,
+            BillingJournalUsageSourceEnum.COST_EXPLORER,
         )
 
     @property

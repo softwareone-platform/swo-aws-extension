@@ -1,7 +1,7 @@
 import pytest
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.aws.errors import AWSError
+from swo_aws_extension.aws.errors import AWSError, S3BucketAlreadyOwnedError
 from swo_aws_extension.constants import (
     S3_BILLING_EXPORT_BUCKET_TEMPLATE,
     S3_BILLING_EXPORT_PREFIX_TEMPLATE,
@@ -92,6 +92,16 @@ def test_process_raises_unexpected_stop_on_aws_error(
 
     with pytest.raises(UnexpectedStopError):
         step.process(mpt_client, context)
+
+
+def test_process_skips_when_bucket_already_exists(
+    purchase_context, mock_aws_client, mpt_client, config
+):
+    context = purchase_context()
+    mock_aws_client.create_s3_bucket.side_effect = S3BucketAlreadyOwnedError("already owned")
+    step = CreateBillingExportBucket(config)
+
+    step.process(mpt_client, context)
 
 
 def test_post_step_advances_phase_to_setup_billing_exports(

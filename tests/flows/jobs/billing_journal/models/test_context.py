@@ -6,7 +6,7 @@ from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import B
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
 
 
-def test_initialization():
+def test_initialization() -> None:
     billing_period = BillingPeriod(start_date="2025-10-01", end_date="2025-11-01")
 
     result = BillingJournalContext(
@@ -29,11 +29,12 @@ def test_initialization():
         "authorizations": ["AUTH-1"],
         "pls_charge_percentage": Decimal("5.0"),
         "usage_source": BillingJournalUsageSourceEnum.COST_USAGE_REPORT,
+        "dry_run": False,
     }
     assert asdict(result) == expected
 
 
-def test_authorizations_defaults_to_none():
+def test_authorizations_defaults_to_none() -> None:
     billing_period = BillingPeriod(start_date="2025-01-01", end_date="2025-02-01")
 
     result = BillingJournalContext(
@@ -48,3 +49,4 @@ def test_authorizations_defaults_to_none():
     assert result.authorizations is None
     assert result.pls_charge_percentage == Decimal("5.0")
     assert result.usage_source == BillingJournalUsageSourceEnum.COST_USAGE_REPORT
+    assert result.dry_run is False

@@ -31,6 +31,7 @@ class JournalManager:  # noqa: WPS214
         self._billing_period = context.billing_period
         self._config = context.config
         self._notifier = context.notifier
+        self._dry_run = context.dry_run
 
     def get_pending_journal(self) -> Journal | None:
         """Obtain an existing pending journal or return None."""
@@ -57,7 +58,20 @@ class JournalManager:  # noqa: WPS214
         )
 
     def upload_journal(self, journal_id: str, journal_file_lines: list) -> None:
-        """Upload the journal lines as a file to the MPT API."""
+        """Upload the journal lines as a file to the MPT API.
+
+        When dry_run is enabled, the journal lines are logged instead of uploaded.
+        """
+        if self._dry_run:
+            logger.info(
+                "Dry run enabled. Skipping upload for journal %s (%d lines).",
+                journal_id,
+                len(journal_file_lines),
+            )
+            for entry in journal_file_lines:
+                logger.info(entry.to_jsonl())
+            return
+
         journal_file = "".join(entry.to_jsonl() for entry in journal_file_lines)
         final_file = BytesIO(journal_file.encode("utf-8"))
         logger.info("Uploading journal file for journal ID %s", journal_id)

@@ -70,12 +70,19 @@ class Command(StyledPrintCommand):
             default=[],
             help="list of specific authorizations separated by space",
         )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            default=False,
+            help="Print journal lines without uploading them to the MPT API",
+        )
 
     def handle(self, *args, **options):  # noqa: WPS110 WPS210
         """Run command."""
         year, month = options["year"], options["month"]
         authorizations = options["authorizations"]
         usage_source = options["usage_source"]
+        dry_run = options["dry_run"]
 
         error = self.validate(year, month, authorizations, usage_source)
         if error:
@@ -102,6 +109,7 @@ class Command(StyledPrintCommand):
             authorizations=authorizations,
             pls_charge_percentage=Decimal(str(config.pls_charge_percentage)),
             usage_source=BillingJournalUsageSourceEnum(usage_source),
+            dry_run=dry_run,
         )
         service = BillingJournalService(job_context)
         service.run()

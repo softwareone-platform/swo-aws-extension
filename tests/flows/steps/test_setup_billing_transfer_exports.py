@@ -142,7 +142,7 @@ def test_process_skips_views_without_arn(
     step.process(mpt_client, context)  # act
 
     mock_aws_client.create_billing_export.assert_not_called()
-    assert "no ARN" in caplog.text
+    assert "arn or billingViewArn" in caplog.text
 
 
 def test_process_handles_empty_views(purchase_context, mock_aws_client, mpt_client, config):
