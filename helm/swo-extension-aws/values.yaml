@@ -62,6 +62,7 @@ global:
   ConfluenceUser: default
   ConfluenceToken: ZGVmYXVsdA==
   ConfluenceBaseUrl: default
+  PlSChargePercentage: "5.0"
 
   cronjobs:
     order-querying:

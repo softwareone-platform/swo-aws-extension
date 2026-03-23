@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any
 
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
@@ -18,6 +19,7 @@ class BillingJournalContext:
     product_ids: list[str]
     notifier: Any
     authorizations: list[str] | None = None
+    pls_charge_percentage: Decimal = Decimal("5.0")
 
 
 @dataclass

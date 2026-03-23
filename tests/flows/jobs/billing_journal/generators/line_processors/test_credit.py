@@ -7,7 +7,7 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.cre
     CREDIT_PREFIX,
     SPP_PREFIX,
     SPP_SUFFIX,
-    CreditLineProcessor,
+    CreditJournalLineProcessor,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.context import LineProcessorContext
 from swo_aws_extension.flows.jobs.billing_journal.models.invoice import OrganizationInvoice
@@ -27,7 +27,7 @@ def journal_details():
 
 @pytest.fixture
 def processor():
-    return CreditLineProcessor()
+    return CreditJournalLineProcessor()
 
 
 @pytest.fixture

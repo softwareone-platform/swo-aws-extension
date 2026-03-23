@@ -3,6 +3,8 @@ from pathlib import Path
 
 from django.conf import settings
 
+DEFAULT_PLS_CHARGE_PERCENTAGE = 5.0
+
 
 class Config:
     """AWS extension configuration."""
@@ -195,6 +197,13 @@ class Config:
     def mpt_portal_base_url(self) -> str:
         """Get the base URL for the MPT Portal."""
         return settings.MPT_PORTAL_BASE_URL
+
+    @property
+    def pls_charge_percentage(self) -> float:
+        """Get the PLS charge percentage (defaults to 5.0)."""
+        return float(
+            settings.EXTENSION_CONFIG.get("PLS_CHARGE_PERCENTAGE", DEFAULT_PLS_CHARGE_PERCENTAGE),
+        )
 
     def _patch_path(self, file_path):
         """Fixes relative paths to be from the project root."""

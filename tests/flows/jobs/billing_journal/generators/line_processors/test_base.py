@@ -4,7 +4,7 @@ import pytest
 
 from swo_aws_extension.constants import AWSRecordTypeEnum
 from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.base import (
-    LineProcessor,
+    JournalLineProcessor,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.context import LineProcessorContext
 from swo_aws_extension.flows.jobs.billing_journal.models.invoice import (
@@ -50,7 +50,7 @@ def journal_details():
 
 @pytest.fixture
 def processor():
-    return LineProcessor()
+    return JournalLineProcessor()
 
 
 @pytest.fixture
@@ -121,7 +121,7 @@ def test_process_uses_default_invoice_id(processor, context):
     ],
 )
 def test_process_applies_name_affixes(context, prefix_name, suffix_name, expected_name):
-    processor = LineProcessor(prefix_name=prefix_name, suffix_name=suffix_name)
+    processor = JournalLineProcessor(prefix_name=prefix_name, suffix_name=suffix_name)
     metric = ServiceMetric(
         service_name="Amazon S3",
         record_type=AWSRecordTypeEnum.USAGE,

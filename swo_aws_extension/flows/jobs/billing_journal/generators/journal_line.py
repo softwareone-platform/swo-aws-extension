@@ -1,9 +1,12 @@
 from swo_aws_extension.constants import AWSRecordTypeEnum
 from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.base import (
-    LineProcessor,
+    JournalLineProcessor,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.credit import (
-    CreditLineProcessor,
+    CreditJournalLineProcessor,
+)
+from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.marketplace import (
+    MarketplaceJournalLineProcessor,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.context import LineProcessorContext
 from swo_aws_extension.flows.jobs.billing_journal.models.invoice import OrganizationInvoice
@@ -17,25 +20,31 @@ from swo_aws_extension.logger import get_logger
 logger = get_logger(__name__)
 
 
-def _build_processor_registry() -> dict[str, LineProcessor]:
-    default = LineProcessor()
-    credit = CreditLineProcessor()
+def _build_processor_registry(*, is_pls: bool = False) -> dict[str, JournalLineProcessor]:
+    default = JournalLineProcessor()
+    credit = CreditJournalLineProcessor()
+    marketplace = MarketplaceJournalLineProcessor()
 
-    return {
+    registry = {
         AWSRecordTypeEnum.USAGE: default,
         AWSRecordTypeEnum.SUPPORT: default,
         AWSRecordTypeEnum.RECURRING: default,
         AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE: default,
         AWSRecordTypeEnum.CREDIT: credit,
-        "MARKETPLACE": default,
+        "MARKETPLACE": marketplace,
     }
+
+    if is_pls:
+        registry.pop(AWSRecordTypeEnum.SUPPORT, None)
+
+    return registry
 
 
 class JournalLineGenerator:
     """Generates journal lines from account usage data using line processors."""
 
-    def __init__(self) -> None:
-        self._processors = _build_processor_registry()
+    def __init__(self, *, is_pls: bool = False) -> None:
+        self._processors = _build_processor_registry(is_pls=is_pls)
 
     def generate(
         self,

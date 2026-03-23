@@ -1,8 +1,8 @@
-from decimal import Decimal
-
 from swo_aws_extension.constants import DEC_ZERO
+from swo_aws_extension.flows.jobs.billing_journal.generators.currency import (
+    resolve_service_amount,
+)
 from swo_aws_extension.flows.jobs.billing_journal.models.context import LineProcessorContext
-from swo_aws_extension.flows.jobs.billing_journal.models.invoice import OrganizationInvoice
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import (
     InvoiceDetails,
     JournalLine,
@@ -12,7 +12,7 @@ from swo_aws_extension.flows.jobs.billing_journal.models.usage import ServiceMet
 ITEM_SKU = "AWS Usage"
 
 
-class LineProcessor:
+class JournalLineProcessor:
     """Base class for all line processors."""
 
     def __init__(
@@ -47,7 +47,8 @@ class LineProcessor:
         context: LineProcessorContext,
     ) -> JournalLine:
         service_name = f"{self._prefix_name}{metric.service_name}{self._suffix_name}"
-        service_amount = self._resolve_service_amount(metric, context.organization_invoice)
+        invoice_entity = context.organization_invoice.entities.get(metric.invoice_entity or "")
+        service_amount = resolve_service_amount(metric.amount, invoice_entity)
         invoice_details = InvoiceDetails(
             item_sku=ITEM_SKU,
             service_name=service_name,
@@ -57,20 +58,3 @@ class LineProcessor:
             invoice_id=metric.invoice_id or "invoice_id",
         )
         return JournalLine.build(ITEM_SKU, context.journal_details, invoice_details)
-
-    def _resolve_service_amount(
-        self,
-        metric: ServiceMetric,
-        organization_invoice: OrganizationInvoice,
-    ) -> Decimal:
-        invoice_entity_name = metric.invoice_entity or ""
-        invoice_entity = organization_invoice.entities.get(invoice_entity_name)
-        if not invoice_entity:
-            return metric.amount
-
-        if invoice_entity.payment_currency_code == invoice_entity.base_currency_code:
-            return metric.amount
-        if invoice_entity.exchange_rate <= DEC_ZERO:
-            return metric.amount
-
-        return round(metric.amount * invoice_entity.exchange_rate, 6)
