@@ -7,14 +7,17 @@ from pyarrow import parquet as pq
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import AWSRecordTypeEnum
-from swo_aws_extension.flows.jobs.billing_journal.generators.cost_usage_report.usage import (
+from swo_aws_extension.flows.jobs.billing_journal.generators.usage.cost_usage_report.usage import (
     CostUsageReportGenerator,
     S3ParquetReportFetcher,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
-from swo_aws_extension.flows.jobs.billing_journal.models.usage import OrganizationUsageResult
+from swo_aws_extension.flows.jobs.billing_journal.models.usage import (
+    OrganizationUsageResult,
+    ServiceMetric,
+)
 
-MODULE = "swo_aws_extension.flows.jobs.billing_journal.generators.cost_usage_report.usage"
+MODULE = "swo_aws_extension.flows.jobs.billing_journal.generators.usage.cost_usage_report.usage"
 
 S3_BUCKET = "my-billing-bucket"
 S3_PREFIX = "billing/exports"
@@ -118,7 +121,7 @@ def test_init_uses_constructor_parameters_for_s3_lookup(mock_aws_client, billing
     generator = CostUsageReportGenerator(mock_aws_client, S3_BUCKET, S3_PREFIX)
     mock_aws_client.list_s3_objects.return_value = []
 
-    generator.run("USD", MPA_ACCOUNT, billing_period)
+    generator.run("USD", MPA_ACCOUNT, billing_period)  # act
 
     mock_aws_client.list_s3_objects.assert_called_once_with(S3_BUCKET, S3_PREFIX)
 
@@ -127,6 +130,7 @@ def test_run_returns_empty_when_no_keys_found(generator, mock_aws_client, billin
     mock_aws_client.list_s3_objects.return_value = []
 
     result = generator.run("USD", MPA_ACCOUNT, billing_period)
+
     assert isinstance(result, OrganizationUsageResult)
     assert result.usage_by_account == {}
 
@@ -143,10 +147,20 @@ def test_run_preserves_row_level_usage_metrics(
     account_usage = result.usage_by_account.get("111111111111")
     assert account_usage is not None
     assert len(account_usage.metrics) == 2
-    assert account_usage.metrics[0].service_name == "AmazonEC2"
-    assert account_usage.metrics[0].record_type == AWSRecordTypeEnum.USAGE
-    assert account_usage.metrics[0].amount == Decimal("50.0")
-    assert account_usage.metrics[1].amount == Decimal("25.0")
+    assert account_usage.metrics[0] == ServiceMetric(
+        service_name="AmazonEC2",
+        record_type=AWSRecordTypeEnum.USAGE,
+        amount=Decimal("50.0"),
+        invoice_entity="Amazon Web Services, Inc.",
+        invoice_id=None,
+    )
+    assert account_usage.metrics[1] == ServiceMetric(
+        service_name="AmazonEC2",
+        record_type=AWSRecordTypeEnum.USAGE,
+        amount=Decimal("25.0"),
+        invoice_entity="Amazon Web Services, Inc.",
+        invoice_id=None,
+    )
 
 
 def test_run_sets_invoice_entity_from_rows(

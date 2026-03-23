@@ -361,11 +361,7 @@ class AWSClient:
                 owned by this account.
         """
         try:
-            s3_client = self._get_s3_client()
-            create_kwargs: dict = {"Bucket": bucket_name}
-            if region != "us-east-1":
-                create_kwargs["CreateBucketConfiguration"] = {"LocationConstraint": region}
-            s3_client.create_bucket(**create_kwargs)
+            self._create_s3_bucket(bucket_name, region)
         except ClientError as exc:
             if exc.response["Error"]["Code"] == "BucketAlreadyOwnedByYou":
                 logger.info(
@@ -375,6 +371,13 @@ class AWSClient:
             raise AWSError(f"Failed to create S3 bucket {bucket_name}: {exc}") from exc
         except Exception as exc:
             raise AWSError(f"Unexpected error creating S3 bucket {bucket_name}: {exc}") from exc
+
+    def _create_s3_bucket(self, bucket_name: str, region: str) -> None:
+        s3_client = self._get_s3_client()
+        create_kwargs: dict = {"Bucket": bucket_name}
+        if region != "us-east-1":
+            create_kwargs["CreateBucketConfiguration"] = {"LocationConstraint": region}
+        s3_client.create_bucket(**create_kwargs)
 
     @wrap_boto3_error
     def create_billing_export(

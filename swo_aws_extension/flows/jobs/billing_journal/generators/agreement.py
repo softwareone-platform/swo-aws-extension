@@ -9,21 +9,31 @@ from swo_aws_extension.constants import (
     S3_BILLING_EXPORT_PREFIX_TEMPLATE,
     SupportTypesEnum,
 )
+<<<<<<< HEAD
 from swo_aws_extension.flows.jobs.billing_journal.generators.cost_usage_report.usage import (
     CostUsageReportGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.discount.extra_discounts import (
     ExtraDiscountsManager,
 )
+=======
+>>>>>>> 8a2540c (MPT-19081 Journals from AWS Billing with Cost and Usage Reports (WIP))
 from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import InvoiceGenerator
 from swo_aws_extension.flows.jobs.billing_journal.generators.journal_line import (
     JournalLineGenerator,
 )
+<<<<<<< HEAD
 from swo_aws_extension.flows.jobs.billing_journal.generators.pls_charge_manager import (
     PlSChargeManager,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
+=======
+from swo_aws_extension.flows.jobs.billing_journal.generators.usage.generator import (
+>>>>>>> 8a2540c (MPT-19081 Journals from AWS Billing with Cost and Usage Reports (WIP))
     BaseOrganizationUsageGenerator,
+)
+from swo_aws_extension.flows.jobs.billing_journal.generators.usage.cost_usage_report.usage import (
+    CostUsageReportGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
 from swo_aws_extension.flows.jobs.billing_journal.models.invoice import OrganizationInvoice

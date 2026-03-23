@@ -8,7 +8,7 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import Invo
 from swo_aws_extension.flows.jobs.billing_journal.generators.report_processor import (
     ReportProcessor,
 )
-from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
+from swo_aws_extension.flows.jobs.billing_journal.generators.usage.generator import (
     BaseOrganizationUsageGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod

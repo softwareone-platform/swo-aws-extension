@@ -10,7 +10,7 @@ from pyarrow import parquet as pq
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import AWS_MARKETPLACE, AWSRecordTypeEnum
-from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
+from swo_aws_extension.flows.jobs.billing_journal.generators.usage.generator import (
     BaseOrganizationUsageGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod

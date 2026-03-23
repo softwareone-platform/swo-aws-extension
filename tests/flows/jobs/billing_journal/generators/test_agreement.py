@@ -13,7 +13,7 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
 from swo_aws_extension.flows.jobs.billing_journal.generators.journal_line import (
     JournalLineGenerator,
 )
-from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
+from swo_aws_extension.flows.jobs.billing_journal.generators.usage.generator import (
     BaseOrganizationUsageGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.invoice import (

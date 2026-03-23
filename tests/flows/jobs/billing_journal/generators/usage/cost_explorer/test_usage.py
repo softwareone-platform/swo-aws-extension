@@ -5,7 +5,7 @@ import pytest
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import AWSRecordTypeEnum
-from swo_aws_extension.flows.jobs.billing_journal.generators.cost_explorer.usage import (
+from swo_aws_extension.flows.jobs.billing_journal.generators.usage.cost_explorer.usage import (
     CostExplorerUsageGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
