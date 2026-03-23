@@ -9,6 +9,7 @@ from swo_aws_extension.config import get_config
 from swo_aws_extension.constants import (
     COMMAND_INVALID_BILLING_DATE,
     COMMAND_INVALID_BILLING_DATE_FUTURE,
+    BillingJournalUsageSourceEnum,
 )
 from swo_aws_extension.flows.jobs.billing_journal.billing_journal_service import (
     BillingJournalService,
@@ -23,6 +24,7 @@ MIN_BILLING_YEAR = 2025
 MAX_MONTH = 12
 MIN_BILLING_DAY = 5
 AUTH_PATTERN = re.compile(r"^AUT-(?:\d+-)*\d+$")
+USAGE_SOURCE_CHOICES = tuple(source.value for source in BillingJournalUsageSourceEnum)
 
 
 class Command(StyledPrintCommand):
@@ -36,6 +38,7 @@ class Command(StyledPrintCommand):
         today = dt.datetime.now(tz=dt.UTC)
         default_year = today.year - 1 if today.month == 1 else today.year
         default_month = MAX_MONTH if today.month == 1 else today.month - 1
+        config = get_config()
 
         parser.add_argument(
             "--year",
@@ -48,6 +51,16 @@ class Command(StyledPrintCommand):
             type=int,
             default=default_month,
             help=f"Month for billing (1-12, default: {default_month})",
+        )
+        parser.add_argument(
+            "--usage-source",
+            dest="usage_source",
+            choices=USAGE_SOURCE_CHOICES,
+            default=config.billing_journal_usage_source,
+            help=(
+                "Usage source backend for billing journals "
+                f"(default: {config.billing_journal_usage_source})"
+            ),
         )
         mutex_group = parser.add_mutually_exclusive_group()
         mutex_group.add_argument(
@@ -62,8 +75,9 @@ class Command(StyledPrintCommand):
         """Run command."""
         year, month = options["year"], options["month"]
         authorizations = options["authorizations"]
+        usage_source = options["usage_source"]
 
-        error = self.validate(year, month, authorizations)
+        error = self.validate(year, month, authorizations, usage_source)
         if error:
             self.error(error)
             return
@@ -87,6 +101,7 @@ class Command(StyledPrintCommand):
             notifier=notifier,
             authorizations=authorizations,
             pls_charge_percentage=Decimal(str(config.pls_charge_percentage)),
+            usage_source=BillingJournalUsageSourceEnum(usage_source),
         )
         service = BillingJournalService(job_context)
         service.run()
@@ -98,9 +113,14 @@ class Command(StyledPrintCommand):
         year: int,
         month: int,
         authorizations: list,
+        usage_source: str,
     ) -> str | None:
         """Validate command parameters. Returns error message or None if valid."""
         error = self._validate_year_month(year, month)
+        if error:
+            return error
+
+        error = self._validate_usage_source(usage_source)
         if error:
             return error
 
@@ -132,4 +152,10 @@ class Command(StyledPrintCommand):
         if year == prev_year and month == prev_month and now.day < MIN_BILLING_DAY:
             return COMMAND_INVALID_BILLING_DATE
 
+        return None
+
+    def _validate_usage_source(self, usage_source: str) -> str | None:
+        if usage_source not in USAGE_SOURCE_CHOICES:
+            valid_choices = ", ".join(USAGE_SOURCE_CHOICES)
+            return f"Invalid usage source '{usage_source}'. Must be one of: {valid_choices}."
         return None

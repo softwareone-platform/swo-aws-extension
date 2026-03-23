@@ -3,6 +3,8 @@ from pathlib import Path
 
 from django.conf import settings
 
+from swo_aws_extension.constants import BillingJournalUsageSourceEnum
+
 DEFAULT_PLS_CHARGE_PERCENTAGE = 5.0
 
 
@@ -167,6 +169,14 @@ class Config:
     def report_invitations_folder(self) -> str:
         """Get the folder name in Azure Storage Blob container for invitations reports."""
         return settings.EXTENSION_CONFIG["REPORT_INVITATIONS_FOLDER"]
+
+    @property
+    def billing_journal_usage_source(self) -> str:
+        """Get the configured usage source for billing journal generation."""
+        return settings.EXTENSION_CONFIG.get(
+            "BILLING_JOURNAL_USAGE_SOURCE",
+            BillingJournalUsageSourceEnum.COST_USAGE_REPORT,
+        )
 
     @property
     def azure_storage_sas_expiry_days(self) -> int:

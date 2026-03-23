@@ -7,33 +7,27 @@ from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import (
     S3_BILLING_EXPORT_BUCKET_TEMPLATE,
     S3_BILLING_EXPORT_PREFIX_TEMPLATE,
+    BillingJournalUsageSourceEnum,
     SupportTypesEnum,
-)
-<<<<<<< HEAD
-from swo_aws_extension.flows.jobs.billing_journal.generators.cost_usage_report.usage import (
-    CostUsageReportGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.discount.extra_discounts import (
     ExtraDiscountsManager,
 )
-=======
->>>>>>> 8a2540c (MPT-19081 Journals from AWS Billing with Cost and Usage Reports (WIP))
 from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import InvoiceGenerator
 from swo_aws_extension.flows.jobs.billing_journal.generators.journal_line import (
     JournalLineGenerator,
 )
-<<<<<<< HEAD
 from swo_aws_extension.flows.jobs.billing_journal.generators.pls_charge_manager import (
     PlSChargeManager,
 )
-from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
-=======
-from swo_aws_extension.flows.jobs.billing_journal.generators.usage.generator import (
->>>>>>> 8a2540c (MPT-19081 Journals from AWS Billing with Cost and Usage Reports (WIP))
-    BaseOrganizationUsageGenerator,
+from swo_aws_extension.flows.jobs.billing_journal.generators.usage.cost_explorer.usage import (
+    CostExplorerUsageGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.usage.cost_usage_report.usage import (
     CostUsageReportGenerator,
+)
+from swo_aws_extension.flows.jobs.billing_journal.generators.usage.generator import (
+    BaseOrganizationUsageGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
 from swo_aws_extension.flows.jobs.billing_journal.models.invoice import OrganizationInvoice
@@ -77,6 +71,7 @@ class AgreementJournalGenerator:
         self._aws_client = aws_client
         self._pm_account_id = pm_account_id
         self._usage_generator = usage_generator
+        self._usage_source = context.usage_source
 
     @with_log_context(lambda _, agreement, **kwargs: agreement.get("id"))
     @agreement_trace_span
@@ -101,11 +96,7 @@ class AgreementJournalGenerator:
         )
         logger.info("Found %d invoice entities", len(invoice_result.invoice.entities))
 
-        usage_generator = self._usage_generator or CostUsageReportGenerator(
-            self._aws_client,
-            S3_BILLING_EXPORT_BUCKET_TEMPLATE.format(pm_account_id=self._pm_account_id),
-            S3_BILLING_EXPORT_PREFIX_TEMPLATE.format(mpa_account_id=mpa_account),
-        )
+        usage_generator = self._usage_generator or self._build_usage_generator(mpa_account)
         usage_result = usage_generator.run(
             self._authorization_currency,
             mpa_account,
@@ -168,3 +159,12 @@ class AgreementJournalGenerator:
             )
 
         return AgreementJournalResult(lines=all_lines, report=usage_result.reports)
+
+    def _build_usage_generator(self, mpa_account: str) -> BaseOrganizationUsageGenerator:
+        if self._usage_source == BillingJournalUsageSourceEnum.COST_EXPLORER:
+            return CostExplorerUsageGenerator(self._aws_client)
+        return CostUsageReportGenerator(
+            self._aws_client,
+            S3_BILLING_EXPORT_BUCKET_TEMPLATE.format(pm_account_id=self._pm_account_id),
+            S3_BILLING_EXPORT_PREFIX_TEMPLATE.format(mpa_account_id=mpa_account),
+        )

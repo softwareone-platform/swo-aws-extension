@@ -6,6 +6,7 @@ from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import (
     S3_BILLING_EXPORT_BUCKET_TEMPLATE,
     S3_BILLING_EXPORT_PREFIX_TEMPLATE,
+    BillingJournalUsageSourceEnum,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
     AgreementJournalGenerator,
@@ -89,7 +90,14 @@ def test_run_uses_cost_usage_report_when_no_usage_generator_is_injected(
     mock_extra_discounts_manager_cls.return_value.process.return_value = []
     mock_pls_charge_manager_cls.return_value.process.return_value = []
     mock_account_usage = mocker.MagicMock(spec=AccountUsage)
-    mock_cost_usage_cls = mocker.patch(f"{MODULE}.CostUsageReportGenerator", autospec=True)
+    mock_cost_usage_cls = mocker.patch(
+        f"{MODULE}.CostUsageReportGenerator",
+        autospec=True,
+    )
+    mock_cost_explorer_cls = mocker.patch(
+        f"{MODULE}.CostExplorerUsageGenerator",
+        autospec=True,
+    )
     mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
     mock_usage_result.reports = OrganizationReport()
     mock_usage_result.usage_by_account = {"ACC-1": mock_account_usage}
@@ -115,6 +123,7 @@ def test_run_uses_cost_usage_report_when_no_usage_generator_is_injected(
         S3_BILLING_EXPORT_BUCKET_TEMPLATE.format(pm_account_id=_PM_ACCOUNT_ID),
         S3_BILLING_EXPORT_PREFIX_TEMPLATE.format(mpa_account_id=_MPA_ACCOUNT_ID),
     )
+    mock_cost_explorer_cls.assert_not_called()
     mock_cost_usage_cls.return_value.run.assert_called_once_with(
         "USD",
         _MPA_ACCOUNT_ID,
@@ -142,6 +151,7 @@ def test_run_uses_injected_usage_generator(
     mock_pls_charge_manager_cls.return_value.process.return_value = []
     mock_account_usage = mocker.MagicMock(spec=AccountUsage)
     mock_cost_usage_cls = mocker.patch(f"{MODULE}.CostUsageReportGenerator", autospec=True)
+    mock_cost_explorer_cls = mocker.patch(f"{MODULE}.CostExplorerUsageGenerator", autospec=True)
     mock_usage_generator = mocker.MagicMock(spec=BaseOrganizationUsageGenerator)
     mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
     mock_usage_result.reports = OrganizationReport()
@@ -164,6 +174,7 @@ def test_run_uses_injected_usage_generator(
     assert result.lines == [mock_journal_line]
     assert result.report == mock_usage_result.reports
     mock_cost_usage_cls.assert_not_called()
+    mock_cost_explorer_cls.assert_not_called()
     mock_usage_generator.run.assert_called_once_with(
         "USD",
         _MPA_ACCOUNT_ID,
@@ -171,6 +182,50 @@ def test_run_uses_injected_usage_generator(
         organization_invoice=organization_invoice,
     )
     mock_pls_charge_manager_cls.assert_not_called()
+
+
+def test_run_uses_cost_explorer_when_context_source_is_cost_explorer(
+    mocker: Any,
+    mock_context: Any,
+    mock_aws_client: Any,
+    mock_line_generator_cls: Any,
+    mock_invoice_generator_cls: Any,
+    mock_extra_discounts_manager_cls: Any,
+    mock_pls_charge_manager_cls: Any,
+) -> None:
+    agreement = _agreement()
+    mock_context.usage_source = BillingJournalUsageSourceEnum.COST_EXPLORER
+    mock_journal_line = mocker.MagicMock(spec=JournalLine)
+    mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
+    mock_generator_instance.generate.return_value = [mock_journal_line]
+    mock_line_generator_cls.return_value = mock_generator_instance
+    mock_extra_discounts_manager_cls.return_value.process.return_value = []
+    mock_pls_charge_manager_cls.return_value.process.return_value = []
+    mock_account_usage = mocker.MagicMock(spec=AccountUsage)
+    mock_cost_usage_cls = mocker.patch(f"{MODULE}.CostUsageReportGenerator", autospec=True)
+    mock_cost_explorer_cls = mocker.patch(f"{MODULE}.CostExplorerUsageGenerator", autospec=True)
+    mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
+    mock_usage_result.reports = OrganizationReport()
+    mock_usage_result.usage_by_account = {"ACC-1": mock_account_usage}
+    mock_cost_explorer_cls.return_value.run.return_value = mock_usage_result
+    organization_invoice = OrganizationInvoice()
+    mock_invoice_generator_cls.return_value.run.return_value = OrganizationInvoiceResult(
+        invoice=organization_invoice,
+    )
+    generator = AgreementJournalGenerator("USD", mock_context, mock_aws_client, _PM_ACCOUNT_ID)
+
+    result = generator.run(agreement)
+
+    assert result.lines == [mock_journal_line]
+    assert result.report == mock_usage_result.reports
+    mock_cost_usage_cls.assert_not_called()
+    mock_cost_explorer_cls.assert_called_once_with(mock_aws_client)
+    mock_cost_explorer_cls.return_value.run.assert_called_once_with(
+        "USD",
+        _MPA_ACCOUNT_ID,
+        mock_context.billing_period,
+        organization_invoice=organization_invoice,
+    )
 
 
 def test_run_adds_discount_and_pls_lines_for_resold_support(
@@ -195,10 +250,10 @@ def test_run_adds_discount_and_pls_lines_for_resold_support(
     mock_pls_charge_manager_cls.return_value.process.return_value = [mock_pls_line]
     mock_account_usage = mocker.MagicMock(spec=AccountUsage)
     mock_cost_usage_cls = mocker.patch(f"{MODULE}.CostUsageReportGenerator", autospec=True)
-    mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
-    mock_usage_result.reports = OrganizationReport()
-    mock_usage_result.usage_by_account = {"ACC-1": mock_account_usage}
-    mock_cost_usage_cls.return_value.run.return_value = mock_usage_result
+    mock_cost_usage_cls.return_value.run.return_value = OrganizationUsageResult(
+        reports=OrganizationReport(),
+        usage_by_account={"ACC-1": mock_account_usage},
+    )
     organization_invoice = OrganizationInvoice()
     mock_invoice_generator_cls.return_value.run.return_value = OrganizationInvoiceResult(
         invoice=organization_invoice,
@@ -208,7 +263,7 @@ def test_run_adds_discount_and_pls_lines_for_resold_support(
     result = generator.run(agreement)
 
     assert result.lines == [mock_journal_line, mock_discount_line, mock_pls_line]
-    assert result.report == mock_usage_result.reports
+    assert result.report == OrganizationReport()
     mock_line_generator_cls.assert_called_once_with(is_pls=True)
     mock_pls_charge_manager_cls.assert_called_once_with()
 
@@ -228,6 +283,7 @@ def test_run_returns_empty_when_no_mpa_account(
         "parameters": {"ordering": [], "fulfillment": []},
     }
     mock_cost_usage_cls = mocker.patch(f"{MODULE}.CostUsageReportGenerator", autospec=True)
+    mock_cost_explorer_cls = mocker.patch(f"{MODULE}.CostExplorerUsageGenerator", autospec=True)
     generator = AgreementJournalGenerator("USD", mock_context, mock_aws_client, _PM_ACCOUNT_ID)
 
     result = generator.run(agreement)
@@ -237,6 +293,7 @@ def test_run_returns_empty_when_no_mpa_account(
     mock_line_generator_cls.assert_not_called()
     mock_invoice_generator_cls.assert_not_called()
     mock_cost_usage_cls.assert_not_called()
+    mock_cost_explorer_cls.assert_not_called()
     mock_extra_discounts_manager_cls.assert_not_called()
     mock_pls_charge_manager_cls.assert_not_called()
 

@@ -23,6 +23,13 @@ MONTHS_PER_YEAR = 12
 AWS_MARKETPLACE = "AWS Marketplace"
 
 
+class BillingJournalUsageSourceEnum(StrEnum):
+    """Supported usage data sources for billing journal generation."""
+
+    COST_EXPLORER = "cost_explorer"
+    COST_USAGE_REPORT = "cost_usage_report"
+
+
 class AgreementStatusEnum(StrEnum):
     """Agreement status enum."""
 

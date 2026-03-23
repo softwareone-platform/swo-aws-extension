@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from swo_aws_extension.constants import BillingJournalUsageSourceEnum
 from swo_aws_extension.flows.jobs.billing_journal.journal_manager import JournalManager
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
@@ -41,6 +42,7 @@ def mock_context(mock_mpt_client, mock_billing_client):
     context.notifier = MagicMock()
     context.product_ids = ["PROD-1"]
     context.pls_charge_percentage = Decimal("5.0")
+    context.usage_source = BillingJournalUsageSourceEnum.COST_USAGE_REPORT
     return context
 
 

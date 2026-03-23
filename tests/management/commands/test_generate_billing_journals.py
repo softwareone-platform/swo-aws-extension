@@ -7,6 +7,7 @@ from freezegun import freeze_time
 from swo_aws_extension.constants import (
     COMMAND_INVALID_BILLING_DATE,
     COMMAND_INVALID_BILLING_DATE_FUTURE,
+    BillingJournalUsageSourceEnum,
 )
 
 MODULE = "swo_aws_extension.management.commands.generate_billing_journals"
@@ -110,6 +111,74 @@ def test_command_with_valid_year_and_month(mock_service, command_output):
     assert "Start generate_billing_journals for 2025-03 (all)" in output
     assert not error_output
     mock_service.return_value.run.assert_called_once()
+    context = mock_service.call_args.args[0]
+    assert context.usage_source == BillingJournalUsageSourceEnum.COST_USAGE_REPORT
+
+
+def test_command_uses_configured_usage_source(mock_service, command_output, settings):
+    settings.EXTENSION_CONFIG = {
+        **settings.EXTENSION_CONFIG,
+        "BILLING_JOURNAL_USAGE_SOURCE": "cost_explorer",
+    }
+
+    result = call_command(
+        "generate_billing_journals",
+        year=VALID_YEAR,
+        month=3,
+        stdout=command_output["out"],
+        stderr=command_output["err"],
+    )
+
+    assert result is None
+    output, error_output = _get_output(command_output)
+    assert "Start generate_billing_journals for 2025-03 (all)" in output
+    assert not error_output
+    context = mock_service.call_args.args[0]
+    assert context.usage_source == BillingJournalUsageSourceEnum.COST_EXPLORER
+
+
+def test_command_explicit_usage_source_overrides_config(mock_service, command_output, settings):
+    settings.EXTENSION_CONFIG = {
+        **settings.EXTENSION_CONFIG,
+        "BILLING_JOURNAL_USAGE_SOURCE": "cost_usage_report",
+    }
+
+    result = call_command(
+        "generate_billing_journals",
+        year=VALID_YEAR,
+        month=3,
+        usage_source="cost_explorer",
+        stdout=command_output["out"],
+        stderr=command_output["err"],
+    )
+
+    assert result is None
+    output, error_output = _get_output(command_output)
+    assert "Start generate_billing_journals for 2025-03 (all)" in output
+    assert not error_output
+    context = mock_service.call_args.args[0]
+    assert context.usage_source == BillingJournalUsageSourceEnum.COST_EXPLORER
+
+
+def test_command_invalid_configured_usage_source_fails(mock_service, command_output, settings):
+    settings.EXTENSION_CONFIG = {
+        **settings.EXTENSION_CONFIG,
+        "BILLING_JOURNAL_USAGE_SOURCE": "invalid-source",
+    }
+
+    result = call_command(
+        "generate_billing_journals",
+        year=VALID_YEAR,
+        month=3,
+        stdout=command_output["out"],
+        stderr=command_output["err"],
+    )
+
+    assert result is None
+    output, error_output = _get_output(command_output)
+    assert not output
+    assert "Invalid usage source 'invalid-source'." in error_output
+    mock_service.return_value.run.assert_not_called()
 
 
 @pytest.mark.parametrize(

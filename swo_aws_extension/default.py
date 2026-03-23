@@ -210,6 +210,10 @@ MPT_ORDERS_API_POLLING_INTERVAL_SECS = int(os.getenv("MPT_ORDERS_API_POLLING_INT
 
 EXTENSION_CONFIG = {
     "DUE_DATE_DAYS": "30",
+    "BILLING_JOURNAL_USAGE_SOURCE": os.getenv(
+        "BILLING_JOURNAL_USAGE_SOURCE",
+        "cost_usage_report",
+    ),
 }
 
 MPT_SETUP_CONTEXTS_FUNC = os.getenv(

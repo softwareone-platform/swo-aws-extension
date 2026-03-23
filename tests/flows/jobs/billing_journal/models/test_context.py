@@ -1,6 +1,7 @@
 from dataclasses import asdict
 from decimal import Decimal
 
+from swo_aws_extension.constants import BillingJournalUsageSourceEnum
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
 
@@ -27,6 +28,7 @@ def test_initialization():
         "notifier": "notifier",
         "authorizations": ["AUTH-1"],
         "pls_charge_percentage": Decimal("5.0"),
+        "usage_source": BillingJournalUsageSourceEnum.COST_USAGE_REPORT,
     }
     assert asdict(result) == expected
 
@@ -45,3 +47,4 @@ def test_authorizations_defaults_to_none():
 
     assert result.authorizations is None
     assert result.pls_charge_percentage == Decimal("5.0")
+    assert result.usage_source == BillingJournalUsageSourceEnum.COST_USAGE_REPORT
