@@ -40,6 +40,7 @@ def mock_context(mock_mpt_client, mock_billing_client):
     context.config.mpt_portal_base_url = "https://mpt.test"
     context.notifier = MagicMock()
     context.product_ids = ["PROD-1"]
+    context.pls_charge_percentage = Decimal("5.0")
     return context
 
 

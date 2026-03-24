@@ -1,5 +1,6 @@
 import datetime as dt
 import re
+from decimal import Decimal
 
 from django.conf import settings
 from mpt_extension_sdk.core.utils import setup_client
@@ -85,6 +86,7 @@ class Command(StyledPrintCommand):
             product_ids=settings.MPT_PRODUCTS_IDS,
             notifier=notifier,
             authorizations=authorizations,
+            pls_charge_percentage=Decimal(str(config.pls_charge_percentage)),
         )
         service = BillingJournalService(job_context)
         service.run()

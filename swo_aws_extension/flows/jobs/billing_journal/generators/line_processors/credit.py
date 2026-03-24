@@ -2,7 +2,7 @@ from typing import override
 
 from swo_aws_extension.constants import DEC_ZERO, AWSRecordTypeEnum
 from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.base import (
-    LineProcessor,
+    JournalLineProcessor,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.context import LineProcessorContext
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import JournalLine
@@ -16,7 +16,7 @@ SPP_SUFFIX = (
 )
 
 
-class CreditLineProcessor(LineProcessor):
+class CreditJournalLineProcessor(JournalLineProcessor):
     """Generates journal lines for Credit metrics.
 
     Always generates a credit line with the CREDIT prefix. When the principal invoice amount is
@@ -25,7 +25,7 @@ class CreditLineProcessor(LineProcessor):
 
     def __init__(self) -> None:
         super().__init__(prefix_name=CREDIT_PREFIX)
-        self._spp_processor = LineProcessor(
+        self._spp_processor = JournalLineProcessor(
             prefix_name=SPP_PREFIX,
             suffix_name=SPP_SUFFIX,
         )

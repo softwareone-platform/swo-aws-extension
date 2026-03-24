@@ -245,3 +245,48 @@ def test_generate_credit_processor_integration(journal_details, generator):
     assert result[0].description.value1 == f"{CREDIT_PREFIX}Amazon S3"
     assert result[1].description.value1 == f"{SPP_PREFIX}Amazon S3{SPP_SUFFIX}"
     assert result[1].price.pp_x1 == Decimal("-5.00")
+
+
+def test_generate_excludes_marketplace_tax(journal_details, generator, organization_invoice):
+    metrics = [
+        ServiceMetric(
+            service_name="CloudGuard Network Security",
+            record_type="MARKETPLACE",
+            amount=Decimal("1310.40"),
+        ),
+        ServiceMetric(
+            service_name="Tax",
+            record_type="MARKETPLACE",
+            amount=Decimal("248.98"),
+        ),
+    ]
+    account_usage = AccountUsage(metrics=metrics)
+
+    result = generator.generate("ACC-001", account_usage, journal_details, organization_invoice)
+
+    assert len(result) == 1
+    assert result[0].description.value1 == "CloudGuard Network Security"
+
+
+def test_generate_excludes_support_when_pls_active(journal_details, organization_invoice):
+    test_generator = JournalLineGenerator(is_pls=True)
+    metrics = [
+        ServiceMetric(
+            service_name="Amazon S3",
+            record_type=AWSRecordTypeEnum.USAGE,
+            amount=Decimal("100.00"),
+        ),
+        ServiceMetric(
+            service_name="AWS Support",
+            record_type=AWSRecordTypeEnum.SUPPORT,
+            amount=Decimal("10.00"),
+        ),
+    ]
+    account_usage = AccountUsage(metrics=metrics)
+
+    result = test_generator.generate(
+        "ACC-001", account_usage, journal_details, organization_invoice
+    )
+
+    assert len(result) == 1
+    assert result[0].description.value1 == "Amazon S3"

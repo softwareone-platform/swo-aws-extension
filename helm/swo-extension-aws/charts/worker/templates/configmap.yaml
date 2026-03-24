@@ -53,3 +53,4 @@ data:
   EXT_PENDING_ORDERS_INFORMATION_REPORT_PAGE_ID: {{ .Values.global.PendingOrdersInformationReportPageId | quote }}
   EXT_CONFLUENCE_BASE_URL: {{ .Values.global.ConfluenceBaseUrl | quote }}
   EXT_CONFLUENCE_USER: {{ .Values.global.ConfluenceUser | quote }}
+  EXT_PLS_CHARGE_PERCENTAGE: {{ .Values.global.PlSChargePercentage | quote }}
