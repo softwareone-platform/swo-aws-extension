@@ -462,3 +462,30 @@ def set_fulfillment_parameter_value(
     )
     fulfillment_param["value"] = parameter_value
     return updated_order
+
+
+def get_pls_discount(source: dict[str, Any]) -> str | None:
+    """Get the PLS discount from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.PLS_DISCOUNT.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def get_service_discount(source: dict[str, Any]) -> str | None:
+    """Get the service discount from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.SERVICE_DISCOUNT.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def get_support_discount(source: dict[str, Any]) -> str | None:
+    """Get the support discount from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.SUPPORT_DISCOUNT.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)

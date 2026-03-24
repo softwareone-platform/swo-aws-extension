@@ -3,6 +3,9 @@ import pytest
 from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
     AgreementJournalGenerator,
 )
+from swo_aws_extension.flows.jobs.billing_journal.generators.discount.extra_discounts import (
+    ExtraDiscountsManager,
+)
 from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import InvoiceGenerator
 from swo_aws_extension.flows.jobs.billing_journal.generators.journal_line import (
     JournalLineGenerator,
@@ -35,6 +38,11 @@ def mock_line_generator_cls(mocker):
 
 
 @pytest.fixture
+def mock_extra_discounts_manager_cls(mocker):
+    return mocker.patch(f"{MODULE}.ExtraDiscountsManager", autospec=True)
+
+
+@pytest.fixture
 def mock_pls_charge_manager_cls(mocker):
     return mocker.patch(f"{MODULE}.PlSChargeManager", autospec=True)
 
@@ -43,6 +51,7 @@ def test_run(
     mocker,
     mock_context,
     mock_line_generator_cls,
+    mock_extra_discounts_manager_cls,
     mock_pls_charge_manager_cls,
 ):
     agreement = {
@@ -52,13 +61,18 @@ def test_run(
             "ordering": [
                 {"externalId": "supportType", "value": "ResoldSupport"},
             ],
+            "fulfillment": [],
         },
     }
     mock_journal_line = mocker.MagicMock(spec=JournalLine)
+    mock_discount_line = mocker.MagicMock(spec=JournalLine)
     mock_pls_line = mocker.MagicMock(spec=JournalLine)
     mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
     mock_generator_instance.generate.return_value = [mock_journal_line]
     mock_line_generator_cls.return_value = mock_generator_instance
+    mock_discounts_instance = mocker.MagicMock(spec=ExtraDiscountsManager)
+    mock_discounts_instance.process.return_value = [mock_discount_line]
+    mock_extra_discounts_manager_cls.return_value = mock_discounts_instance
     mock_pls_instance = mocker.MagicMock(spec=PlSChargeManager)
     mock_pls_instance.process.return_value = [mock_pls_line]
     mock_pls_charge_manager_cls.return_value = mock_pls_instance
@@ -81,9 +95,10 @@ def test_run(
 
     result = generator.run(agreement)
 
-    assert result == [mock_journal_line, mock_pls_line]
+    assert result == [mock_journal_line, mock_discount_line, mock_pls_line]
     mock_invoice_generator.run.assert_called_once()
     mock_generator_instance.generate.assert_called_once()
+    mock_discounts_instance.process.assert_called_once()
     mock_pls_instance.process.assert_called_once()
     call_args = mock_generator_instance.generate.call_args
     assert call_args[0][0] == "ACC-1"

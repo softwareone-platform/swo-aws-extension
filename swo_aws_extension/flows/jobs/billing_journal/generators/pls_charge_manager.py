@@ -4,8 +4,8 @@ from swo_aws_extension.constants import (
     DEC_ZERO,
     AWSRecordTypeEnum,
 )
-from swo_aws_extension.flows.jobs.billing_journal.generators.currency import (
-    resolve_service_amount,
+from swo_aws_extension.flows.jobs.billing_journal.generators.usage_utils import (
+    calculate_total_by_record_types,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.invoice import OrganizationInvoice
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import (
@@ -74,17 +74,11 @@ class PlSChargeManager:
         usage_result: OrganizationUsageResult,
         organization_invoice: OrganizationInvoice,
     ) -> Decimal:
-        total = DEC_ZERO
-        for account_usage in usage_result.usage_by_account.values():
-            usage_metrics = list(account_usage.get_metrics_by_record_type(AWSRecordTypeEnum.USAGE))
-            total += sum(
-                resolve_service_amount(
-                    metric.amount,
-                    organization_invoice.entities.get(metric.invoice_entity or ""),
-                )
-                for metric in usage_metrics
-            )
-        return total
+        return calculate_total_by_record_types(
+            usage_result,
+            organization_invoice,
+            {AWSRecordTypeEnum.USAGE},
+        )
 
     def _calculate_charge_amount(self, base_amount: Decimal, percentage: Decimal) -> Decimal:
         charge = base_amount * (percentage / Decimal(100))

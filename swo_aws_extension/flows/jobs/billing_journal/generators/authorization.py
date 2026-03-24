@@ -97,6 +97,7 @@ class AuthorizationJournalGenerator:
                     f"Failed to generate billing journal for {agreement_id}: {exc}",
                 )
                 continue
+            logger.info("Generated %d journal lines", len(lines))
             journal_file_lines.extend(lines)
         return journal_file_lines
 
