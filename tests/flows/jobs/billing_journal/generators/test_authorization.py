@@ -13,6 +13,10 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
     CostExplorerUsageGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import JournalLine
+from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
+    AgreementJournalResult,
+    AuthorizationJournalResult,
+)
 
 MODULE = "swo_aws_extension.flows.jobs.billing_journal.generators.authorization"
 
@@ -67,7 +71,7 @@ def test_no_agreements_returns_empty_list(
 
     result = generator.run(authorization)
 
-    assert result == []
+    assert result == AuthorizationJournalResult()
     mock_agreement_generator_cls.assert_not_called()
 
 
@@ -84,14 +88,14 @@ def test_processes_agreements(
     mock_get_agreements.return_value = [{"id": "AGR-1"}, {"id": "AGR-2"}]
     mock_journal_line = mocker.MagicMock(spec=JournalLine)
     mock_agr_gen = mocker.MagicMock(spec=AgreementJournalGenerator)
-    mock_agr_gen.run.return_value = [mock_journal_line]
+    mock_agr_gen.run.return_value = AgreementJournalResult(lines=[mock_journal_line])
     mock_agreement_generator_cls.return_value = mock_agr_gen
     generator = AuthorizationJournalGenerator(mock_context)
 
     result = generator.run(authorization)
 
     assert mock_agr_gen.run.call_count == 2
-    assert result == [mock_journal_line, mock_journal_line]
+    assert result.lines == [mock_journal_line, mock_journal_line]
 
 
 def test_exception_sends_error(
@@ -112,7 +116,7 @@ def test_exception_sends_error(
 
     result = generator.run(authorization)
 
-    assert result == []
+    assert result == AuthorizationJournalResult()
     expected_message = "Failed to generate billing journal for AGR-1: Test Error"
     mock_context.notifier.send_error.assert_called_once_with(
         BILLING_JOURNAL_ERROR_TITLE, expected_message

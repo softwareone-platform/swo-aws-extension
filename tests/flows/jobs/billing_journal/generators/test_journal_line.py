@@ -277,7 +277,7 @@ def test_generate_excludes_support_when_pls_active(journal_details, organization
             amount=Decimal("100.00"),
         ),
         ServiceMetric(
-            service_name="AWS Support",
+            service_name="AWS Support (Enterprise)",
             record_type=AWSRecordTypeEnum.SUPPORT,
             amount=Decimal("10.00"),
         ),

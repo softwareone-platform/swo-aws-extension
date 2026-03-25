@@ -14,7 +14,9 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
     CostExplorerUsageGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
-from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import JournalLine
+from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
+    AuthorizationJournalResult,
+)
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 from swo_aws_extension.utils.decorators import with_log_context
@@ -37,14 +39,14 @@ class AuthorizationJournalGenerator:
     @dynamic_trace_span(
         lambda _, authorization, **kwargs: f"Authorization {authorization.get('id')}",
     )
-    def run(self, authorization: dict) -> list[JournalLine]:
+    def run(self, authorization: dict) -> AuthorizationJournalResult:
         """Generate billing journal for the given authorization.
 
         Args:
             authorization: The authorization data to process.
 
         Returns:
-            List of JournalLine objects.
+            AuthorizationJournalResult containing lines and generated reports.
         """
         auth_id = authorization.get("id")
         pma_account = authorization.get("externalIds", {}).get("operations", "")
@@ -58,7 +60,7 @@ class AuthorizationJournalGenerator:
 
         if not agreements:
             logger.info("No agreements found")
-            return []
+            return AuthorizationJournalResult()
         logger.info("Found %d agreements", len(agreements))
         aws_client = AWSClient(self._config, pma_account, self._config.management_role_name)
         return self._process_agreements(
@@ -74,8 +76,8 @@ class AuthorizationJournalGenerator:
         auth_currency: str,
         cost_explorer_usage_generator: CostExplorerUsageGenerator,
         invoice_generator: InvoiceGenerator,
-    ) -> list[JournalLine]:
-        journal_file_lines: list[JournalLine] = []
+    ) -> AuthorizationJournalResult:
+        result = AuthorizationJournalResult()
         generator = AgreementJournalGenerator(
             auth_currency,
             self._context,
@@ -85,7 +87,7 @@ class AuthorizationJournalGenerator:
         for agreement in agreements:
             agreement_id = agreement.get("id")
             try:
-                lines = generator.run(agreement)
+                agreement_result = generator.run(agreement)
             # TODO: Catch specific exceptions and handle them accordingly
             except Exception as exc:
                 logger.exception(
@@ -97,9 +99,13 @@ class AuthorizationJournalGenerator:
                     f"Failed to generate billing journal for {agreement_id}: {exc}",
                 )
                 continue
-            logger.info("Generated %d journal lines", len(lines))
-            journal_file_lines.extend(lines)
-        return journal_file_lines
+
+            logger.info("Generated %d journal lines", len(agreement_result.lines))
+            result.lines.extend(agreement_result.lines)
+            if agreement_result.report:
+                result.reports_by_agreement[agreement_id] = agreement_result.report
+
+        return result
 
     def _get_authorization_agreements(self, authorization: dict) -> list[dict]:
         select = "&select=subscriptions,subscriptions.lines,parameters"
