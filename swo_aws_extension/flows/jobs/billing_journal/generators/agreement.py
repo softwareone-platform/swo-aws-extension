@@ -1,6 +1,9 @@
 from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
 
 from swo_aws_extension.constants import SupportTypesEnum
+from swo_aws_extension.flows.jobs.billing_journal.generators.discount.extra_discounts import (
+    ExtraDiscountsManager,
+)
 from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import InvoiceGenerator
 from swo_aws_extension.flows.jobs.billing_journal.generators.journal_line import (
     JournalLineGenerator,
@@ -74,6 +77,9 @@ class AgreementJournalGenerator:
             self._billing_period,
             organization_invoice=invoice_result.invoice,
         )
+        logger.info(
+            "Usage generation completed with %d accounts", len(usage_result.usage_by_account)
+        )
 
         journal_details = JournalDetails(
             agreement_id=agreement.get("id", ""),
@@ -109,6 +115,16 @@ class AgreementJournalGenerator:
                     organization_invoice,
                 )
             )
+
+        # Process extra discounts after generating all usage lines.
+        all_lines.extend(
+            ExtraDiscountsManager(self._pls_charge_percentage).process(
+                agreement,
+                usage_result,
+                journal_details,
+                organization_invoice,
+            )
+        )
 
         # If PLS is active, calculate and add the PLS charge line.
         if is_pls:
