@@ -217,9 +217,7 @@ class CostExplorerUsageGenerator(BaseOrganizationUsageGenerator):
             )
             return
 
-        marketplace_report = report_fetcher.get_marketplace_usage_report(
-            view_arn, billing_period
-        )
+        marketplace_report = report_fetcher.get_marketplace_usage_report(view_arn, billing_period)
         self._reports.organization_data["MARKETPLACE"] = marketplace_report
 
         self._process_accounts_for_billing_view(

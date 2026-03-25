@@ -1,4 +1,5 @@
 import datetime as dt
+import json
 import logging
 from collections.abc import Callable
 
@@ -179,6 +180,61 @@ class AWSClient:
         )
 
     @wrap_boto3_error
+    def get_all_billing_transfer_views_by_account_id(self, account_id: str) -> list[dict]:
+        """Get billing transfer views for an account from previous month start until yesterday.
+
+        Args:
+            account_id: The AWS account ID.
+
+        Returns:
+            List of billing transfer views for the account.
+        """
+        today = dt.datetime.now(dt.UTC).date()
+        previous_month_last_day = today.replace(day=1) - dt.timedelta(days=1)
+        start_date = previous_month_last_day.replace(day=1)
+        end_date = today - dt.timedelta(days=1)
+        logger.info(
+            "Fetching all billing transfer views for account %s. Date range: %s to %s",
+            account_id,
+            start_date.isoformat(),
+            end_date.isoformat(),
+        )
+        return self.get_billing_views_by_account_id(
+            account_id=account_id,
+            start_date=start_date.isoformat(),
+            end_date=end_date.isoformat(),
+        )
+
+    @wrap_boto3_error
+    def get_all_billing_transfer_views_for_authorization_scope(
+        self,
+        account_id: str,
+    ) -> list[dict]:
+        """Get all billing transfer views for an authorization PM account scope.
+
+        Args:
+            account_id: The AWS account ID.
+
+        Returns:
+            List of billing transfer views visible for the authorization scope.
+        """
+        today = dt.datetime.now(dt.UTC).date()
+        previous_month_last_day = today.replace(day=1) - dt.timedelta(days=1)
+        start_date = previous_month_last_day.replace(day=1)
+        end_date = today - dt.timedelta(days=1)
+        logger.info(
+            "Fetching all billing transfer views for account %s. Date range: %s to %s",
+            account_id,
+            start_date.isoformat(),
+            end_date.isoformat(),
+        )
+        return self.get_billing_views_without_source_account_id(
+            account_id=account_id,
+            start_date=start_date.isoformat(),
+            end_date=end_date.isoformat(),
+        )
+
+    @wrap_boto3_error
     def get_billing_views_by_account_id(
         self,
         account_id: str,
@@ -227,6 +283,49 @@ class AWSClient:
                     "activeBeforeInclusive": last_day,
                 },
             },
+            pagination_key="nextToken",
+        )
+        logger.info(
+            "Retrieved %d billing view exports for account %s",
+            len(results),
+            account_id,
+        )
+        return results
+
+    @wrap_boto3_error
+    def get_billing_views_without_source_account_id(
+        self,
+        account_id: str,
+        start_date: str,
+        end_date: str,
+    ) -> list[dict]:
+        """Get billing views without ``sourceAccountId`` filter for a date range.
+
+        Args:
+            account_id: The AWS account ID.
+            start_date: Start date in YYYY-MM-DD format (first day of month).
+            end_date: End date in YYYY-MM-DD format (last day of month).
+
+        Returns:
+            List of billing views for the date range.
+        """
+        logger.info(
+            "Requesting billing view exports for account %s without date-range filter"
+            " (requested window: %s to %s)",
+            account_id,
+            start_date,
+            end_date,
+        )
+        billing_client = self._get_billing_client()
+        request_params = {
+            "billingViewTypes": ["BILLING_TRANSFER"],
+            "maxResults": MAX_RESULTS_PER_PAGE,
+        }
+
+        results = get_paged_response(
+            billing_client.list_billing_views,
+            "billingViews",
+            request_params,
             pagination_key="nextToken",
         )
         logger.info(
@@ -409,12 +508,56 @@ class AWSClient:
         except Exception as exc:
             raise AWSError(f"Unexpected error creating S3 bucket {bucket_name}: {exc}") from exc
 
+    def update_data_exports_bucket_policy(self, bucket_name: str) -> None:
+        """Update the S3 bucket policy required by BCM Data Exports.
+
+        Args:
+            bucket_name: Name of the S3 bucket where exports are written.
+
+        Raises:
+            AWSError: If updating the bucket policy fails.
+        """
+        logger.info("Updating S3 bucket policy for BCM data exports on bucket: %s", bucket_name)
+        try:
+            self._update_data_exports_bucket_policy(bucket_name)
+        except ClientError as exc:
+            raise AWSError(f"Failed to update S3 bucket policy {bucket_name}: {exc}") from exc
+        except Exception as exc:
+            raise AWSError(
+                f"Unexpected error updating S3 bucket policy {bucket_name}: {exc}"
+            ) from exc
+        logger.info("Successfully updated S3 bucket policy on bucket: %s", bucket_name)
+
     def _create_s3_bucket(self, bucket_name: str, region: str) -> None:
         s3_client = self._get_s3_client()
         create_kwargs: dict = {"Bucket": bucket_name}
         if region != "us-east-1":
             create_kwargs["CreateBucketConfiguration"] = {"LocationConstraint": region}
         s3_client.create_bucket(**create_kwargs)
+
+    def _update_data_exports_bucket_policy(self, bucket_name: str) -> None:
+        """Apply BCM Data Exports service principal policy to the given S3 bucket.
+
+        Args:
+            bucket_name: Name of the S3 bucket to update.
+        """
+        s3_client = self._get_s3_client()
+        policy_document = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "AllowDataExportsService",
+                    "Effect": "Allow",
+                    "Principal": {"Service": "bcm-data-exports.amazonaws.com"},
+                    "Action": ["s3:GetBucketAcl", "s3:GetBucketPolicy", "s3:PutObject"],
+                    "Resource": [
+                        f"arn:aws:s3:::{bucket_name}",
+                        f"arn:aws:s3:::{bucket_name}/*",
+                    ],
+                }
+            ],
+        }
+        s3_client.put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(policy_document))
 
     @wrap_boto3_error
     def create_billing_export(

@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+from typing import Any
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError, S3BucketAlreadyOwnedError
@@ -69,10 +70,45 @@ class CostUsageReportsSetupService:
             Result with export counters.
         """
         bucket_status = self.setup_s3_bucket(aws_client, pm_account_id, dry_run=dry_run)
+        self.setup_s3_bucket_policy(aws_client, pm_account_id, dry_run=dry_run)
         export_result = self.create_billing_exports(
             aws_client,
             pm_account_id,
             mpa_account_id,
+            fail_on_export_error=fail_on_export_error,
+            dry_run=dry_run,
+        )
+        return CostUsageReportsSetupResult(
+            created_exports=export_result.created_exports,
+            skipped_exports=export_result.skipped_exports,
+            failed_exports=export_result.failed_exports,
+            bucket_status=bucket_status,
+        )
+
+    def run_for_authorization(
+        self,
+        aws_client: AWSClient,
+        pm_account_id: str,
+        *,
+        fail_on_export_error: bool = False,
+        dry_run: bool = False,
+    ) -> CostUsageReportsSetupResult:
+        """Run bucket setup and unfiltered billing export setup.
+
+        Args:
+            aws_client: AWS client configured for the PM account.
+            pm_account_id: Program management account ID.
+            fail_on_export_error: Whether a single export creation error should stop processing.
+            dry_run: If True, skip actual AWS API calls and log what would be done.
+
+        Returns:
+            Result with export counters.
+        """
+        bucket_status = self.setup_s3_bucket(aws_client, pm_account_id, dry_run=dry_run)
+        self.setup_s3_bucket_policy(aws_client, pm_account_id, dry_run=dry_run)
+        export_result = self.create_billing_exports_for_authorization(
+            aws_client,
+            pm_account_id,
             fail_on_export_error=fail_on_export_error,
             dry_run=dry_run,
         )
@@ -117,7 +153,33 @@ class CostUsageReportsSetupService:
         logger.info("S3 bucket created: %s", bucket_name)
         return _BUCKET_STATUS_CREATED
 
-    def create_billing_exports(  # noqa: C901
+    def setup_s3_bucket_policy(
+        self,
+        aws_client: AWSClient,
+        pm_account_id: str,
+        *,
+        dry_run: bool = False,
+    ) -> None:
+        """Update the billing exports bucket policy required by BCM Data Exports.
+
+        Args:
+            aws_client: AWS client configured for the PM account.
+            pm_account_id: Program management account ID.
+            dry_run: If True, skip actual S3 policy API call.
+
+        Raises:
+            AWSError: When bucket policy update fails (not raised in dry-run mode).
+        """
+        bucket_name = S3_BILLING_EXPORT_BUCKET_TEMPLATE.format(pm_account_id=pm_account_id)
+        if dry_run:
+            logger.info("[DRY RUN] Would update S3 bucket policy for bucket: %s", bucket_name)
+            return
+
+        logger.info("Updating S3 bucket policy for bucket: %s", bucket_name)
+        aws_client.update_data_exports_bucket_policy(bucket_name)
+        logger.info("S3 bucket policy setup completed for bucket: %s", bucket_name)
+
+    def create_billing_exports(
         self,
         aws_client: AWSClient,
         pm_account_id: str,
@@ -144,12 +206,87 @@ class CostUsageReportsSetupService:
         """
         s3_bucket = S3_BILLING_EXPORT_BUCKET_TEMPLATE.format(pm_account_id=pm_account_id)
         s3_prefix = S3_BILLING_EXPORT_PREFIX_TEMPLATE.format(mpa_account_id=mpa_account_id)
-        billing_views = aws_client.get_current_billing_view_by_account_id(mpa_account_id)
-        existing_arns = (
-            set()
-            if dry_run
-            else aws_client.list_existing_billing_exports(s3_bucket, s3_prefix)
+        billing_views = aws_client.get_all_billing_transfer_views_by_account_id(mpa_account_id)
+        existing_arns = aws_client.list_existing_billing_exports(s3_bucket, s3_prefix)
+        return self._create_billing_exports_from_views(
+            aws_client,
+            billing_views,
+            pm_account_id,
+            s3_bucket,
+            fail_on_export_error=fail_on_export_error,
+            dry_run=dry_run,
+            existing_arns=existing_arns,
         )
+
+    def create_billing_exports_for_authorization(
+        self,
+        aws_client: AWSClient,
+        pm_account_id: str,
+        *,
+        fail_on_export_error: bool = False,
+        dry_run: bool = False,
+    ) -> CostUsageReportsSetupResult:
+        """Create missing CUR exports for authorization scope billing transfer views.
+
+        Args:
+            aws_client: AWS client configured for the PM account.
+            pm_account_id: Program management account ID.
+            fail_on_export_error: Whether a single export creation error should stop processing.
+            dry_run: If True, skip actual export creation calls.
+
+        Returns:
+            Result with export counters.
+
+        Raises:
+            AWSError: When listing views/exports fails, or when export creation fails and
+                ``fail_on_export_error`` is True.
+        """
+        s3_bucket = S3_BILLING_EXPORT_BUCKET_TEMPLATE.format(pm_account_id=pm_account_id)
+        billing_views = aws_client.get_all_billing_transfer_views_for_authorization_scope(
+            pm_account_id,
+        )
+        existing_arns = aws_client.list_existing_billing_exports(s3_bucket, "")
+        return self._create_billing_exports_from_views(
+            aws_client,
+            billing_views,
+            pm_account_id,
+            s3_bucket,
+            fail_on_export_error=fail_on_export_error,
+            dry_run=dry_run,
+            existing_arns=existing_arns,
+        )
+
+    def _create_billing_exports_from_views(  # noqa: C901
+        self,
+        aws_client: AWSClient,
+        billing_views: list[dict[str, Any]],
+        pm_account_id: str,
+        s3_bucket: str,
+        *,
+        fail_on_export_error: bool,
+        dry_run: bool,
+        existing_arns: set[str] | None = None,
+    ) -> CostUsageReportsSetupResult:
+        """Create billing exports from a list of billing views.
+
+        The S3 prefix for each export is derived from the billing view's
+        ``sourceAccountId`` so that parquet files land under
+        ``cur-{sourceAccountId}/{billing_view_tail}/``.
+
+        Args:
+            aws_client: AWS client configured for the PM account.
+            billing_views: Billing transfer views to process.
+            pm_account_id: Program management account ID.
+            s3_bucket: Target S3 bucket name.
+            fail_on_export_error: Whether a single export creation error should stop processing.
+            dry_run: If True, skip actual export creation calls.
+            existing_arns: Set of billing-view ARNs that already have exports.
+
+        Returns:
+            Result with export counters.
+        """
+        if existing_arns is None:
+            existing_arns = set()
 
         created_count = 0
         skipped_count = 0
@@ -169,14 +306,23 @@ class CostUsageReportsSetupService:
                 skipped_count += 1
                 continue
 
-            source_account_id = billing_view.get("sourceAccountId", mpa_account_id)
+            source_account_id = billing_view.get("sourceAccountId", "")
+            if not source_account_id:
+                logger.warning(
+                    "Billing view %s has no sourceAccountId, skipping",
+                    billing_view_arn,
+                )
+                continue
             billing_view_tail = billing_view_arn.rsplit("/", 1)[-1]
             billing_view_id = extract_billing_view_id(billing_view_arn)
+            s3_prefix = S3_BILLING_EXPORT_PREFIX_TEMPLATE.format(
+                mpa_account_id=source_account_id,
+            )
             view_s3_prefix = _VIEW_S3_PREFIX_TEMPLATE.format(
                 s3_prefix=s3_prefix,
                 billing_view_tail=billing_view_tail,
             )
-            export_name = f"{source_account_id}-{billing_view_id}"
+            export_name = f"{pm_account_id}-{source_account_id}-{billing_view_id}"
             logger.info(
                 "Creating billing export %s for view %s to s3://%s/%s",
                 export_name,
@@ -184,6 +330,7 @@ class CostUsageReportsSetupService:
                 s3_bucket,
                 view_s3_prefix,
             )
+
             try:
                 if dry_run:
                     logger.info(
@@ -212,6 +359,7 @@ class CostUsageReportsSetupService:
                     error,
                 )
                 continue
+
             created_count += 1
             logger.info("Successfully created billing export %s", export_name)
 

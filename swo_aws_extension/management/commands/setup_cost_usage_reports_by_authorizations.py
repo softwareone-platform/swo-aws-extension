@@ -4,15 +4,11 @@ from typing import Any, cast
 
 from django.conf import settings
 from mpt_extension_sdk.core.utils import setup_client
-from mpt_extension_sdk.mpt_http.mpt import get_agreements_by_query
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.config import get_config
-from swo_aws_extension.constants import (
-    S3_BILLING_EXPORT_BUCKET_TEMPLATE,
-    AgreementStatusEnum,
-)
+from swo_aws_extension.constants import S3_BILLING_EXPORT_BUCKET_TEMPLATE
 from swo_aws_extension.flows.jobs.billing_journal.setup.cost_usage_reports import (
     CostUsageReportsSetupService,
 )
@@ -21,7 +17,6 @@ from swo_aws_extension.swo.mpt.authorization import get_authorizations
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 AUTH_PATTERN = re.compile(r"^AUT-(?:\d+-)*\d+$")
-AGREEMENT_PATTERN = re.compile(r"^AGR-(?:\d+-)*\d+$")
 
 
 @dataclass(frozen=True)
@@ -29,30 +24,27 @@ class _ProcessResult:
     processed_count: int
     completed_count: int
     error_message: str | None = None
-    failed_agreement_id: str = ""
+    failed_authorization_id: str = ""
 
 
 class Command(StyledPrintCommand):
-    """Setup bucket and exports for cost usage reports."""
+    """Setup bucket and CUR exports by authorization PM account."""
 
-    help = "Setup S3 bucket and CUR exports for cost usage reports"
-    name = "setup_cost_usage_reports"
+    help = "Setup S3 bucket and CUR exports for authorization PM accounts"
+    name = "setup_cost_usage_reports_by_authorizations"
 
     def add_arguments(self, parser: Any) -> None:
-        """Add command arguments."""
+        """Add command arguments.
+
+        Args:
+            parser: Django command argument parser.
+        """
         parser.add_argument(
             "--authorizations",
             nargs="*",
             metavar="AUTHORIZATION",
             default=[],
             help="list of specific authorizations separated by space",
-        )
-        parser.add_argument(
-            "--agreements",
-            nargs="*",
-            metavar="AGREEMENT",
-            default=[],
-            help="list of specific agreements separated by space",
         )
         parser.add_argument(
             "--dry-run",
@@ -62,11 +54,15 @@ class Command(StyledPrintCommand):
         )
 
     def handle(self, *args: Any, **options: Any) -> None:  # noqa: WPS110
-        """Run command."""
+        """Run the command.
+
+        Args:
+            *args: Positional command arguments.
+            **options: Parsed command options.
+        """
         authorizations = options["authorizations"]
-        agreements = options["agreements"]
         dry_run = options["dry_run"]
-        error = self.validate(authorizations, agreements)
+        error = self.validate(authorizations)
         if error:
             self.error(error)
             return
@@ -91,11 +87,9 @@ class Command(StyledPrintCommand):
         for authorization in selected_authorizations:
             authorization_id = authorization.get("id", "")
             result = self._process_authorization(
-                mpt_client,
                 config,
                 setup_service,
                 authorization,
-                agreements,
                 dry_run,
             )
             processed_count += result.processed_count
@@ -107,7 +101,6 @@ class Command(StyledPrintCommand):
                         processed_count,
                         completed_count,
                         authorization_id,
-                        result.failed_agreement_id,
                     )
                 )
                 return
@@ -116,11 +109,9 @@ class Command(StyledPrintCommand):
 
     def _process_authorization(
         self,
-        mpt_client: Any,
         config: Any,
         setup_service: CostUsageReportsSetupService,
         authorization: dict[str, Any],
-        agreement_ids: list[str],
         dry_run: bool,  # noqa: FBT001
     ) -> _ProcessResult:
         authorization_id = authorization.get("id", "")
@@ -132,88 +123,53 @@ class Command(StyledPrintCommand):
                 error_message=(
                     f"Authorization {authorization_id} has no operations external id configured"
                 ),
+                failed_authorization_id=authorization_id,
             )
 
-        selected_agreements = get_agreements_by_query(
-            mpt_client,
-            self._build_agreements_rql_query(authorization_id, agreement_ids),
-        )
-        if not selected_agreements:
-            self.info(f"No agreements found for authorization {authorization_id}")
-            return _ProcessResult(processed_count=0, completed_count=0)
-
+        self.info(f"Processing authorization {authorization_id} using PM account {pm_account_id}")
         aws_client = AWSClient(config, pm_account_id, config.management_role_name)
-        return self._process_agreements(
-            setup_service,
-            aws_client,
-            pm_account_id,
-            authorization_id,
-            selected_agreements,
-            dry_run,
+        try:
+            setup_result = setup_service.run_for_authorization(
+                aws_client,
+                pm_account_id,
+                fail_on_export_error=False,
+                dry_run=dry_run,
+            )
+        except AWSError as setup_error:
+            return _ProcessResult(
+                processed_count=1,
+                completed_count=0,
+                error_message=(
+                    "Failed to setup cost usage reports for authorization "
+                    f"{authorization_id}: {setup_error!s}"
+                ),
+                failed_authorization_id=authorization_id,
+            )
+
+        self.info(
+            self._build_bucket_setup_message(
+                pm_account_id,
+                setup_result.bucket_status,
+            )
         )
-
-    def _process_agreements(
-        self,
-        setup_service: CostUsageReportsSetupService,
-        aws_client: AWSClient,
-        pm_account_id: str,
-        authorization_id: str,
-        selected_agreements: list[dict[str, Any]],
-        dry_run: bool,  # noqa: FBT001
-    ) -> _ProcessResult:
-        processed_count = 0
-        completed_count = 0
-        for agreement in selected_agreements:
-            agreement_id = agreement.get("id", "")
-            mpa_account_id = agreement.get("externalIds", {}).get("vendor", "")
-            if not mpa_account_id:
-                return _ProcessResult(
-                    processed_count=processed_count,
-                    completed_count=completed_count,
-                    error_message=f"Agreement {agreement_id} has no vendor external id configured",
-                    failed_agreement_id=agreement_id,
-                )
-
-            processed_count += 1
-            self.info(f"Processing authorization {authorization_id} agreement {agreement_id}")
-            try:
-                setup_result = setup_service.run(
-                    aws_client,
-                    pm_account_id,
-                    mpa_account_id,
-                    fail_on_export_error=True,
-                    dry_run=dry_run,
-                )
-            except AWSError as setup_error:
-                return _ProcessResult(
-                    processed_count=processed_count,
-                    completed_count=completed_count,
-                    error_message=(
-                        "Failed to setup cost usage reports for authorization "
-                        f"{authorization_id} agreement {agreement_id}: {setup_error!s}"
-                    ),
-                    failed_agreement_id=agreement_id,
-                )
-
-            self.info(
-                self._build_bucket_setup_message(
-                    pm_account_id,
-                    setup_result.bucket_status,
-                )
-            )
-            completed_count += 1
-            self.info(
-                f"Completed agreement {agreement_id}: {setup_result.created_exports} created, "
-                f"{setup_result.skipped_exports} skipped, {setup_result.failed_exports} failed"
-            )
-
+        self.info(
+            f"Completed authorization {authorization_id}: {setup_result.created_exports} created, "
+            f"{setup_result.skipped_exports} skipped, {setup_result.failed_exports} failed"
+        )
         return _ProcessResult(
-            processed_count=processed_count,
-            completed_count=completed_count,
+            processed_count=1,
+            completed_count=1,
         )
 
-    def validate(self, authorizations: list[str], agreements: list[str]) -> str | None:
-        """Validate command arguments."""
+    def validate(self, authorizations: list[str]) -> str | None:
+        """Validate command arguments.
+
+        Args:
+            authorizations: Authorization IDs provided to the command.
+
+        Returns:
+            Validation error text when input is invalid, otherwise ``None``.
+        """
         invalid_authorizations = [
             authorization
             for authorization in authorizations
@@ -223,16 +179,9 @@ class Command(StyledPrintCommand):
             invalid_str = ", ".join(invalid_authorizations)
             return f"Invalid authorizations id: {invalid_str}"
 
-        invalid_agreements = [
-            agreement for agreement in agreements if not AGREEMENT_PATTERN.match(agreement)
-        ]
-        if invalid_agreements:
-            invalid_str = ", ".join(invalid_agreements)
-            return f"Invalid agreements id: {invalid_str}"
-
         return None
 
-    def _build_authorizations_rql_query(self, authorizations: list[str]) -> RQLQuery:
+    def _build_authorizations_rql_query(self, authorizations: list[str]) -> Any:
         rql_query_factory = cast(Any, RQLQuery)
         rql_query = rql_query_factory(product__id__in=settings.MPT_PRODUCTS_IDS)
         if not authorizations:
@@ -240,34 +189,28 @@ class Command(StyledPrintCommand):
 
         return rql_query_factory(id__in=list(set(authorizations))) & rql_query
 
-    def _build_agreements_rql_query(self, authorization_id: str, agreement_ids: list[str]) -> str:
-        rql_query_factory = cast(Any, RQLQuery)
-        rql_filter = (
-            rql_query_factory(authorization__id=authorization_id)
-            & rql_query_factory(
-                status__in=[AgreementStatusEnum.ACTIVE, AgreementStatusEnum.UPDATING]
-            )
-            & rql_query_factory(product__id__in=settings.MPT_PRODUCTS_IDS)
-        )
-        if agreement_ids:
-            rql_filter = rql_query_factory(id__in=agreement_ids) & rql_filter
-
-        return f"{rql_filter}&select=id,externalIds"
-
     def _build_partial_summary(
         self,
         processed_count: int,
         completed_count: int,
         authorization_id: str,
-        agreement_id: str,
     ) -> str:
         """Build partial summary for fail-fast output."""
         return (
             f"Partial summary - processed: {processed_count}, completed: {completed_count}, "
-            f"failed authorization: {authorization_id}, failed agreement: {agreement_id}"
+            f"failed authorization: {authorization_id}"
         )
 
     def _build_bucket_setup_message(self, pm_account_id: str, bucket_status: str) -> str:
+        """Build human-readable S3 bucket setup status message.
+
+        Args:
+            pm_account_id: Program management account ID.
+            bucket_status: The bucket setup status string.
+
+        Returns:
+            Formatted message describing the bucket setup outcome.
+        """
         bucket_name = S3_BILLING_EXPORT_BUCKET_TEMPLATE.format(pm_account_id=pm_account_id)
         if bucket_status == "created":
             return f"S3 bucket: {bucket_name} created and is owned by {pm_account_id} account"

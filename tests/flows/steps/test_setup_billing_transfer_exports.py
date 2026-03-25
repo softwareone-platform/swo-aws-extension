@@ -91,7 +91,7 @@ def test_process_creates_exports_for_new_views(
     pma_id = context.pm_account_id
     expected_bucket = S3_BILLING_EXPORT_BUCKET_TEMPLATE.format(pm_account_id=pma_id)
     expected_prefix = S3_BILLING_EXPORT_PREFIX_TEMPLATE.format(mpa_account_id=mpa_id)
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = [
+    mock_aws_client.get_all_billing_transfer_views_by_account_id.return_value = [
         {
             "billingViewArn": billing_view_arn,
             "sourceAccountId": mpa_id,
@@ -107,7 +107,7 @@ def test_process_creates_exports_for_new_views(
 
     mock_aws_client.create_billing_export.assert_called_once_with(
         billing_view_arn=billing_view_arn,
-        export_name=f"{mpa_id}-abc123",
+        export_name=f"{pma_id}-{mpa_id}-abc123",
         s3_bucket=expected_bucket,
         s3_prefix=f"{expected_prefix}/billing-transfer-abc123",
     )
@@ -118,7 +118,7 @@ def test_process_skips_already_exported_views(
 ):
     billing_view_arn = "arn:aws:billing::123456789012:billingview/billing-transfer-abc123"
     context = purchase_context()
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = [
+    mock_aws_client.get_all_billing_transfer_views_by_account_id.return_value = [
         {"billingViewArn": billing_view_arn, "sourceAccountId": "123456789012"}
     ]
     mock_aws_client.list_existing_billing_exports.return_value = {billing_view_arn}
@@ -133,7 +133,7 @@ def test_process_skips_views_without_arn(
     purchase_context, mock_aws_client, mpt_client, config, caplog
 ):
     context = purchase_context()
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = [
+    mock_aws_client.get_all_billing_transfer_views_by_account_id.return_value = [
         {"sourceAccountId": "123456789012"}
     ]
     mock_aws_client.list_existing_billing_exports.return_value = set()
@@ -147,7 +147,7 @@ def test_process_skips_views_without_arn(
 
 def test_process_handles_empty_views(purchase_context, mock_aws_client, mpt_client, config):
     context = purchase_context()
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = []
+    mock_aws_client.get_all_billing_transfer_views_by_account_id.return_value = []
     mock_aws_client.list_existing_billing_exports.return_value = set()
     step = SetupBillingTransferExports(config)
 
@@ -160,7 +160,7 @@ def test_process_raises_on_aws_error_listing_views(
     purchase_context, mock_aws_client, mpt_client, config
 ):
     context = purchase_context()
-    mock_aws_client.get_current_billing_view_by_account_id.side_effect = AWSError("API error")
+    mock_aws_client.get_all_billing_transfer_views_by_account_id.side_effect = AWSError("API error")
     step = SetupBillingTransferExports(config)
 
     with pytest.raises(UnexpectedStopError):
@@ -171,7 +171,7 @@ def test_process_raises_on_aws_error_listing_exports(
     purchase_context, mock_aws_client, mpt_client, config
 ):
     context = purchase_context()
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = []
+    mock_aws_client.get_all_billing_transfer_views_by_account_id.return_value = []
     mock_aws_client.list_existing_billing_exports.side_effect = AWSError("API error")
     step = SetupBillingTransferExports(config)
 
@@ -184,7 +184,7 @@ def test_process_logs_warning_on_failed_export(
 ):
     billing_view_arn = "arn:aws:billing::123456789012:billingview/billing-transfer-abc123"
     context = purchase_context()
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = [
+    mock_aws_client.get_all_billing_transfer_views_by_account_id.return_value = [
         {"billingViewArn": billing_view_arn, "sourceAccountId": "123456789012"}
     ]
     mock_aws_client.list_existing_billing_exports.return_value = set()

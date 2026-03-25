@@ -292,3 +292,39 @@ def test_command_with_invalid_authorization_fails(mock_service, command_output):
     assert "Invalid authorizations id:" in error_output
     assert "PRD-123-123-002" in error_output
     mock_service.return_value.run.assert_not_called()
+
+
+@freeze_time("2025-02-08 23:59:59")
+def test_command_skip_date_validation_allows_future_date(mock_service, command_output):
+    """Allow future billing date when --skip-date-validation is set."""
+    result = call_command(
+        "generate_billing_journals",
+        year=FUTURE_YEAR,
+        month=1,
+        skip_date_validation=True,
+        stdout=command_output["out"],
+        stderr=command_output["err"],
+    )
+
+    assert result is None
+    output, error_output = _get_output(command_output)
+    assert "Start generate_billing_journals for 2026-01" in output
+    assert not error_output
+    mock_service.return_value.run.assert_called_once()
+
+
+@freeze_time("2025-02-04 23:59:59")
+def test_command_skip_date_validation_allows_before_day_five(mock_service, command_output):
+    """Allow previous month billing before the 5th when --skip-date-validation is set."""
+    result = call_command(
+        "generate_billing_journals",
+        skip_date_validation=True,
+        stdout=command_output["out"],
+        stderr=command_output["err"],
+    )
+
+    assert result is None
+    output, error_output = _get_output(command_output)
+    assert "Start generate_billing_journals for 2025-01" in output
+    assert not error_output
+    mock_service.return_value.run.assert_called_once()

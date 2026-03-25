@@ -70,6 +70,10 @@ class SetupBillingTransferExports(BasePhaseStep):
                 message=f"{context.order_id} - AWS client is not initialized",
             )
         try:
+            self._setup_service.setup_s3_bucket_policy(
+                context.aws_client,
+                context.pm_account_id,
+            )
             setup_result = self._setup_service.create_billing_exports(
                 context.aws_client,
                 context.pm_account_id,

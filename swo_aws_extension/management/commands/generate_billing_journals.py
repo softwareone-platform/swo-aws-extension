@@ -76,6 +76,12 @@ class Command(StyledPrintCommand):
             default=False,
             help="Print journal lines without uploading them to the MPT API",
         )
+        parser.add_argument(
+            "--skip-date-validation",
+            action="store_true",
+            default=False,
+            help="Skip billing date validation to allow future or current month billing",
+        )
 
     def handle(self, *args, **options):  # noqa: WPS110 WPS210
         """Run command."""
@@ -83,8 +89,15 @@ class Command(StyledPrintCommand):
         authorizations = options["authorizations"]
         usage_source = options["usage_source"]
         dry_run = options["dry_run"]
+        skip_date_validation = options["skip_date_validation"]
 
-        error = self.validate(year, month, authorizations, usage_source)
+        error = self.validate(
+            year,
+            month,
+            authorizations,
+            usage_source,
+            skip_date_validation=skip_date_validation,
+        )
         if error:
             self.error(error)
             return
@@ -122,11 +135,14 @@ class Command(StyledPrintCommand):
         month: int,
         authorizations: list,
         usage_source: str,
+        *,
+        skip_date_validation: bool = False,
     ) -> str | None:
         """Validate command parameters. Returns error message or None if valid."""
-        error = self._validate_year_month(year, month)
-        if error:
-            return error
+        if not skip_date_validation:
+            error = self._validate_year_month(year, month)
+            if error:
+                return error
 
         error = self._validate_usage_source(usage_source)
         if error:

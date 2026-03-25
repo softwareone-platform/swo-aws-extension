@@ -1,4 +1,5 @@
 import datetime as dt
+import json
 
 import pytest
 from botocore.exceptions import ClientError
@@ -396,6 +397,69 @@ def test_get_billing_view_empty(config, aws_client_factory, mock_get_paged_respo
     result = mock_aws_client.get_current_billing_view_by_account_id(account_id="123456789")
 
     assert result == []
+
+
+def test_get_all_billing_transfer_views_success(
+    config, aws_client_factory, mock_get_paged_response
+):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = [
+        {"arn": "arn:aws:billing::123456789:billingview/billing-transfer-abc", "name": "view-1"},
+        {"arn": "arn:aws:billing::123456789:billingview/billing-transfer-def", "name": "view-2"},
+    ]
+
+    result = mock_aws_client.get_all_billing_transfer_views_by_account_id(account_id="123456789")
+
+    assert len(result) == 2
+    assert result[0]["arn"] == "arn:aws:billing::123456789:billingview/billing-transfer-abc"
+    assert result[1]["arn"] == "arn:aws:billing::123456789:billingview/billing-transfer-def"
+    mock_get_paged_response.assert_called_once_with(
+        mock_client.list_billing_views,
+        "billingViews",
+        {
+            "billingViewTypes": ["BILLING_TRANSFER"],
+            "sourceAccountId": "123456789",
+            "maxResults": 100,
+        },
+        pagination_key="nextToken",
+    )
+
+
+def test_get_all_billing_transfer_views_empty(config, aws_client_factory, mock_get_paged_response):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_get_paged_response.return_value = []
+
+    result = mock_aws_client.get_all_billing_transfer_views_by_account_id(account_id="123456789")
+
+    assert result == []
+
+
+def test_get_all_billing_transfer_views_uses_previous_month_start_until_yesterday(
+    config, aws_client_factory, mocker
+):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+    expected_result = [
+        {"arn": "arn:aws:billing::123456789:billingview/billing-transfer-abc", "name": "view-1"}
+    ]
+    mocked_get_billing_views = mocker.patch.object(
+        mock_aws_client,
+        "get_billing_views_by_account_id",
+        return_value=expected_result,
+    )
+
+    result = mock_aws_client.get_all_billing_transfer_views_by_account_id(account_id="123456789")
+
+    today = dt.datetime.now(dt.UTC).date()
+    previous_month_last_day = today.replace(day=1) - dt.timedelta(days=1)
+    expected_start_date = previous_month_last_day.replace(day=1).isoformat()
+    expected_end_date = (today - dt.timedelta(days=1)).isoformat()
+
+    assert result == expected_result
+    mocked_get_billing_views.assert_called_once_with(
+        account_id="123456789",
+        start_date=expected_start_date,
+        end_date=expected_end_date,
+    )
 
 
 def test_create_billing_group_success(config, aws_client_factory):
@@ -880,6 +944,45 @@ def test_create_s3_bucket_head_bucket_error(config, aws_client_factory):
         mock_aws_client.create_s3_bucket("swo-cur2-123456789012", "us-east-1")
 
     mock_client.create_bucket.assert_not_called()
+
+
+def test_update_data_exports_bucket_policy_success(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.put_bucket_policy.return_value = {}
+
+    mock_aws_client.update_data_exports_bucket_policy("swo-cur2-123456789012")
+
+    mock_client.put_bucket_policy.assert_called_once()
+    put_policy_call = mock_client.put_bucket_policy.call_args.kwargs
+    assert put_policy_call["Bucket"] == "swo-cur2-123456789012"
+    assert json.loads(put_policy_call["Policy"]) == {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "AllowDataExportsService",
+                "Effect": "Allow",
+                "Principal": {"Service": "bcm-data-exports.amazonaws.com"},
+                "Action": ["s3:GetBucketAcl", "s3:GetBucketPolicy", "s3:PutObject"],
+                "Resource": [
+                    "arn:aws:s3:::swo-cur2-123456789012",
+                    "arn:aws:s3:::swo-cur2-123456789012/*",
+                ],
+            }
+        ],
+    }
+
+
+def test_update_data_exports_bucket_policy_error(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.put_bucket_policy.side_effect = ClientError(
+        {"Error": {"Code": "AccessDenied", "Message": "Access denied"}},
+        "PutBucketPolicy",
+    )
+
+    with pytest.raises(AWSError):
+        mock_aws_client.update_data_exports_bucket_policy("swo-cur2-123456789012")
+
+    mock_client.put_bucket_policy.assert_called_once()
 
 
 def test_create_billing_export_success(config, aws_client_factory):
