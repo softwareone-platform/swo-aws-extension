@@ -20,6 +20,7 @@ class BillingJournalContext:
     notifier: Any
     authorizations: list[str] | None = None
     pls_charge_percentage: Decimal = Decimal("5.0")
+    dry_run: bool = False
 
 
 @dataclass

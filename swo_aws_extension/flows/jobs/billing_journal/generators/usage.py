@@ -144,6 +144,7 @@ class CostExplorerUsageGenerator(BaseOrganizationUsageGenerator):
         self._reports = OrganizationReport()
         self._organization_invoice = organization_invoice
 
+        logger.info("Generating usage report for MPA account %s", mpa_account)
         self._report_fetcher = CostExplorerReportFetcher(self._aws_client)
 
         billing_views = self._aws_client.get_billing_views_by_account_id(
@@ -176,7 +177,11 @@ class CostExplorerUsageGenerator(BaseOrganizationUsageGenerator):
                 error,
             )
             return
-
+        logger.info(
+            "Found %d accounts with usage for billing view %s",
+            len(accounts),
+            billing_view.get("arn"),
+        )
         marketplace_report = self._report_fetcher.get_marketplace_usage_report(
             billing_view.get("arn"), billing_period
         )

@@ -57,6 +57,12 @@ class Command(StyledPrintCommand):
             default=[],
             help="list of specific authorizations separated by space",
         )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            default=False,
+            help="Generate journals in dry_run mode without uploading to MPT",
+        )
 
     def handle(self, *args, **options):  # noqa: WPS110 WPS210
         """Run command."""
@@ -87,6 +93,7 @@ class Command(StyledPrintCommand):
             notifier=notifier,
             authorizations=authorizations,
             pls_charge_percentage=Decimal(str(config.pls_charge_percentage)),
+            dry_run=options.get("dry_run", False),
         )
         service = BillingJournalService(job_context)
         service.run()

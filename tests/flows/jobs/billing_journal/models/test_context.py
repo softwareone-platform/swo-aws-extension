@@ -27,6 +27,7 @@ def test_initialization():
         "notifier": "notifier",
         "authorizations": ["AUTH-1"],
         "pls_charge_percentage": Decimal("5.0"),
+        "dry_run": False,
     }
     assert asdict(result) == expected
 

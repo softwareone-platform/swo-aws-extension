@@ -100,7 +100,6 @@ class AuthorizationJournalGenerator:
                 )
                 continue
 
-            logger.info("Generated %d journal lines", len(agreement_result.lines))
             result.lines.extend(agreement_result.lines)
             if agreement_result.report:
                 result.reports_by_agreement[agreement_id] = agreement_result.report
