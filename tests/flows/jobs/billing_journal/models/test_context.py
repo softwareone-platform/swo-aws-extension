@@ -1,6 +1,7 @@
 from dataclasses import asdict
 from decimal import Decimal
 
+from swo_aws_extension.constants import BillingJournalUsageSourceEnum
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
 
@@ -28,6 +29,7 @@ def test_initialization():
         "authorizations": ["AUTH-1"],
         "pls_charge_percentage": Decimal("5.0"),
         "dry_run": False,
+        "usage_source": BillingJournalUsageSourceEnum.COST_EXPLORER,
     }
     assert asdict(result) == expected
 

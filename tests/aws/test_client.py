@@ -724,3 +724,88 @@ def test_list_invoice_summaries_success(config, aws_client_factory, mock_get_pag
     assert len(result) == 1
     assert result[0]["InvoiceId"] == "INV-001"
     mock_get_paged_response.assert_called_once()
+
+
+def test_list_s3_objects_success(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.list_objects_v2.return_value = {
+        "Contents": [
+            {"Key": "cur-123/BILLING_PERIOD%3D2026-03/file-1.parquet"},
+            {"Key": "cur-123/BILLING_PERIOD%3D2026-03/file-2.parquet"},
+        ],
+    }
+
+    result = mock_aws_client.list_s3_objects("bucket-name", "cur-123")
+
+    assert result == [
+        "cur-123/BILLING_PERIOD%3D2026-03/file-1.parquet",
+        "cur-123/BILLING_PERIOD%3D2026-03/file-2.parquet",
+    ]
+    mock_client.list_objects_v2.assert_called_once_with(
+        Bucket="bucket-name",
+        Prefix="cur-123",
+        MaxKeys=MAX_RESULTS_PER_PAGE,
+        EncodingType="url",
+    )
+
+
+def test_list_s3_objects_paginates(config, aws_client_factory, mocker):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.list_objects_v2.side_effect = [
+        {
+            "Contents": [{"Key": "cur-123/BILLING_PERIOD%3D2026-03/file-1.parquet"}],
+            "NextContinuationToken": "token-1",
+        },
+        {
+            "Contents": [{"Key": "cur-123/BILLING_PERIOD%3D2026-03/file-2.parquet"}],
+        },
+    ]
+
+    result = mock_aws_client.list_s3_objects("bucket-name", "cur-123")
+
+    assert result == [
+        "cur-123/BILLING_PERIOD%3D2026-03/file-1.parquet",
+        "cur-123/BILLING_PERIOD%3D2026-03/file-2.parquet",
+    ]
+    assert mock_client.list_objects_v2.call_args_list == [
+        mocker.call(
+            Bucket="bucket-name",
+            Prefix="cur-123",
+            MaxKeys=MAX_RESULTS_PER_PAGE,
+            EncodingType="url",
+        ),
+        mocker.call(
+            Bucket="bucket-name",
+            Prefix="cur-123",
+            MaxKeys=MAX_RESULTS_PER_PAGE,
+            EncodingType="url",
+            ContinuationToken="token-1",
+        ),
+    ]
+
+
+def test_list_s3_objects_empty(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.list_objects_v2.return_value = {}
+
+    result = mock_aws_client.list_s3_objects("bucket-name", "cur-123")
+
+    assert result == []
+
+
+def test_download_s3_object_success(config, aws_client_factory, mocker):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    body = mocker.MagicMock()
+    body.read.return_value = b"parquet-bytes"
+    mock_client.get_object.return_value = {"Body": body}
+
+    result = mock_aws_client.download_s3_object(
+        "bucket-name",
+        "cur-123/BILLING_PERIOD%3D2026-03/file-1.parquet",
+    )
+
+    assert result == b"parquet-bytes"
+    mock_client.get_object.assert_called_once_with(
+        Bucket="bucket-name",
+        Key="cur-123/BILLING_PERIOD%3D2026-03/file-1.parquet",
+    )

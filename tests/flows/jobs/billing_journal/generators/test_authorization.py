@@ -1,12 +1,15 @@
 import pytest
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.constants import BILLING_JOURNAL_ERROR_TITLE
+from swo_aws_extension.constants import BILLING_JOURNAL_ERROR_TITLE, BillingJournalUsageSourceEnum
 from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
     AgreementJournalGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.authorization import (
     AuthorizationJournalGenerator,
+)
+from swo_aws_extension.flows.jobs.billing_journal.generators.cost_usage_report import (
+    CostUsageReportGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import InvoiceGenerator
 from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
@@ -41,6 +44,13 @@ def mock_agreement_generator_cls(mocker):
 def mock_usage_generator_cls(mocker):
     mock = mocker.patch(f"{MODULE}.CostExplorerUsageGenerator", autospec=True)
     mock.return_value = mocker.MagicMock(spec=CostExplorerUsageGenerator)
+    return mock
+
+
+@pytest.fixture
+def mock_cur_usage_generator_cls(mocker):
+    mock = mocker.patch(f"{MODULE}.CostUsageReportGenerator", autospec=True)
+    mock.return_value = mocker.MagicMock(spec=CostUsageReportGenerator)
     return mock
 
 
@@ -145,3 +155,57 @@ def test_includes_report_in_result(
     result = generator.run(authorization)
 
     assert result.reports_by_agreement == {"AGR-1": report}
+
+
+def test_build_usage_generator_uses_cur_prefix_with_billing_view(
+    mocker,
+    mock_context,
+    mock_get_agreements,
+    mock_agreement_generator_cls,
+    mock_aws_client_cls,
+    mock_cur_usage_generator_cls,
+):
+    mock_context.usage_source = BillingJournalUsageSourceEnum.COST_USAGE_REPORT
+    authorization = {
+        "id": "AUTH-1",
+        "currency": "USD",
+        "externalIds": {"operations": "651706759263"},
+    }
+    mock_get_agreements.return_value = [{"id": "AGR-1", "externalIds": {"vendor": "651706759263"}}]
+    mock_agreement_generator = mocker.MagicMock(spec=AgreementJournalGenerator)
+    mock_agreement_generator.run.return_value = AgreementJournalResult()
+    mock_agreement_generator_cls.return_value = mock_agreement_generator
+    mock_aws_client = mock_aws_client_cls.return_value
+    generator = AuthorizationJournalGenerator(mock_context)
+
+    generator.run(authorization)
+
+    mock_cur_usage_generator_cls.assert_called_once_with(mock_aws_client)
+    mock_aws_client.get_billing_views_by_account_id.assert_not_called()
+
+
+def test_build_usage_generator_falls_back_to_base_cur_prefix(
+    mocker,
+    mock_context,
+    mock_get_agreements,
+    mock_agreement_generator_cls,
+    mock_aws_client_cls,
+    mock_cur_usage_generator_cls,
+):
+    mock_context.usage_source = BillingJournalUsageSourceEnum.COST_USAGE_REPORT
+    authorization = {
+        "id": "AUTH-1",
+        "currency": "USD",
+        "externalIds": {"operations": "651706759263"},
+    }
+    mock_get_agreements.return_value = [{"id": "AGR-1", "externalIds": {"vendor": "225989344502"}}]
+    mock_agreement_generator = mocker.MagicMock(spec=AgreementJournalGenerator)
+    mock_agreement_generator.run.return_value = AgreementJournalResult()
+    mock_agreement_generator_cls.return_value = mock_agreement_generator
+    mock_aws_client = mock_aws_client_cls.return_value
+    generator = AuthorizationJournalGenerator(mock_context)
+
+    generator.run(authorization)
+
+    mock_cur_usage_generator_cls.assert_called_once_with(mock_aws_client)
+    mock_aws_client.get_billing_views_by_account_id.assert_not_called()

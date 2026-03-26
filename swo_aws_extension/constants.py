@@ -234,6 +234,19 @@ EXCEL_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.s
 DEC_ZERO = Decimal(0)
 
 
+class BillingJournalUsageSourceEnum(StrEnum):
+    """Billing journal usage source enum."""
+
+    COST_EXPLORER = "cost_explorer"
+    COST_USAGE_REPORT = "cost_usage_report"
+
+
+S3_BILLING_EXPORT_BUCKET_TEMPLATE = "mpt-billing-{pm_account_id}"
+S3_PARQUET_FILE = "cur-{pm_account_id}/billing-transfer-{billing_view_arn}/{pm_account_id}-{mpa_account_id}-{billing_view_arn}/data/BILLING_PERIOD={year}-{month:02d}/{pm_account_id}-{mpa_account_id}-{billing_view_arn}-{part_number:05d}.snappy.parquet"  # noqa: E501
+
+S3_BILLING_EXPORT_REGION = "us-east-1"
+
+
 class AWSRecordTypeEnum(StrEnum):
     """Enum for AWS record types."""
 

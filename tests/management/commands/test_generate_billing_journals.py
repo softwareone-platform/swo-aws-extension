@@ -7,6 +7,7 @@ from freezegun import freeze_time
 from swo_aws_extension.constants import (
     COMMAND_INVALID_BILLING_DATE,
     COMMAND_INVALID_BILLING_DATE_FUTURE,
+    BillingJournalUsageSourceEnum,
 )
 
 MODULE = "swo_aws_extension.management.commands.generate_billing_journals"
@@ -187,6 +188,38 @@ def test_command_with_multiple_authorizations(mock_service, command_output):
     assert "AUT-123-123-001 AUT-123-123-002" in output
     assert not error_output
     mock_service.return_value.run.assert_called_once()
+
+
+@freeze_time("2025-07-07 23:59:59")
+@pytest.mark.parametrize("usage_source", [source.value for source in BillingJournalUsageSourceEnum])
+def test_command_with_valid_usage_source(mock_service, command_output, usage_source):
+    result = call_command(
+        "generate_billing_journals",
+        year=VALID_YEAR,
+        month=3,
+        usage_source=usage_source,
+        stdout=command_output["out"],
+        stderr=command_output["err"],
+    )
+
+    assert result is None
+    output, error_output = _get_output(command_output)
+    assert "Start generate_billing_journals for 2025-03 (all)" in output
+    assert not error_output
+    mock_service.return_value.run.assert_called_once()
+
+
+@freeze_time("2025-07-07 23:59:59")
+def test_command_with_invalid_usage_source_fails(command_output):
+    with pytest.raises(ValueError, match="is not a valid BillingJournalUsageSourceEnum"):
+        call_command(
+            "generate_billing_journals",
+            year=VALID_YEAR,
+            month=3,
+            usage_source="invalid_source",
+            stdout=command_output["out"],
+            stderr=command_output["err"],
+        )
 
 
 @freeze_time("2025-07-07 23:59:59")

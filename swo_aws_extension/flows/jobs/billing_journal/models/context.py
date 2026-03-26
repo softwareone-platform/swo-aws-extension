@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
+from swo_aws_extension.constants import BillingJournalUsageSourceEnum
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
 from swo_aws_extension.flows.jobs.billing_journal.models.invoice import OrganizationInvoice
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import JournalDetails
@@ -21,6 +22,7 @@ class BillingJournalContext:
     authorizations: list[str] | None = None
     pls_charge_percentage: Decimal = Decimal("5.0")
     dry_run: bool = False
+    usage_source: BillingJournalUsageSourceEnum = BillingJournalUsageSourceEnum.COST_EXPLORER
 
 
 @dataclass

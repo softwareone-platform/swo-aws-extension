@@ -205,6 +205,11 @@ class Config:
             settings.EXTENSION_CONFIG.get("PLS_CHARGE_PERCENTAGE", DEFAULT_PLS_CHARGE_PERCENTAGE),
         )
 
+    @property
+    def billing_journal_usage_source(self) -> str:
+        """Get the billing journal usage source (defaults to cost_explorer)."""
+        return settings.EXTENSION_CONFIG.get("BILLING_JOURNAL_USAGE_SOURCE", "cost_explorer")
+
     def _patch_path(self, file_path):
         """Fixes relative paths to be from the project root."""
         path = Path(file_path)

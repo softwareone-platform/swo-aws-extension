@@ -1,5 +1,6 @@
 import calendar
 import json
+from datetime import datetime
 from io import BytesIO
 from urllib.parse import urljoin
 
@@ -109,7 +110,15 @@ class JournalManager:  # noqa: WPS214
         filename = f"{agreement_id}.json"
 
         report_data = report.to_dict()
-        json_bytes = BytesIO(json.dumps(report_data, indent=2).encode("utf-8"))
+        json_bytes = BytesIO(
+            json.dumps(
+                report_data,
+                indent=2,
+                default=lambda value: (
+                    value.isoformat() if isinstance(value, datetime) else str(value)
+                ),
+            ).encode("utf-8")
+        )
 
         attachment = JournalAttachment(
             name=filename,

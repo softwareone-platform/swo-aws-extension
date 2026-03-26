@@ -1,6 +1,7 @@
 import datetime as dt
 import logging
 from collections.abc import Callable
+from urllib.parse import unquote
 
 import boto3
 
@@ -347,6 +348,54 @@ class AWSClient:
         )
 
     @wrap_boto3_error
+    def list_s3_objects(self, bucket_name: str, prefix: str) -> list[str]:
+        """List S3 object keys under a prefix.
+
+        Args:
+            bucket_name: Name of the S3 bucket.
+            prefix: Prefix used to filter objects.
+
+        Returns:
+            A list of object keys.
+        """
+        s3_client = self._get_s3_client()
+        keys: list[str] = []
+        continuation_token = None
+
+        while True:
+            kwargs: dict[str, str | int] = {
+                "Bucket": bucket_name,
+                "Prefix": prefix,
+                "MaxKeys": MAX_RESULTS_PER_PAGE,
+                "EncodingType": "url",
+            }
+            if continuation_token:
+                kwargs["ContinuationToken"] = continuation_token
+
+            response = s3_client.list_objects_v2(**kwargs)
+            keys.extend(unquote(s3_item["Key"]) for s3_item in response.get("Contents", []))
+
+            continuation_token = response.get("NextContinuationToken")
+            if not continuation_token:
+                break
+
+        return keys
+
+    @wrap_boto3_error
+    def download_s3_object(self, bucket_name: str, object_key: str) -> bytes:
+        """Download an S3 object body as bytes.
+
+        Args:
+            bucket_name: Name of the S3 bucket.
+            object_key: Key of the object to download.
+
+        Returns:
+            Raw object content.
+        """
+        response = self._get_s3_client().get_object(Bucket=bucket_name, Key=object_key)
+        return response["Body"].read()
+
+    @wrap_boto3_error
     def _get_credentials(self):
         if not self.account_id:
             raise AWSError("Parameter 'account_id' must be provided to assume the role.")
@@ -377,12 +426,7 @@ class AWSClient:
         )
 
     def _get_sts_client(self):
-        return boto3.client(
-            "sts",
-            aws_access_key_id=self.credentials["AccessKeyId"],
-            aws_secret_access_key=self.credentials["SecretAccessKey"],
-            aws_session_token=self.credentials["SessionToken"],
-        )
+        return self._get_client("sts")
 
     def _get_cost_explorer_client(self):
         """
@@ -452,6 +496,20 @@ class AWSClient:
         """
         return boto3.client(
             "invoicing",
+            aws_access_key_id=self.credentials["AccessKeyId"],
+            aws_secret_access_key=self.credentials["SecretAccessKey"],
+            aws_session_token=self.credentials["SessionToken"],
+            region_name="us-east-1",
+        )
+
+    def _get_s3_client(self):
+        """Get the S3 client.
+
+        Returns:
+            The S3 client.
+        """
+        return boto3.client(
+            "s3",
             aws_access_key_id=self.credentials["AccessKeyId"],
             aws_secret_access_key=self.credentials["SecretAccessKey"],
             aws_session_token=self.credentials["SessionToken"],

@@ -9,6 +9,7 @@ from swo_aws_extension.config import get_config
 from swo_aws_extension.constants import (
     COMMAND_INVALID_BILLING_DATE,
     COMMAND_INVALID_BILLING_DATE_FUTURE,
+    BillingJournalUsageSourceEnum,
 )
 from swo_aws_extension.flows.jobs.billing_journal.billing_journal_service import (
     BillingJournalService,
@@ -63,6 +64,13 @@ class Command(StyledPrintCommand):
             default=False,
             help="Generate journals in dry_run mode without uploading to MPT",
         )
+        parser.add_argument(
+            "--usage-source",
+            type=str,
+            choices=[source.value for source in BillingJournalUsageSourceEnum],
+            default=None,
+            help="Usage data source for billing journal generation",
+        )
 
     def handle(self, *args, **options):  # noqa: WPS110 WPS210
         """Run command."""
@@ -80,6 +88,8 @@ class Command(StyledPrintCommand):
         self.info(f"Start {self.name} for {period} ({auth_str})")
 
         config = get_config()
+        usage_source_value = options["usage_source"] or config.billing_journal_usage_source
+        usage_source = BillingJournalUsageSourceEnum(usage_source_value)
         notifier = TeamsNotificationManager()
         billing_period = BillingPeriod.from_year_month(year, month)
 
@@ -94,6 +104,7 @@ class Command(StyledPrintCommand):
             authorizations=authorizations,
             pls_charge_percentage=Decimal(str(config.pls_charge_percentage)),
             dry_run=options.get("dry_run", False),
+            usage_source=usage_source,
         )
         service = BillingJournalService(job_context)
         service.run()
@@ -107,9 +118,9 @@ class Command(StyledPrintCommand):
         authorizations: list,
     ) -> str | None:
         """Validate command parameters. Returns error message or None if valid."""
-        error = self._validate_year_month(year, month)
-        if error:
-            return error
+        # error = self._validate_year_month(year, month)
+        # if error:
+        #     return error
 
         invalid = [auth for auth in authorizations if not AUTH_PATTERN.match(auth)]
         if invalid:

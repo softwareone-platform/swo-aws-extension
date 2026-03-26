@@ -5,12 +5,17 @@ from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import (
     BILLING_JOURNAL_ERROR_TITLE,
     AgreementStatusEnum,
+    BillingJournalUsageSourceEnum,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
     AgreementJournalGenerator,
 )
+from swo_aws_extension.flows.jobs.billing_journal.generators.cost_usage_report import (
+    CostUsageReportGenerator,
+)
 from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import InvoiceGenerator
 from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
+    BaseOrganizationUsageGenerator,
     CostExplorerUsageGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
@@ -63,29 +68,39 @@ class AuthorizationJournalGenerator:
             return AuthorizationJournalResult()
         logger.info("Found %d agreements", len(agreements))
         aws_client = AWSClient(self._config, pma_account, self._config.management_role_name)
+        invoice_generator = InvoiceGenerator(aws_client)
         return self._process_agreements(
             agreements,
             authorization.get("currency", ""),
-            CostExplorerUsageGenerator(aws_client),
-            InvoiceGenerator(aws_client),
+            aws_client,
+            invoice_generator,
         )
 
-    def _process_agreements(
+    def _build_usage_generator(
+        self,
+        aws_client: AWSClient,
+    ) -> BaseOrganizationUsageGenerator:
+        if self._context.usage_source == BillingJournalUsageSourceEnum.COST_USAGE_REPORT:
+            return CostUsageReportGenerator(aws_client)
+        return CostExplorerUsageGenerator(aws_client)
+
+    def _process_agreements(  # noqa: WPS210 Found too many local variables
         self,
         agreements: list[dict],
         auth_currency: str,
-        cost_explorer_usage_generator: CostExplorerUsageGenerator,
+        aws_client: AWSClient,
         invoice_generator: InvoiceGenerator,
     ) -> AuthorizationJournalResult:
         result = AuthorizationJournalResult()
-        generator = AgreementJournalGenerator(
-            auth_currency,
-            self._context,
-            cost_explorer_usage_generator,
-            invoice_generator,
-        )
         for agreement in agreements:
             agreement_id = agreement.get("id")
+            usage_generator = self._build_usage_generator(aws_client)
+            generator = AgreementJournalGenerator(
+                auth_currency,
+                self._context,
+                usage_generator,
+                invoice_generator,
+            )
             try:
                 agreement_result = generator.run(agreement)
             # TODO: Catch specific exceptions and handle them accordingly
