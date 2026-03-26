@@ -1,11 +1,16 @@
 import calendar
+import json
 from io import BytesIO
 from urllib.parse import urljoin
+
+from requests import HTTPError
 
 from swo_aws_extension.constants import BILLING_JOURNAL_SUCCESS_TITLE
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
 from swo_aws_extension.flows.jobs.billing_journal.models.journal import Journal
+from swo_aws_extension.flows.jobs.billing_journal.models.usage import OrganizationReport
 from swo_aws_extension.logger import get_logger
+from swo_aws_extension.swo.mpt.billing.models.hints import JournalAttachment
 from swo_aws_extension.swo.notifications.teams import Button
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
@@ -64,6 +69,8 @@ class JournalManager:  # noqa: WPS214
             len(journal_file_lines),
         )
 
+    def notify_success(self, journal_id: str, total_lines: int) -> None:
+        """Send a success notification for the journal upload."""
         journal_link = urljoin(
             self._config.mpt_portal_base_url,
             f"/billing/journals/{journal_id}",
@@ -71,9 +78,51 @@ class JournalManager:  # noqa: WPS214
         self._notifier.send_success(
             BILLING_JOURNAL_SUCCESS_TITLE,
             f"Billing journal {journal_id} uploaded for {self._authorization_id} "
-            f"with {len(journal_file_lines)} lines.",
+            f"with {total_lines} lines.",
             button=Button(f"Open journal {journal_id}", journal_link),
         )
+
+    def upload_attachments(
+        self,
+        journal_id: str,
+        reports_by_agreement: dict[str, OrganizationReport],
+    ) -> None:
+        """Upload raw usage reports as JSON attachments to the journal."""
+        for agreement_id, report in reports_by_agreement.items():
+            if not report.organization_data and not report.accounts_data:
+                continue
+            try:
+                self._upload_single_attachment(journal_id, agreement_id, report)
+            except HTTPError:
+                logger.exception(
+                    "Failed to upload attachment for agreement %s on journal %s",
+                    agreement_id,
+                    journal_id,
+                )
+
+    def _upload_single_attachment(
+        self,
+        journal_id: str,
+        agreement_id: str,
+        report: OrganizationReport,
+    ) -> None:
+        filename = f"{agreement_id}.json"
+
+        report_data = report.to_dict()
+        json_bytes = BytesIO(json.dumps(report_data, indent=2).encode("utf-8"))
+
+        attachment = JournalAttachment(
+            name=filename,
+            description=f"Usage reports for AWS agreement {agreement_id}",
+        )
+
+        self._billing_api_client.journal.attachments(journal_id).upload(
+            filename=filename,
+            mimetype="application/json",
+            file=json_bytes,
+            attachment=attachment,
+        )
+        logger.info("Uploaded journal attachment %s for journal ID %s", filename, journal_id)
 
     def _build_external_id(self) -> str:
         year = self._billing_period.year

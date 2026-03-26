@@ -19,6 +19,9 @@ from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import (
     JournalDetails,
     JournalLine,
 )
+from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
+    AgreementJournalResult,
+)
 from swo_aws_extension.flows.jobs.billing_journal.models.usage import OrganizationUsageResult
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.parameters import get_support_type
@@ -47,19 +50,19 @@ class AgreementJournalGenerator:
 
     @with_log_context(lambda _, agreement, **kwargs: agreement.get("id"))
     @dynamic_trace_span(lambda _, agreement, **kwargs: f"Agreement {agreement.get('id')}")
-    def run(self, agreement: dict) -> list[JournalLine]:
-        """Generate journal lines for the given agreement.
+    def run(self, agreement: dict) -> AgreementJournalResult:
+        """Generate billing journal lines for the given agreement.
 
         Args:
             agreement: The agreement data to process.
 
         Returns:
-            List of JournalLine objects.
+            AgreementJournalResult object containing a list of JournalLine objects and reports.
         """
         mpa_account = agreement.get("externalIds", {}).get("vendor", "")
         if not mpa_account:
-            logger.info("No PMA account found for agreement: %s", agreement.get("id"))
-            return []
+            logger.info("No MPA account found for agreement: %s", agreement.get("id"))
+            return AgreementJournalResult()
 
         invoice_result = self._invoice_generator.run(
             mpa_account,
@@ -101,7 +104,7 @@ class AgreementJournalGenerator:
         usage_result: OrganizationUsageResult,
         journal_details: JournalDetails,
         organization_invoice,
-    ) -> list[JournalLine]:
+    ) -> AgreementJournalResult:
         is_pls = get_support_type(agreement) == SupportTypesEnum.AWS_RESOLD_SUPPORT
         line_generator = JournalLineGenerator(is_pls=is_pls)
 
@@ -137,4 +140,7 @@ class AgreementJournalGenerator:
                 )
             )
 
-        return all_lines
+        return AgreementJournalResult(
+            lines=all_lines,
+            report=usage_result.reports,
+        )

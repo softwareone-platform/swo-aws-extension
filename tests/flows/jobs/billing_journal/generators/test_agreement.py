@@ -26,6 +26,7 @@ from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import (
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.usage import (
     AccountUsage,
+    OrganizationReport,
     OrganizationUsageResult,
 )
 
@@ -79,7 +80,7 @@ def test_run(
     mock_account_usage = mocker.MagicMock(spec=AccountUsage)
     mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
     mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
-    mock_usage_result.reports = {}
+    mock_usage_result.reports = OrganizationReport()
     mock_usage_result.usage_by_account = {"ACC-1": mock_account_usage}
     mock_usage_generator.run.return_value = mock_usage_result
     mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
@@ -95,7 +96,8 @@ def test_run(
 
     result = generator.run(agreement)
 
-    assert result == [mock_journal_line, mock_discount_line, mock_pls_line]
+    assert result.lines == [mock_journal_line, mock_discount_line, mock_pls_line]
+    assert result.report == OrganizationReport()
     mock_invoice_generator.run.assert_called_once()
     mock_generator_instance.generate.assert_called_once()
     mock_discounts_instance.process.assert_called_once()
@@ -119,7 +121,8 @@ def test_run_returns_empty_when_no_mpa_account(mocker, mock_context, mock_line_g
 
     result = generator.run(agreement)
 
-    assert result == []
+    assert result.lines == []
+    assert result.report is None
     mock_usage_generator.run.assert_not_called()
     mock_invoice_generator.run.assert_not_called()
     mock_line_generator_cls.assert_not_called()

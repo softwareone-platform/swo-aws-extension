@@ -8,6 +8,9 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.cre
 from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.marketplace import (
     MarketplaceJournalLineProcessor,
 )
+from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.support import (
+    SupportJournalLineProcessor,
+)
 from swo_aws_extension.flows.jobs.billing_journal.models.context import LineProcessorContext
 from swo_aws_extension.flows.jobs.billing_journal.models.invoice import OrganizationInvoice
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import (
@@ -20,31 +23,28 @@ from swo_aws_extension.logger import get_logger
 logger = get_logger(__name__)
 
 
-def _build_processor_registry(*, is_pls: bool = False) -> dict[str, JournalLineProcessor]:
+def _build_processor_registry() -> dict[str, JournalLineProcessor]:
     default = JournalLineProcessor()
+    support = SupportJournalLineProcessor()
     credit = CreditJournalLineProcessor()
     marketplace = MarketplaceJournalLineProcessor()
 
-    registry = {
+    return {
         AWSRecordTypeEnum.USAGE: default,
-        AWSRecordTypeEnum.SUPPORT: default,
+        AWSRecordTypeEnum.SUPPORT: support,
         AWSRecordTypeEnum.RECURRING: default,
         AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE: default,
         AWSRecordTypeEnum.CREDIT: credit,
         "MARKETPLACE": marketplace,
     }
 
-    if is_pls:
-        registry.pop(AWSRecordTypeEnum.SUPPORT, None)
-
-    return registry
-
 
 class JournalLineGenerator:
     """Generates journal lines from account usage data using line processors."""
 
     def __init__(self, *, is_pls: bool = False) -> None:
-        self._processors = _build_processor_registry(is_pls=is_pls)
+        self._is_pls = is_pls
+        self._processors = _build_processor_registry()
 
     def generate(
         self,
@@ -69,6 +69,7 @@ class JournalLineGenerator:
             account_usage=account_usage,
             journal_details=journal_details,
             organization_invoice=organization_invoice,
+            is_pls=self._is_pls,
         )
 
         journal_lines: list[JournalLine] = []

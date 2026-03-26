@@ -7,6 +7,11 @@ from swo_aws_extension.flows.jobs.billing_journal.billing_journal_service import
 from swo_aws_extension.flows.jobs.billing_journal.generators.authorization import (
     AuthorizationJournalGenerator,
 )
+from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import JournalLine
+from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
+    AuthorizationJournalResult,
+)
+from swo_aws_extension.flows.jobs.billing_journal.models.usage import OrganizationReport
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 MODULE = "swo_aws_extension.flows.jobs.billing_journal.billing_journal_service"
@@ -40,7 +45,7 @@ def test_processes_authorizations(
     authorization = {"id": "AUTH-1"}
     mock_get_authorizations.return_value = [authorization]
     mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
-    mock_auth_gen.run.return_value = []
+    mock_auth_gen.run.return_value = AuthorizationJournalResult()
     mock_auth_generator_cls.return_value = mock_auth_gen
     mock_journal_manager_cls = mocker.patch(f"{MODULE}.JournalManager", autospec=True)
     mock_journal = mocker.MagicMock(id="JRN-1")
@@ -93,7 +98,7 @@ def test_creates_new_journal_when_no_pending(
     authorization = {"id": "AUTH-1"}
     mock_get_authorizations.return_value = [authorization]
     mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
-    mock_auth_gen.run.return_value = []
+    mock_auth_gen.run.return_value = AuthorizationJournalResult()
     mock_auth_generator_cls.return_value = mock_auth_gen
     mock_journal_manager_cls = mocker.patch(f"{MODULE}.JournalManager", autospec=True)
     mock_journal_manager = mock_journal_manager_cls.return_value
@@ -112,7 +117,8 @@ def test_uploads_journal_when_lines_generated(
     authorization = {"id": "AUTH-1"}
     mock_get_authorizations.return_value = [authorization]
     mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
-    mock_auth_gen.run.return_value = [{"line": 1}]
+    mock_line = mocker.MagicMock(spec=JournalLine)
+    mock_auth_gen.run.return_value = AuthorizationJournalResult(lines=[mock_line])
     mock_auth_generator_cls.return_value = mock_auth_gen
     mock_journal_manager_cls = mocker.patch(f"{MODULE}.JournalManager", autospec=True)
     mock_journal_manager = mock_journal_manager_cls.return_value
@@ -122,7 +128,8 @@ def test_uploads_journal_when_lines_generated(
 
     service.run()  # act
 
-    mock_journal_manager.upload_journal.assert_called_once_with("JRN-1", [{"line": 1}])
+    mock_journal_manager.upload_journal.assert_called_once_with("JRN-1", [mock_line])
+    mock_journal_manager.notify_success.assert_called_once_with("JRN-1", 1)
 
 
 def test_builds_rql_query_without_authorizations(
@@ -138,3 +145,28 @@ def test_builds_rql_query_without_authorizations(
     assert result is None
     expected_query = RQLQuery(product__id__in=["PROD-1"])
     mock_get_authorizations.assert_called_once_with(mock_context.mpt_client, expected_query)
+
+
+def test_uploads_attachments_when_reports_present(
+    mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
+):
+    authorization = {"id": "AUTH-1"}
+    mock_get_authorizations.return_value = [authorization]
+    report = OrganizationReport(organization_data={"usage": [{"key": "val"}]})
+    mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
+    mock_line = mocker.MagicMock(spec=JournalLine)
+    mock_auth_gen.run.return_value = AuthorizationJournalResult(
+        lines=[mock_line],
+        reports_by_agreement={"AGR-1": report},
+    )
+    mock_auth_generator_cls.return_value = mock_auth_gen
+    mock_journal_manager_cls = mocker.patch(f"{MODULE}.JournalManager", autospec=True)
+    mock_journal_manager = mock_journal_manager_cls.return_value
+    mock_journal = mocker.MagicMock(id="JRN-1")
+    mock_journal_manager.get_pending_journal.return_value = mock_journal
+    service = BillingJournalService(mock_context)
+
+    service.run()  # act
+
+    mock_journal_manager.upload_attachments.assert_called_once_with("JRN-1", {"AGR-1": report})
+    mock_journal_manager.notify_success.assert_called_once_with("JRN-1", 1)

@@ -30,3 +30,4 @@ class LineProcessorContext:
     account_usage: AccountUsage
     journal_details: JournalDetails
     organization_invoice: OrganizationInvoice
+    is_pls: bool = False
