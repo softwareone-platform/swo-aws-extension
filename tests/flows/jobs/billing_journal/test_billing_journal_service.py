@@ -30,6 +30,7 @@ def mock_auth_generator_cls(mocker):
 def test_no_authorizations_skips_processing(
     mock_context, mock_get_authorizations, mock_auth_generator_cls
 ):
+    mock_context.dry_run = False
     mock_get_authorizations.return_value = None
     service = BillingJournalService(mock_context)
 
@@ -42,14 +43,12 @@ def test_no_authorizations_skips_processing(
 def test_processes_authorizations(
     mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
 ):
+    mock_context.dry_run = False
     authorization = {"id": "AUTH-1"}
     mock_get_authorizations.return_value = [authorization]
     mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
     mock_auth_gen.run.return_value = AuthorizationJournalResult()
     mock_auth_generator_cls.return_value = mock_auth_gen
-    mock_journal_manager_cls = mocker.patch(f"{MODULE}.JournalManager", autospec=True)
-    mock_journal = mocker.MagicMock(id="JRN-1")
-    mock_journal_manager_cls.return_value.get_pending_journal.return_value = mock_journal
     service = BillingJournalService(mock_context)
 
     service.run()  # act
@@ -60,13 +59,11 @@ def test_processes_authorizations(
 def test_exception_sends_error(
     mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
 ):
+    mock_context.dry_run = False
     mock_get_authorizations.return_value = [{"id": "AUTH-1"}]
     mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
     mock_auth_gen.run.side_effect = Exception("Test failure")
     mock_auth_generator_cls.return_value = mock_auth_gen
-    mock_journal_manager_cls = mocker.patch(f"{MODULE}.JournalManager", autospec=True)
-    mock_journal = mocker.MagicMock(id="JRN-1")
-    mock_journal_manager_cls.return_value.get_pending_journal.return_value = mock_journal
     service = BillingJournalService(mock_context)
 
     service.run()  # act
@@ -80,6 +77,7 @@ def test_exception_sends_error(
 def test_builds_rql_query_with_authorizations(
     mock_context, mock_get_authorizations, mock_auth_generator_cls
 ):
+    mock_context.dry_run = False
     mock_context.product_ids = ["PROD-1"]
     mock_context.authorizations = ["AUTH-1"]
     mock_get_authorizations.return_value = []
@@ -95,10 +93,12 @@ def test_builds_rql_query_with_authorizations(
 def test_creates_new_journal_when_no_pending(
     mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
 ):
+    mock_context.dry_run = False
     authorization = {"id": "AUTH-1"}
     mock_get_authorizations.return_value = [authorization]
     mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
-    mock_auth_gen.run.return_value = AuthorizationJournalResult()
+    mock_line = mocker.MagicMock(spec=JournalLine)
+    mock_auth_gen.run.return_value = AuthorizationJournalResult(lines=[mock_line])
     mock_auth_generator_cls.return_value = mock_auth_gen
     mock_journal_manager_cls = mocker.patch(f"{MODULE}.JournalManager", autospec=True)
     mock_journal_manager = mock_journal_manager_cls.return_value
@@ -114,6 +114,7 @@ def test_creates_new_journal_when_no_pending(
 def test_uploads_journal_when_lines_generated(
     mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
 ):
+    mock_context.dry_run = False
     authorization = {"id": "AUTH-1"}
     mock_get_authorizations.return_value = [authorization]
     mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
@@ -135,6 +136,7 @@ def test_uploads_journal_when_lines_generated(
 def test_builds_rql_query_without_authorizations(
     mock_context, mock_get_authorizations, mock_auth_generator_cls
 ):
+    mock_context.dry_run = False
     mock_context.product_ids = ["PROD-1"]
     mock_context.authorizations = None
     mock_get_authorizations.return_value = []
@@ -150,6 +152,7 @@ def test_builds_rql_query_without_authorizations(
 def test_uploads_attachments_when_reports_present(
     mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
 ):
+    mock_context.dry_run = False
     authorization = {"id": "AUTH-1"}
     mock_get_authorizations.return_value = [authorization]
     report = OrganizationReport(organization_data={"usage": [{"key": "val"}]})
@@ -170,3 +173,26 @@ def test_uploads_attachments_when_reports_present(
 
     mock_journal_manager.upload_attachments.assert_called_once_with("JRN-1", {"AGR-1": report})
     mock_journal_manager.notify_success.assert_called_once_with("JRN-1", 1)
+
+
+def test_dry_run_skips_upload(
+    mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
+):
+    mock_context.dry_run = True
+    authorization = {"id": "AUTH-1"}
+    mock_get_authorizations.return_value = [authorization]
+    mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
+    mock_line = mocker.MagicMock(spec=JournalLine)
+    mock_line.to_jsonl.return_value = '{"test": 1}\n'
+    report = OrganizationReport(organization_data={"usage": [{"key": "val"}]})
+    mock_auth_gen.run.return_value = AuthorizationJournalResult(
+        lines=[mock_line],
+        reports_by_agreement={"AGR-1": report},
+    )
+    mock_auth_generator_cls.return_value = mock_auth_gen
+    mock_journal_manager_cls = mocker.patch(f"{MODULE}.JournalManager", autospec=True)
+    service = BillingJournalService(mock_context)
+
+    service.run()  # act
+
+    mock_journal_manager_cls.assert_not_called()

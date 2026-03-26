@@ -61,9 +61,10 @@ class AgreementJournalGenerator:
         """
         mpa_account = agreement.get("externalIds", {}).get("vendor", "")
         if not mpa_account:
-            logger.info("No MPA account found for agreement: %s", agreement.get("id"))
+            logger.info("No MPA account found for agreement. Skipping journal generation.")
             return AgreementJournalResult()
 
+        logger.info("Generating billing journal for MPA account %s", mpa_account)
         invoice_result = self._invoice_generator.run(
             mpa_account,
             self._billing_period,
@@ -80,9 +81,7 @@ class AgreementJournalGenerator:
             self._billing_period,
             organization_invoice=invoice_result.invoice,
         )
-        logger.info(
-            "Usage generation completed with %d accounts", len(usage_result.usage_by_account)
-        )
+        logger.info("Usage generation completed for MPA account %s", mpa_account)
 
         journal_details = JournalDetails(
             agreement_id=agreement.get("id", ""),
@@ -91,12 +90,14 @@ class AgreementJournalGenerator:
             end_date=self._billing_period.last_day,
         )
 
-        return self._generate_lines_for_accounts(
+        agreement_result = self._generate_lines_for_accounts(
             agreement,
             usage_result,
             journal_details,
             invoice_result.invoice,
         )
+        logger.info("Generated %d journal lines", len(agreement_result.lines))
+        return agreement_result
 
     def _generate_lines_for_accounts(
         self,

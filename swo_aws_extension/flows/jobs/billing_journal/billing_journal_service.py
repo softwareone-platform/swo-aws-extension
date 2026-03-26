@@ -27,6 +27,11 @@ class BillingJournalService:
 
     def run(self) -> None:
         """Entry point for generating billing journals for all selected authorizations."""
+        if self._context.dry_run:
+            logger.info(
+                "Starting execution in DRY-RUN mode. No journals will be created or uploaded."
+            )
+
         logger.info(
             "Generating billing journals for %s",
             self._context.billing_period,
@@ -42,15 +47,13 @@ class BillingJournalService:
 
     def _process_authorization(self, authorization: dict) -> None:
         authorization_id = authorization.get("id")
-        journal_manager = JournalManager(self._context, authorization_id)
-
-        journal = journal_manager.get_pending_journal()
-        if not journal:
-            journal = journal_manager.create_new_journal()
-            logger.info("Created new journal: %s", journal.name)
 
         generator_result = self._generate_journal_lines(authorization, authorization_id)
-        if not generator_result:
+        if not generator_result or not generator_result.lines:
+            logger.info(
+                "No journal lines generated for authorization %s",
+                authorization_id,
+            )
             return
 
         logger.info(
@@ -58,19 +61,25 @@ class BillingJournalService:
             len(generator_result.lines),
             authorization_id,
         )
-        if generator_result.lines:
-            journal_manager.upload_journal(journal.id, generator_result.lines)
-            if generator_result.reports_by_agreement:
-                journal_manager.upload_attachments(
-                    journal.id,
-                    generator_result.reports_by_agreement,
-                )
-            journal_manager.notify_success(journal.id, len(generator_result.lines))
-        else:
-            logger.info(
-                "No journal lines generated for authorization %s. Skipping upload.",
-                authorization_id,
+
+        if self._context.dry_run:
+            self._log_dry_run_results(authorization_id, generator_result)
+            return
+
+        journal_manager = JournalManager(self._context, authorization_id)
+
+        journal = journal_manager.get_pending_journal()
+        if not journal:
+            journal = journal_manager.create_new_journal()
+            logger.info("Created new journal: %s", journal.name)
+
+        journal_manager.upload_journal(journal.id, generator_result.lines)
+        if generator_result.reports_by_agreement:
+            journal_manager.upload_attachments(
+                journal.id,
+                generator_result.reports_by_agreement,
             )
+        journal_manager.notify_success(journal.id, len(generator_result.lines))
 
     def _generate_journal_lines(
         self, authorization: dict, authorization_id: str
@@ -94,3 +103,23 @@ class BillingJournalService:
             unique_ids = list(set(self._authorizations))
             rql_query = RQLQuery(id__in=unique_ids) & rql_query
         return rql_query
+
+    def _log_dry_run_results(
+        self, authorization_id: str, generator_result: AuthorizationJournalResult
+    ) -> None:
+        journal_lines = generator_result.lines
+        logger.info(
+            "[DRY-RUN] Generated %d journal lines for authorization %s",
+            len(journal_lines),
+            authorization_id,
+        )
+        logger.info("".join(entry.to_jsonl() for entry in journal_lines))
+
+        if generator_result.reports_by_agreement:
+            attachments = [
+                f"{agr}.json"
+                for agr, rep in generator_result.reports_by_agreement.items()
+                if rep.organization_data or rep.accounts_data
+            ]
+            if attachments:
+                logger.info("[DRY-RUN] Attachments: %s", attachments)

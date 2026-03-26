@@ -17,6 +17,7 @@ from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     AgreementJournalResult,
     AuthorizationJournalResult,
 )
+from swo_aws_extension.flows.jobs.billing_journal.models.usage import OrganizationReport
 
 MODULE = "swo_aws_extension.flows.jobs.billing_journal.generators.authorization"
 
@@ -121,3 +122,26 @@ def test_exception_sends_error(
     mock_context.notifier.send_error.assert_called_once_with(
         BILLING_JOURNAL_ERROR_TITLE, expected_message
     )
+
+
+def test_includes_report_in_result(
+    mocker,
+    mock_context,
+    mock_get_agreements,
+    mock_agreement_generator_cls,
+    mock_usage_generator_cls,
+    mock_invoice_generator_cls,
+    mock_aws_client_cls,
+    authorization,
+):
+    report = OrganizationReport(organization_data={"usage": [{"key": "val"}]})
+    mock_get_agreements.return_value = [{"id": "AGR-1"}]
+    mock_journal_line = mocker.MagicMock(spec=JournalLine)
+    mock_agr_gen = mocker.MagicMock(spec=AgreementJournalGenerator)
+    mock_agr_gen.run.return_value = AgreementJournalResult(lines=[mock_journal_line], report=report)
+    mock_agreement_generator_cls.return_value = mock_agr_gen
+    generator = AuthorizationJournalGenerator(mock_context)
+
+    result = generator.run(authorization)
+
+    assert result.reports_by_agreement == {"AGR-1": report}

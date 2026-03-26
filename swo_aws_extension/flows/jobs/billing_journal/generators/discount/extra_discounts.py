@@ -252,7 +252,7 @@ class ExtraDiscountsManager:
         """Apply all extra discounts over the organization usage result."""
         lines = []
         principal_amount = organization_invoice.principal_invoice_amount
-        if principal_amount is None or principal_amount == DEC_ZERO:
+        if principal_amount == DEC_ZERO:
             logger.info("Principal invoice amount is zero, skipping extra discounts processing.")
             return lines
 
