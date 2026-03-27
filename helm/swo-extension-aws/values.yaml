@@ -39,6 +39,7 @@ global:
   MpNotifyCategories: "{}"
   MpInitializer: swo_aws_extension.initializer.initialize
   ManagementRole: default
+  BillingRole: swo/mpt/SWOExtensionBillingRole
   ApnRoleName: default
   ApnAccountId: default
   replicaCountAPI: 1

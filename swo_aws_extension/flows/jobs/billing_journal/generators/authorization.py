@@ -62,7 +62,7 @@ class AuthorizationJournalGenerator:
             logger.info("No agreements found")
             return AuthorizationJournalResult()
         logger.info("Found %d agreements", len(agreements))
-        aws_client = AWSClient(self._config, pma_account, self._config.management_role_name)
+        aws_client = AWSClient(self._config, pma_account, self._config.billing_role_name)
         return self._process_agreements(
             agreements,
             authorization.get("currency", ""),
