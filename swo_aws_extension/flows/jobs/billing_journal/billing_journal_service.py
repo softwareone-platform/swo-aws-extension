@@ -1,4 +1,7 @@
 from swo_aws_extension.constants import BILLING_JOURNAL_ERROR_TITLE
+from swo_aws_extension.flows.jobs.billing_journal.billing_report_creator import (
+    BillingReportCreator,
+)
 from swo_aws_extension.flows.jobs.billing_journal.generators.authorization import (
     AuthorizationJournalGenerator,
 )
@@ -42,10 +45,19 @@ class BillingJournalService:
             logger.info("No authorizations found")
             return
 
+        all_report_rows = []
         for authorization in authorizations:
-            self._process_authorization(authorization)
+            generator_result = self._process_authorization(authorization)
+            if generator_result and generator_result.billing_report_rows:
+                all_report_rows.extend(generator_result.billing_report_rows)
 
-    def _process_authorization(self, authorization: dict) -> None:
+        if all_report_rows and not self._context.dry_run:
+            report_creator = BillingReportCreator(self._context.config, self._context.notifier)
+            report_creator.create_and_notify_teams(
+                str(self._context.billing_period), all_report_rows
+            )
+
+    def _process_authorization(self, authorization: dict) -> AuthorizationJournalResult | None:
         authorization_id = authorization.get("id")
 
         generator_result = self._generate_journal_lines(authorization, authorization_id)
@@ -54,7 +66,7 @@ class BillingJournalService:
                 "No journal lines generated for authorization %s",
                 authorization_id,
             )
-            return
+            return None
 
         logger.info(
             "Generated %d journal lines for authorization %s",
@@ -64,7 +76,7 @@ class BillingJournalService:
 
         if self._context.dry_run:
             self._log_dry_run_results(authorization_id, generator_result)
-            return
+            return None
 
         journal_manager = JournalManager(self._context, authorization_id)
 
@@ -80,6 +92,8 @@ class BillingJournalService:
                 generator_result.reports_by_agreement,
             )
         journal_manager.notify_success(journal.id, len(generator_result.lines))
+
+        return generator_result
 
     def _generate_journal_lines(
         self, authorization: dict, authorization_id: str

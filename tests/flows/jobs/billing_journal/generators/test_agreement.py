@@ -16,6 +16,7 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.pls_charge_manager 
 from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
     CostExplorerUsageGenerator,
 )
+from swo_aws_extension.flows.jobs.billing_journal.models.context import AuthorizationContext
 from swo_aws_extension.flows.jobs.billing_journal.models.invoice import (
     OrganizationInvoice,
     OrganizationInvoiceResult,
@@ -55,6 +56,7 @@ def test_run(
     mock_extra_discounts_manager_cls,
     mock_pls_charge_manager_cls,
 ):
+    mocker.patch(f"{MODULE}.generate_billing_report_rows", return_value=[])
     agreement = {
         "id": "AGR-1",
         "externalIds": {"vendor": "MPA"},
@@ -88,7 +90,7 @@ def test_run(
         invoice=OrganizationInvoice(),
     )
     generator = AgreementJournalGenerator(
-        "USD",
+        AuthorizationContext(id="AUTH-1", pma_account="PMA-1", currency="USD"),
         mock_context,
         mock_usage_generator,
         mock_invoice_generator,
@@ -97,7 +99,6 @@ def test_run(
     result = generator.run(agreement)
 
     assert result.lines == [mock_journal_line, mock_discount_line, mock_pls_line]
-    assert result.report == OrganizationReport()
     mock_invoice_generator.run.assert_called_once()
     mock_generator_instance.generate.assert_called_once()
     mock_discounts_instance.process.assert_called_once()
@@ -108,12 +109,59 @@ def test_run(
     assert isinstance(call_args[0][2], JournalDetails)
 
 
+def test_run_without_pls(
+    mocker,
+    mock_context,
+    mock_line_generator_cls,
+    mock_extra_discounts_manager_cls,
+    mock_pls_charge_manager_cls,
+):
+    mocker.patch(f"{MODULE}.generate_billing_report_rows", return_value=[])
+    agreement = {
+        "id": "AGR-1",
+        "externalIds": {"vendor": "MPA"},
+        "parameters": {
+            "ordering": [
+                {"externalId": "supportType", "value": "DeveloperSupport"},
+            ],
+            "fulfillment": [],
+        },
+    }
+    mock_journal_line = mocker.MagicMock(spec=JournalLine)
+    mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
+    mock_generator_instance.generate.return_value = [mock_journal_line]
+    mock_line_generator_cls.return_value = mock_generator_instance
+    mock_discounts_instance = mocker.MagicMock(spec=ExtraDiscountsManager)
+    mock_discounts_instance.process.return_value = []
+    mock_extra_discounts_manager_cls.return_value = mock_discounts_instance
+    mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
+    mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
+    mock_usage_result.reports = OrganizationReport()
+    mock_usage_result.usage_by_account = {"ACC-1": mocker.MagicMock(spec=AccountUsage)}
+    mock_usage_generator.run.return_value = mock_usage_result
+    mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
+    mock_invoice_generator.run.return_value = OrganizationInvoiceResult(
+        invoice=OrganizationInvoice(),
+    )
+    generator = AgreementJournalGenerator(
+        AuthorizationContext(id="AUTH-1", pma_account="PMA-1", currency="USD"),
+        mock_context,
+        mock_usage_generator,
+        mock_invoice_generator,
+    )
+
+    result = generator.run(agreement)
+
+    assert result.lines == [mock_journal_line]
+    mock_pls_charge_manager_cls.assert_not_called()
+
+
 def test_run_returns_empty_when_no_mpa_account(mocker, mock_context, mock_line_generator_cls):
     agreement = {"id": "AGR-1", "externalIds": {}, "parameters": {"ordering": []}}
     mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
     mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
     generator = AgreementJournalGenerator(
-        "USD",
+        AuthorizationContext(id="AUTH-1", pma_account="PMA-1", currency="USD"),
         mock_context,
         mock_usage_generator,
         mock_invoice_generator,

@@ -214,10 +214,12 @@ EXTENSION_CONFIG = {
     "AZURE_STORAGE_CONTAINER": "billingreports",
     "AZURE_STORAGE_SAS_EXPIRY_DAYS": 7,
     "REPORT_INVITATIONS_FOLDER": "reports/aws/billing-transfer-invitations/",
+    "REPORT_BILLING_FOLDER": "reports/aws/billing/",
     "CONFLUENCE_BASE_URL": "https://confluence.example.com",
     "CONFLUENCE_USER": "confluence_user",
     "CONFLUENCE_TOKEN": "confluence_token",
     "PENDING_ORDERS_INFORMATION_REPORT_PAGE_ID": "123456",
+    "PLS_CHARGE_PERCENTAGE": 5.0,
 }
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"
 

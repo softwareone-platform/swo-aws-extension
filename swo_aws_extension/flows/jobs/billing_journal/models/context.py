@@ -9,6 +9,15 @@ from swo_aws_extension.flows.jobs.billing_journal.models.usage import AccountUsa
 
 
 @dataclass
+class AuthorizationContext:
+    """Context holding authorization-level data for billing journal generation."""
+
+    id: str
+    pma_account: str
+    currency: str
+
+
+@dataclass
 class BillingJournalContext:
     """Context holding necessary components for billing journal generation."""
 

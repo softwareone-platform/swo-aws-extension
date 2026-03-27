@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from swo_aws_extension.config import Config, get_config
+from swo_aws_extension.config import DEFAULT_PLS_CHARGE_PERCENTAGE, Config, get_config
 
 
 def test_ccp_client_id(settings):
@@ -95,3 +95,19 @@ def test_init_triggers_setup(tmp_path, monkeypatch):
     Config()  # act
 
     assert os.environ["AZURE_CLIENT_CERTIFICATE_PASSWORD"] == "auto-set"
+
+
+def test_billing_role_name(settings):
+    settings.EXTENSION_CONFIG["BILLING_ROLE"] = "BillingRole"
+
+    result = get_config()
+
+    assert result.billing_role_name == "BillingRole"
+
+
+def test_pls_charge_percentage(settings):
+    settings.EXTENSION_CONFIG["PLS_CHARGE_PERCENTAGE"] = "5.0"
+
+    result = get_config()
+
+    assert result.pls_charge_percentage == DEFAULT_PLS_CHARGE_PERCENTAGE

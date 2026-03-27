@@ -10,6 +10,7 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.authorization impor
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import JournalLine
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     AuthorizationJournalResult,
+    BillingReportRow,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.usage import OrganizationReport
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
@@ -111,6 +112,31 @@ def test_creates_new_journal_when_no_pending(
     mock_journal_manager.create_new_journal.assert_called_once()
 
 
+def test_processes_authorizations_creates_billing_report(
+    mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
+):
+    mock_context.dry_run = False
+    authorization = {"id": "AUTH-1"}
+    mock_get_authorizations.return_value = [authorization]
+    mock_line = mocker.MagicMock(spec=JournalLine)
+    mock_row = mocker.MagicMock(spec=BillingReportRow)
+    mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
+    mock_auth_gen.run.return_value = AuthorizationJournalResult(
+        lines=[mock_line], billing_report_rows=[mock_row]
+    )
+    mock_auth_generator_cls.return_value = mock_auth_gen
+    mocker.patch(f"{MODULE}.JournalManager", autospec=True)
+    mock_report_creator_cls = mocker.patch(f"{MODULE}.BillingReportCreator", autospec=True)
+    mock_report_creator = mock_report_creator_cls.return_value
+    service = BillingJournalService(mock_context)
+
+    service.run()  # act
+
+    mock_report_creator.create_and_notify_teams.assert_called_once_with(
+        str(mock_context.billing_period), [mock_row]
+    )
+
+
 def test_uploads_journal_when_lines_generated(
     mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
 ):
@@ -188,6 +214,51 @@ def test_dry_run_skips_upload(
     mock_auth_gen.run.return_value = AuthorizationJournalResult(
         lines=[mock_line],
         reports_by_agreement={"AGR-1": report},
+    )
+    mock_auth_generator_cls.return_value = mock_auth_gen
+    mock_journal_manager_cls = mocker.patch(f"{MODULE}.JournalManager", autospec=True)
+    service = BillingJournalService(mock_context)
+
+    service.run()  # act
+
+    mock_journal_manager_cls.assert_not_called()
+
+
+def test_dry_run_skips_upload_with_empty_reports(
+    mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
+):
+    mock_context.dry_run = True
+    authorization = {"id": "AUTH-1"}
+    mock_get_authorizations.return_value = [authorization]
+    mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
+    mock_line = mocker.MagicMock(spec=JournalLine)
+    mock_line.to_jsonl.return_value = '{"test": 1}\n'
+    mock_auth_gen.run.return_value = AuthorizationJournalResult(
+        lines=[mock_line],
+        reports_by_agreement={},
+    )
+    mock_auth_generator_cls.return_value = mock_auth_gen
+    mock_journal_manager_cls = mocker.patch(f"{MODULE}.JournalManager", autospec=True)
+    service = BillingJournalService(mock_context)
+
+    service.run()  # act
+
+    mock_journal_manager_cls.assert_not_called()
+
+
+def test_dry_run_skips_upload_with_empty_report_data(
+    mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
+):
+    mock_context.dry_run = True
+    authorization = {"id": "AUTH-1"}
+    mock_get_authorizations.return_value = [authorization]
+    mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
+    mock_line = mocker.MagicMock(spec=JournalLine)
+    mock_line.to_jsonl.return_value = '{"test": 1}\n'
+    empty_report = OrganizationReport(organization_data={}, accounts_data={})
+    mock_auth_gen.run.return_value = AuthorizationJournalResult(
+        lines=[mock_line],
+        reports_by_agreement={"AGR-1": empty_report},
     )
     mock_auth_generator_cls.return_value = mock_auth_gen
     mock_journal_manager_cls = mocker.patch(f"{MODULE}.JournalManager", autospec=True)

@@ -13,7 +13,10 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import Invo
 from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
     CostExplorerUsageGenerator,
 )
-from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
+from swo_aws_extension.flows.jobs.billing_journal.models.context import (
+    AuthorizationContext,
+    BillingJournalContext,
+)
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     AuthorizationJournalResult,
 )
@@ -63,23 +66,30 @@ class AuthorizationJournalGenerator:
             return AuthorizationJournalResult()
         logger.info("Found %d agreements", len(agreements))
         aws_client = AWSClient(self._config, pma_account, self._config.billing_role_name)
+
+        auth_context = AuthorizationContext(
+            id=auth_id or "",
+            pma_account=pma_account,
+            currency=authorization.get("currency", ""),
+        )
+
         return self._process_agreements(
+            auth_context,
             agreements,
-            authorization.get("currency", ""),
             CostExplorerUsageGenerator(aws_client),
             InvoiceGenerator(aws_client),
         )
 
     def _process_agreements(
         self,
+        auth_context: AuthorizationContext,
         agreements: list[dict],
-        auth_currency: str,
         cost_explorer_usage_generator: CostExplorerUsageGenerator,
         invoice_generator: InvoiceGenerator,
     ) -> AuthorizationJournalResult:
         result = AuthorizationJournalResult()
         generator = AgreementJournalGenerator(
-            auth_currency,
+            auth_context,
             self._context,
             cost_explorer_usage_generator,
             invoice_generator,
@@ -103,6 +113,8 @@ class AuthorizationJournalGenerator:
             result.lines.extend(agreement_result.lines)
             if agreement_result.report:
                 result.reports_by_agreement[agreement_id] = agreement_result.report
+            if agreement_result.billing_report_rows:
+                result.billing_report_rows.extend(agreement_result.billing_report_rows)
 
         return result
 
