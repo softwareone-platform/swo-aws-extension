@@ -80,7 +80,7 @@ def test_build():
             "source": {
                 "type": "Subscription",
                 "criteria": "externalIds.vendor",
-                "value": "ACC-789",
+                "value": "MPA-456",
             },
         },
     }
