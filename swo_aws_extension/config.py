@@ -83,6 +83,11 @@ class Config:
         return settings.EXTENSION_CONFIG.get("MANAGEMENT_ROLE")
 
     @property
+    def billing_role_name(self) -> str:
+        """Get the Billing role name."""
+        return settings.EXTENSION_CONFIG.get("BILLING_ROLE")
+
+    @property
     def querying_timeout_days(self) -> int:
         """Get the timeout for channel handshake in days."""
         return int(settings.EXTENSION_CONFIG["QUERYING_TIMEOUT_DAYS"])
