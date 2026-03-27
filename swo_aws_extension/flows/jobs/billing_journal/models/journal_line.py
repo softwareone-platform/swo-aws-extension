@@ -155,7 +155,7 @@ class JournalLine:
                 source=SearchSource(
                     type="Subscription",
                     criteria="externalIds.vendor",
-                    criteria_value=invoice_details.account_id,
+                    criteria_value=journal_details.mpa_id,
                 ),
             ),
             segment=segment,
