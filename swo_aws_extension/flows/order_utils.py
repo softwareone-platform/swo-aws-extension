@@ -14,6 +14,7 @@ from mpt_extension_sdk.mpt_http.wrap_http_error import MPTError, wrap_mpt_http_e
 from swo_aws_extension.constants import MptOrderStatus
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.steps.errors import OrderStatusChangeError
+from swo_aws_extension.parameters import get_mpa_account_id, set_mpa_account_id
 from swo_aws_extension.swo.notifications.mpt import MPTNotificationManager
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,14 @@ def set_template(order, template):
     updated_order = copy.deepcopy(order)
     updated_order["template"] = template
     return updated_order
+
+
+def strip_whitespace_from_mpa_account(order: dict) -> dict:
+    """Strip whitespace from the Master Payer Account ID parameter."""
+    mpa_account_id = get_mpa_account_id(order)
+    if mpa_account_id:
+        return set_mpa_account_id(order, mpa_account_id.strip())
+    return order
 
 
 # TODO: SDK candidate

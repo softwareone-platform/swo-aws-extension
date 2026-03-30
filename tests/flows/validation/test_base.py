@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock
 
+from mpt_extension_sdk.mpt_http.base import MPTClient
+
 from swo_aws_extension.constants import (
     AccountTypesEnum,
     OrderParametersEnum,
@@ -155,3 +157,26 @@ def test_validate_order_when_product_items_not_found(
     result = validate_order(mock_client, order)
 
     assert result["lines"] == []
+
+
+def test_validate_order_strips_whitespace_from_mpa_account(
+    order_factory, order_parameters_factory, mocker
+):
+    mock_client = MagicMock(spec=MPTClient)
+    order = order_factory(
+        order_parameters=order_parameters_factory(
+            account_type=AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value,
+            mpa_id="  651706759263  ",
+            constraints={"hidden": None, "required": None, "readonly": None},
+        ),
+        lines=[],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
+        return_value=[{"id": "ITM-1", "name": "AWS Usage"}],
+    )
+
+    result = validate_order(mock_client, order)
+
+    mpa_param = get_ordering_parameter(OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value, result)
+    assert mpa_param["value"] == "651706759263"

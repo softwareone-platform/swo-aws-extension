@@ -12,7 +12,10 @@ from swo_aws_extension.constants import (
     PhasesEnum,
 )
 from swo_aws_extension.flows.order import InitialAWSContext
-from swo_aws_extension.flows.order_utils import update_processing_template_and_notify
+from swo_aws_extension.flows.order_utils import (
+    strip_whitespace_from_mpa_account,
+    update_processing_template_and_notify,
+)
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import ConfigurationStepError, UnexpectedStopError
 from swo_aws_extension.parameters import get_phase, set_fulfillment_parameter_value, set_phase
@@ -38,6 +41,7 @@ class SetupContext(BasePhaseStep):
     def process(self, client: MPTClient, context: InitialAWSContext) -> None:
         self._init_processing_template(client, context)
         self._init_parameter_default_values(client, context)
+        context.order = strip_whitespace_from_mpa_account(context.order)
         try:
             context.aws_client = AWSClient(
                 self._config, context.pm_account_id, self._config.management_role_name

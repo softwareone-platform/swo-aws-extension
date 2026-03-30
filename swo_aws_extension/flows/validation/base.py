@@ -6,6 +6,7 @@ from mpt_extension_sdk.mpt_http.mpt import get_product_items_by_skus
 from mpt_extension_sdk.mpt_http.wrap_http_error import ValidationError
 
 from swo_aws_extension.constants import AWS_ITEMS_SKUS, AccountTypesEnum, OrderParametersEnum
+from swo_aws_extension.flows.order_utils import strip_whitespace_from_mpa_account
 from swo_aws_extension.parameters import (
     get_account_type,
     get_ordering_parameter,
@@ -152,6 +153,7 @@ def validate_order(client: MPTClient, order: dict) -> dict:
     """
     validated_order = copy.deepcopy(order)
     validated_order = reset_ordering_parameters_error(validated_order)
+    validated_order = strip_whitespace_from_mpa_account(validated_order)
     error_order = _validate_new_account_constraints(validated_order)
     if error_order:
         return error_order
