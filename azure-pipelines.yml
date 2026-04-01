@@ -62,7 +62,7 @@ stages:
   - stage: sbom
     displayName: SBOM
     dependsOn: [prepare, build]
-    # condition: or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'))
+    condition: or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'))
     variables:
       - group: marketplace.dtrack
       - name: buildVersion
@@ -85,7 +85,7 @@ stages:
     jobs:
       - job: publish
         displayName: Publish
-#        condition: or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/release/4'), eq(variables['System.Debug'], true))
+        condition: or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'), eq(variables['System.Debug'], true))
         variables:
           - template: aks-docker-templates/acr-creds-group.yaml@templates
           - name: buildVersion
