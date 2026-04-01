@@ -1,9 +1,7 @@
 import logging
-import time
 from dataclasses import dataclass
 from functools import wraps
 from http import HTTPStatus
-from urllib.parse import urljoin
 
 import requests
 
@@ -16,16 +14,13 @@ from swo_aws_extension.constants import (
     CRM_SERVICE_TYPE,
     CRM_SUB_SERVICE,
 )
-from swo_aws_extension.swo.auth import get_auth_token
+from swo_aws_extension.swo.base_client import OAuthSessionClient
 from swo_aws_extension.swo.crm_service.errors import (
     CRMHttpError,
     CRMNotFoundError,
 )
 
 logger = logging.getLogger(__name__)
-
-TIMEOUT = 60
-TOKEN_EXPIRY_BUFFER = 60
 
 
 def wrap_http_error(func):
@@ -72,39 +67,29 @@ class ServiceRequest:
         }
 
 
-class CRMServiceClient(requests.Session):
+class CRMServiceClient(OAuthSessionClient):
     """Client to interact with CRM system."""
 
     def __init__(self, config: Config, api_version: str = "3.0.0"):
-        super().__init__()
-        self._oauth_url = config.crm_oauth_url
-        self._client_id = config.crm_client_id
-        self._client_secret = config.crm_client_secret
-        self._audience = config.crm_audience
-        self.api_version = api_version
-        self._token_expiry: float | None = None
-        self.base_url = self._normalize_base_url(config.crm_api_base_url)
-
-    def request(self, method: str, url: str, *args, **kwargs):
-        """Makes HTTP request with token refresh if needed."""
-        self._refresh_token_if_expired()
-        if url and url[0] == "/":
-            url = url[1:]
-        url = urljoin(self.base_url, url)
-        kwargs.setdefault("timeout", TIMEOUT)
-        return super().request(method, url, *args, **kwargs)
+        super().__init__(
+            oauth_url=config.crm_oauth_url,
+            client_id=config.crm_client_id,
+            client_secret=config.crm_client_secret,
+            audience=config.crm_audience,
+            base_url=config.crm_api_base_url,
+        )
+        self._api_version = api_version
 
     @wrap_http_error
     def create_service_request(self, order_id: str, service_request: ServiceRequest) -> dict:
-        """
-        Create a service request.
+        """Create a service request.
 
         Args:
-            order_id: MPT order id
-            service_request: Service request
+            order_id: MPT order id.
+            service_request: Service request.
 
         Returns:
-            Dictionary with created service request id {"id": "CS0004728"}
+            Dictionary with created service request id {"id": "CS0004728"}.
         """
         response = self.post(
             url="/ticketing/ServiceRequests",
@@ -116,15 +101,14 @@ class CRMServiceClient(requests.Session):
 
     @wrap_http_error
     def get_service_request(self, order_id: str, service_request_id: str) -> dict:
-        """
-        Retrieves a service request from CRM system.
+        """Retrieve a service request from CRM system.
 
         Args:
-            order_id: MPT order id
-            service_request_id: Service request id
+            order_id: MPT order id.
+            service_request_id: Service request id.
 
         Returns:
-            Dictionary with service request details
+            Dictionary with service request details.
         """
         response = self.get(
             url=f"/ticketing/ServiceRequests/{service_request_id}",
@@ -133,26 +117,11 @@ class CRMServiceClient(requests.Session):
         response.raise_for_status()
         return response.json()
 
-    def _refresh_token_if_expired(self) -> None:
-        if self._token_expiry is None or time.time() >= (self._token_expiry - TOKEN_EXPIRY_BUFFER):
-            token = get_auth_token(
-                endpoint=self._oauth_url,
-                client_id=self._client_id,
-                client_secret=self._client_secret,
-                scope=None,
-                audience=self._audience,
-            )
-            self._token_expiry = time.time() + token["expires_in"]
-            self.headers.update(
-                {
-                    "User-Agent": "swo-extensions/1.0",
-                    "Authorization": f"Bearer {token['access_token']}",
-                    "x-api-version": self.api_version,
-                },
-            )
-
-    def _normalize_base_url(self, base_url: str) -> str:
-        return base_url if base_url.endswith("/") else f"{base_url}/"
+    def _build_auth_headers(self, token: dict) -> dict:
+        """Build auth headers including the CRM API version."""
+        headers = super()._build_auth_headers(token)
+        headers["x-api-version"] = self._api_version
+        return headers
 
 
 class _CRMClientFactory:

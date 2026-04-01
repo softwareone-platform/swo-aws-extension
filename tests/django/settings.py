@@ -197,6 +197,7 @@ EXTENSION_CONFIG = {
     "APN_ACCOUNT_ID": "1234567890",
     "ONBOARD_CUSTOMER_ROLE": "OnboardCustomerRole",
     "MANAGEMENT_ROLE": "SWOExtensionManagementRole",
+    "BILLING_ROLE": "SWOExtensionBillingRole",
     "QUERYING_TIMEOUT_DAYS": 4,
     "CUSTOMER_ROLES_QUERYING_TIMEOUT_DAYS": 2,
     "CLOUD_ORCHESTRATOR_API_BASE_URL": "https://cloud-orchestrator.test.com/",
