@@ -227,6 +227,11 @@ EXTENSION_CONFIG = {
     "CCO_CLIENT_SECRET": "test-cco-secret",
     "CCO_AUDIENCE": "procops-contracts-test",
     "CCO_SELLER_MAP_PATH": "tests/fixtures/seller_external_id_map.json",
+    "SVC_PROVISIONING_API_BASE_URL": "https://swo-ip-apim-uat.azure-api.net",
+    "SVC_PROVISIONING_OAUTH_URL": "https://svc-provisioning.eu.auth0.com",
+    "SVC_PROVISIONING_CLIENT_ID": "svc-provisioning-client-id",
+    "SVC_PROVISIONING_CLIENT_SECRET": "test-svc-provisioning-secret",
+    "SVC_PROVISIONING_AUDIENCE": "svcs-sfo-service-provisioning-api-uat",
 }
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"
 
