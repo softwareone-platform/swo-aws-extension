@@ -34,6 +34,17 @@ def get_mpa_account_id(source: dict[str, Any]) -> str | None:
     return ordering_param.get("value", None)
 
 
+def set_mpa_account_id(order: dict[str, Any], mpa_account_id: str) -> dict[str, Any]:
+    """Set the Master Payer Account ID on the ordering parameters."""
+    updated_order = copy.deepcopy(order)
+    ordering_param = get_ordering_parameter(
+        OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value,
+        updated_order,
+    )
+    ordering_param["value"] = mpa_account_id
+    return updated_order
+
+
 def set_ordering_parameter_error(order: dict, param_external_id: str, error: dict) -> dict:
     """
     Set a validation error on an ordering parameter.

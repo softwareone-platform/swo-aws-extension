@@ -11,7 +11,7 @@ from swo_aws_extension.constants import (
 )
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.setup_context import SetupContext
-from swo_aws_extension.parameters import get_fulfillment_parameter
+from swo_aws_extension.parameters import get_fulfillment_parameter, get_mpa_account_id
 
 
 def test_setup_context_with_pma(
@@ -434,3 +434,37 @@ def test_init_parameter_default_values_skipped_when_phase_is_informed(
     assert not get_fulfillment_parameter(
         FulfillmentParametersEnum.CHANNEL_HANDSHAKE_APPROVED.value, context.order
     ).get("value")
+
+
+def test_strip_whitespace_from_mpa_account(
+    mocker,
+    config,
+    order_factory,
+    order_parameters_factory,
+    fulfillment_parameters_factory,
+    product_parameters_factory,
+):
+    mpt_client_mock = mocker.MagicMock(spec=MPTClient)
+    next_step_mock = mocker.MagicMock(spec=Step)
+    mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context._paginated",
+        return_value=product_parameters_factory(),
+    )
+    order = order_factory(
+        order_parameters=order_parameters_factory(mpa_id="  651706759263  "),
+        fulfillment_parameters=fulfillment_parameters_factory(phase=""),
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.update_order",
+        side_effect=lambda *_args, **kwargs: {**order, "parameters": kwargs["parameters"]},
+    )
+    context = PurchaseContext.from_order_data(order)
+    step = SetupContext(config)
+
+    step(mpt_client_mock, context, next_step_mock)  # act
+
+    assert get_mpa_account_id(context.order) == "651706759263"

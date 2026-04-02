@@ -5,12 +5,14 @@ from swo_aws_extension.constants import OrderCompletedTemplate, OrderQueryingTem
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.order_utils import (
     set_order_template,
+    strip_whitespace_from_mpa_account,
     switch_order_status_to_complete,
     switch_order_status_to_failed,
     switch_order_status_to_process,
     switch_order_status_to_query,
     update_processing_template_and_notify,
 )
+from swo_aws_extension.parameters import get_mpa_account_id
 
 
 def test_set_order_template(mocker, order_factory, fulfillment_parameters_factory):
@@ -259,3 +261,23 @@ def test_update_processing_template_no_notify(
         template=new_template,
     )
     notification_mock.assert_not_called()
+
+
+def test_strip_whitespace_from_mpa_account(order_factory, order_parameters_factory):
+    order = order_factory(
+        order_parameters=order_parameters_factory(mpa_id="  651706759263  "),
+    )
+
+    result = strip_whitespace_from_mpa_account(order)
+
+    assert get_mpa_account_id(result) == "651706759263"
+
+
+def test_strip_whitespace_from_mpa_account_without_value(order_factory, order_parameters_factory):
+    order = order_factory(
+        order_parameters=order_parameters_factory(mpa_id=""),
+    )
+
+    result = strip_whitespace_from_mpa_account(order)
+
+    assert not get_mpa_account_id(result)
