@@ -1,6 +1,10 @@
 from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
 
 from swo_aws_extension.constants import SupportTypesEnum
+from swo_aws_extension.flows.jobs.billing_journal.generators.billing_report_rows import (
+    ReportContext,
+    generate_billing_report_rows,
+)
 from swo_aws_extension.flows.jobs.billing_journal.generators.discount.extra_discounts import (
     ExtraDiscountsManager,
 )
@@ -14,7 +18,10 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.pls_charge_manager 
 from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
     BaseOrganizationUsageGenerator,
 )
-from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
+from swo_aws_extension.flows.jobs.billing_journal.models.context import (
+    AuthorizationContext,
+    BillingJournalContext,
+)
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import (
     JournalDetails,
     JournalLine,
@@ -35,12 +42,12 @@ class AgreementJournalGenerator:
 
     def __init__(
         self,
-        authorization_currency: str,
+        auth_context: AuthorizationContext,
         context: BillingJournalContext,
         usage_generator: BaseOrganizationUsageGenerator,
         invoice_generator: InvoiceGenerator,
     ) -> None:
-        self._authorization_currency = authorization_currency
+        self._auth_context = auth_context
         self._pls_charge_percentage = context.pls_charge_percentage
         self._config = context.config
         self._mpt_client = context.mpt_client
@@ -68,7 +75,7 @@ class AgreementJournalGenerator:
         invoice_result = self._invoice_generator.run(
             mpa_account,
             self._billing_period,
-            self._authorization_currency,
+            self._auth_context.currency,
         )
         logger.info(
             "Found %d invoice entities",
@@ -76,7 +83,7 @@ class AgreementJournalGenerator:
         )
 
         usage_result = self._usage_generator.run(
-            self._authorization_currency,
+            self._auth_context.currency,
             mpa_account,
             self._billing_period,
             organization_invoice=invoice_result.invoice,
@@ -106,19 +113,9 @@ class AgreementJournalGenerator:
         journal_details: JournalDetails,
         organization_invoice,
     ) -> AgreementJournalResult:
-        is_pls = get_support_type(agreement) == SupportTypesEnum.AWS_RESOLD_SUPPORT
-        line_generator = JournalLineGenerator(is_pls=is_pls)
-
-        all_lines: list[JournalLine] = []
-        for account_id, account_usage in usage_result.usage_by_account.items():
-            all_lines.extend(
-                line_generator.generate(
-                    account_id,
-                    account_usage,
-                    journal_details,
-                    organization_invoice,
-                )
-            )
+        all_lines = self._generate_usage_lines(
+            agreement, usage_result, journal_details, organization_invoice
+        )
 
         # Process extra discounts after generating all usage lines.
         all_lines.extend(
@@ -131,6 +128,7 @@ class AgreementJournalGenerator:
         )
 
         # If PLS is active, calculate and add the PLS charge line.
+        is_pls = get_support_type(agreement) == SupportTypesEnum.AWS_RESOLD_SUPPORT
         if is_pls:
             all_lines.extend(
                 PlSChargeManager().process(
@@ -141,7 +139,37 @@ class AgreementJournalGenerator:
                 )
             )
 
+        context = ReportContext.from_contexts(self._auth_context, journal_details)
+        report_rows = generate_billing_report_rows(
+            context=context,
+            usage_result=usage_result,
+            organization_invoice=organization_invoice,
+        )
+
         return AgreementJournalResult(
             lines=all_lines,
             report=usage_result.reports,
+            billing_report_rows=report_rows,
         )
+
+    def _generate_usage_lines(
+        self,
+        agreement: dict,
+        usage_result: OrganizationUsageResult,
+        journal_details: JournalDetails,
+        organization_invoice,
+    ) -> list[JournalLine]:
+        is_pls = get_support_type(agreement) == SupportTypesEnum.AWS_RESOLD_SUPPORT
+        line_generator = JournalLineGenerator(is_pls=is_pls)
+
+        lines: list[JournalLine] = []
+        for account_id, account_usage in usage_result.usage_by_account.items():
+            lines.extend(
+                line_generator.generate(
+                    account_id,
+                    account_usage,
+                    journal_details,
+                    organization_invoice,
+                )
+            )
+        return lines

@@ -58,11 +58,6 @@ class Config:
         return settings.EXTENSION_CONFIG["CCP_API_BASE_URL"]
 
     @property
-    def ccp_oauth_scope(self) -> str:
-        """Get the scope for the CCP OAuth."""
-        return settings.EXTENSION_CONFIG["CCP_OAUTH_SCOPE"]
-
-    @property
     def ccp_oauth_credentials_scope(self) -> str:
         """Get the scope for the CCP OAuth."""
         return settings.EXTENSION_CONFIG["CCP_OAUTH_CREDENTIALS_SCOPE"]
@@ -172,6 +167,11 @@ class Config:
     def report_invitations_folder(self) -> str:
         """Get the folder name in Azure Storage Blob container for invitations reports."""
         return settings.EXTENSION_CONFIG["REPORT_INVITATIONS_FOLDER"]
+
+    @property
+    def report_billing_folder(self) -> str:
+        """Get the folder name in Azure Storage Blob container for billing reports."""
+        return settings.EXTENSION_CONFIG["REPORT_BILLING_FOLDER"]
 
     @property
     def azure_storage_sas_expiry_days(self) -> int:
