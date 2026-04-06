@@ -72,6 +72,17 @@ class ServiceRequest:
         }
 
 
+@dataclass
+class CommentRequest:
+    """Comment request API entity."""
+
+    comment: str = ""
+
+    def to_api_dict(self) -> dict:
+        """Converts to dict for CRM API."""
+        return {"value": self.comment}
+
+
 class CRMServiceClient(requests.Session):
     """Client to interact with CRM system."""
 
@@ -128,6 +139,28 @@ class CRMServiceClient(requests.Session):
         """
         response = self.get(
             url=f"/ticketing/ServiceRequests/{service_request_id}",
+            headers={"x-correlation-id": order_id},
+        )
+        response.raise_for_status()
+        return response.json()
+
+    @wrap_http_error
+    def add_comment(self, order_id: str, service_request_id: str, comment: str) -> dict:
+        """
+        Adds a comment to a service request.
+
+        Args:
+            order_id: MPT order id
+            service_request_id: Service request id
+            comment: Comment text
+
+        Returns:
+            Dictionary with updated service request details
+        """
+        comment_request = CommentRequest(comment=comment)
+        response = self.post(
+            url=f"/ticketing/ServiceRequests/{service_request_id}/comments",
+            json=comment_request.to_api_dict(),
             headers={"x-correlation-id": order_id},
         )
         response.raise_for_status()

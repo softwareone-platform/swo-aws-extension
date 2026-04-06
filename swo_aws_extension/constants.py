@@ -268,3 +268,6 @@ class TeamsNotificationType(StrEnum):
 
 CLOUD_ORCHESTRATOR_ONBOARDING_TYPE = "FullCMS"
 DEFAULT_SCU = "DM-SCU-000000"
+
+
+ROLES_DEPLOYED_CRM_TICKET_COMMENT = "Customer roles have been deployed. Please resolve this ticket."
