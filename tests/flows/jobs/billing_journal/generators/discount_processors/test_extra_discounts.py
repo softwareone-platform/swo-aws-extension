@@ -33,6 +33,8 @@ def create_metric(service_name, record_type, amount, invoice_entity="Entity1"):
         amount=Decimal(amount),
         invoice_entity=invoice_entity,
         invoice_id="INV-123",
+        start_date="2025-10-01",
+        end_date="2025-10-31",
     )
 
 

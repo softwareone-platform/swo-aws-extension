@@ -46,26 +46,38 @@ def single_billing_view():
 @pytest.fixture
 def single_account_usage():
     return [
-        [{"Groups": [{"Keys": ["ACT-1"]}]}],
         [
             {
+                "TimePeriod": {"Start": "2025-10-01", "End": "2025-10-02"},
+                "Groups": [{"Keys": ["ACT-1"]}],
+            }
+        ],
+        [
+            {
+                "TimePeriod": {"Start": "2025-10-01", "End": "2025-10-02"},
                 "Groups": [
                     {
                         "Keys": ["ACT-1", "AmazonEC2"],
                         "Metrics": {"UnblendedCost": {"Amount": "10,25"}},
                     }
-                ]
+                ],
             }
         ],
-        [{"Groups": [{"Keys": ["AmazonEC2", "Amazon Web Services, Inc."]}]}],
         [
             {
+                "TimePeriod": {"Start": "2025-10-01", "End": "2025-10-02"},
+                "Groups": [{"Keys": ["AmazonEC2", "Amazon Web Services, Inc."]}],
+            }
+        ],
+        [
+            {
+                "TimePeriod": {"Start": "2025-10-01", "End": "2025-10-02"},
                 "Groups": [
                     {
                         "Keys": [AWSRecordTypeEnum.USAGE, "AmazonEC2"],
                         "Metrics": {"UnblendedCost": {"Amount": "50,75"}},
                     }
-                ]
+                ],
             }
         ],
     ]
@@ -128,7 +140,12 @@ def test_generate_processes_single_account(
     assert len(metrics) > 0
     marketplace_metrics = [metric for metric in metrics if metric.record_type == "MARKETPLACE"]
     assert len(marketplace_metrics) == 1
-    assert marketplace_metrics[0].amount == Decimal("10.25")
+    metric = marketplace_metrics[0]
+    assert (metric.amount, metric.start_date, metric.end_date) == (
+        Decimal("10.25"),
+        "2025-10-01",
+        "2025-10-02",
+    )
 
 
 def test_generate_returns_correct_invoice_entity(
@@ -254,3 +271,24 @@ def test_generate_sets_invoice_id_from_organization_invoice(
     account_usage = result.usage_by_account["ACT-1"]
     metrics = [metric for metric in account_usage.metrics if metric.service_name == "AmazonEC2"]
     assert metrics[0].invoice_id == "INV-001,INV-002"
+
+
+def test_run_for_pma_fetches_correct_usage(
+    generator,
+    mock_aws_client,
+    billing_period,
+    organization_invoice,
+    single_account_usage,
+):
+    mock_aws_client.get_cost_and_usage.side_effect = single_account_usage[1:]
+
+    result = generator.run_for_pma("ACT-1", billing_period, organization_invoice)
+
+    assert isinstance(result, OrganizationUsageResult)
+    assert "ACT-1" in result.usage_by_account
+    account_usage = result.usage_by_account["ACT-1"]
+    metrics = [metric for metric in account_usage.metrics if metric.service_name == "AmazonEC2"]
+    assert len(metrics) > 0
+    assert mock_aws_client.get_cost_and_usage.call_count == 3
+    first_call_kwargs = mock_aws_client.get_cost_and_usage.call_args_list[0].kwargs
+    assert "view_arn" not in first_call_kwargs or first_call_kwargs["view_arn"] in {None, ""}

@@ -56,5 +56,7 @@ class JournalLineProcessor:
             account_id=context.account_id,
             invoice_entity=metric.invoice_entity or "",
             invoice_id=metric.invoice_id or "invoice_id",
+            start_date=metric.start_date,
+            end_date=metric.end_date,
         )
         return JournalLine.build(ITEM_SKU, context.journal_details, invoice_details)

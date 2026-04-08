@@ -1,6 +1,7 @@
 import pytest
 
 from swo_aws_extension.aws.client import AWSClient
+from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import BILLING_JOURNAL_ERROR_TITLE
 from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
     AgreementJournalGenerator,
@@ -57,6 +58,11 @@ def mock_aws_client_cls(mocker):
     mock = mocker.patch(f"{MODULE}.AWSClient", autospec=True)
     mock.return_value = mocker.MagicMock(spec=AWSClient)
     return mock
+
+
+@pytest.fixture
+def mock_generate_billing_report_rows(mocker):
+    return mocker.patch(f"{MODULE}.generate_billing_report_rows", autospec=True)
 
 
 def test_no_agreements_returns_empty_list(
@@ -150,3 +156,72 @@ def test_includes_report_in_result(
 
     assert result.reports_by_agreement == {"AGR-1": report}
     assert result.billing_report_rows == [mock_row]
+
+
+def test_pma_usage_included_in_report_rows(
+    mocker,
+    mock_context,
+    mock_get_agreements,
+    mock_agreement_generator_cls,
+    mock_usage_generator_cls,
+    mock_invoice_generator_cls,
+    mock_aws_client_cls,
+    mock_generate_billing_report_rows,
+    authorization,
+):
+    mock_get_agreements.return_value = [{"id": "AGR-1"}]
+    mock_agr_gen = mocker.MagicMock(spec=AgreementJournalGenerator)
+    mock_agr_gen.run.return_value = AgreementJournalResult(
+        lines=[], report=None, billing_report_rows=[]
+    )
+    mock_agreement_generator_cls.return_value = mock_agr_gen
+    mock_invoice_gen = mock_invoice_generator_cls.return_value
+    mock_usage_gen = mock_usage_generator_cls.return_value
+    mock_pma_invoice_result = mocker.MagicMock()
+    mock_pma_usage_result = mocker.MagicMock()
+    mock_invoice_gen.run.return_value = mock_pma_invoice_result
+    mock_usage_gen.run_for_pma.return_value = mock_pma_usage_result
+    mock_row = mocker.MagicMock(spec=BillingReportRow)
+    mock_generate_billing_report_rows.return_value = [mock_row]
+    generator = AuthorizationJournalGenerator(mock_context)
+
+    result = generator.run(authorization)
+
+    mock_invoice_gen.run.assert_any_call("MPA-123", mock_context.billing_period, "USD")
+    mock_usage_gen.run_for_pma.assert_called_once_with(
+        "MPA-123",
+        mock_context.billing_period,
+        organization_invoice=mock_pma_invoice_result.invoice,
+        granularity="MONTHLY",
+    )
+    mock_generate_billing_report_rows.assert_called_once()
+    assert mock_row in result.billing_report_rows
+
+
+def test_pma_usage_error_does_not_crash(
+    mocker,
+    mock_context,
+    mock_get_agreements,
+    mock_agreement_generator_cls,
+    mock_usage_generator_cls,
+    mock_invoice_generator_cls,
+    mock_aws_client_cls,
+    mock_generate_billing_report_rows,
+    authorization,
+):
+    mock_get_agreements.return_value = [{"id": "AGR-1"}]
+    mock_agr_gen = mocker.MagicMock(spec=AgreementJournalGenerator)
+    mock_agr_gen.run.return_value = AgreementJournalResult(
+        lines=[],
+        report=None,
+        billing_report_rows=[],
+    )
+    mock_agreement_generator_cls.return_value = mock_agr_gen
+    mock_invoice_gen = mock_invoice_generator_cls.return_value
+    mock_invoice_gen.run.side_effect = AWSError("PMA invoice fetch failed")
+    generator = AuthorizationJournalGenerator(mock_context)
+
+    result = generator.run(authorization)
+
+    assert result.billing_report_rows == []
+    mock_generate_billing_report_rows.assert_not_called()

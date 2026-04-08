@@ -10,6 +10,7 @@ from swo_aws_extension.aws.errors import (
     wrap_boto3_error,
 )
 from swo_aws_extension.config import Config
+from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
 from swo_aws_extension.swo.openid.client import OpenIDClient
 
 MINIMUM_DAYS_MONTH = 28
@@ -126,16 +127,16 @@ class AWSClient:
     @wrap_boto3_error
     def get_cost_and_usage(
         self,
-        start_date: str,
-        end_date: str,
+        billing_period: BillingPeriod,
         group_by: list[dict] | None = None,
         filter_by: dict | None = None,
         view_arn: str | None = None,
+        granularity: str = "MONTHLY",
     ) -> list[dict]:
         """Get cost and usage data for the specified date range."""
         kwarg: dict = {
-            "TimePeriod": {"Start": start_date, "End": end_date},
-            "Granularity": "MONTHLY",
+            "TimePeriod": {"Start": billing_period.start_date, "End": billing_period.end_date},
+            "Granularity": granularity,
             "Metrics": ["UnblendedCost"],
         }
         if group_by:

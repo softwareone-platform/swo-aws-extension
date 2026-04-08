@@ -80,6 +80,8 @@ class BaseExtraDiscountProcessor(ABC):
             account_id=journal_details.mpa_id,
             invoice_entity=organization_invoice.primary_entity_name,
             invoice_id=organization_invoice.primary_invoice_id,
+            start_date=journal_details.start_date,
+            end_date=journal_details.end_date,
         )
         return [JournalLine.build(ITEM_SKU, journal_details, invoice_details)]
 

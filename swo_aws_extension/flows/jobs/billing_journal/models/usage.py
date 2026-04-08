@@ -5,6 +5,17 @@ type AccountDataAlias = dict[str, list[dict]]
 
 
 @dataclass
+class ExtractedMetric:
+    """A single dynamically extracted metric from Cost Explorer raw output."""
+
+    service_name: str
+    amount: Decimal
+    start_date: str
+    end_date: str
+    record_type: str | None = None
+
+
+@dataclass
 class ServiceMetric:
     """A single cost metric for a service (e.g., usage, support, refund, etc.)."""
 
@@ -13,6 +24,8 @@ class ServiceMetric:
     amount: Decimal = field(default_factory=lambda: Decimal(0))
     invoice_entity: str | None = None
     invoice_id: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
 
 
 @dataclass

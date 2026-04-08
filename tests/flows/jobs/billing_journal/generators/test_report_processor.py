@@ -5,6 +5,7 @@ import pytest
 from swo_aws_extension.flows.jobs.billing_journal.generators.report_processor import (
     ReportProcessor,
 )
+from swo_aws_extension.flows.jobs.billing_journal.models.usage import ExtractedMetric
 
 
 def build_report_group(keys: list, amount: str = "100.00") -> dict:
@@ -15,9 +16,11 @@ def build_report_group(keys: list, amount: str = "100.00") -> dict:
     }
 
 
-def build_report(groups: list[dict]) -> list[dict]:
+def build_report(
+    groups: list[dict], start: str = "2026-03-01", end: str = "2026-03-02"
+) -> list[dict]:
     """Factory function to create reports for testing."""
-    return [{"Groups": groups}]
+    return [{"TimePeriod": {"Start": start, "End": end}, "Groups": groups}]
 
 
 @pytest.fixture
@@ -54,40 +57,63 @@ def test_extract_metrics(processor):
 
     result = processor.extract_metrics(report, "Amazon S3")
 
-    assert result == {"100.50": Decimal("100.50")}
+    assert result == [
+        ExtractedMetric(
+            service_name="100.50",
+            amount=Decimal("100.50"),
+            start_date="2026-03-01",
+            end_date="2026-03-02",
+        )
+    ]
 
 
 def test_extract_metrics_skips_zero_and_multiple_periods(processor):
     report = [
         {
+            "TimePeriod": {"Start": "2026-03-01", "End": "2026-03-02"},
             "Groups": [
                 {
                     "Keys": ["Amazon S3", "amount"],
                     "Metrics": {"UnblendedCost": {"Amount": "100.00"}},
                 }
-            ]
+            ],
         },
         {
+            "TimePeriod": {"Start": "2026-03-02", "End": "2026-03-03"},
             "Groups": [
                 {
                     "Keys": ["Amazon S3", "amount"],
                     "Metrics": {"UnblendedCost": {"Amount": "0.0"}},
                 }
-            ]
+            ],
         },
         {
+            "TimePeriod": {"Start": "2026-03-03", "End": "2026-03-04"},
             "Groups": [
                 {
                     "Keys": ["Amazon S3", "amount"],
                     "Metrics": {"UnblendedCost": {"Amount": "50.00"}},
                 }
-            ]
+            ],
         },
     ]
 
     result = processor.extract_metrics(report, "Amazon S3")
 
-    assert result == {"amount": Decimal("50.00")}
+    assert result == [
+        ExtractedMetric(
+            service_name="amount",
+            amount=Decimal("100.00"),
+            start_date="2026-03-01",
+            end_date="2026-03-02",
+        ),
+        ExtractedMetric(
+            service_name="amount",
+            amount=Decimal("50.00"),
+            start_date="2026-03-03",
+            end_date="2026-03-04",
+        ),
+    ]
 
 
 def test_extract_metrics_comma_decimal(processor):
@@ -97,7 +123,14 @@ def test_extract_metrics_comma_decimal(processor):
 
     result = processor.extract_metrics(report, "Amazon S3")
 
-    assert result == {"100,50": Decimal("100.50")}
+    assert result == [
+        ExtractedMetric(
+            service_name="100,50",
+            amount=Decimal("100.50"),
+            start_date="2026-03-01",
+            end_date="2026-03-02",
+        )
+    ]
 
 
 def test_extract_all_metrics_by_record_type(processor):
@@ -109,15 +142,29 @@ def test_extract_all_metrics_by_record_type(processor):
 
     result = processor.extract_all_metrics_by_record_type(report)
 
-    assert result == {
-        "Usage": {
-            "Amazon S3": Decimal("100.00"),
-            "Amazon EC2": Decimal("200.00"),
-        },
-        "Support": {
-            "Amazon S3": Decimal("10.00"),
-        },
-    }
+    assert result == [
+        ExtractedMetric(
+            service_name="Amazon S3",
+            amount=Decimal("100.00"),
+            start_date="2026-03-01",
+            end_date="2026-03-02",
+            record_type="Usage",
+        ),
+        ExtractedMetric(
+            service_name="Amazon EC2",
+            amount=Decimal("200.00"),
+            start_date="2026-03-01",
+            end_date="2026-03-02",
+            record_type="Usage",
+        ),
+        ExtractedMetric(
+            service_name="Amazon S3",
+            amount=Decimal("10.00"),
+            start_date="2026-03-01",
+            end_date="2026-03-02",
+            record_type="Support",
+        ),
+    ]
 
 
 def test_extract_all_metrics_skips_zero(processor):
@@ -125,7 +172,7 @@ def test_extract_all_metrics_skips_zero(processor):
 
     result = processor.extract_all_metrics_by_record_type(report)
 
-    assert result == {}
+    assert result == []
 
 
 def test_parse_group_metrics_valid(processor):

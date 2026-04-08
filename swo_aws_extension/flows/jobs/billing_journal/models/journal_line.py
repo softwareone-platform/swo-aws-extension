@@ -64,6 +64,8 @@ class InvoiceDetails:
     amount: Decimal
     account_id: str
     invoice_entity: str
+    start_date: str
+    end_date: str
     invoice_id: str = ""
     error: str | None = None
 
@@ -139,8 +141,8 @@ class JournalLine:
                 vendor=journal_details.mpa_id,
             ),
             period=Period(
-                start=journal_details.start_date,
-                end=journal_details.end_date,
+                start=invoice_details.start_date,
+                end=invoice_details.end_date,
             ),
             price=Price(
                 pp_x1=invoice_details.amount,

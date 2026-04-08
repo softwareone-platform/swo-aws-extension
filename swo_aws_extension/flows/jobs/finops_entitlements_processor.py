@@ -10,6 +10,7 @@ from swo_aws_extension.aws.client import MINIMUM_DAYS_MONTH, AWSClient
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.config import Config
 from swo_aws_extension.constants import FinOpsStatusEnum
+from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
 from swo_aws_extension.swo.finops.client import get_ffc_client
 from swo_aws_extension.swo.finops.errors import FinOpsError
 from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
@@ -166,15 +167,12 @@ class FinOpsEntitlementsProcessor:  # noqa: WPS214
     def _get_accounts_with_usage(
         self, agreement_id: str, billing_views: list[dict], aws_client: AWSClient
     ) -> list[str]:
-        today = dt.datetime.now(dt.UTC).date()
-        next_month = today.replace(day=MINIMUM_DAYS_MONTH) + dt.timedelta(days=4)
         accounts_with_usage = []
-
+        billing_period = self._get_billing_period()
         for billing_view in billing_views:
             try:
                 cost_and_usage = aws_client.get_cost_and_usage(
-                    start_date=today.replace(day=1).isoformat(),
-                    end_date=next_month.replace(day=1).isoformat(),
+                    billing_period=billing_period,
                     view_arn=billing_view.get("arn"),
                     group_by=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
                 )
@@ -265,4 +263,11 @@ class FinOpsEntitlementsProcessor:  # noqa: WPS214
         existing.entitlement_id = entitlement.get("id") if entitlement else existing.entitlement_id
         self.entitlements_table.update_status_and_usage_date(
             existing, FinOpsStatusEnum.ACTIVE, dt.datetime.now(dt.UTC).isoformat()
+        )
+
+    def _get_billing_period(self) -> BillingPeriod:
+        today = dt.datetime.now(dt.UTC).date()
+        next_month = today.replace(day=MINIMUM_DAYS_MONTH) + dt.timedelta(days=4)
+        return BillingPeriod(
+            today.replace(day=1).isoformat(), next_month.replace(day=1).isoformat()
         )

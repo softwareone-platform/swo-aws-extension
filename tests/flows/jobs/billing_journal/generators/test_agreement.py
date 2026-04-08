@@ -64,7 +64,6 @@ def mock_aws_client(mocker, accepted_transfer_response):
 def mock_get_responsibility_transfer_id(mocker):
     return mocker.patch(
         f"{MODULE}.get_responsibility_transfer_id",
-        autospec=True,
         return_value="RT-123",
     )
 
@@ -115,7 +114,7 @@ def test_run(
     mock_extra_discounts_manager_cls,
     mock_pls_charge_manager_cls,
 ):
-    mocker.patch(f"{MODULE}.generate_billing_report_rows", autospec=True, return_value=[])
+    mocker.patch(f"{MODULE}.generate_billing_report_rows", return_value=[])
     agreement = _build_agreement(support_type="PartnerLedSupport")
     mock_journal_line = mocker.MagicMock(spec=JournalLine)
     mock_discount_line = mocker.MagicMock(spec=JournalLine)
@@ -168,7 +167,7 @@ def test_run_without_pls(
     mock_extra_discounts_manager_cls,
     mock_pls_charge_manager_cls,
 ):
-    mocker.patch(f"{MODULE}.generate_billing_report_rows", autospec=True, return_value=[])
+    mocker.patch(f"{MODULE}.generate_billing_report_rows", return_value=[])
     agreement = _build_agreement(support_type="DeveloperSupport")
     mock_journal_line = mocker.MagicMock(spec=JournalLine)
     mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
@@ -314,7 +313,7 @@ def test_run_processes_when_transfer_started_on_billing_start(
     mock_extra_discounts_manager_cls,
     mock_pls_charge_manager_cls,
 ):
-    mocker.patch(f"{MODULE}.generate_billing_report_rows", autospec=True, return_value=[])
+    mocker.patch(f"{MODULE}.generate_billing_report_rows", return_value=[])
     agreement = _build_agreement()
     mock_aws_client.get_responsibility_transfer_details.return_value = {
         "ResponsibilityTransfer": {

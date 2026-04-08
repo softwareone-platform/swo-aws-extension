@@ -8,6 +8,7 @@ from swo_aws_extension.aws.errors import (
     AWSError,
     InvalidDateInTerminateResponsibilityError,
 )
+from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
 
 
 # InvalidInputException is the name given by AWS boto3 to the error we are testing:
@@ -309,8 +310,7 @@ def test_get_cost_and_usage_success(config, aws_client_factory, mock_get_paged_r
     ]
 
     result = mock_aws_client.get_cost_and_usage(
-        start_date="2025-12-01",
-        end_date="2025-12-31",
+        billing_period=BillingPeriod(start_date="2025-12-01", end_date="2025-12-31"),
     )
 
     assert result == [
@@ -325,8 +325,7 @@ def test_get_cost_and_usage_with_group(config, aws_client_factory, mock_get_page
     ]
 
     result = mock_aws_client.get_cost_and_usage(
-        start_date="2025-12-01",
-        end_date="2025-12-31",
+        billing_period=BillingPeriod(start_date="2025-12-01", end_date="2025-12-31"),
         group_by=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
     )
 
@@ -340,8 +339,7 @@ def test_get_cost_and_usage_with_filter(config, aws_client_factory, mock_get_pag
     mock_get_paged_response.return_value = []
 
     result = mock_aws_client.get_cost_and_usage(
-        start_date="2025-12-01",
-        end_date="2025-12-31",
+        billing_period=BillingPeriod(start_date="2025-12-01", end_date="2025-12-31"),
         filter_by={"Dimensions": {"Key": "SERVICE", "Values": ["Amazon EC2"]}},
     )
 
@@ -355,8 +353,7 @@ def test_get_cost_and_usage_with_arn(config, aws_client_factory, mock_get_paged_
     ]
 
     result = mock_aws_client.get_cost_and_usage(
-        start_date="2025-12-01",
-        end_date="2025-12-31",
+        billing_period=BillingPeriod(start_date="2025-12-01", end_date="2025-12-31"),
         view_arn="arn:aws:billing::123456789:billingview/test",
     )
 
@@ -370,8 +367,7 @@ def test_get_cost_and_usage_empty(config, aws_client_factory, mock_get_paged_res
     mock_get_paged_response.return_value = []
 
     result = mock_aws_client.get_cost_and_usage(
-        start_date="2025-12-01",
-        end_date="2025-12-31",
+        billing_period=BillingPeriod(start_date="2025-12-01", end_date="2025-12-31"),
     )
 
     assert result == []
