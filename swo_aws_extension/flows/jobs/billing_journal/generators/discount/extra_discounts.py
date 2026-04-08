@@ -78,8 +78,8 @@ class BaseExtraDiscountProcessor(ABC):
             service_name=self._service_name,
             amount=refund_amount,
             account_id=journal_details.mpa_id,
-            invoice_entity="",
-            invoice_id="invoice_id",
+            invoice_entity=organization_invoice.primary_entity_name,
+            invoice_id=organization_invoice.primary_invoice_id,
         )
         return [JournalLine.build(ITEM_SKU, journal_details, invoice_details)]
 

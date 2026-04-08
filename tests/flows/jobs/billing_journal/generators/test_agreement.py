@@ -1,5 +1,9 @@
+import datetime as dt
+
 import pytest
 
+from swo_aws_extension.aws.client import AWSClient
+from swo_aws_extension.constants import ResponsibilityTransferStatus
 from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
     AgreementJournalGenerator,
 )
@@ -33,6 +37,37 @@ from swo_aws_extension.flows.jobs.billing_journal.models.usage import (
 
 MODULE = "swo_aws_extension.flows.jobs.billing_journal.generators.agreement"
 
+BILLING_YEAR = 2025
+MONTH_BEFORE_BILLING = 9
+BILLING_MONTH = 10
+MONTH_AFTER_BILLING = 11
+
+
+@pytest.fixture
+def accepted_transfer_response():
+    return {
+        "ResponsibilityTransfer": {
+            "Status": ResponsibilityTransferStatus.ACCEPTED,
+            "StartTimestamp": dt.datetime(BILLING_YEAR, MONTH_BEFORE_BILLING, 1, tzinfo=dt.UTC),
+        },
+    }
+
+
+@pytest.fixture
+def mock_aws_client(mocker, accepted_transfer_response):
+    mock = mocker.MagicMock(spec=AWSClient)
+    mock.get_responsibility_transfer_details.return_value = accepted_transfer_response
+    return mock
+
+
+@pytest.fixture
+def mock_get_responsibility_transfer_id(mocker):
+    return mocker.patch(
+        f"{MODULE}.get_responsibility_transfer_id",
+        autospec=True,
+        return_value="RT-123",
+    )
+
 
 @pytest.fixture
 def mock_line_generator_cls(mocker):
@@ -49,24 +84,39 @@ def mock_pls_charge_manager_cls(mocker):
     return mocker.patch(f"{MODULE}.PlSChargeManager", autospec=True)
 
 
-def test_run(
-    mocker,
-    mock_context,
-    mock_line_generator_cls,
-    mock_extra_discounts_manager_cls,
-    mock_pls_charge_manager_cls,
-):
-    mocker.patch(f"{MODULE}.generate_billing_report_rows", return_value=[])
-    agreement = {
+def _build_agreement(support_type="ResoldSupport"):
+    return {
         "id": "AGR-1",
         "externalIds": {"vendor": "MPA"},
         "parameters": {
             "ordering": [
-                {"externalId": "supportType", "value": "ResoldSupport"},
+                {"externalId": "supportType", "value": support_type},
             ],
             "fulfillment": [],
         },
     }
+
+
+def _build_auth_context(mock_aws_client):
+    return AuthorizationContext(
+        id="AUTH-1",
+        pma_account="PMA-1",
+        currency="USD",
+        aws_client=mock_aws_client,
+    )
+
+
+def test_run(
+    mocker,
+    mock_context,
+    mock_aws_client,
+    mock_get_responsibility_transfer_id,
+    mock_line_generator_cls,
+    mock_extra_discounts_manager_cls,
+    mock_pls_charge_manager_cls,
+):
+    mocker.patch(f"{MODULE}.generate_billing_report_rows", autospec=True, return_value=[])
+    agreement = _build_agreement(support_type="PartnerLedSupport")
     mock_journal_line = mocker.MagicMock(spec=JournalLine)
     mock_discount_line = mocker.MagicMock(spec=JournalLine)
     mock_pls_line = mocker.MagicMock(spec=JournalLine)
@@ -90,7 +140,7 @@ def test_run(
         invoice=OrganizationInvoice(),
     )
     generator = AgreementJournalGenerator(
-        AuthorizationContext(id="AUTH-1", pma_account="PMA-1", currency="USD"),
+        _build_auth_context(mock_aws_client),
         mock_context,
         mock_usage_generator,
         mock_invoice_generator,
@@ -112,21 +162,14 @@ def test_run(
 def test_run_without_pls(
     mocker,
     mock_context,
+    mock_aws_client,
+    mock_get_responsibility_transfer_id,
     mock_line_generator_cls,
     mock_extra_discounts_manager_cls,
     mock_pls_charge_manager_cls,
 ):
-    mocker.patch(f"{MODULE}.generate_billing_report_rows", return_value=[])
-    agreement = {
-        "id": "AGR-1",
-        "externalIds": {"vendor": "MPA"},
-        "parameters": {
-            "ordering": [
-                {"externalId": "supportType", "value": "DeveloperSupport"},
-            ],
-            "fulfillment": [],
-        },
-    }
+    mocker.patch(f"{MODULE}.generate_billing_report_rows", autospec=True, return_value=[])
+    agreement = _build_agreement(support_type="DeveloperSupport")
     mock_journal_line = mocker.MagicMock(spec=JournalLine)
     mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
     mock_generator_instance.generate.return_value = [mock_journal_line]
@@ -144,7 +187,7 @@ def test_run_without_pls(
         invoice=OrganizationInvoice(),
     )
     generator = AgreementJournalGenerator(
-        AuthorizationContext(id="AUTH-1", pma_account="PMA-1", currency="USD"),
+        _build_auth_context(mock_aws_client),
         mock_context,
         mock_usage_generator,
         mock_invoice_generator,
@@ -156,12 +199,17 @@ def test_run_without_pls(
     mock_pls_charge_manager_cls.assert_not_called()
 
 
-def test_run_returns_empty_when_no_mpa_account(mocker, mock_context, mock_line_generator_cls):
+def test_run_returns_empty_when_no_mpa_account(
+    mocker,
+    mock_context,
+    mock_aws_client,
+    mock_line_generator_cls,
+):
     agreement = {"id": "AGR-1", "externalIds": {}, "parameters": {"ordering": []}}
     mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
     mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
     generator = AgreementJournalGenerator(
-        AuthorizationContext(id="AUTH-1", pma_account="PMA-1", currency="USD"),
+        _build_auth_context(mock_aws_client),
         mock_context,
         mock_usage_generator,
         mock_invoice_generator,
@@ -174,3 +222,135 @@ def test_run_returns_empty_when_no_mpa_account(mocker, mock_context, mock_line_g
     mock_usage_generator.run.assert_not_called()
     mock_invoice_generator.run.assert_not_called()
     mock_line_generator_cls.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        ResponsibilityTransferStatus.REQUESTED,
+        ResponsibilityTransferStatus.DECLINED,
+        ResponsibilityTransferStatus.CANCELED,
+        ResponsibilityTransferStatus.EXPIRED,
+        ResponsibilityTransferStatus.WITHDRAWN,
+    ],
+)
+def test_run_returns_empty_when_transfer_not_accepted(
+    mocker,
+    mock_context,
+    mock_aws_client,
+    mock_get_responsibility_transfer_id,
+    status,
+):
+    agreement = _build_agreement()
+    mock_aws_client.get_responsibility_transfer_details.return_value = {
+        "ResponsibilityTransfer": {
+            "Status": status,
+            "StartTimestamp": dt.datetime(
+                BILLING_YEAR,
+                MONTH_BEFORE_BILLING,
+                1,
+                tzinfo=dt.UTC,
+            ),
+        },
+    }
+    mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
+    mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
+    generator = AgreementJournalGenerator(
+        _build_auth_context(mock_aws_client),
+        mock_context,
+        mock_usage_generator,
+        mock_invoice_generator,
+    )
+
+    result = generator.run(agreement)
+
+    assert result.lines == []
+    assert result.report is None
+    mock_usage_generator.run.assert_not_called()
+    mock_invoice_generator.run.assert_not_called()
+
+
+def test_run_returns_empty_when_transfer_not_started_yet(
+    mocker,
+    mock_context,
+    mock_aws_client,
+    mock_get_responsibility_transfer_id,
+):
+    agreement = _build_agreement()
+    mock_aws_client.get_responsibility_transfer_details.return_value = {
+        "ResponsibilityTransfer": {
+            "Status": ResponsibilityTransferStatus.ACCEPTED,
+            "StartTimestamp": dt.datetime(
+                BILLING_YEAR,
+                MONTH_AFTER_BILLING,
+                1,
+                tzinfo=dt.UTC,
+            ),
+        },
+    }
+    mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
+    mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
+    generator = AgreementJournalGenerator(
+        _build_auth_context(mock_aws_client),
+        mock_context,
+        mock_usage_generator,
+        mock_invoice_generator,
+    )
+
+    result = generator.run(agreement)
+
+    assert result.lines == []
+    assert result.report is None
+    mock_usage_generator.run.assert_not_called()
+    mock_invoice_generator.run.assert_not_called()
+
+
+def test_run_processes_when_transfer_started_on_billing_start(
+    mocker,
+    mock_context,
+    mock_aws_client,
+    mock_get_responsibility_transfer_id,
+    mock_line_generator_cls,
+    mock_extra_discounts_manager_cls,
+    mock_pls_charge_manager_cls,
+):
+    mocker.patch(f"{MODULE}.generate_billing_report_rows", autospec=True, return_value=[])
+    agreement = _build_agreement()
+    mock_aws_client.get_responsibility_transfer_details.return_value = {
+        "ResponsibilityTransfer": {
+            "Status": ResponsibilityTransferStatus.ACCEPTED,
+            "StartTimestamp": dt.datetime(
+                BILLING_YEAR,
+                BILLING_MONTH,
+                1,
+                tzinfo=dt.UTC,
+            ),
+        },
+    }
+    mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
+    mock_generator_instance.generate.return_value = []
+    mock_line_generator_cls.return_value = mock_generator_instance
+    mock_discounts_instance = mocker.MagicMock(spec=ExtraDiscountsManager)
+    mock_discounts_instance.process.return_value = []
+    mock_extra_discounts_manager_cls.return_value = mock_discounts_instance
+    mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
+    mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
+    mock_usage_result.reports = OrganizationReport()
+    mock_usage_result.usage_by_account = {"ACC-1": mocker.MagicMock(spec=AccountUsage)}
+    mock_usage_generator.run.return_value = mock_usage_result
+    mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
+    mock_invoice_generator.run.return_value = OrganizationInvoiceResult(
+        invoice=OrganizationInvoice(),
+    )
+    generator = AgreementJournalGenerator(
+        _build_auth_context(mock_aws_client),
+        mock_context,
+        mock_usage_generator,
+        mock_invoice_generator,
+    )
+
+    result = generator.run(agreement)
+
+    mock_invoice_generator.run.assert_called_once()
+    mock_usage_generator.run.assert_called_once()
+    assert result.lines is not None

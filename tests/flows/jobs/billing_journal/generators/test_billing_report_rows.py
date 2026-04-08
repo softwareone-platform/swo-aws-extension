@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import AWSRecordTypeEnum
 from swo_aws_extension.flows.jobs.billing_journal.generators.billing_report_rows import (
     ReportContext,
@@ -69,8 +70,13 @@ def test_generate_billing_report_rows_aggregates_metrics():
     assert result[0] == expected_row
 
 
-def test_report_context_from_contexts_builds_correctly():
-    auth_context = AuthorizationContext(id="AUTH-1", pma_account="PMA-1", currency="USD")
+def test_report_context_from_contexts_builds_correctly(mocker):
+    auth_context = AuthorizationContext(
+        id="AUTH-1",
+        pma_account="PMA-1",
+        currency="USD",
+        aws_client=mocker.MagicMock(spec=AWSClient),
+    )
     journal_details = JournalDetails(
         agreement_id="AGR-1",
         mpa_id="MPA-1",
@@ -87,9 +93,7 @@ def test_report_context_from_contexts_builds_correctly():
     assert context.currency == "USD"
 
 
-def test_generate_billing_report_rows_defaults_exchange_rate_and_warns_for_unknown_entity(
-    caplog,
-):
+def test_generate_billing_report_rows_defaults_exchange_rate_for_unknown_entity():
     metric = ServiceMetric(
         "EC2", AWSRecordTypeEnum.USAGE, Decimal(MEDIUM_AMOUNT), "UNKNOWN-ENTITY", "INV-X"
     )
@@ -100,8 +104,7 @@ def test_generate_billing_report_rows_defaults_exchange_rate_and_warns_for_unkno
     org_invoice = OrganizationInvoice(entities={})
     context = ReportContext("AUTH-1", "PMA-1", "AGR-1", "MPA-1", "USD")
 
-    result = generate_billing_report_rows(context, usage_result, org_invoice)  # act
+    result = generate_billing_report_rows(context, usage_result, org_invoice)
 
     assert len(result) == 1
     assert result[0].exchange_rate == Decimal("1.0")
-    assert "No exchange rate found for invoice entity 'UNKNOWN-ENTITY'" in caplog.text

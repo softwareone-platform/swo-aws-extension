@@ -127,12 +127,12 @@ class JournalManager:  # noqa: WPS214
     def _build_external_id(self) -> str:
         year = self._billing_period.year
         month_name = calendar.month_name[self._billing_period.month]
-        return f"AWS-{year}-{month_name}"
+        return f"AWS-{year}-{month_name}-BT"
 
     def _build_journal_name(self, index: int) -> str:
         year = self._billing_period.year
         month_name = calendar.month_name[self._billing_period.month]
-        return f"1 {month_name} {year} #{index}"
+        return f"1 {month_name} {year} BT #{index}"
 
     def _query_pending_journal(self, external_id: str) -> Journal | None:
         rql_query = (

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 
 from swo_aws_extension.constants import BILLING_JOURNAL_ERROR_TITLE
@@ -7,7 +9,11 @@ from swo_aws_extension.flows.jobs.billing_journal.billing_journal_service import
 from swo_aws_extension.flows.jobs.billing_journal.generators.authorization import (
     AuthorizationJournalGenerator,
 )
-from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import JournalLine
+from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import (
+    ExternalIds,
+    JournalLine,
+    Price,
+)
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     AuthorizationJournalResult,
     BillingReportRow,
@@ -210,6 +216,8 @@ def test_dry_run_skips_upload(
     mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
     mock_line = mocker.MagicMock(spec=JournalLine)
     mock_line.to_jsonl.return_value = '{"test": 1}\n'
+    mock_line.external_ids = ExternalIds(invoice="INV-1", reference="AGR-1", vendor="MPA-1")
+    mock_line.price = Price(pp_x1=Decimal("100.00"), unit_pp=Decimal("100.00"))
     report = OrganizationReport(organization_data={"usage": [{"key": "val"}]})
     mock_auth_gen.run.return_value = AuthorizationJournalResult(
         lines=[mock_line],
@@ -233,6 +241,8 @@ def test_dry_run_skips_upload_with_empty_reports(
     mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
     mock_line = mocker.MagicMock(spec=JournalLine)
     mock_line.to_jsonl.return_value = '{"test": 1}\n'
+    mock_line.external_ids = ExternalIds(invoice="INV-1", reference="AGR-1", vendor="MPA-1")
+    mock_line.price = Price(pp_x1=Decimal("100.00"), unit_pp=Decimal("100.00"))
     mock_auth_gen.run.return_value = AuthorizationJournalResult(
         lines=[mock_line],
         reports_by_agreement={},
@@ -255,6 +265,8 @@ def test_dry_run_skips_upload_with_empty_report_data(
     mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
     mock_line = mocker.MagicMock(spec=JournalLine)
     mock_line.to_jsonl.return_value = '{"test": 1}\n'
+    mock_line.external_ids = ExternalIds(invoice="INV-1", reference="AGR-1", vendor="MPA-1")
+    mock_line.price = Price(pp_x1=Decimal("100.00"), unit_pp=Decimal("100.00"))
     empty_report = OrganizationReport(organization_data={}, accounts_data={})
     mock_auth_gen.run.return_value = AuthorizationJournalResult(
         lines=[mock_line],

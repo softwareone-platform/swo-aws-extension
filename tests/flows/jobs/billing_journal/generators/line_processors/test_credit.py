@@ -100,16 +100,18 @@ def test_process_does_not_add_spp_for_non_applicable_scenarios(
     assert result[0].description.value1 == f"{CREDIT_PREFIX}Amazon S3"
 
 
-@pytest.mark.parametrize("principal_invoice_amount", [None, Decimal(0)])
 def test_process_adds_spp_when_principal_zero(
-    processor, credit_metric, spp_metric, journal_details, principal_invoice_amount
+    processor,
+    credit_metric,
+    spp_metric,
+    journal_details,
 ):
     context = LineProcessorContext(
         account_id="ACC-001",
         account_usage=AccountUsage(metrics=[credit_metric, spp_metric]),
         journal_details=journal_details,
         organization_invoice=OrganizationInvoice(
-            principal_invoice_amount=principal_invoice_amount,
+            principal_invoice_amount=Decimal(0),
         ),
     )
 

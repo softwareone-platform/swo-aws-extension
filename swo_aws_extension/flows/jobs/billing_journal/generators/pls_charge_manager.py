@@ -46,26 +46,29 @@ class PlSChargeManager:
         Returns:
             List containing the PLS Charge journal line, if applicable.
         """
+        logger.info("Processing '%s' charge with %s", self._service_name, charge_percentage)
         principal_amount = organization_invoice.principal_invoice_amount
-        if principal_amount is None or principal_amount == DEC_ZERO:
+        if principal_amount == DEC_ZERO:
             return []
 
         if charge_percentage <= DEC_ZERO:
             return []
 
         base_amount = self._calculate_base_amount(usage_result, organization_invoice)
+        logger.info("Usage amount: %s", base_amount)
         if base_amount <= DEC_ZERO:
             return []
 
         charge_amount = self._calculate_charge_amount(base_amount, charge_percentage)
+        logger.info("PLS Charge amount: %s ", charge_amount)
 
         invoice_details = InvoiceDetails(
             item_sku=ITEM_SKU,
             service_name=self._service_name,
             amount=charge_amount,
             account_id=journal_details.mpa_id,
-            invoice_entity="",
-            invoice_id="invoice_id",
+            invoice_entity=organization_invoice.primary_entity_name,
+            invoice_id=organization_invoice.primary_invoice_id,
         )
         return [JournalLine.build(ITEM_SKU, journal_details, invoice_details)]
 

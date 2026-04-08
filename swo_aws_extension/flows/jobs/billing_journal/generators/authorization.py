@@ -2,17 +2,12 @@ from mpt_extension_sdk.mpt_http.mpt import get_agreements_by_query
 from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.constants import (
-    BILLING_JOURNAL_ERROR_TITLE,
-    AgreementStatusEnum,
-)
+from swo_aws_extension.constants import BILLING_JOURNAL_ERROR_TITLE, AgreementStatusEnum
 from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
     AgreementJournalGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import InvoiceGenerator
-from swo_aws_extension.flows.jobs.billing_journal.generators.usage import (
-    CostExplorerUsageGenerator,
-)
+from swo_aws_extension.flows.jobs.billing_journal.generators.usage import CostExplorerUsageGenerator
 from swo_aws_extension.flows.jobs.billing_journal.models.context import (
     AuthorizationContext,
     BillingJournalContext,
@@ -65,13 +60,16 @@ class AuthorizationJournalGenerator:
             logger.info("No agreements found")
             return AuthorizationJournalResult()
         logger.info("Found %d agreements", len(agreements))
-        aws_client = AWSClient(self._config, pma_account, self._config.billing_role_name)
 
+        # TODO update billing role to check responsibility transfers
         auth_context = AuthorizationContext(
             id=auth_id or "",
             pma_account=pma_account,
             currency=authorization.get("currency", ""),
+            aws_client=AWSClient(self._config, pma_account, self._config.management_role_name),
         )
+
+        aws_client = AWSClient(self._config, pma_account, self._config.billing_role_name)
 
         return self._process_agreements(
             auth_context,

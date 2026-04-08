@@ -176,15 +176,3 @@ def test_process_returns_empty_when_invoice_amount_is_zero(journal_details, orga
     result = manager.process(Decimal("5.0"), usage_result, journal_details, organization_invoice)
 
     assert len(result) == 0
-
-
-def test_process_returns_empty_when_invoice_amount_is_none(journal_details, organization_invoice):
-    organization_invoice.principal_invoice_amount = None
-    usage_result = build_usage_result({
-        "ACC-1": [create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00")],
-    })
-    manager = PlSChargeManager()
-
-    result = manager.process(Decimal("5.0"), usage_result, journal_details, organization_invoice)
-
-    assert len(result) == 0
