@@ -10,7 +10,7 @@ from swo_aws_extension.flows.order_utils import (
     switch_order_status_to_failed,
     switch_order_status_to_process,
     switch_order_status_to_query,
-    update_processing_template_and_notify,
+    update_processing_template,
 )
 from swo_aws_extension.parameters import get_mpa_account_id
 
@@ -161,13 +161,8 @@ def test_switch_order_to_process_and_notify_error(
         "swo_aws_extension.flows.order_utils.process_order",
         side_effect=MPTError("error"),
     )
-    notification_mock = mocker.patch(
-        "swo_aws_extension.flows.order_utils.MPTNotificationManager",
-    )
 
     switch_order_status_to_process(mpt_client, context, "TemplateName")  # act
-
-    notification_mock.assert_not_called()
 
 
 def test_switch_order_status_to_complete(
@@ -197,7 +192,7 @@ def test_switch_order_status_to_complete(
     )
 
 
-def test_update_processing_template_and_notify(
+def test_update_processing_template(
     mocker, order_factory, fulfillment_parameters_factory, template_factory
 ):
     client = mocker.MagicMock(spec=MPTClient)
@@ -215,11 +210,8 @@ def test_update_processing_template_and_notify(
         "swo_aws_extension.flows.order_utils.update_order",
         return_value=order,
     )
-    notification_mock = mocker.patch(
-        "swo_aws_extension.flows.order_utils.MPTNotificationManager",
-    )
 
-    update_processing_template_and_notify(client, context, "TemplateName")  # act
+    update_processing_template(client, context, "TemplateName")  # act
 
     update_order_mock.assert_called_once_with(
         client,
@@ -227,7 +219,6 @@ def test_update_processing_template_and_notify(
         parameters=context.order["parameters"],
         template=new_template,
     )
-    notification_mock.assert_called_once()
 
 
 def test_update_processing_template_no_notify(
@@ -248,11 +239,8 @@ def test_update_processing_template_no_notify(
         "swo_aws_extension.flows.order_utils.update_order",
         return_value=order,
     )
-    notification_mock = mocker.patch(
-        "swo_aws_extension.flows.order_utils.MPTNotificationManager",
-    )
 
-    update_processing_template_and_notify(client, context, "TemplateName", notify=False)  # act
+    update_processing_template(client, context, "TemplateName")  # act
 
     update_order_mock.assert_called_once_with(
         client,
@@ -260,7 +248,6 @@ def test_update_processing_template_no_notify(
         parameters=context.order["parameters"],
         template=new_template,
     )
-    notification_mock.assert_not_called()
 
 
 def test_strip_whitespace_from_mpa_account(order_factory, order_parameters_factory):
