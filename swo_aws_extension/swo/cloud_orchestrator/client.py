@@ -3,7 +3,8 @@
 import logging
 from functools import wraps
 from http import HTTPStatus
-from urllib.parse import urljoin
+from typing import Any
+from urllib.parse import quote, urljoin
 
 import requests
 
@@ -58,6 +59,22 @@ class CloudOrchestratorClient(requests.Session):
         response = self.get(
             url=f"api/v1/bootstrap-role/check?target_account_id={target_account_id}"
         )
+        response.raise_for_status()
+
+        return response.json()
+
+    @wrap_http_error
+    def onboard_customer(self, onboard_payload: dict[str, Any]) -> dict:
+        """Triggers the deployment of the feature version."""
+        response = self.post(url="api/v1/marketplace/onboard", json=onboard_payload)
+        response.raise_for_status()
+
+        return response.json()
+
+    @wrap_http_error
+    def get_deployment_status(self, execution_arn: str) -> dict:
+        """Gets the deployment status for the given execution ARN."""
+        response = self.get(url=f"api/v1/deployments/execution-arn/{quote(execution_arn, safe='')}")
         response.raise_for_status()
 
         return response.json()
