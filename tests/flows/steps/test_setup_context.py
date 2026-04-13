@@ -25,9 +25,7 @@ def test_setup_context_with_pma(
     mpt_client_mock = mocker.MagicMock(spec=MPTClient)
     next_step_mock = mocker.MagicMock(spec=Step)
     aws_client_mock = mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
-    mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
-    )
+    mocker.patch("swo_aws_extension.flows.steps.setup_context.update_processing_template")
     order = order_factory()
     updated_order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -100,9 +98,7 @@ def test_setup_context_invalid_aws_credentials(
     one_time_notification_mock = mocker.patch(
         "swo_aws_extension.flows.steps.base.notify_one_time_error",
     )
-    mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
-    )
+    mocker.patch("swo_aws_extension.flows.steps.setup_context.update_processing_template")
     mocker.patch(
         "swo_aws_extension.flows.steps.setup_context._paginated",
         return_value=product_parameters_factory(),
@@ -132,9 +128,7 @@ def test_setup_context_invalid_apn_credentials(
     one_time_notification_mock = mocker.patch(
         "swo_aws_extension.flows.steps.base.notify_one_time_error",
     )
-    mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
-    )
+    mocker.patch("swo_aws_extension.flows.steps.setup_context.update_processing_template")
     mocker.patch(
         "swo_aws_extension.flows.steps.setup_context._paginated",
         return_value=product_parameters_factory(),
@@ -157,7 +151,7 @@ def test_init_template_new_account(
     next_step_mock = mocker.MagicMock(spec=Step)
     mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
     update_template_mock = mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
+        "swo_aws_extension.flows.steps.setup_context.update_processing_template"
     )
     order = order_factory(
         order_type="Purchase",
@@ -178,7 +172,7 @@ def test_init_template_new_account(
     step(mpt_client_mock, context, next_step_mock)  # act
 
     update_template_mock.assert_called_once_with(
-        mpt_client_mock, context, OrderProcessingTemplateEnum.NEW_ACCOUNT, notify=False
+        mpt_client_mock, context, OrderProcessingTemplateEnum.NEW_ACCOUNT
     )
 
 
@@ -189,7 +183,7 @@ def test_init_template_existing_account(
     next_step_mock = mocker.MagicMock(spec=Step)
     mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
     update_template_mock = mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
+        "swo_aws_extension.flows.steps.setup_context.update_processing_template"
     )
     order = order_factory(
         order_type="Purchase",
@@ -210,7 +204,7 @@ def test_init_template_existing_account(
     step(mpt_client_mock, context, next_step_mock)  # act
 
     update_template_mock.assert_called_once_with(
-        mpt_client_mock, context, OrderProcessingTemplateEnum.EXISTING_ACCOUNT, notify=False
+        mpt_client_mock, context, OrderProcessingTemplateEnum.EXISTING_ACCOUNT
     )
 
 
@@ -219,7 +213,7 @@ def test_init_template_terminate(mocker, config, order_factory, fulfillment_para
     next_step_mock = mocker.MagicMock(spec=Step)
     mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
     update_template_mock = mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
+        "swo_aws_extension.flows.steps.setup_context.update_processing_template"
     )
     order = order_factory(
         order_type="Termination",
@@ -237,7 +231,7 @@ def test_init_template_terminate(mocker, config, order_factory, fulfillment_para
     step(mpt_client_mock, context, next_step_mock)  # act
 
     update_template_mock.assert_called_once_with(
-        mpt_client_mock, context, OrderProcessingTemplateEnum.TERMINATE, notify=False
+        mpt_client_mock, context, OrderProcessingTemplateEnum.TERMINATE
     )
 
 
@@ -253,7 +247,7 @@ def test_init_template_notify_when_no_phase(
     next_step_mock = mocker.MagicMock(spec=Step)
     mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
     update_template_mock = mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
+        "swo_aws_extension.flows.steps.setup_context.update_processing_template"
     )
     order = order_factory(
         order_type="Purchase",
@@ -278,7 +272,7 @@ def test_init_template_notify_when_no_phase(
     step(mpt_client_mock, context, next_step_mock)  # act
 
     update_template_mock.assert_called_once_with(
-        mpt_client_mock, context, OrderProcessingTemplateEnum.NEW_ACCOUNT, notify=True
+        mpt_client_mock, context, OrderProcessingTemplateEnum.NEW_ACCOUNT
     )
 
 
@@ -294,7 +288,7 @@ def test_init_template_skipped_when_same(
     next_step_mock = mocker.MagicMock(spec=Step)
     mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
     update_template_mock = mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
+        "swo_aws_extension.flows.steps.setup_context.update_processing_template"
     )
     template = template_factory(name=OrderProcessingTemplateEnum.EXISTING_ACCOUNT.value)
     order = order_factory(
@@ -325,9 +319,7 @@ def test_init_parameter_default_values_sets_fulfillment_defaults(
     mpt_client_mock = mocker.MagicMock(spec=MPTClient)
     next_step_mock = mocker.MagicMock(spec=Step)
     mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
-    mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
-    )
+    mocker.patch("swo_aws_extension.flows.steps.setup_context.update_processing_template")
     mocked_paginated = mocker.patch(
         "swo_aws_extension.flows.steps.setup_context._paginated",
         return_value=product_parameters_factory(),
@@ -394,9 +386,7 @@ def test_init_parameter_default_values_skipped_when_phase_is_informed(
     mpt_client_mock = mocker.MagicMock(spec=MPTClient)
     next_step_mock = mocker.MagicMock(spec=Step)
     mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
-    mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
-    )
+    mocker.patch("swo_aws_extension.flows.steps.setup_context.update_processing_template")
     mocked_paginated = mocker.patch(
         "swo_aws_extension.flows.steps.setup_context._paginated",
         return_value=product_parameters_factory(),
@@ -447,9 +437,7 @@ def test_strip_whitespace_from_mpa_account(
     mpt_client_mock = mocker.MagicMock(spec=MPTClient)
     next_step_mock = mocker.MagicMock(spec=Step)
     mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
-    mocker.patch(
-        "swo_aws_extension.flows.steps.setup_context.update_processing_template_and_notify"
-    )
+    mocker.patch("swo_aws_extension.flows.steps.setup_context.update_processing_template")
     mocker.patch(
         "swo_aws_extension.flows.steps.setup_context._paginated",
         return_value=product_parameters_factory(),

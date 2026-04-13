@@ -15,7 +15,6 @@ from swo_aws_extension.constants import MptOrderStatus
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.steps.errors import OrderStatusChangeError
 from swo_aws_extension.parameters import get_mpa_account_id, set_mpa_account_id
-from swo_aws_extension.swo.notifications.mpt import MPTNotificationManager
 
 logger = logging.getLogger(__name__)
 MPT_ORDER_STATUS_QUERYING = "Querying"
@@ -149,9 +148,9 @@ def switch_order_status_to_complete(
     logger.info("%s - Action - Set order to completed", context.order_id)
 
 
-def update_processing_template_and_notify(
-    client: MPTClient, context: InitialAWSContext, template_name: str, *, notify: bool = True
-):
+def update_processing_template(
+    client: MPTClient, context: InitialAWSContext, template_name: str
+) -> None:
     """Update the order parameters and template from a template name."""
     context.order = set_order_template(client, context, MPT_ORDER_STATUS_PROCESSING, template_name)
 
@@ -161,5 +160,3 @@ def update_processing_template_and_notify(
     }
 
     context.order = update_order(client, context.order_id, **kwargs)
-    if notify:
-        MPTNotificationManager(client).send_notification(context)

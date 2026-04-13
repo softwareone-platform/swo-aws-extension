@@ -14,7 +14,7 @@ from swo_aws_extension.constants import (
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.order_utils import (
     strip_whitespace_from_mpa_account,
-    update_processing_template_and_notify,
+    update_processing_template,
 )
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import ConfigurationStepError, UnexpectedStopError
@@ -92,9 +92,7 @@ class SetupContext(BasePhaseStep):
             template_name = OrderProcessingTemplateEnum.TERMINATE
 
         if template_name and context.template["name"] != template_name:
-            # Only notify the first time the template is set
-            notify = not get_phase(context.order)
-            update_processing_template_and_notify(client, context, template_name, notify=notify)
+            update_processing_template(client, context, template_name)
 
     def _init_parameter_default_values(self, client: MPTClient, context: InitialAWSContext) -> None:
         phase = get_phase(context.order)
