@@ -47,7 +47,7 @@ class CcoClient(OAuthSessionClient):
         Returns:
             CreateCcoResponse containing the new contract number.
         """
-        response = self.post(url="v1.0/contracts", json=request.to_api_dict())
+        response = self.post(url="v1/contracts", json=request.to_api_dict())
         response.raise_for_status()
         response_json = response.json()
         contract_number = response_json["contractInsert"]["contractNumber"]
@@ -63,7 +63,7 @@ class CcoClient(OAuthSessionClient):
         Returns:
             List of CcoContract objects.
         """
-        response = self.get(url=f"v1.0/contracts/all/{mpa_id}")
+        response = self.get(url=f"v1/contracts/all/{mpa_id}")
         response.raise_for_status()
         return [CcoContract.from_dict(contract_data) for contract_data in response.json()]
 
@@ -77,7 +77,7 @@ class CcoClient(OAuthSessionClient):
         Returns:
             CcoContract if found, None if the contract does not exist.
         """
-        response = self.get(url=f"v1.0/contracts/{cco_id}")
+        response = self.get(url=f"v1/contracts/{cco_id}")
         if response.status_code == HTTPStatus.NOT_FOUND:
             return None
         response.raise_for_status()

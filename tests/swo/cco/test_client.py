@@ -89,7 +89,7 @@ def contract_list_body():
 def test_create_cco_success(cco_client, mock_cco_api, create_cco_response_body):
     mock_cco_api.add(
         responses.POST,
-        f"{CCO_BASE_URL}v1.0/contracts",
+        f"{CCO_BASE_URL}v1/contracts",
         json=create_cco_response_body,
         status=HTTPStatus.OK,
     )
@@ -113,7 +113,7 @@ def test_create_cco_success(cco_client, mock_cco_api, create_cco_response_body):
 def test_create_cco_http_error(cco_client, mock_cco_api):
     mock_cco_api.add(
         responses.POST,
-        f"{CCO_BASE_URL}v1.0/contracts",
+        f"{CCO_BASE_URL}v1/contracts",
         json={"error": "Bad Request"},
         status=HTTPStatus.BAD_REQUEST,
     )
@@ -138,7 +138,7 @@ def test_create_cco_http_error(cco_client, mock_cco_api):
 def test_get_all_contracts_success(cco_client, mock_cco_api, contract_list_body):
     mock_cco_api.add(
         responses.GET,
-        f"{CCO_BASE_URL}v1.0/contracts/all/60114e35-4283-46b4-9bce-5b29cc486062",
+        f"{CCO_BASE_URL}v1/contracts/all/60114e35-4283-46b4-9bce-5b29cc486062",
         json=contract_list_body,
         status=HTTPStatus.OK,
     )
@@ -153,7 +153,7 @@ def test_get_all_contracts_success(cco_client, mock_cco_api, contract_list_body)
 def test_get_all_contracts_http_error(cco_client, mock_cco_api):
     mock_cco_api.add(
         responses.GET,
-        f"{CCO_BASE_URL}v1.0/contracts/all/tenant-id",
+        f"{CCO_BASE_URL}v1/contracts/all/tenant-id",
         json={"error": "Server Error"},
         status=HTTPStatus.INTERNAL_SERVER_ERROR,
     )
@@ -167,7 +167,7 @@ def test_get_all_contracts_http_error(cco_client, mock_cco_api):
 def test_get_contract_by_id_found(cco_client, mock_cco_api):
     mock_cco_api.add(
         responses.GET,
-        f"{CCO_BASE_URL}v1.0/contracts/CH-CCO-331705",
+        f"{CCO_BASE_URL}v1/contracts/CH-CCO-331705",
         json={
             "contractNumber": "CH-CCO-331705",
             "enrollmentNumber": "AGR-2119-4550-9999",
@@ -189,7 +189,7 @@ def test_get_contract_by_id_found(cco_client, mock_cco_api):
 def test_get_contract_by_id_not_found(cco_client, mock_cco_api):
     mock_cco_api.add(
         responses.GET,
-        f"{CCO_BASE_URL}v1.0/contracts/CH-CCO-XXXX",
+        f"{CCO_BASE_URL}v1/contracts/CH-CCO-XXXX",
         json={},
         status=HTTPStatus.NOT_FOUND,
     )
@@ -202,7 +202,7 @@ def test_get_contract_by_id_not_found(cco_client, mock_cco_api):
 def test_get_contract_by_id_http_error(cco_client, mock_cco_api):
     mock_cco_api.add(
         responses.GET,
-        f"{CCO_BASE_URL}v1.0/contracts/CH-CCO-331705",
+        f"{CCO_BASE_URL}v1/contracts/CH-CCO-331705",
         json={"error": "Server Error"},
         status=HTTPStatus.INTERNAL_SERVER_ERROR,
     )
@@ -237,7 +237,7 @@ def test_create_cco_request_to_api_dict_serializes_correctly(sample_request):
 def test_get_all_contracts_not_found(cco_client, mock_cco_api):
     mock_cco_api.add(
         responses.GET,
-        f"{CCO_BASE_URL}v1.0/contracts/all/unknown-id",
+        f"{CCO_BASE_URL}v1/contracts/all/unknown-id",
         json={"error": "Not Found"},
         status=HTTPStatus.NOT_FOUND,
     )
