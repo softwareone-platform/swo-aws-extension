@@ -5,6 +5,7 @@ from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.config import Config
 from swo_aws_extension.constants import (
+    ROLES_DEPLOYED_CRM_TICKET_COMMENT,
     PhasesEnum,
 )
 from swo_aws_extension.flows.order import PurchaseContext
@@ -12,6 +13,7 @@ from swo_aws_extension.flows.order_utils import switch_order_status_to_process
 from swo_aws_extension.flows.steps.crm_tickets.templates.deploy_roles import DEPLOY_ROLES_TEMPLATE
 from swo_aws_extension.flows.steps.crm_tickets.ticket_manager import TicketManager
 from swo_aws_extension.parameters import (
+    get_crm_customer_role_ticket_id,
     get_formatted_technical_contact,
     get_mpa_account_id,
     set_crm_customer_role_ticket_id,
@@ -21,6 +23,8 @@ from swo_aws_extension.processors.processor import Processor
 from swo_aws_extension.processors.querying.helper import get_template_name, is_querying_timeout
 from swo_aws_extension.swo.cloud_orchestrator.client import CloudOrchestratorClient
 from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
+from swo_aws_extension.swo.crm_service.client import CRMServiceClient, get_service_client
+from swo_aws_extension.swo.crm_service.errors import CRMError
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +43,7 @@ class AWSCustomerRolesProcessor(Processor):
     def process(self, context: PurchaseContext) -> None:
         """Process AWS customer roles timeout."""
         co_client = CloudOrchestratorClient(self._config)
+        crm_service_client = get_service_client()
         mpa_account_id = get_mpa_account_id(context.order)
         logger.info(
             "%s - Checking customer roles deployment status for MPA account ID %s.",
@@ -53,6 +58,10 @@ class AWSCustomerRolesProcessor(Processor):
             return
 
         if bootstrap_roles_status["deployed"]:
+            ticket_id = get_crm_customer_role_ticket_id(context.order)
+            if ticket_id:
+                self._add_comment_roles_deployed(crm_service_client, context, ticket_id)
+
             logger.info(
                 "%s - Customer roles are deployed. Updating order to processing.", context.order_id
             )
@@ -68,6 +77,27 @@ class AWSCustomerRolesProcessor(Processor):
         logger.info(
             "%s - Customer roles are not deployed yet. Waiting for next check.", context.order_id
         )
+
+    def _add_comment_roles_deployed(
+        self, crm_service_client: CRMServiceClient, context: PurchaseContext, ticket_id: str
+    ) -> None:
+        try:
+            crm_service_client.add_comment(
+                context.order_id, ticket_id, ROLES_DEPLOYED_CRM_TICKET_COMMENT
+            )
+        except CRMError:
+            logger.exception(
+                "%s - Failed to add comment to CRM ticket %s.",
+                context.order_id,
+                ticket_id,
+            )
+        else:
+            logger.info(
+                "%s - Added comment to CRM ticket %s to resolve because "
+                "customer roles are deployed.",
+                context.order_id,
+                ticket_id,
+            )
 
     def _manage_querying_timeout(self, context: PurchaseContext):
         logger.info(

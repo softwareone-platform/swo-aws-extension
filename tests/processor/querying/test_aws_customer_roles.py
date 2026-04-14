@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -6,6 +7,7 @@ from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.constants import (
     CRM_TICKET_RESOLVED_STATE,
+    ROLES_DEPLOYED_CRM_TICKET_COMMENT,
     PhasesEnum,
 )
 from swo_aws_extension.flows.order import PurchaseContext
@@ -13,6 +15,7 @@ from swo_aws_extension.processors.querying.aws_customer_roles import (
     AWSCustomerRolesProcessor,
 )
 from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
+from swo_aws_extension.swo.crm_service.errors import CRMHttpError
 
 
 @pytest.fixture
@@ -72,9 +75,109 @@ def test_process_customer_roles_deployed(
         "swo_aws_extension.processors.querying.aws_customer_roles.get_template_name",
         return_value="TEMPLATE_NAME",
     )
+    mock_service_client = mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.get_service_client"
+    )
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.get_crm_customer_role_ticket_id",
+        return_value=None,
+    )
 
     processor.process(mock_context)  # act
 
+    mock_switch.assert_called_once_with(processor.client, mock_context, "TEMPLATE_NAME")
+    mock_service_client.return_value.add_comment.assert_not_called()
+
+
+def test_process_customer_roles_deployed_with_ticket_id(
+    mocker: Any,
+    processor: AWSCustomerRolesProcessor,
+    mock_context: MagicMock,
+    order_factory,
+    fulfillment_parameters_factory,
+    caplog: Any,
+) -> None:
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            crm_customer_role_ticket_id="TICKET-123"
+        )
+    )
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.get_mpa_account_id",
+        return_value="mpa-account-123",
+    )
+    mock_co_client = MagicMock()
+    mock_co_client.get_bootstrap_role_status.return_value = {"deployed": True}
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.CloudOrchestratorClient",
+        return_value=mock_co_client,
+    )
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process"
+    )
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.get_template_name",
+        return_value="TEMPLATE_NAME",
+    )
+    mock_service_client = mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.get_service_client"
+    )
+    mock_context.order = order
+
+    processor.process(mock_context)  # act
+
+    mock_service_client.return_value.add_comment.assert_called_once_with(
+        mock_context.order_id, "TICKET-123", ROLES_DEPLOYED_CRM_TICKET_COMMENT
+    )
+    assert (
+        f"{mock_context.order_id} - Added comment to CRM ticket TICKET-123 to resolve because "
+        "customer roles are deployed."
+    ) in caplog.text
+
+
+def test_process_customer_roles_deployed_with_ticket_id_crm_error(
+    mocker: Any,
+    processor: AWSCustomerRolesProcessor,
+    mock_context: MagicMock,
+    order_factory,
+    fulfillment_parameters_factory,
+    caplog: Any,
+) -> None:
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            crm_customer_role_ticket_id="TICKET-123"
+        )
+    )
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.get_mpa_account_id",
+        return_value="mpa-account-123",
+    )
+    mock_co_client = MagicMock()
+    mock_co_client.get_bootstrap_role_status.return_value = {"deployed": True}
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.CloudOrchestratorClient",
+        return_value=mock_co_client,
+    )
+    mock_switch = mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process"
+    )
+    mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.get_template_name",
+        return_value="TEMPLATE_NAME",
+    )
+    mock_service_client = mocker.patch(
+        "swo_aws_extension.processors.querying.aws_customer_roles.get_service_client"
+    )
+    mock_service_client.return_value.add_comment.side_effect = CRMHttpError(
+        HTTPStatus.INTERNAL_SERVER_ERROR, "server error"
+    )
+    mock_context.order = order
+
+    processor.process(mock_context)  # act
+
+    assert (
+        f"{mock_context.order_id} - Failed to add comment to CRM ticket TICKET-123."
+    ) in caplog.text
     mock_switch.assert_called_once_with(processor.client, mock_context, "TEMPLATE_NAME")
 
 
@@ -100,6 +203,7 @@ def test_process_cr_not_deployed_no_timeout(
     mock_switch = mocker.patch(
         "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process"
     )
+    mocker.patch("swo_aws_extension.processors.querying.aws_customer_roles.get_service_client")
 
     processor.process(mock_context)  # act
 
@@ -151,6 +255,7 @@ def test_process_cr_not_deployed_timeout_reached(
     mock_crm_client.return_value.get_service_request.return_value = {
         "state": "Active",
     }
+    mocker.patch("swo_aws_extension.processors.querying.aws_customer_roles.get_service_client")
 
     processor.process(mock_context)  # act
 
@@ -203,6 +308,7 @@ def test_process_cr_not_deployed_timeout_reached_to_create_new_ticket(
         "state": CRM_TICKET_RESOLVED_STATE,
     }
     mock_crm_client.return_value.create_service_request.return_value = {"id": "TICKET-999"}
+    mocker.patch("swo_aws_extension.processors.querying.aws_customer_roles.get_service_client")
 
     processor.process(mock_context)  # act
 
@@ -227,6 +333,7 @@ def test_process_cloud_orchestrator_error(
     mock_switch = mocker.patch(
         "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process"
     )
+    mocker.patch("swo_aws_extension.processors.querying.aws_customer_roles.get_service_client")
 
     processor.process(mock_context)  # act
 
