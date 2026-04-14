@@ -83,11 +83,6 @@ def _group_service_metrics(
 def _resolve_exchange_rate(inv_entity: str, org_invoice: OrganizationInvoice) -> Decimal:
     if inv_entity and inv_entity in org_invoice.entities:
         return org_invoice.entities[inv_entity].exchange_rate
-    if inv_entity:
-        logger.warning(
-            "No exchange rate found for invoice entity '%s'. Defaulting to 1.0",
-            inv_entity,
-        )
     return Decimal("1.0")
 
 

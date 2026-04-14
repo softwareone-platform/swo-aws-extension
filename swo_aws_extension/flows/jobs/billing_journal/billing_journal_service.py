@@ -1,3 +1,6 @@
+from collections import defaultdict
+from decimal import Decimal
+
 from swo_aws_extension.constants import BILLING_JOURNAL_ERROR_TITLE
 from swo_aws_extension.flows.jobs.billing_journal.billing_report_creator import (
     BillingReportCreator,
@@ -7,6 +10,7 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.authorization impor
 )
 from swo_aws_extension.flows.jobs.billing_journal.journal_manager import JournalManager
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
+from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import JournalLine
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     AuthorizationJournalResult,
 )
@@ -121,19 +125,30 @@ class BillingJournalService:
     def _log_dry_run_results(
         self, authorization_id: str, generator_result: AuthorizationJournalResult
     ) -> None:
-        journal_lines = generator_result.lines
         logger.info(
             "[DRY-RUN] Generated %d journal lines for authorization %s",
-            len(journal_lines),
+            len(generator_result.lines),
             authorization_id,
         )
-        logger.info("".join(entry.to_jsonl() for entry in journal_lines))
+        logger.info("".join(entry.to_jsonl() for entry in generator_result.lines))
+        self._log_totals_by_mpa(generator_result.lines)
 
-        if generator_result.reports_by_agreement:
-            attachments = [
-                f"{agr}.json"
-                for agr, rep in generator_result.reports_by_agreement.items()
-                if rep.organization_data or rep.accounts_data
-            ]
-            if attachments:
-                logger.info("[DRY-RUN] Attachments: %s", attachments)
+        attachments = [
+            f"{agr}.json"
+            for agr, rep in generator_result.reports_by_agreement.items()
+            if rep.organization_data or rep.accounts_data
+        ]
+        if attachments:
+            logger.info("[DRY-RUN] Attachments: %s", attachments)
+
+    def _log_totals_by_mpa(self, journal_lines: list[JournalLine]) -> None:
+        total_by_mpa: dict[str, Decimal] = defaultdict(Decimal)
+        for line in journal_lines:
+            total_by_mpa[line.external_ids.vendor] += line.price.pp_x1
+
+        for mpa, total_amount in total_by_mpa.items():
+            logger.info(
+                "[DRY-RUN] MPA %s total amount: %s",
+                mpa,
+                total_amount,
+            )

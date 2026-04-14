@@ -52,7 +52,7 @@ class CreditJournalLineProcessor(JournalLineProcessor):
 
     def _should_add_spp_line(self, context: LineProcessorContext) -> bool:
         principal_amount = context.organization_invoice.principal_invoice_amount
-        return principal_amount is None or principal_amount == DEC_ZERO
+        return principal_amount == DEC_ZERO
 
     def _find_spp_for_service(
         self,

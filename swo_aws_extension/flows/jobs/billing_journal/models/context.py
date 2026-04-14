@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
+from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
 from swo_aws_extension.flows.jobs.billing_journal.models.invoice import OrganizationInvoice
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import JournalDetails
@@ -15,6 +16,7 @@ class AuthorizationContext:
     id: str
     pma_account: str
     currency: str
+    aws_client: AWSClient
 
 
 @dataclass

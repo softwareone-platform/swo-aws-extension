@@ -12,6 +12,7 @@ class InvoiceEntity:
     base_currency_code: str = ""
     payment_currency_code: str = ""
     exchange_rate: Decimal = field(default_factory=lambda: Decimal(0))
+    primary: bool = field(default=False)
 
 
 @dataclass
@@ -24,6 +25,22 @@ class OrganizationInvoice:
     payment_currency_total_amount: Decimal = field(default_factory=lambda: Decimal(0))
     payment_currency_total_amount_before_tax: Decimal = field(default_factory=lambda: Decimal(0))
     principal_invoice_amount: Decimal | None = None
+
+    @property
+    def primary_entity_name(self) -> str:
+        """Return the name of the entity marked as primary, or empty string."""
+        for name, entity in self.entities.items():
+            if entity.primary:
+                return name
+        return ""
+
+    @property
+    def primary_invoice_id(self) -> str:
+        """Return the invoice ID of the entity marked as primary."""
+        for entity in self.entities.values():
+            if entity.primary:
+                return entity.invoice_id
+        return "invoice_id"
 
 
 @dataclass

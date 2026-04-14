@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 
 from swo_aws_extension.aws.client import AWSClient
@@ -9,6 +10,7 @@ from swo_aws_extension.flows.jobs.billing_journal.models.invoice import (
     OrganizationInvoiceResult,
 )
 
+logger = logging.getLogger(__name__)
 SPP_DISCOUNT_DESCRIPTION = "Discount (AWS SPP Discount)"
 
 
@@ -81,6 +83,16 @@ class InvoiceGenerator:
 
         invoice = self._build_organization_invoice(raw_invoices, authorization_currency)
 
+        for entity_name, entity in invoice.entities.items():
+            logger.info(
+                "Invoice entity: %s | invoice_id=%s | base=%s | payment=%s | exchange_rate=%s",
+                entity_name,
+                entity.invoice_id,
+                entity.base_currency_code,
+                entity.payment_currency_code,
+                entity.exchange_rate,
+            )
+
         return OrganizationInvoiceResult(raw_data=raw_invoices, invoice=invoice)
 
     def _build_organization_invoice(
@@ -118,6 +130,7 @@ class InvoiceGenerator:
                     base_currency_code=existing.base_currency_code,
                     payment_currency_code=existing.payment_currency_code,
                     exchange_rate=existing.exchange_rate,
+                    primary=self._is_primary_invoice(invoice) or existing.primary,
                 )
             else:
                 entity_name = invoice.get("Entity", {}).get("InvoicingEntity")
@@ -130,23 +143,14 @@ class InvoiceGenerator:
                     ),
                     payment_currency_code=resolver.get_payment_currency(exchange_rate),
                     exchange_rate=exchange_rate,
+                    primary=self._is_primary_invoice(invoice),
                 )
 
         return entities
 
     def _get_principal_amount(self, raw_invoices: list[dict]) -> Decimal | None:
         for invoice in raw_invoices:
-            breakdowns = (
-                invoice
-                .get("BaseCurrencyAmount", {})
-                .get("AmountBreakdown", {})
-                .get("Discounts", {})
-                .get("Breakdown", [])
-            )
-            has_spp_discount = any(
-                breakdown.get("Description") == SPP_DISCOUNT_DESCRIPTION for breakdown in breakdowns
-            )
-            if has_spp_discount:
+            if self._is_primary_invoice(invoice):
                 return Decimal(invoice.get("BaseCurrencyAmount", {}).get("TotalAmount", 0))
         return None
 
@@ -154,4 +158,16 @@ class InvoiceGenerator:
         return sum(
             (Decimal(inv.get(currency_key, {}).get(amount_key, 0)) for inv in invoices),
             DEC_ZERO,
+        )
+
+    def _is_primary_invoice(self, invoice: dict) -> bool:
+        breakdowns = (
+            invoice
+            .get("BaseCurrencyAmount", {})
+            .get("AmountBreakdown", {})
+            .get("Discounts", {})
+            .get("Breakdown", [])
+        )
+        return any(
+            breakdown.get("Description") == SPP_DISCOUNT_DESCRIPTION for breakdown in breakdowns
         )

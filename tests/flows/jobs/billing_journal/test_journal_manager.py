@@ -34,17 +34,17 @@ def test_create_new_journal(manager, mock_billing_client):
     }
     mock_billing_client.journal.create.return_value = {
         "id": "JRN-NEW",
-        "name": "1 October 2025 #1",
+        "name": "1 October 2025 BT #1",
     }
 
     result = manager.create_new_journal()  # act
 
     assert result.id == "JRN-NEW"
     expected_payload = {
-        "name": "1 October 2025 #1",
+        "name": "1 October 2025 BT #1",
         "authorization": {"id": "AUTH-123"},
         "dueDate": "2025-10-01",
-        "externalIds": {"vendor": "AWS-2025-October"},
+        "externalIds": {"vendor": "AWS-2025-October-BT"},
     }
     mock_billing_client.journal.create.assert_called_once_with(expected_payload)
 
@@ -55,17 +55,17 @@ def test_create_new_journal_increments_index(manager, mock_billing_client):
     }
     mock_billing_client.journal.create.return_value = {
         "id": "JRN-NEW",
-        "name": "1 October 2025 #2",
+        "name": "1 October 2025 BT #2",
     }
 
     result = manager.create_new_journal()  # act
 
     assert result.id == "JRN-NEW"
     expected_payload = {
-        "name": "1 October 2025 #2",
+        "name": "1 October 2025 BT #2",
         "authorization": {"id": "AUTH-123"},
         "dueDate": "2025-10-01",
-        "externalIds": {"vendor": "AWS-2025-October"},
+        "externalIds": {"vendor": "AWS-2025-October-BT"},
     }
     mock_billing_client.journal.create.assert_called_once_with(expected_payload)
 
