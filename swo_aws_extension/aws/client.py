@@ -13,7 +13,7 @@ from swo_aws_extension.config import Config
 from swo_aws_extension.swo.openid.client import OpenIDClient
 
 MINIMUM_DAYS_MONTH = 28
-MAX_RESULTS_PER_PAGE = 100
+MAX_RESULTS_PER_PAGE = 20
 
 logger = logging.getLogger(__name__)
 
