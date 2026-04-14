@@ -58,6 +58,8 @@ def test_build():
         account_id="ACC-789",
         invoice_entity="ENT-0",
         invoice_id="INV-111",
+        start_date="2025-10-01",
+        end_date="2025-10-31",
     )
 
     result = JournalLine.build(
@@ -96,6 +98,8 @@ def test_build_with_error_and_no_item():
         account_id="ACC",
         invoice_entity="ENT",
         invoice_id="INV",
+        start_date="START",
+        end_date="END",
         error="Missing Item",
     )
 
