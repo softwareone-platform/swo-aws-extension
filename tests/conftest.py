@@ -372,6 +372,8 @@ def fulfillment_parameters_factory():
         relationship_id="",
         feature_version_deployment_error_notified="no",
         execution_arn="",
+        cco_contract_number="",
+        erp_project_no="",
     ):
         return [
             {
@@ -438,6 +440,14 @@ def fulfillment_parameters_factory():
             {
                 "externalId": FulfillmentParametersEnum.EXECUTION_ARN.value,
                 "value": execution_arn,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.CCO_CONTRACT_NUMBER.value,
+                "value": cco_contract_number,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.ERP_PROJECT_NO.value,
+                "value": erp_project_no,
             },
         ]
 

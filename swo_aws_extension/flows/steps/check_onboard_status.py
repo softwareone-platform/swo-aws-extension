@@ -101,7 +101,7 @@ class CheckOnboardStatus(BasePhaseStep):
     def post_step(self, client: MPTClient, context: PurchaseContext) -> None:
         if self._onboard_still_running:
             return
-        context.order = set_phase(context.order, PhasesEnum.CREATE_SUBSCRIPTION)
+        context.order = set_phase(context.order, PhasesEnum.PROJECT_CREATION)
         context.order = update_order(
             client, context.order_id, parameters=context.order["parameters"]
         )

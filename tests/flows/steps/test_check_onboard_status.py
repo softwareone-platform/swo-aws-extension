@@ -406,7 +406,7 @@ def test_post_step_sets_create_subscription_phase(
     updated_order = order_factory(
         order_parameters=order_parameters_factory(),
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTION.value,
+            phase=PhasesEnum.PROJECT_CREATION.value,
         ),
     )
     update_order_mock = mocker.patch(
@@ -416,5 +416,6 @@ def test_post_step_sets_create_subscription_phase(
 
     step.post_step(mpt_client, context)  # act
 
-    assert get_phase(context.order) == PhasesEnum.CREATE_SUBSCRIPTION.value
+    assert get_phase(context.order) == PhasesEnum.PROJECT_CREATION.value
+    update_order_mock.assert_called_once()
     update_order_mock.assert_called_once()
