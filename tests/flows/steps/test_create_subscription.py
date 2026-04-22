@@ -144,7 +144,7 @@ def test_post_step_sets_complete_phase(
     )
     updated_order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.COMPLETED.value,
+            phase=PhasesEnum.PROJECT_CREATION.value,
         )
     )
     context = purchase_context(order)
@@ -156,7 +156,7 @@ def test_post_step_sets_complete_phase(
 
     step.post_step(mpt_client, context)  # act
 
-    assert get_phase(context.order) == PhasesEnum.COMPLETED.value
+    assert get_phase(context.order) == PhasesEnum.PROJECT_CREATION.value
 
 
 def test_post_step_calls_update_order(
@@ -168,7 +168,9 @@ def test_post_step_calls_update_order(
         )
     )
     updated_order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.COMPLETED.value)
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.PROJECT_CREATION.value
+        )
     )
     context = purchase_context(order)
     mock_update = mocker.patch(
