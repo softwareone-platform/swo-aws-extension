@@ -1,3 +1,4 @@
+import threading
 from collections.abc import Callable
 from functools import wraps
 from http import HTTPStatus
@@ -6,7 +7,7 @@ import requests
 
 from swo_aws_extension.config import Config, get_config
 from swo_aws_extension.swo.base_client import OAuthSessionClient
-from swo_aws_extension.swo.cco.errors import CcoHttpError, CcoNotFoundError
+from swo_aws_extension.swo.cco.errors import CcoError, CcoHttpError, CcoNotFoundError
 from swo_aws_extension.swo.cco.models import CcoContract, CreateCcoRequest, CreateCcoResponse
 
 
@@ -53,6 +54,12 @@ class CcoClient(OAuthSessionClient):
         response = self.post(url="v1/contracts", json=request.to_api_dict())
         response.raise_for_status()
         response_json = response.json()
+        if (
+            not isinstance(response_json, dict)
+            or not isinstance(response_json.get("contractInsert"), dict)
+            or "contractNumber" not in response_json["contractInsert"]
+        ):
+            raise CcoError(f"Unexpected response payload from CCO API: {response_json}")
         contract_number = response_json["contractInsert"]["contractNumber"]
         return CreateCcoResponse(contract_number=contract_number)
 
@@ -91,13 +98,16 @@ class _CcoClientFactory:
     """Factory for CCO client singleton."""
 
     _instance: CcoClient | None = None
+    _init_lock: threading.Lock = threading.Lock()
 
     @classmethod
     def get_client(cls) -> CcoClient:
         """Get CCO client singleton instance."""
         if cls._instance is not None:
             return cls._instance
-        cls._instance = CcoClient(config=get_config())
+        with cls._init_lock:
+            if cls._instance is None:
+                cls._instance = CcoClient(config=get_config())
         return cls._instance
 
 
