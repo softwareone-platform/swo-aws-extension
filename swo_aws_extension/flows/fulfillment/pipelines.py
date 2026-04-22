@@ -50,7 +50,7 @@ def strip_trace_id(traceback_msg: str) -> str:
 # Should be removed with the new SDK error handling mechanism.
 def pipeline_error_handler(error: Exception, context: Context, next_step):
     """Custom error handler for AWS pipelines."""
-    logger.error("%s - Unexpected error in AWS pipeline: %s", context.order_id, error)
+    logger.exception("%s - Unexpected error in AWS pipeline: %s", context.order_id, error)
     traceback_id = strip_trace_id(traceback.format_exc())
     notify_one_time_error(
         "Order fulfillment unhandled exception!",
@@ -79,7 +79,7 @@ purchase_new_aws_environment = Pipeline(
     CreateSubscription(config),
     CRMTicketPLS(config),
     CRMTicketOnboardServices(config),
-    CompleteOrder(config),
+    # TODO - Enable CompleteOrder(config), disabled for testing
 )
 
 purchase_existing_aws_environment = Pipeline(
@@ -98,7 +98,7 @@ purchase_existing_aws_environment = Pipeline(
     CreateSubscription(config),
     CRMTicketPLS(config),
     CRMTicketOnboardServices(config),
-    CompleteOrder(config),
+    # TODO - Enable CompleteOrder(config), disabled for testing
 )
 terminate = Pipeline(
     SetupContext(config),

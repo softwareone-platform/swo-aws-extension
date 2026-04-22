@@ -8,15 +8,16 @@ from swo_aws_extension.config import Config
 from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
+from swo_aws_extension.flows.steps.contract_card import map_software_one_legal_entity
 from swo_aws_extension.flows.steps.errors import SkipStepError
 from swo_aws_extension.parameters import (
     get_cco_contract_number,
+    get_formatted_technical_contact,
     get_phase,
-    get_technical_contact_info,
     set_erp_project_no,
     set_phase,
 )
-from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
+from swo_aws_extension.swo.notifications.teams import notify_one_time_error
 from swo_aws_extension.swo.service_provisioning.client import get_service_provisioning_client
 from swo_aws_extension.swo.service_provisioning.errors import ServiceProvisioningError
 from swo_aws_extension.swo.service_provisioning.models import (
@@ -26,16 +27,17 @@ from swo_aws_extension.swo.service_provisioning.models import (
 
 logger = logging.getLogger(__name__)
 
-_SWO_JOB_SERVICE_DESCRIPTION = "AWS Marketplace Service Activation"
+_SWO_JOB_SERVICE_DESCRIPTION = "Azure Advance"
+_SWO_JOB_DEFAULT_LANGUAGE_CODE = "en"
 
 
 class SWOJobStep(BasePhaseStep):
     """SWO Job creation step.
 
     Creates a SWO Job using the CCO contract number stored in the
-    ``ccoContractNumber`` fulfillment parameter and saves the resulting
-    project number in ``erpProjectNo``. Then advances the phase to
-    ``CREATE_SUBSCRIPTION``.
+    `ccoContractNumber` fulfillment parameter and saves the resulting
+    project number in `erpProjectNo`. Then advances the phase to
+    `CREATE_SUBSCRIPTION`.
 
     Errors are logged and notified to MS Teams but never block order
     fulfillment.
@@ -61,7 +63,7 @@ class SWOJobStep(BasePhaseStep):
                 "%s - SWOJobStep - ccoContractNumber is not set; cannot create SWO Job",
                 context.order_id,
             )
-            TeamsNotificationManager().send_error(
+            notify_one_time_error(
                 f"SWOJobStep error for order {context.order_id}",
                 f"Cannot create SWO Job for order `{context.order_id}` because "
                 "`ccoContractNumber` is not set. "
@@ -83,7 +85,7 @@ class SWOJobStep(BasePhaseStep):
                 context.order_id,
                 contract_number,
             )
-            TeamsNotificationManager().send_error(
+            notify_one_time_error(
                 f"SWOJobStep error for order {context.order_id}",
                 f"Failed to create SWO Job for CCO contract `{contract_number}` "
                 f"on order `{context.order_id}`. "
@@ -107,20 +109,20 @@ class SWOJobStep(BasePhaseStep):
 
     def _create_swo_job(self, context: PurchaseContext, contract_number: str) -> str:
         """Call Service Provisioning API and return the erpProjectNo."""
-        contact_info = get_technical_contact_info(context.order)
-        first_name = contact_info.get("firstName", "")
-        last_name = contact_info.get("lastName", "")
+        contact_info = get_formatted_technical_contact(context.order)
+        name_parts = contact_info.get("name", "").split(" ", 1)
+        first_name = name_parts[0] if name_parts else ""
+        last_name = name_parts[1] if len(name_parts) > 1 else ""
         email = contact_info.get("email", "")
         phone = contact_info.get("phone", "")
 
-        # Handle phone as dict (prefix + number) or string
-        if isinstance(phone, dict):
-            phone = f"{phone.get('prefix', '')}{phone.get('number', '')}"
+        logger.info(context.seller)
 
-        buyer_erp_id = context.buyer.get("externalIds", {}).get("erpCustomer", "")
-
+        seller_country = context.seller.get("address", {}).get("country", "")
+        software_one_legal_entity = map_software_one_legal_entity(seller_country, self._config)
+        software_one_legal_entity = "SWO_CH" # todo - remove this is only for testing
         request = ServiceOnboardingRequest(
-            erp_client_id=buyer_erp_id,
+            erp_client_id=software_one_legal_entity,
             contract_no=contract_number,
             service_description=_SWO_JOB_SERVICE_DESCRIPTION,
             contacts=[
@@ -129,9 +131,11 @@ class SWOJobStep(BasePhaseStep):
                     last_name=last_name,
                     email=email,
                     phone_number=phone,
-                    language_code="en",
+                    language_code=_SWO_JOB_DEFAULT_LANGUAGE_CODE,
                 )
             ],
         )
+
+        logger.info(f"Action - Calling Service Provisioning API to create SWO Job. Request: {request.to_api_dict()}")
         response = get_service_provisioning_client().onboard(request)
         return response.erp_project_no
