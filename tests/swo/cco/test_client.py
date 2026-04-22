@@ -5,7 +5,7 @@ import pytest
 import responses
 
 from swo_aws_extension.swo.cco.client import CcoClient, get_cco_client
-from swo_aws_extension.swo.cco.errors import CcoHttpError, CcoNotFoundError
+from swo_aws_extension.swo.cco.errors import CcoError, CcoHttpError, CcoNotFoundError
 from swo_aws_extension.swo.cco.models import CcoContract, CreateCcoRequest
 
 CCO_BASE_URL = "https://swo-procops-app-externalapi-contracts-test.azurewebsites.net/"
@@ -244,3 +244,53 @@ def test_get_all_contracts_not_found(cco_client, mock_cco_api):
 
     with pytest.raises(CcoNotFoundError):
         cco_client.get_all_contracts("unknown-id")  # act
+
+
+@pytest.mark.parametrize(
+    "malformed_body",
+    [
+        {},
+        {"contractInsert": None},
+        {"contractInsert": {}},
+        {"contractInsert": {"enrollmentNumber": "X"}},
+        [],
+        "unexpected string",
+    ],
+)
+def test_create_cco_malformed_response_raises_cco_error(
+    cco_client, mock_cco_api, malformed_body, sample_request
+):
+    mock_cco_api.add(
+        responses.POST,
+        f"{CCO_BASE_URL}v1/contracts",
+        json=malformed_body,
+        status=HTTPStatus.OK,
+    )
+
+    with pytest.raises(CcoError):
+        cco_client.create_cco(sample_request)
+
+
+@pytest.mark.parametrize(
+    "malformed_body",
+    [
+        {},
+        {"contractNumber": "X"},
+        "unexpected string",
+        42,
+    ],
+)
+def test_get_all_contracts_malformed_response_raises_cco_error(
+    cco_client, mock_cco_api, malformed_body
+):
+    mock_cco_api.add(
+        responses.GET,
+        f"{CCO_BASE_URL}v1/contracts/all/mpa-id",
+        json=malformed_body,
+        status=HTTPStatus.OK,
+    )
+
+    with pytest.raises(CcoError) as exc_info:
+        cco_client.get_all_contracts("mpa-id")
+
+    assert "mpa-id" in str(exc_info.value)

@@ -75,7 +75,12 @@ class CcoClient(OAuthSessionClient):
         """
         response = self.get(url=f"v1/contracts/all/{mpa_id}")
         response.raise_for_status()
-        return [CcoContract.from_dict(contract_data) for contract_data in response.json()]
+        contracts = response.json()
+        if not isinstance(contracts, list):
+            raise CcoError(
+                f"Unexpected response payload for MPA '{mpa_id}': expected list, got {contracts!r}"
+            )
+        return [CcoContract.from_dict(contract_data) for contract_data in contracts]
 
     @wrap_http_error
     def get_contract_by_id(self, cco_id: str) -> CcoContract | None:
