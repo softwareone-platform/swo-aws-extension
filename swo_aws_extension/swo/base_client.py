@@ -1,4 +1,5 @@
 import time
+from typing import Any
 from urllib.parse import urljoin
 
 import requests
@@ -37,7 +38,7 @@ class OAuthSessionClient(requests.Session):
         self._token_expiry: float | None = None
         self.base_url = self._normalize_base_url(base_url)
 
-    def request(self, method: str, url: str, *args, **kwargs):
+    def request(self, method: str, url: str, *args: Any, **kwargs: Any) -> requests.Response:
         """Makes HTTP request with automatic token refresh."""
         self._refresh_token_if_expired()
         if url and url[0] == "/":
@@ -58,7 +59,7 @@ class OAuthSessionClient(requests.Session):
             self._token_expiry = time.time() + token["expires_in"]
             self.headers.update(self._build_auth_headers(token))
 
-    def _build_auth_headers(self, token: dict) -> dict:
+    def _build_auth_headers(self, token: dict[str, Any]) -> dict[str, str]:
         return {
             "User-Agent": "swo-extensions/1.0",
             "Authorization": f"Bearer {token['access_token']}",
