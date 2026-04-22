@@ -51,7 +51,7 @@ class CcoClient(OAuthSessionClient):
             audience=config.cco_audience,
             base_url=config.cco_api_base_url,
         )
-        self._config = config
+        self._config = config  # reserved for future configuration access
 
     @wrap_http_error
     def create_cco(self, request: CreateCcoRequest) -> CreateCcoResponse:
