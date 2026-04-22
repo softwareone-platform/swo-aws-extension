@@ -2,9 +2,14 @@ import datetime as dt
 from http import HTTPStatus
 
 import pytest
+import requests
 import responses
 
-from swo_aws_extension.swo.cco.client import CcoClient, get_cco_client
+from swo_aws_extension.swo.cco.client import (
+    CcoClient,
+    _CcoClientFactory,  # noqa: PLC2701
+    get_cco_client,
+)
 from swo_aws_extension.swo.cco.errors import CcoError, CcoHttpError, CcoNotFoundError
 from swo_aws_extension.swo.cco.models import CcoContract, CreateCcoRequest
 
@@ -13,6 +18,20 @@ MODULE = "swo_aws_extension.swo.cco.client"
 SAMPLE_START_DATE = dt.datetime.fromisoformat("2024-02-27T14:03:37+00:00")
 SAMPLE_START_DATE_SHORT = dt.datetime.fromisoformat("2024-02-27T00:00:00+00:00")
 ERROR_START_DATE = dt.datetime.fromisoformat("2024-01-01T00:00:00+00:00")
+
+
+class _LockThatSetsInstance:
+    """Test helper: simulates a lock that sets _CcoClientFactory._instance on enter."""
+
+    def __init__(self, instance):
+        self._instance = instance
+
+    def __enter__(self):
+        _CcoClientFactory._instance = self._instance  # noqa: SLF001
+        return self
+
+    def __exit__(self, *args):
+        return False
 
 
 @pytest.fixture
@@ -219,6 +238,7 @@ def test_get_contract_by_id_http_error(cco_client, mock_cco_api):
         [],
         "unexpected string",
         42,
+        {},
     ],
 )
 def test_get_contract_by_id_malformed_response_raises_cco_error(
@@ -302,6 +322,8 @@ def test_create_cco_malformed_response_raises_cco_error(
         {"contractNumber": "X"},
         "unexpected string",
         42,
+        [{}],
+        [{"enrollmentNumber": "X"}],
     ],
 )
 def test_get_all_contracts_malformed_response_raises_cco_error(
@@ -318,3 +340,79 @@ def test_get_all_contracts_malformed_response_raises_cco_error(
         cco_client.get_all_contracts("mpa-id")
 
     assert "mpa-id" in str(exc_info.value)
+
+
+def test_create_cco_plain_text_response_raises_cco_error(cco_client, mock_cco_api, sample_request):
+    mock_cco_api.add(
+        responses.POST,
+        f"{CCO_BASE_URL}v1/contracts",
+        body="OK",
+        status=HTTPStatus.OK,
+    )
+
+    with pytest.raises(CcoError):
+        cco_client.create_cco(sample_request)
+
+
+def test_get_all_contracts_plain_text_response_raises_cco_error(cco_client, mock_cco_api):
+    mock_cco_api.add(
+        responses.GET,
+        f"{CCO_BASE_URL}v1/contracts/all/mpa-id",
+        body="OK",
+        status=HTTPStatus.OK,
+    )
+
+    with pytest.raises(CcoError) as exc_info:
+        cco_client.get_all_contracts("mpa-id")
+
+    assert "mpa-id" in str(exc_info.value)
+
+
+def test_get_contract_by_id_plain_text_response_raises_cco_error(cco_client, mock_cco_api):
+    mock_cco_api.add(
+        responses.GET,
+        f"{CCO_BASE_URL}v1/contracts/CH-CCO-TXT",
+        body="OK",
+        status=HTTPStatus.OK,
+    )
+
+    with pytest.raises(CcoError) as exc_info:
+        cco_client.get_contract_by_id("CH-CCO-TXT")
+
+    assert "CH-CCO-TXT" in str(exc_info.value)
+
+
+def test_get_cco_client_factory_inner_check_skips_when_already_set(mocker):
+    """Cover the double-check branch: inner check sees instance already set."""
+    mock_instance = mocker.MagicMock(spec=CcoClient)
+    mocker.patch.object(_CcoClientFactory, "_instance", None)
+    mocker.patch.object(_CcoClientFactory, "_init_lock", _LockThatSetsInstance(mock_instance))
+
+    result = _CcoClientFactory.get_client()
+
+    assert result is mock_instance
+
+
+def test_wrap_http_error_none_response_raises_cco_http_error(cco_client, mocker):
+    mocker.patch.object(
+        cco_client,
+        "post",
+        side_effect=requests.HTTPError("connection error"),
+    )
+
+    with pytest.raises(CcoHttpError) as exc_info:
+        cco_client.create_cco(mocker.MagicMock())
+
+    assert exc_info.value.status_code == 0
+
+
+def test_get_contract_by_id_http_error_none_response(cco_client, mocker):
+    mock_response = mocker.MagicMock()
+    mock_response.status_code = HTTPStatus.INTERNAL_SERVER_ERROR
+    mock_response.raise_for_status.side_effect = requests.HTTPError("connection error")
+    mocker.patch.object(cco_client, "get", return_value=mock_response)
+
+    with pytest.raises(CcoHttpError) as exc_info:
+        cco_client.get_contract_by_id("CH-CCO-999")
+
+    assert exc_info.value.status_code == 0
