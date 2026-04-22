@@ -299,6 +299,9 @@ def test_get_all_contracts_not_found(cco_client, mock_cco_api):
         {"contractInsert": {"enrollmentNumber": "X"}},
         [],
         "unexpected string",
+        {"contractInsert": {"contractNumber": ""}},
+        {"contractInsert": {"contractNumber": "   "}},
+        {"contractInsert": {"contractNumber": None}},
     ],
 )
 def test_create_cco_malformed_response_raises_cco_error(
