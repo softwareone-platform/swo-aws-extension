@@ -102,7 +102,7 @@ class SWOJobStep(BasePhaseStep):
 
     @override
     def post_step(self, client: MPTClient, context: PurchaseContext) -> None:
-        context.order = set_phase(context.order, PhasesEnum.CREATE_SUBSCRIPTION.value)
+        context.order = set_phase(context.order, PhasesEnum.COMPLETED)
         context.order = update_order(
             client, context.order_id, parameters=context.order["parameters"]
         )
