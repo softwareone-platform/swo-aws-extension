@@ -123,6 +123,31 @@ class Config:
         return settings.EXTENSION_CONFIG["CRM_AUDIENCE"]
 
     @property
+    def cco_api_base_url(self) -> str:
+        """Get the base URL for the CCO API."""
+        return settings.EXTENSION_CONFIG["CCO_API_BASE_URL"]
+
+    @property
+    def cco_oauth_url(self) -> str:
+        """Get the OAuth URL for the CCO API."""
+        return settings.EXTENSION_CONFIG["CCO_OAUTH_URL"]
+
+    @property
+    def cco_client_id(self) -> str:
+        """Get the client ID for the CCO API."""
+        return settings.EXTENSION_CONFIG["CCO_CLIENT_ID"]
+
+    @property
+    def cco_client_secret(self) -> str:
+        """Get the client secret for the CCO API."""
+        return settings.EXTENSION_CONFIG["CCO_CLIENT_SECRET"]
+
+    @property
+    def cco_audience(self) -> str:
+        """Get the audience for the CCO API."""
+        return settings.EXTENSION_CONFIG["CCO_AUDIENCE"]
+
+    @property
     def aws_ses_access_key(self) -> str:
         """Get the AWS SES access key."""
         return settings.EXTENSION_CONFIG["AWS_SES_CREDENTIALS"].split(":")[0]
