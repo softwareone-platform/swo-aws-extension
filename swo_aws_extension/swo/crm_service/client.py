@@ -1,4 +1,5 @@
 import logging
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from http import HTTPStatus
@@ -171,18 +172,17 @@ class _CRMClientFactory:
     """Factory for CRM client singleton."""
 
     _instance: CRMServiceClient | None = None
+    _init_lock: threading.Lock = threading.Lock()
 
     @classmethod
     def get_client(cls) -> CRMServiceClient:
         """Get CRM client singleton instance."""
         if cls._instance is not None:
             return cls._instance
-        config = get_config()
-        instance = CRMServiceClient(
-            config=config,
-        )
-        cls._instance = instance
-        return instance
+        with cls._init_lock:
+            if cls._instance is None:
+                cls._instance = CRMServiceClient(config=get_config())
+        return cls._instance
 
 
 def get_service_client() -> CRMServiceClient:
