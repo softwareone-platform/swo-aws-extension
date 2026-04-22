@@ -10,7 +10,7 @@ from swo_aws_extension.flows.steps.contract_card import (
 )
 from swo_aws_extension.flows.steps.errors import SkipStepError
 from swo_aws_extension.parameters import get_cco_contract_number, get_phase
-from swo_aws_extension.swo.cco.errors import CcoError
+from swo_aws_extension.swo.cco.errors import CcoError, SellerCountryNotFoundError
 from swo_aws_extension.swo.cco.models import CcoContract, CreateCcoRequest, CreateCcoResponse
 
 MODULE = "swo_aws_extension.flows.steps.contract_card"
@@ -33,46 +33,44 @@ def purchase_context(order_factory, fulfillment_parameters_factory, order_parame
     return factory
 
 
-def test_pre_step_skips_wrong_phase(purchase_context, config):
+def test_pre_step_skips_wrong_phase(purchase_context):
     context = purchase_context(phase=PhasesEnum.CHECK_ONBOARD_STATUS.value)
 
     with pytest.raises(SkipStepError):
-        ContractCardStep(config).pre_step(context)
+        ContractCardStep().pre_step(context)
 
 
-def test_pre_step_skips_when_contract_number_already_set(purchase_context, config):
+def test_pre_step_skips_when_contract_number_already_set(purchase_context):
     context = purchase_context(cco_contract_number=SAMPLE_CONTRACT_NUMBER)
 
     with pytest.raises(SkipStepError):
-        ContractCardStep(config).pre_step(context)
+        ContractCardStep().pre_step(context)
 
 
-def test_pre_step_proceeds_when_phase_matches_and_no_contract(purchase_context, config):
+def test_pre_step_proceeds_when_phase_matches_and_no_contract(purchase_context):
     context = purchase_context()
 
-    result = ContractCardStep(config).pre_step(context)
+    result = ContractCardStep().pre_step(context)
 
     assert result is None
     assert context.order is not None
 
 
-def test_process_uses_existing_contract(mocker, purchase_context, mpt_client, config, caplog):
+def test_process_uses_existing_contract(mocker, purchase_context, mpt_client, caplog):
     context = purchase_context()
     existing = CcoContract(contract_number=SAMPLE_CONTRACT_NUMBER)
     mock_client = mocker.patch(f"{MODULE}.get_cco_client")
     mock_client.return_value.get_all_contracts.return_value = [existing]
 
     with caplog.at_level(logging.INFO):
-        ContractCardStep(config).process(mpt_client, context)  # act
+        ContractCardStep().process(mpt_client, context)  # act
 
     assert get_cco_contract_number(context.order) == SAMPLE_CONTRACT_NUMBER
     mock_client.return_value.create_cco.assert_not_called()
     assert "Found existing CCO contract" in caplog.text
 
 
-def test_process_creates_contract_when_none_exist(
-    mocker, purchase_context, mpt_client, config, caplog
-):
+def test_process_creates_contract_when_none_exist(mocker, purchase_context, mpt_client, caplog):
     context = purchase_context()
     mock_client = mocker.patch(f"{MODULE}.get_cco_client")
     mock_client.return_value.get_all_contracts.return_value = []
@@ -81,7 +79,7 @@ def test_process_creates_contract_when_none_exist(
     )
 
     with caplog.at_level(logging.INFO):
-        ContractCardStep(config).process(mpt_client, context)  # act
+        ContractCardStep().process(mpt_client, context)  # act
 
     create_cco = mock_client.return_value.create_cco
     request: CreateCcoRequest = create_cco.call_args.args[0]
@@ -93,7 +91,7 @@ def test_process_creates_contract_when_none_exist(
 
 
 def test_process_sets_customer_reference_from_agreement_external_id(
-    mocker, purchase_context, mpt_client, config
+    mocker, purchase_context, mpt_client
 ):
     context = purchase_context()
     context.agreement.setdefault("externalIds", {})["customer"] = "live-e2e-check"
@@ -103,7 +101,7 @@ def test_process_sets_customer_reference_from_agreement_external_id(
         contract_number=SAMPLE_CONTRACT_NUMBER
     )
 
-    ContractCardStep(config).process(mpt_client, context)  # act
+    ContractCardStep().process(mpt_client, context)  # act
 
     create_cco = mock_client.return_value.create_cco
     request: CreateCcoRequest = create_cco.call_args.args[0]
@@ -111,7 +109,7 @@ def test_process_sets_customer_reference_from_agreement_external_id(
 
 
 def test_process_sets_empty_manufacturer_code_when_vendor_external_id_missing(
-    mocker, purchase_context, mpt_client, config
+    mocker, purchase_context, mpt_client
 ):
     context = purchase_context()
     context.agreement["externalIds"].pop("vendor", None)
@@ -121,7 +119,7 @@ def test_process_sets_empty_manufacturer_code_when_vendor_external_id_missing(
         contract_number=SAMPLE_CONTRACT_NUMBER
     )
 
-    ContractCardStep(config).process(mpt_client, context)  # act
+    ContractCardStep().process(mpt_client, context)  # act
 
     create_cco = mock_client.return_value.create_cco
     request: CreateCcoRequest = create_cco.call_args.args[0]
@@ -129,7 +127,7 @@ def test_process_sets_empty_manufacturer_code_when_vendor_external_id_missing(
 
 
 def test_process_get_all_contracts_error_logs_and_notifies(
-    mocker, purchase_context, mpt_client, config, caplog
+    mocker, purchase_context, mpt_client, caplog
 ):
     context = purchase_context()
     mock_client = mocker.patch(f"{MODULE}.get_cco_client")
@@ -137,16 +135,14 @@ def test_process_get_all_contracts_error_logs_and_notifies(
     mock_notify = mocker.patch(f"{MODULE}.notify_one_time_error")
 
     with caplog.at_level(logging.ERROR):
-        ContractCardStep(config).process(mpt_client, context)  # act
+        ContractCardStep().process(mpt_client, context)  # act
 
     mock_notify.assert_called_once()
     assert not get_cco_contract_number(context.order)
     assert "CcoError" in caplog.text
 
 
-def test_process_create_cco_error_logs_and_notifies(
-    mocker, purchase_context, mpt_client, config, caplog
-):
+def test_process_create_cco_error_logs_and_notifies(mocker, purchase_context, mpt_client, caplog):
     context = purchase_context()
     mock_client = mocker.patch(f"{MODULE}.get_cco_client")
     mock_client.return_value.get_all_contracts.return_value = []
@@ -154,76 +150,79 @@ def test_process_create_cco_error_logs_and_notifies(
     mock_notify = mocker.patch(f"{MODULE}.notify_one_time_error")
 
     with caplog.at_level(logging.ERROR):
-        ContractCardStep(config).process(mpt_client, context)  # act
+        ContractCardStep().process(mpt_client, context)  # act
 
     assert mock_notify.call_count == 2
     assert not get_cco_contract_number(context.order)
     assert "CcoError" in caplog.text
 
 
-def test_post_step_updates_order(mocker, purchase_context, mpt_client, config):
+def test_post_step_updates_order(mocker, purchase_context, mpt_client):
     context = purchase_context()
     mock_update = mocker.patch(f"{MODULE}.update_order", return_value=context.order)
 
-    ContractCardStep(config).post_step(mpt_client, context)  # act
+    ContractCardStep().post_step(mpt_client, context)  # act
 
     mock_update.assert_called_once_with(
         mpt_client, context.order_id, parameters=context.order["parameters"]
     )
 
 
-def test_process_does_not_raise_on_error(mocker, purchase_context, mpt_client, config):
+def test_process_does_not_raise_on_error(mocker, purchase_context, mpt_client):
     """Errors must not raise — fulfillment must continue."""
     context = purchase_context()
     mock_client = mocker.patch(f"{MODULE}.get_cco_client")
     mock_client.return_value.get_all_contracts.side_effect = CcoError("hard fail")
     mocker.patch(f"{MODULE}.notify_one_time_error")
 
-    result = ContractCardStep(config).process(mpt_client, context)
+    result = ContractCardStep().process(mpt_client, context)
 
     assert result is None
 
 
-def test_post_step_sets_phase_unchanged(mocker, purchase_context, mpt_client, config):
+def test_post_step_sets_phase_unchanged(mocker, purchase_context, mpt_client):
     """post_step should NOT advance the phase — SWOJobStep is responsible for that."""
     context = purchase_context()
     mocker.patch(f"{MODULE}.update_order", return_value=context.order)
 
-    ContractCardStep(config).post_step(mpt_client, context)  # act
+    ContractCardStep().post_step(mpt_client, context)  # act
 
     assert get_phase(context.order) == PhasesEnum.PROJECT_CREATION.value
 
 
-def test_map_software_one_legal_entity_returns_mapped_value(config):
-    result = map_software_one_legal_entity("US", config)
+def test_map_software_one_legal_entity_returns_mapped_value():
+    result = map_software_one_legal_entity("US")
 
     assert result == "SWO_US"
 
 
-def test_map_software_one_legal_entity_is_case_insensitive(config):
-    result = map_software_one_legal_entity("us", config)
+def test_map_software_one_legal_entity_is_case_insensitive():
+    result = map_software_one_legal_entity("us")
 
     assert result == "SWO_US"
 
 
-def test_map_software_one_legal_entity_raises_for_unknown_country(config):
-    with pytest.raises(KeyError):
-        map_software_one_legal_entity("XX", config)
+def test_map_software_one_legal_entity_raises_for_unknown_country():
+    with pytest.raises(SellerCountryNotFoundError):
+        map_software_one_legal_entity("XX")
 
 
 def test_process_missing_seller_country_logs_and_notifies(
-    mocker, purchase_context, mpt_client, config, caplog
+    mocker, purchase_context, mpt_client, caplog
 ):
     context = purchase_context()
     mock_client = mocker.patch(f"{MODULE}.get_cco_client")
     mock_client.return_value.get_all_contracts.return_value = []
-    mocker.patch(f"{MODULE}.map_software_one_legal_entity", side_effect=KeyError("XX"))
+    mocker.patch(
+        f"{MODULE}.map_software_one_legal_entity",
+        side_effect=SellerCountryNotFoundError("XX"),
+    )
     mock_notify = mocker.patch(f"{MODULE}.notify_one_time_error")
 
     with caplog.at_level(logging.ERROR):
-        result = ContractCardStep(config).process(mpt_client, context)
+        result = ContractCardStep().process(mpt_client, context)
 
     assert result is None
     assert not get_cco_contract_number(context.order)
     mock_notify.assert_called_once()
-    assert "KeyError" in caplog.text
+    assert "SellerCountryNotFoundError" in caplog.text
