@@ -1,8 +1,9 @@
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import wraps
 from http import HTTPStatus
-from typing import Any, NoReturn, cast, override
+from typing import Any, cast, override
 
 from requests import HTTPError, Response
 
@@ -24,11 +25,21 @@ from swo_aws_extension.swo.crm_service.errors import (
 logger = logging.getLogger(__name__)
 
 
-def raise_crm_http_error(err: HTTPError) -> NoReturn:
-    """Translate HTTP errors into CRM-specific exceptions."""
-    if err.response.status_code == HTTPStatus.NOT_FOUND:
-        raise CRMNotFoundError(err.response.text) from err
-    raise CRMHttpError(err.response.status_code, err.response.text) from err
+def wrap_http_error[**FuncParams, ReturnT](
+    func: Callable[FuncParams, ReturnT],
+) -> Callable[FuncParams, ReturnT]:
+    """Decorator to wrap HTTP errors into CRM-specific errors."""
+
+    @wraps(func)
+    def wrapper(*args: FuncParams.args, **kwargs: FuncParams.kwargs) -> ReturnT:
+        try:
+            return func(*args, **kwargs)
+        except HTTPError as err:
+            if err.response.status_code == HTTPStatus.NOT_FOUND:
+                raise CRMNotFoundError(err.response.text) from err
+            raise CRMHttpError(err.response.status_code, err.response.text) from err
+
+    return wrapper
 
 
 @dataclass
@@ -84,6 +95,7 @@ class CRMServiceClient(OAuthSessionClient):
         )
         self._api_version = api_version
 
+    @wrap_http_error
     def create_service_request(
         self, order_id: str, service_request: ServiceRequest
     ) -> dict[str, Any]:
@@ -96,17 +108,15 @@ class CRMServiceClient(OAuthSessionClient):
         Returns:
             Dictionary with created service request id {"id": "CS0004728"}.
         """
-        try:
-            response = self._send_request(
-                self.post,
-                url="/ticketing/ServiceRequests",
-                json=service_request.to_api_dict(),
-                headers={"x-correlation-id": order_id},
-            )
-        except HTTPError as err:
-            raise_crm_http_error(err)
+        response = self._send_request(
+            self.post,
+            url="/ticketing/ServiceRequests",
+            json=service_request.to_api_dict(),
+            headers={"x-correlation-id": order_id},
+        )
         return cast(dict[str, Any], response.json())
 
+    @wrap_http_error
     def get_service_request(self, order_id: str, service_request_id: str) -> dict[str, Any]:
         """Retrieve a service request from CRM system.
 
@@ -117,16 +127,14 @@ class CRMServiceClient(OAuthSessionClient):
         Returns:
             Dictionary with service request details.
         """
-        try:
-            response = self._send_request(
-                self.get,
-                url=f"/ticketing/ServiceRequests/{service_request_id}",
-                headers={"x-correlation-id": order_id},
-            )
-        except HTTPError as err:
-            raise_crm_http_error(err)
+        response = self._send_request(
+            self.get,
+            url=f"/ticketing/ServiceRequests/{service_request_id}",
+            headers={"x-correlation-id": order_id},
+        )
         return cast(dict[str, Any], response.json())
 
+    @wrap_http_error
     def add_comment(self, order_id: str, service_request_id: str, comment: str) -> dict[str, Any]:
         """Adds a comment to a service request.
 
@@ -139,15 +147,12 @@ class CRMServiceClient(OAuthSessionClient):
             Dictionary with updated service request details.
         """
         comment_request = CommentRequest(comment=comment)
-        try:
-            response = self._send_request(
-                self.post,
-                url=f"/ticketing/ServiceRequests/{service_request_id}/comments",
-                json=comment_request.to_api_dict(),
-                headers={"x-correlation-id": order_id},
-            )
-        except HTTPError as err:
-            raise_crm_http_error(err)
+        response = self._send_request(
+            self.post,
+            url=f"/ticketing/ServiceRequests/{service_request_id}/comments",
+            json=comment_request.to_api_dict(),
+            headers={"x-correlation-id": order_id},
+        )
         return cast(dict[str, Any], response.json())
 
     def _send_request(
