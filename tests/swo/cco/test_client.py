@@ -213,6 +213,30 @@ def test_get_contract_by_id_http_error(cco_client, mock_cco_api):
     assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
 
 
+@pytest.mark.parametrize(
+    "malformed_body",
+    [
+        [],
+        "unexpected string",
+        42,
+    ],
+)
+def test_get_contract_by_id_malformed_response_raises_cco_error(
+    cco_client, mock_cco_api, malformed_body
+):
+    mock_cco_api.add(
+        responses.GET,
+        f"{CCO_BASE_URL}v1/contracts/CH-CCO-BAD",
+        json=malformed_body,
+        status=HTTPStatus.OK,
+    )
+
+    with pytest.raises(CcoError) as exc_info:
+        cco_client.get_contract_by_id("CH-CCO-BAD")
+
+    assert "CH-CCO-BAD" in str(exc_info.value)
+
+
 def test_get_cco_client_singleton(mocker):
     mocker.patch(
         f"{MODULE}._CcoClientFactory._instance",
