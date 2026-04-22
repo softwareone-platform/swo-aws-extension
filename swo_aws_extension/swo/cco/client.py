@@ -78,6 +78,8 @@ class CcoClient(OAuthSessionClient):
         ):
             raise CcoError(f"Unexpected response payload from CCO API: {response_json}")
         contract_number = response_json["contractInsert"]["contractNumber"]
+        if not isinstance(contract_number, str) or not contract_number.strip():
+            raise CcoError(f"Unexpected response payload from CCO API: {response_json}")
         return CreateCcoResponse(contract_number=contract_number)
 
     @wrap_http_error
