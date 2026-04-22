@@ -1,5 +1,6 @@
 import datetime as dt
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -17,7 +18,7 @@ class CreateCcoRequest:
     customer_reference: str = ""
     contract_category: str = "CLOUD-BASI"
 
-    def to_api_dict(self) -> dict:
+    def to_api_dict(self) -> dict[str, str]:
         """Serialize to CCO API payload."""
         return {
             "softwareOneLegalEntity": self.software_one_legal_entity,
@@ -53,7 +54,7 @@ class CcoContract:
     master_agreement_number: str | None = None
 
     @classmethod
-    def from_dict(cls, raw_data: dict) -> "CcoContract":
+    def from_dict(cls, raw_data: dict[str, Any]) -> "CcoContract":
         """Build a CcoContract from a raw API response dict."""
         return cls(
             contract_number=raw_data.get("contractNumber", ""),
