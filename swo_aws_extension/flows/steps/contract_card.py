@@ -1,12 +1,10 @@
 import datetime as dt
-import json
 import logging
 from typing import override
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
-from swo_aws_extension.config import Config
 from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
@@ -18,28 +16,27 @@ from swo_aws_extension.parameters import (
     set_cco_contract_number,
 )
 from swo_aws_extension.swo.cco.client import get_cco_client
-from swo_aws_extension.swo.cco.errors import CcoError
+from swo_aws_extension.swo.cco.errors import CcoError, SellerCountryNotFoundError
 from swo_aws_extension.swo.cco.models import CreateCcoRequest
+from swo_aws_extension.swo.cco.seller_mapper import SellerMapper
 from swo_aws_extension.swo.notifications.teams import notify_one_time_error
 
 logger = logging.getLogger(__name__)
 
 
-def map_software_one_legal_entity(seller_country: str, config: Config) -> str:
+def map_software_one_legal_entity(seller_country: str) -> str:
     """Map a seller country code to the SoftwareOne legal entity identifier.
 
     Args:
         seller_country: ISO country code from the seller address.
-        config: Extension configuration providing the map file path.
 
     Returns:
         The SoftwareOne legal entity string for the given country.
 
     Raises:
-        KeyError: If the country code is not present in the map.
+        SellerCountryNotFoundError: If the country code is not present in the map.
     """
-    mapping: dict[str, str] = json.loads(config.cco_seller_map_path.read_text(encoding="utf-8"))
-    return mapping[seller_country.upper()]
+    return SellerMapper().map(seller_country)
 
 
 class ContractCardStep(BasePhaseStep):
@@ -52,9 +49,6 @@ class ContractCardStep(BasePhaseStep):
     Errors are logged and notified to MS Teams but never block order
     fulfillment.
     """
-
-    def __init__(self, config: Config) -> None:
-        self._config = config
 
     @override
     def pre_step(self, context: PurchaseContext) -> None:
@@ -137,10 +131,10 @@ class ContractCardStep(BasePhaseStep):
         )
         try:
             return self._create_contract(context, mpa_id)
-        except KeyError:
+        except SellerCountryNotFoundError:
             seller_country = context.seller.get("address", {}).get("country", "")
             logger.exception(
-                "%s - KeyError - No legal entity mapping for seller country '%s'",
+                "%s - SellerCountryNotFoundError - No legal entity mapping for seller country '%s'",
                 context.order_id,
                 seller_country,
             )
@@ -173,7 +167,7 @@ class ContractCardStep(BasePhaseStep):
 
         currency = context.currency or "USD"
         seller_country = context.seller.get("address", {}).get("country", "")
-        software_one_legal_entity = map_software_one_legal_entity(seller_country, self._config)
+        software_one_legal_entity = map_software_one_legal_entity(seller_country)
 
         request = CreateCcoRequest(
             software_one_legal_entity=software_one_legal_entity,

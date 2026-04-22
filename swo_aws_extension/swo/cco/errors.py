@@ -27,3 +27,11 @@ class CcoNotFoundError(CcoError):
 
     def __init__(self, message: str):
         super().__init__(message, HTTPStatus.NOT_FOUND)
+
+
+class SellerCountryNotFoundError(Exception):
+    """Raised when a seller country code has no legal entity mapping."""
+
+    def __init__(self, country: str):
+        self.country = country
+        super().__init__(f"No SoftwareOne legal entity mapping found for country '{country}'")

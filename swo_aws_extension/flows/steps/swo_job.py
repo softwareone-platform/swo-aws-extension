@@ -4,11 +4,9 @@ from typing import override
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
-from swo_aws_extension.config import Config
 from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
-from swo_aws_extension.flows.steps.contract_card import map_software_one_legal_entity
 from swo_aws_extension.flows.steps.errors import SkipStepError
 from swo_aws_extension.parameters import (
     get_cco_contract_number,
@@ -17,6 +15,8 @@ from swo_aws_extension.parameters import (
     set_erp_project_no,
     set_phase,
 )
+from swo_aws_extension.swo.cco.errors import SellerCountryNotFoundError
+from swo_aws_extension.swo.cco.seller_mapper import SellerMapper
 from swo_aws_extension.swo.notifications.teams import notify_one_time_error
 from swo_aws_extension.swo.service_provisioning.client import get_service_provisioning_client
 from swo_aws_extension.swo.service_provisioning.errors import ServiceProvisioningError
@@ -42,9 +42,6 @@ class SWOJobStep(BasePhaseStep):
     Errors are logged and notified to MS Teams but never block order
     fulfillment.
     """
-
-    def __init__(self, config: Config) -> None:
-        self._config = config
 
     @override
     def pre_step(self, context: PurchaseContext) -> None:
@@ -79,6 +76,20 @@ class SWOJobStep(BasePhaseStep):
 
         try:
             erp_project_no = self._create_swo_job(context, contract_number)
+        except SellerCountryNotFoundError:
+            seller_country = context.seller.get("address", {}).get("country", "")
+            logger.exception(
+                "%s - SellerCountryNotFoundError - No legal entity mapping for seller country '%s'",
+                context.order_id,
+                seller_country,
+            )
+            notify_one_time_error(
+                f"SWOJobStep error for order {context.order_id}",
+                f"No SoftwareOne legal entity mapping found for seller country "
+                f"`{seller_country}` on order `{context.order_id}`. "
+                "Processing continues to the next step.",
+            )
+            return
         except ServiceProvisioningError:
             logger.exception(
                 "%s - ServiceProvisioningError - Failed to create SWO Job for contract %s",
@@ -117,7 +128,7 @@ class SWOJobStep(BasePhaseStep):
         phone = contact_info.get("phone", "")
 
         seller_country = context.seller.get("address", {}).get("country", "")
-        software_one_legal_entity = map_software_one_legal_entity(seller_country, self._config)
+        software_one_legal_entity = SellerMapper().map(seller_country)
         request = ServiceOnboardingRequest(
             erp_client_id=software_one_legal_entity,
             contract_no=contract_number,
