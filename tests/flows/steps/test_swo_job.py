@@ -131,7 +131,7 @@ def test_post_step_sets_create_subscription_phase(
     updated_order = order_factory(
         order_parameters=order_parameters_factory(),
         fulfillment_parameters=fulfillment_parameters_factory(
-            phase=PhasesEnum.CREATE_SUBSCRIPTION.value,
+            phase=PhasesEnum.COMPLETED.value,
             cco_contract_number=SAMPLE_CONTRACT_NUMBER,
         ),
     )
@@ -139,7 +139,7 @@ def test_post_step_sets_create_subscription_phase(
 
     SWOJobStep(config).post_step(mpt_client, context)  # act
 
-    assert get_phase(context.order) == PhasesEnum.CREATE_SUBSCRIPTION.value
+    assert get_phase(context.order) == PhasesEnum.COMPLETED.value
     mock_update.assert_called_once()
 
 
