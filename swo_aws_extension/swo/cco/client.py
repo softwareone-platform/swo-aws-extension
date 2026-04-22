@@ -11,6 +11,20 @@ from swo_aws_extension.swo.cco.errors import CcoError, CcoHttpError, CcoNotFound
 from swo_aws_extension.swo.cco.models import CcoContract, CreateCcoRequest, CreateCcoResponse
 
 
+def _cco_http_error_from(err: requests.HTTPError) -> CcoHttpError:
+    """Convert a requests.HTTPError into a CcoHttpError, handling absent response."""
+    if err.response is None:
+        return CcoHttpError(0, str(err))
+    return CcoHttpError(err.response.status_code, err.response.text)
+
+
+def _raise_cco_error(err: requests.HTTPError) -> None:
+    """Raise a domain-specific CCO error from an HTTPError."""
+    if err.response is not None and err.response.status_code == HTTPStatus.NOT_FOUND:
+        raise CcoNotFoundError(err.response.text) from err
+    raise _cco_http_error_from(err) from err
+
+
 def wrap_http_error[**FuncParams, ReturnT](
     func: Callable[FuncParams, ReturnT],
 ) -> Callable[FuncParams, ReturnT]:
@@ -21,9 +35,7 @@ def wrap_http_error[**FuncParams, ReturnT](
         try:
             return func(*args, **kwargs)
         except requests.HTTPError as err:
-            if err.response.status_code == HTTPStatus.NOT_FOUND:
-                raise CcoNotFoundError(err.response.text) from err
-            raise CcoHttpError(err.response.status_code, err.response.text) from err
+            _raise_cco_error(err)
 
     return wrapper
 
@@ -53,7 +65,12 @@ class CcoClient(OAuthSessionClient):
         """
         response = self.post(url="v1/contracts", json=request.to_api_dict())
         response.raise_for_status()
-        response_json = response.json()
+        try:
+            response_json = response.json()
+        except ValueError as exc:
+            raise CcoError(
+                f"Invalid JSON in CCO API response ({response.status_code}): {response.text!r}"
+            ) from exc
         if (
             not isinstance(response_json, dict)
             or not isinstance(response_json.get("contractInsert"), dict)
@@ -75,14 +92,22 @@ class CcoClient(OAuthSessionClient):
         """
         response = self.get(url=f"v1/contracts/all/{mpa_id}")
         response.raise_for_status()
-        contracts = response.json()
+        try:
+            contracts = response.json()
+        except ValueError as exc:
+            raise CcoError(
+                f"Invalid JSON in CCO API response for MPA '{mpa_id}'"
+                f" ({response.status_code}): {response.text!r}"
+            ) from exc
         if not isinstance(contracts, list):
             raise CcoError(
                 f"Unexpected response payload for MPA '{mpa_id}': expected list, got {contracts!r}"
             )
+        for contract_entry in contracts:
+            if not isinstance(contract_entry, dict) or not contract_entry.get("contractNumber"):
+                raise CcoError(f"Malformed contract item for MPA '{mpa_id}': {contract_entry!r}")
         return [CcoContract.from_dict(contract_data) for contract_data in contracts]
 
-    @wrap_http_error
     def get_contract_by_id(self, cco_id: str) -> CcoContract | None:
         """Retrieve a single CCO contract by its ID.
 
@@ -95,13 +120,21 @@ class CcoClient(OAuthSessionClient):
         response = self.get(url=f"v1/contracts/{cco_id}")
         if response.status_code == HTTPStatus.NOT_FOUND:
             return None
-        response.raise_for_status()
         try:
-            return CcoContract.from_dict(response.json())
-        except (ValueError, TypeError, AttributeError) as exc:
+            response.raise_for_status()
+        except requests.HTTPError as err:
+            raise _cco_http_error_from(err) from err
+        try:
+            contract_dict = response.json()
+        except ValueError as exc:
             raise CcoError(
                 f"Unexpected response payload for contract '{cco_id}': {response.text!r}"
             ) from exc
+        if not isinstance(contract_dict, dict) or not contract_dict.get("contractNumber"):
+            raise CcoError(
+                f"Unexpected response payload for contract '{cco_id}': {contract_dict!r}"
+            )
+        return CcoContract.from_dict(contract_dict)
 
 
 class _CcoClientFactory:
