@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 
 def raise_crm_http_error(err: HTTPError) -> NoReturn:
     """Translate HTTP errors into CRM-specific exceptions."""
+    if err.response is None:
+        raise CRMHttpError(0, str(err)) from err
     if err.response.status_code == HTTPStatus.NOT_FOUND:
         raise CRMNotFoundError(err.response.text) from err
     raise CRMHttpError(err.response.status_code, err.response.text) from err
