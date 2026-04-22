@@ -8,6 +8,7 @@ from swo_aws_extension.config import Config
 from swo_aws_extension.swo.crm_service.client import (
     CRMServiceClient,
     ServiceRequest,
+    _CRMClientFactory,  # noqa: PLC2701
     get_service_client,
 )
 from swo_aws_extension.swo.crm_service.errors import (
@@ -17,6 +18,20 @@ from swo_aws_extension.swo.crm_service.errors import (
 
 BASE_URL = "https://crm.test.com/"
 MODULE = "swo_aws_extension.swo.crm_service.client"
+
+
+class _LockThatSetsInstance:
+    """Test helper: sets _CRMClientFactory._instance during lock acquisition."""
+
+    def __init__(self, instance):
+        self._instance = instance
+
+    def __enter__(self):
+        _CRMClientFactory._instance = self._instance  # noqa: SLF001
+        return self
+
+    def __exit__(self, *args):
+        return False
 
 
 @pytest.fixture
@@ -234,3 +249,14 @@ def test_request_with_empty_url(
     result = crm_client.get(url="")  # act
 
     assert result.status_code == HTTPStatus.OK
+
+
+def test_crm_client_factory_inner_check_skips_when_already_set(mocker):
+    """Cover the double-check branch: inner check sees instance already set."""
+    mock_instance = mocker.MagicMock(spec=CRMServiceClient)
+    mocker.patch.object(_CRMClientFactory, "_instance", None)
+    mocker.patch.object(_CRMClientFactory, "_init_lock", _LockThatSetsInstance(mock_instance))
+
+    result = _CRMClientFactory.get_client()
+
+    assert result is mock_instance
