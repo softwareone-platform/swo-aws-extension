@@ -148,6 +148,11 @@ class Config:
         return settings.EXTENSION_CONFIG["CCO_AUDIENCE"]
 
     @property
+    def cco_seller_map_path(self) -> Path:
+        """Get the path to the CCO seller country-to-legal-entity map JSON file."""
+        return self._patch_path(settings.EXTENSION_CONFIG["CCO_SELLER_MAP_PATH"])
+
+    @property
     def svc_provisioning_api_base_url(self) -> str:
         """Get the base URL for the Service Provisioning API."""
         return settings.EXTENSION_CONFIG["SVC_PROVISIONING_API_BASE_URL"]
