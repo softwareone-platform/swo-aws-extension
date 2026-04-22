@@ -14,6 +14,7 @@ from swo_aws_extension.flows.steps.check_customer_roles import CheckCustomerRole
 from swo_aws_extension.flows.steps.check_onboard_status import CheckOnboardStatus
 from swo_aws_extension.flows.steps.complete_order import CompleteOrder, CompleteTerminationOrder
 from swo_aws_extension.flows.steps.configure_apn_program import ConfigureAPNProgram
+from swo_aws_extension.flows.steps.contract_card import ContractCardStep
 from swo_aws_extension.flows.steps.create_billing_transfer_invitation import (
     CreateBillingTransferInvitation,
 )
@@ -72,6 +73,7 @@ purchase_new_aws_environment = Pipeline(
     CRMTicketOrderFail(config),
     OnboardServices(config),
     CheckOnboardStatus(config),
+    ContractCardStep(config),
     CreateSubscription(config),
     CRMTicketPLS(config),
     CRMTicketOnboardServices(config),
@@ -89,6 +91,7 @@ purchase_existing_aws_environment = Pipeline(
     CRMTicketOrderFail(config),
     OnboardServices(config),
     CheckOnboardStatus(config),
+    ContractCardStep(config),
     CreateSubscription(config),
     CRMTicketPLS(config),
     CRMTicketOnboardServices(config),

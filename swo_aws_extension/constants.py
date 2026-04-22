@@ -78,6 +78,7 @@ class PhasesEnum(StrEnum):
     CHECK_CUSTOMER_ROLES = "checkCustomerRoles"
     ONBOARD_SERVICES = "onboardServices"
     CHECK_ONBOARD_STATUS = "checkOnboardStatus"
+    PROJECT_CREATION = "projectCreation"
     CREATE_SUBSCRIPTION = "createSubscription"
     COMPLETED = "completed"
 
@@ -125,6 +126,8 @@ class FulfillmentParametersEnum(StrEnum):
     SERVICE_DISCOUNT = "serviceDiscount"
     EXECUTION_ARN = "executionArn"
     FEATURE_VERSION_DEPLOYMENT_ERROR_NOTIFIED = "featureVersionDeploymentErrorNotified"
+    CCO_CONTRACT_NUMBER = "ccoContractNumber"
+    ERP_PROJECT_NO = "erpProjectNo"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
