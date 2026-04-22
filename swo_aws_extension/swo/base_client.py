@@ -1,6 +1,6 @@
 import time
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 
@@ -40,6 +40,9 @@ class OAuthSessionClient(requests.Session):
 
     def request(self, method: str, url: str, *args: Any, **kwargs: Any) -> requests.Response:
         """Makes HTTP request with automatic token refresh."""
+        parsed = urlparse(url)
+        if parsed.scheme or parsed.netloc:
+            raise ValueError(f"Absolute URLs are not allowed: {url!r}")
         self._refresh_token_if_expired()
         if url and url[0] == "/":
             url = url[1:]

@@ -101,3 +101,18 @@ def test_token_not_refreshed_when_valid(oauth_client, mock_api, mock_oauth_token
     oauth_client.get("second")  # act
 
     mock_oauth_token.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "absolute_url",
+    [
+        "https://evil.com/steal",
+        "http://external.host/api",
+        "//netloc-only.example.com/path",
+    ],
+)
+def test_request_rejects_absolute_url(oauth_client, mock_oauth_token, absolute_url):
+    with pytest.raises(ValueError, match="Absolute URLs are not allowed"):
+        oauth_client.get(absolute_url)
+
+    mock_oauth_token.assert_not_called()
