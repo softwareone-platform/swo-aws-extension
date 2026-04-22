@@ -96,7 +96,12 @@ class CcoClient(OAuthSessionClient):
         if response.status_code == HTTPStatus.NOT_FOUND:
             return None
         response.raise_for_status()
-        return CcoContract.from_dict(response.json())
+        try:
+            return CcoContract.from_dict(response.json())
+        except (ValueError, TypeError, AttributeError) as exc:
+            raise CcoError(
+                f"Unexpected response payload for contract '{cco_id}': {response.text!r}"
+            ) from exc
 
 
 class _CcoClientFactory:
