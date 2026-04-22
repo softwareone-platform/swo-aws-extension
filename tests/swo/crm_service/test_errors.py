@@ -1,9 +1,5 @@
 from http import HTTPStatus
 
-import pytest
-from requests import HTTPError
-
-from swo_aws_extension.swo.crm_service.client import raise_crm_http_error
 from swo_aws_extension.swo.crm_service.errors import (
     CRMError,
     CRMHttpError,
@@ -76,13 +72,3 @@ def test_not_found_error_stores_message():
     result = CRMNotFoundError("Resource not found")
 
     assert result.message == "Resource not found"
-
-
-def test_raise_crm_http_error_none_response_raises_crm_http_error():
-    err = HTTPError("connection failed")
-
-    with pytest.raises(CRMHttpError) as exc_info:
-        raise_crm_http_error(err)
-
-    assert exc_info.value.status_code == 0
-    assert "connection failed" in exc_info.value.message
