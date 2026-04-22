@@ -1,6 +1,6 @@
+from collections.abc import Callable
 from functools import wraps
 from http import HTTPStatus
-from typing import Callable, ParamSpec, TypeVar
 
 import requests
 
@@ -9,15 +9,14 @@ from swo_aws_extension.swo.base_client import OAuthSessionClient
 from swo_aws_extension.swo.cco.errors import CcoHttpError, CcoNotFoundError
 from swo_aws_extension.swo.cco.models import CcoContract, CreateCcoRequest, CreateCcoResponse
 
-P = ParamSpec("P")
-R = TypeVar("R")
 
-
-def wrap_http_error(func: Callable[P, R]) -> Callable[P, R]:
+def wrap_http_error[**FuncParams, ReturnT](
+    func: Callable[FuncParams, ReturnT],
+) -> Callable[FuncParams, ReturnT]:
     """Decorator to wrap HTTP errors into CCO errors."""
 
     @wraps(func)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+    def wrapper(*args: FuncParams.args, **kwargs: FuncParams.kwargs) -> ReturnT:
         try:
             return func(*args, **kwargs)
         except requests.HTTPError as err:
