@@ -148,6 +148,31 @@ class Config:
         return settings.EXTENSION_CONFIG["CCO_AUDIENCE"]
 
     @property
+    def svc_provisioning_api_base_url(self) -> str:
+        """Get the base URL for the Service Provisioning API."""
+        return settings.EXTENSION_CONFIG["SVC_PROVISIONING_API_BASE_URL"]
+
+    @property
+    def svc_provisioning_oauth_url(self) -> str:
+        """Get the OAuth URL for the Service Provisioning API."""
+        return settings.EXTENSION_CONFIG["SVC_PROVISIONING_OAUTH_URL"]
+
+    @property
+    def svc_provisioning_client_id(self) -> str:
+        """Get the client ID for the Service Provisioning API."""
+        return settings.EXTENSION_CONFIG["SVC_PROVISIONING_CLIENT_ID"]
+
+    @property
+    def svc_provisioning_client_secret(self) -> str:
+        """Get the client secret for the Service Provisioning API."""
+        return settings.EXTENSION_CONFIG["SVC_PROVISIONING_CLIENT_SECRET"]
+
+    @property
+    def svc_provisioning_audience(self) -> str:
+        """Get the audience for the Service Provisioning API."""
+        return settings.EXTENSION_CONFIG["SVC_PROVISIONING_AUDIENCE"]
+
+    @property
     def aws_ses_access_key(self) -> str:
         """Get the AWS SES access key."""
         return settings.EXTENSION_CONFIG["AWS_SES_CREDENTIALS"].split(":")[0]
