@@ -27,7 +27,7 @@ from swo_aws_extension.swo.service_provisioning.models import (
 
 logger = logging.getLogger(__name__)
 
-_SWO_JOB_SERVICE_DESCRIPTION = "Azure Advance"
+_SWO_JOB_SERVICE_DESCRIPTION = "SN00518"
 _SWO_JOB_DEFAULT_LANGUAGE_CODE = "en"
 
 
