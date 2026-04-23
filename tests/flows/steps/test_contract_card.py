@@ -86,7 +86,7 @@ def test_process_creates_contract_when_none_exist(mocker, purchase_context, mpt_
     assert get_cco_contract_number(context.order) == SAMPLE_CONTRACT_NUMBER
     assert request.software_one_legal_entity == "SWO_US"
     assert not request.customer_reference
-    assert request.manufacturer_code == "225989344502"
+    assert request.manufacturer_code == "SWOTS"
     assert "Created CCO contract" in caplog.text
 
 
@@ -94,7 +94,7 @@ def test_process_sets_customer_reference_from_agreement_external_id(
     mocker, purchase_context, mpt_client
 ):
     context = purchase_context()
-    context.agreement.setdefault("externalIds", {})["customer"] = "live-e2e-check"
+    context.agreement.setdefault("externalIds", {})["client"] = "live-e2e-check"
     mock_client = mocker.patch(f"{MODULE}.get_cco_client")
     mock_client.return_value.get_all_contracts.return_value = []
     mock_client.return_value.create_cco.return_value = CreateCcoResponse(
@@ -108,7 +108,7 @@ def test_process_sets_customer_reference_from_agreement_external_id(
     assert request.customer_reference == "live-e2e-check"
 
 
-def test_process_sets_empty_manufacturer_code_when_vendor_external_id_missing(
+def test_process_sets_manufacturer_code_from_config_when_vendor_external_id_missing(
     mocker, purchase_context, mpt_client
 ):
     context = purchase_context()
@@ -123,7 +123,7 @@ def test_process_sets_empty_manufacturer_code_when_vendor_external_id_missing(
 
     create_cco = mock_client.return_value.create_cco
     request: CreateCcoRequest = create_cco.call_args.args[0]
-    assert not request.manufacturer_code
+    assert request.manufacturer_code == "SWOTS"
 
 
 def test_process_get_all_contracts_error_logs_and_notifies(

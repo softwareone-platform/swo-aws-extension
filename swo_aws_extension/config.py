@@ -148,6 +148,11 @@ class Config:
         return settings.EXTENSION_CONFIG["CCO_AUDIENCE"]
 
     @property
+    def cco_manufacturer_code(self) -> str:
+        """Get the manufacturer code used for CCO contract creation."""
+        return settings.EXTENSION_CONFIG["CCO_MANUFACTURER_CODE"]
+
+    @property
     def svc_provisioning_api_base_url(self) -> str:
         """Get the base URL for the Service Provisioning API."""
         return settings.EXTENSION_CONFIG["SVC_PROVISIONING_API_BASE_URL"]

@@ -4,7 +4,7 @@ import pytest
 
 from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.order import PurchaseContext
-from swo_aws_extension.flows.steps.errors import SkipStepError
+from swo_aws_extension.flows.steps.errors import AlreadyProcessedStepError, SkipStepError
 from swo_aws_extension.flows.steps.swo_job import SWOJobStep
 from swo_aws_extension.parameters import get_erp_project_no, get_phase
 from swo_aws_extension.swo.cco.errors import SellerCountryNotFoundError
@@ -19,13 +19,16 @@ SAMPLE_ERP_PROJECT_NO = "ERP-123456"
 @pytest.fixture
 def purchase_context(order_factory, fulfillment_parameters_factory, order_parameters_factory):
     def factory(
-        phase=PhasesEnum.PROJECT_CREATION.value, cco_contract_number=SAMPLE_CONTRACT_NUMBER
+        phase=PhasesEnum.PROJECT_CREATION.value,
+        cco_contract_number=SAMPLE_CONTRACT_NUMBER,
+        erp_project_no="",
     ):
         order = order_factory(
             order_parameters=order_parameters_factory(),
             fulfillment_parameters=fulfillment_parameters_factory(
                 phase=phase,
                 cco_contract_number=cco_contract_number,
+                erp_project_no=erp_project_no,
             ),
         )
         return PurchaseContext.from_order_data(order)
@@ -47,6 +50,15 @@ def test_pre_step_proceeds_when_phase_matches(purchase_context):
 
     assert result is None
     assert context.order is not None
+
+
+def test_pre_step_already_processed_when_erp_project_no_already_set(purchase_context):
+    context = purchase_context(erp_project_no=SAMPLE_ERP_PROJECT_NO)
+
+    with pytest.raises(AlreadyProcessedStepError):
+        SWOJobStep().pre_step(context)
+
+    assert get_phase(context.order) == PhasesEnum.COMPLETED.value
 
 
 def test_process_creates_swo_job_and_sets_erp_project_no(

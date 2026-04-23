@@ -7,9 +7,10 @@ from mpt_extension_sdk.mpt_http.mpt import update_order
 from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
-from swo_aws_extension.flows.steps.errors import SkipStepError
+from swo_aws_extension.flows.steps.errors import AlreadyProcessedStepError, SkipStepError
 from swo_aws_extension.parameters import (
     get_cco_contract_number,
+    get_erp_project_no,
     get_formatted_technical_contact,
     get_phase,
     set_erp_project_no,
@@ -50,6 +51,14 @@ class SWOJobStep(BasePhaseStep):
             raise SkipStepError(
                 f"{context.order_id} - Next - Current phase is '{phase}', skipping as it"
                 f" is not '{PhasesEnum.PROJECT_CREATION}'"
+            )
+
+        erp_project_no = get_erp_project_no(context.order)
+        if erp_project_no:
+            context.order = set_phase(context.order, PhasesEnum.COMPLETED)
+            raise AlreadyProcessedStepError(
+                f"{context.order_id} - SWOJobStep - ERP project number already set to: "
+                f"{erp_project_no}, skipping"
             )
 
     @override
@@ -129,6 +138,7 @@ class SWOJobStep(BasePhaseStep):
 
         seller_country = context.seller.get("address", {}).get("country", "")
         software_one_legal_entity = SellerMapper().map(seller_country)
+
         request = ServiceOnboardingRequest(
             erp_client_id=software_one_legal_entity,
             contract_no=contract_number,
