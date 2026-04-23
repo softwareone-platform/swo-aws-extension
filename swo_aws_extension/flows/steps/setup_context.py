@@ -18,7 +18,12 @@ from swo_aws_extension.flows.order_utils import (
 )
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import ConfigurationStepError, UnexpectedStopError
-from swo_aws_extension.parameters import get_phase, set_fulfillment_parameter_value, set_phase
+from swo_aws_extension.parameters import (
+    get_phase,
+    reset_ordering_parameters_error,
+    set_fulfillment_parameter_value,
+    set_phase,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +46,7 @@ class SetupContext(BasePhaseStep):
     def process(self, client: MPTClient, context: InitialAWSContext) -> None:
         self._init_processing_template(client, context)
         self._init_parameter_default_values(client, context)
+        context.order = reset_ordering_parameters_error(context.order)
         context.order = strip_whitespace_from_mpa_account(context.order)
         try:
             context.aws_client = AWSClient(
