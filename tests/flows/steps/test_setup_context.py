@@ -6,12 +6,17 @@ from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import (
     AccountTypesEnum,
     FulfillmentParametersEnum,
+    OrderParametersEnum,
     OrderProcessingTemplateEnum,
     PhasesEnum,
 )
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.setup_context import SetupContext
-from swo_aws_extension.parameters import get_fulfillment_parameter, get_mpa_account_id
+from swo_aws_extension.parameters import (
+    get_fulfillment_parameter,
+    get_mpa_account_id,
+    get_ordering_parameter,
+)
 
 
 def test_setup_context_with_pma(
@@ -456,3 +461,36 @@ def test_strip_whitespace_from_mpa_account(
     step(mpt_client_mock, context, next_step_mock)  # act
 
     assert get_mpa_account_id(context.order) == "651706759263"
+
+
+def test_reset_ordering_parameter_error_on_master_payer_id(
+    mocker,
+    config,
+    order_factory,
+    fulfillment_parameters_factory,
+    product_parameters_factory,
+):
+    mpt_client_mock = mocker.MagicMock(spec=MPTClient)
+    next_step_mock = mocker.MagicMock(spec=Step)
+    mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
+    mocker.patch("swo_aws_extension.flows.steps.setup_context.update_processing_template")
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context._paginated",
+        return_value=product_parameters_factory(),
+    )
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(phase=""),
+    )
+    mpa_external_id = OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value
+    get_ordering_parameter(mpa_external_id, order)["error"] = "Some validation error"
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.update_order",
+        side_effect=lambda *_args, **kwargs: {**order, "parameters": kwargs["parameters"]},
+    )
+    context = PurchaseContext.from_order_data(order)
+    step = SetupContext(config)
+
+    step(mpt_client_mock, context, next_step_mock)  # act
+
+    assert get_ordering_parameter(mpa_external_id, context.order)["error"] is None
+    next_step_mock.assert_called_once_with(mpt_client_mock, context)
