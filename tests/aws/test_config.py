@@ -105,6 +105,14 @@ def test_billing_role_name(settings):
     assert result.billing_role_name == "BillingRole"
 
 
+def test_cco_manufacturer_code(settings):
+    settings.EXTENSION_CONFIG["CCO_MANUFACTURER_CODE"] = "SWOTS"
+
+    result = get_config()
+
+    assert result.cco_manufacturer_code == "SWOTS"
+
+
 def test_pls_charge_percentage(settings):
     settings.EXTENSION_CONFIG["PLS_CHARGE_PERCENTAGE"] = "5.0"
 

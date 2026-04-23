@@ -5,6 +5,7 @@ from typing import override
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
+from swo_aws_extension.config import get_config
 from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
@@ -71,7 +72,6 @@ class ContractCardStep(BasePhaseStep):
             context.order_id,
             mpa_id,
         )
-
         try:
             contracts = get_cco_client().get_all_contracts(mpa_id)
         except CcoError:
@@ -162,12 +162,12 @@ class ContractCardStep(BasePhaseStep):
         """Create a new CCO contract and return its contract number."""
         buyer_erp_id = context.buyer.get("externalIds", {}).get("erpCustomer", "")
         agreement_id = context.agreement.get("id", "")
-        customer_reference = context.agreement.get("externalIds", {}).get("customer", "")
-        manufacturer_code = context.agreement.get("externalIds", {}).get("vendor", "")
+        customer_reference = context.agreement.get("externalIds", {}).get("client", "")
 
         currency = context.currency or "USD"
         seller_country = context.seller.get("address", {}).get("country", "")
         software_one_legal_entity = map_software_one_legal_entity(seller_country)
+        manufacturer_code = get_config().cco_manufacturer_code
 
         request = CreateCcoRequest(
             software_one_legal_entity=software_one_legal_entity,
