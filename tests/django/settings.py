@@ -226,6 +226,7 @@ EXTENSION_CONFIG = {
     "CCO_CLIENT_ID": "zaC5wcIHa1FCFNwT5YQvPuvFpPTdl8fX",
     "CCO_CLIENT_SECRET": "test-cco-secret",
     "CCO_AUDIENCE": "procops-contracts-test",
+    "CCO_MANUFACTURER_CODE": "SWOTS",
     "SVC_PROVISIONING_API_BASE_URL": "https://swo-ip-apim-uat.azure-api.net",
     "SVC_PROVISIONING_OAUTH_URL": "https://svc-provisioning.eu.auth0.com",
     "SVC_PROVISIONING_CLIENT_ID": "svc-provisioning-client-id",
