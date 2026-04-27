@@ -540,3 +540,43 @@ def get_feature_version_deployment_error_notified(source: dict[str, Any]) -> str
         source,
     )
     return fulfillment_param.get("value", None)
+
+
+def get_cco_contract_number(source: dict[str, Any]) -> str | None:
+    """Get the CCO contract number from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CCO_CONTRACT_NUMBER.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def set_cco_contract_number(order: dict, contract_number: str) -> dict[str, Any]:
+    """Set the CCO contract number on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CCO_CONTRACT_NUMBER.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = contract_number
+    return updated_order
+
+
+def get_erp_project_no(source: dict[str, Any]) -> str | None:
+    """Get the ERP project number from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.ERP_PROJECT_NO.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def set_erp_project_no(order: dict, erp_project_no: str) -> dict[str, Any]:
+    """Set the ERP project number on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.ERP_PROJECT_NO.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = erp_project_no
+    return updated_order

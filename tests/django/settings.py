@@ -197,6 +197,7 @@ EXTENSION_CONFIG = {
     "APN_ACCOUNT_ID": "1234567890",
     "ONBOARD_CUSTOMER_ROLE": "OnboardCustomerRole",
     "MANAGEMENT_ROLE": "SWOExtensionManagementRole",
+    "BILLING_ROLE": "SWOExtensionBillingRole",
     "QUERYING_TIMEOUT_DAYS": 4,
     "CUSTOMER_ROLES_QUERYING_TIMEOUT_DAYS": 2,
     "CLOUD_ORCHESTRATOR_API_BASE_URL": "https://cloud-orchestrator.test.com/",
@@ -220,6 +221,17 @@ EXTENSION_CONFIG = {
     "CONFLUENCE_TOKEN": "confluence_token",
     "PENDING_ORDERS_INFORMATION_REPORT_PAGE_ID": "123456",
     "PLS_CHARGE_PERCENTAGE": 5.0,
+    "CCO_API_BASE_URL": "https://swo-procops-app-externalapi-contracts-test.azurewebsites.net",
+    "CCO_OAUTH_URL": "https://bit-ba-test.eu.auth0.com",
+    "CCO_CLIENT_ID": "zaC5wcIHa1FCFNwT5YQvPuvFpPTdl8fX",
+    "CCO_CLIENT_SECRET": "test-cco-secret",
+    "CCO_AUDIENCE": "procops-contracts-test",
+    "CCO_MANUFACTURER_CODE": "SWOTS",
+    "SVC_PROVISIONING_API_BASE_URL": "https://swo-ip-apim-uat.azure-api.net",
+    "SVC_PROVISIONING_OAUTH_URL": "https://svc-provisioning.eu.auth0.com",
+    "SVC_PROVISIONING_CLIENT_ID": "svc-provisioning-client-id",
+    "SVC_PROVISIONING_CLIENT_SECRET": "test-svc-provisioning-secret",
+    "SVC_PROVISIONING_AUDIENCE": "svcs-sfo-service-provisioning-api-uat",
 }
 MPT_SETUP_CONTEXTS_FUNC = "mpt_extension_sdk.runtime.events.utils.setup_contexts"
 

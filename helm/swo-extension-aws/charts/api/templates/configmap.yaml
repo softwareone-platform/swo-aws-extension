@@ -23,6 +23,15 @@ data:
   EXT_CRM_CLIENT_ID: {{ .Values.global.CrmClientId | quote }}
   EXT_CRM_AUDIENCE: {{ .Values.global.CrmAudience | quote }}
   EXT_CRM_API_BASE_URL: {{ .Values.global.CrmApiBaseUrl | quote }}
+  EXT_CCO_API_BASE_URL: {{ .Values.global.CcoApiBaseUrl | quote }}
+  EXT_CCO_OAUTH_URL: {{ .Values.global.CcoOauthUrl | quote }}
+  EXT_CCO_CLIENT_ID: {{ .Values.global.CcoClientId | quote }}
+  EXT_CCO_AUDIENCE: {{ .Values.global.CcoAudience | quote }}
+  EXT_CCO_MANUFACTURER_CODE: {{ .Values.global.CcoManufacturerCode | quote }}
+  EXT_SVC_PROVISIONING_API_BASE_URL: {{ .Values.global.SvcProvisioningApiBaseUrl | quote }}
+  EXT_SVC_PROVISIONING_OAUTH_URL: {{ .Values.global.SvcProvisioningOauthUrl | quote }}
+  EXT_SVC_PROVISIONING_CLIENT_ID: {{ .Values.global.SvcProvisioningClientId | quote }}
+  EXT_SVC_PROVISIONING_AUDIENCE: {{ .Values.global.SvcProvisioningAudience | quote }}
   EXT_CCP_OAUTH_URL: {{ .Values.global.CcpOauthUrl | quote }}
   EXT_CCP_CLIENT_ID: {{ .Values.global.CcpClientId | quote }}
   EXT_CCP_API_BASE_URL: {{ .Values.global.CcpApiBaseUrl | quote }}

@@ -28,6 +28,17 @@ global:
   MpSetupContextsFunc: swo_aws_extension.flows.fulfillment.base.setup_contexts
   MpOrdersApiPollingIntervalSecs: 60
   CrmApiBaseUrl: default
+  CcoApiBaseUrl: default
+  CcoOauthUrl: default
+  CcoClientId: default
+  CcoClientSecret: ZGVmYXVsdA==
+  CcoAudience: default
+  CcoManufacturerCode: default
+  SvcProvisioningApiBaseUrl: default
+  SvcProvisioningOauthUrl: default
+  SvcProvisioningClientId: default
+  SvcProvisioningClientSecret: ZGVmYXVsdA==
+  SvcProvisioningAudience: default
   AwsOpenIdScope: default
   AwsRegion: us-east-1
   AirTableBases: default
