@@ -172,16 +172,16 @@ wheels = [
 
 [[package]]
 name = "boto3"
-version = "1.42.73"
+version = "1.42.96"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
     { name = "jmespath" },
     { name = "s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/8b/d00575be514744ca4839e7d85bf4a8a3c7b6b4574433291e58d14c68ae09/boto3-1.42.73.tar.gz", hash = "sha256:d37b58d6cd452ca808dd6823ae19ca65b6244096c5125ef9052988b337298bae", size = 112775, upload-time = "2026-03-20T19:39:52.814Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a6/2d/69fb3acd50bab83fb295c167d33c4b653faeb5fb0f42bfca4d9b69d6fb68/boto3-1.42.96.tar.gz", hash = "sha256:b38a9e4a3fbbee9017252576f1379780d0a5814768676c08df2f539d31fcdd68", size = 113203, upload-time = "2026-04-24T19:47:18.677Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/aa/05/1fcf03d90abaa3d0b42a6bfd10231dd709493ecbacf794aa2eea5eae6841/boto3-1.42.73-py3-none-any.whl", hash = "sha256:1f81b79b873f130eeab14bb556417a7c66d38f3396b7f2fe3b958b3f9094f455", size = 140556, upload-time = "2026-03-20T19:39:50.298Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/9d/b3f617d011c42eb804d993103b8fa9acdce153e181a3042f58bfe33d7cb4/boto3-1.42.96-py3-none-any.whl", hash = "sha256:2f4566da2c209a98bdbfc874d813ef231c84ad24e4f815e9bc91de5f63351a24", size = 140557, upload-time = "2026-04-24T19:47:15.824Z" },
 ]
 
 [[package]]
@@ -199,16 +199,16 @@ wheels = [
 
 [[package]]
 name = "botocore"
-version = "1.42.73"
+version = "1.42.96"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath" },
     { name = "python-dateutil" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/28/23/0c88ca116ef63b1ae77c901cd5d2095d22a8dbde9e80df74545db4a061b4/botocore-1.42.73.tar.gz", hash = "sha256:575858641e4949aaf2af1ced145b8524529edf006d075877af6b82ff96ad854c", size = 15008008, upload-time = "2026-03-20T19:39:40.082Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/61/77/2c333622a1d47cf5bf73cdcab0cb6c92addafbef2ec05f81b9f75687d9e5/botocore-1.42.96.tar.gz", hash = "sha256:75b3b841ffacaa944f645196655a21ca777591dd8911e732bfb6614545af0250", size = 15263344, upload-time = "2026-04-24T19:47:05.283Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/65/971f3d55015f4d133a6ff3ad74cd39f4b8dd8f53f7775a3c2ad378ea5145/botocore-1.42.73-py3-none-any.whl", hash = "sha256:7b62e2a12f7a1b08eb7360eecd23bb16fe3b7ab7f5617cf91b25476c6f86a0fe", size = 14681861, upload-time = "2026-03-20T19:39:35.341Z" },
+    { url = "https://files.pythonhosted.org/packages/45/56/152c3a859ca1b9d77ed16deac3cf81682013677c68cf5715698781fc81bd/botocore-1.42.96-py3-none-any.whl", hash = "sha256:db2c3e2006628be6fde81a24124a6563c363d6982fb92728837cf174bad9d98a", size = 14945920, upload-time = "2026-04-24T19:47:00.323Z" },
 ]
 
 [[package]]
@@ -1030,15 +1030,14 @@ wheels = [
 
 [[package]]
 name = "mpt-api-client"
-version = "5.2.0"
+version = "5.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
-    { name = "python-box" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/70/07/86a4d59c4e44f49299449012da69bbeb4d2d6736db838ee9da4f34a6c4fe/mpt_api_client-5.2.0.tar.gz", hash = "sha256:c145d391b1339861d64b2235668c520ed070a26f86f91405c8299939b751c9e7", size = 41343, upload-time = "2026-02-24T11:33:03.176Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/46/41/d5ec7ee9e6d626c0bcff192eb481ff8f1b77a8cd0583a188d3833ff72c79/mpt_api_client-5.4.0.tar.gz", hash = "sha256:abd7a60e00cbb0a7e8d66e14dec9f415a4d5a020dec5f7b2534a60d62cde0a74", size = 49617, upload-time = "2026-03-25T10:43:29.538Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/34/6d/27136754f367ba0044c994adb093781d28f587d04898a6db7154ca42f77a/mpt_api_client-5.2.0-py3-none-any.whl", hash = "sha256:1b0348d8f06481b21ce0385473ddf43d864afdef08ec98b0be407bfbb7e78acc", size = 92135, upload-time = "2026-02-24T11:33:01.576Z" },
+    { url = "https://files.pythonhosted.org/packages/bd/99/1ae0a342ee580e44017c6775a882c1a318f7eac7a79eab6255c906a4edb2/mpt_api_client-5.4.0-py3-none-any.whl", hash = "sha256:f2b8798a57a5a5737094a70c19eae0e32d12a2c83c25d7582b3252f64a80f835", size = 110983, upload-time = "2026-03-25T10:43:28.625Z" },
 ]
 
 [[package]]
@@ -1074,16 +1073,16 @@ wheels = [
 
 [[package]]
 name = "mpt-tool"
-version = "5.6.0"
+version = "6.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mpt-api-client" },
     { name = "pyairtable" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a9/ab/32a104b6f1605e139eff1feecf134c8bd0d03400db277e1be6da09720178/mpt_tool-5.6.0.tar.gz", hash = "sha256:6a4513562646b2e7ea1545b5429e9b224bbdc9a3d97c9ac5b6e8bfc2a548f8cc", size = 24570, upload-time = "2026-02-26T10:10:09.891Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b4/91/c30b647721b48272732ea827dcdffe50ee3bded6e3d4e0c3243098dd0790/mpt_tool-6.0.0.tar.gz", hash = "sha256:3bb225182ee7faa8172bc0f7893e82681e09dff08c7ec307df9ba3299b8097b5", size = 20739, upload-time = "2026-04-21T12:33:52.505Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/30/07/fb96878306df97bbaf5006c68fb039b4fcf7296112373875ef1bdf042a73/mpt_tool-5.6.0-py3-none-any.whl", hash = "sha256:1d100b6339988363a21b97322c4fe4c3981ddd89be634b8ac872244b8cc17a64", size = 38058, upload-time = "2026-02-26T10:10:08.846Z" },
+    { url = "https://files.pythonhosted.org/packages/4b/30/a12e00a06d788fdf9b81311fb4464c3a87c498c8ff3e7b2147e633784668/mpt_tool-6.0.0-py3-none-any.whl", hash = "sha256:074adbfb05a37535a28ecfe0146d0156831e4b97276a29aea3d105bf771151ce", size = 34098, upload-time = "2026-04-21T12:33:51.326Z" },
 ]
 
 [[package]]
@@ -1756,23 +1755,6 @@ wheels = [
 ]
 
 [[package]]
-name = "python-box"
-version = "7.4.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0f/0f/34e7ee0a72f1464b4c7a2e8bafb389f230477256af586bc82bcfad85295a/python_box-7.4.1.tar.gz", hash = "sha256:e412e36c25fca8223560516d53ef6c7993591c3b0ec8bb4ec582bf7defdd79f0", size = 49859, upload-time = "2026-02-21T16:21:16.008Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4d/d9/d05f317b38b42253422d8483f5d7dc16d382c99ddc253e426639a0f2f235/python_box-7.4.1-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:dfb91effff00d9e23486c4f0db3b19e03d602ebb7c9e20fc6a287c704fad2552", size = 1849441, upload-time = "2026-02-21T16:21:37.314Z" },
-    { url = "https://files.pythonhosted.org/packages/ba/a3/383eb3d658f36c6e531c8cf1e348ccb4b5031231df4aeb7742bb159a3166/python_box-7.4.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b7f977f00e715b030cee6ffef2322ff8ce100ffbf1dbcc4ef91099c75752d5f8", size = 4485153, upload-time = "2026-02-21T16:26:04.507Z" },
-    { url = "https://files.pythonhosted.org/packages/65/f9/5de3c18415dd6f5286f00e6539c0ae3cceb1c6aaf28d1d5f17b0b568c97f/python_box-7.4.1-cp312-cp312-win_amd64.whl", hash = "sha256:2ca9a18fd15326bc267e9cc7e0e6e3a0cb78d11507940f43f687adf7e156d882", size = 1295520, upload-time = "2026-02-21T16:22:26.192Z" },
-    { url = "https://files.pythonhosted.org/packages/ec/e9/48d1b1eb21efc3f82a31b037b6903c9139018f686d96d251faa4cb0d593a/python_box-7.4.1-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:85db37b43094bf6c4884b931fb149a7850db5ce331f6e191edf98b453e6cf2d6", size = 1845195, upload-time = "2026-02-21T16:21:46.235Z" },
-    { url = "https://files.pythonhosted.org/packages/da/79/48d38c855f277223caf3aa79518476f95abc07f04386940855b7bd3d95f6/python_box-7.4.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:bb204822c7638bd2dbed5c55d6ab264c6903c37d18dee5c45bdbda58b2e1e17a", size = 4468245, upload-time = "2026-02-21T16:26:05.701Z" },
-    { url = "https://files.pythonhosted.org/packages/17/1d/7a1e04f37674399e0f3076cfe1fa358f6a51540ae98299a06f2c0424c471/python_box-7.4.1-cp313-cp313-win_amd64.whl", hash = "sha256:615da3fafd41572aec1b905832555c0ea08b6fbc27cc917356e257a9a5721af7", size = 1295564, upload-time = "2026-02-21T16:22:36.547Z" },
-    { url = "https://files.pythonhosted.org/packages/94/a2/771b5e526bba2214ac2d30e321209a66680c40788616a45cf01005e95204/python_box-7.4.1-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:33c6701faa51fd87f0dcc538873c0fad2b3a1cc3750eab85835cd071cadf1948", size = 1875508, upload-time = "2026-02-21T16:21:37.432Z" },
-    { url = "https://files.pythonhosted.org/packages/a6/5f/0e7ea7640ba60ff459ce37e340d816ac5e91b7a9a7c3c161f9dabe622be6/python_box-7.4.1-cp314-cp314-win_amd64.whl", hash = "sha256:ae8c540a0457f52350211d24690211251912018e1e0c1857f50792729d6f562c", size = 1314304, upload-time = "2026-02-21T16:22:22.173Z" },
-    { url = "https://files.pythonhosted.org/packages/06/a6/5d3f3abf46b37aa44b1f6788d287c8b4f2319b55013191dddf25b9e6d62c/python_box-7.4.1-py3-none-any.whl", hash = "sha256:a3b0d84d003882fb6abe505b1b883b3a5dcbf226b0fe168d24bc5ff75d9826e5", size = 30402, upload-time = "2026-02-21T16:21:14.78Z" },
-]
-
-[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 source = { registry = "https://pypi.org/simple" }
@@ -2040,7 +2022,7 @@ requires-dist = [
     { name = "jinja2", specifier = "==3.1.*" },
     { name = "markdown-it-py", specifier = "==4.0.*" },
     { name = "mpt-extension-sdk", specifier = "==5.21.*" },
-    { name = "mpt-tool", specifier = "==5.6.*" },
+    { name = "mpt-tool", specifier = "==6.0.*" },
     { name = "openpyxl", specifier = "==3.1.*" },
     { name = "opentelemetry-instrumentation-botocore", specifier = "==0.60b0" },
     { name = "pyairtable", specifier = "==3.3.*" },
