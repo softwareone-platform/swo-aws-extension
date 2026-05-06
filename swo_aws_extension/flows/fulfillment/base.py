@@ -2,6 +2,7 @@ import logging
 from typing import Any
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
+from mpt_extension_sdk.mpt_http.wrap_http_error import ValidationError
 
 from swo_aws_extension.flows.fulfillment.pipelines import (
     pipeline_error_handler,
@@ -10,8 +11,45 @@ from swo_aws_extension.flows.fulfillment.pipelines import (
     terminate,
 )
 from swo_aws_extension.flows.order import InitialAWSContext, PurchaseContext
+from swo_aws_extension.flows.order_utils import switch_order_status_to_failed
 
 logger = logging.getLogger(__name__)
+
+
+def _handle_purchase_order(client: MPTClient, context: InitialAWSContext) -> None:
+    purchase_context = PurchaseContext.from_context(context)
+    if purchase_context.is_type_new_aws_environment():
+        logger.info(
+            "%s - Pipeline - Starting: purchase new AWS environment",
+            purchase_context.order_id,
+        )
+        purchase_new_aws_environment.run(
+            client, purchase_context, error_handler=pipeline_error_handler
+        )
+    elif purchase_context.is_type_existing_aws_environment():
+        logger.info(
+            "%s - Pipeline - Starting: purchase existing AWS environment",
+            purchase_context.order_id,
+        )
+        purchase_existing_aws_environment.run(
+            client, purchase_context, error_handler=pipeline_error_handler
+        )
+
+
+def _fail_unsupported_order(client: MPTClient, context: InitialAWSContext) -> None:
+    logger.error(
+        "%s - Order type %s is not supported, failing order",
+        context.order_id,
+        context.order_type,
+    )
+    switch_order_status_to_failed(
+        client,
+        context,
+        ValidationError(
+            err_id="AWS003",
+            message=f"Order type {context.order_type} is not supported by the AWS extension.",
+        ).to_dict(),
+    )
 
 
 def fulfill_order(client: MPTClient, context: InitialAWSContext) -> None:
@@ -27,24 +65,9 @@ def fulfill_order(client: MPTClient, context: InitialAWSContext) -> None:
     if context.is_termination_order():
         terminate.run(client, context, error_handler=pipeline_error_handler)
     elif context.is_purchase_order():
-        context = PurchaseContext.from_context(context)
-        if context.is_type_new_aws_environment():
-            logger.info(
-                "%s - Pipeline - Starting: purchase new AWS environment",
-                context.order_id,
-            )
-            purchase_new_aws_environment.run(client, context, error_handler=pipeline_error_handler)
-
-        elif context.is_type_existing_aws_environment():
-            logger.info(
-                "%s - Pipeline - Starting: purchase existing AWS environment",
-                context.order_id,
-            )
-            purchase_existing_aws_environment.run(
-                client, context, error_handler=pipeline_error_handler
-            )
+        _handle_purchase_order(client, context)
     else:
-        logger.error("%s - Unsupported order type: %s", context.order_id, context.order_type)
+        _fail_unsupported_order(client, context)
 
 
 def setup_contexts(_: MPTClient, orders: list[dict[str, Any]]) -> list[InitialAWSContext]:
