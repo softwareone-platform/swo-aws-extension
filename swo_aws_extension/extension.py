@@ -6,12 +6,15 @@ from typing import Annotated, Any
 from django.conf import settings
 from mpt_extension_sdk.core.extension import Extension
 from mpt_extension_sdk.core.security import JWTAuth
+from mpt_extension_sdk.flows.context import ORDER_TYPE_CHANGE
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import get_webhook
+from mpt_extension_sdk.mpt_http.wrap_http_error import ValidationError
 from mpt_extension_sdk.runtime.djapp.conf import get_for_product
 from ninja import Body
 
 from swo_aws_extension.flows.fulfillment.base import fulfill_order
+from swo_aws_extension.flows.order_utils import set_order_error
 from swo_aws_extension.flows.validation.base import validate_order
 
 logger = logging.getLogger(__name__)
@@ -42,6 +45,15 @@ def process_order_fulfillment(client, event):
 )
 def process_order_validation(request, order: Annotated[dict, Body()]):
     """Start order process validation."""
+    if order.get("type") == ORDER_TYPE_CHANGE:
+        order = set_order_error(
+            order,
+            ValidationError(
+                err_id="AWS003",
+                message="Change orders are not supported by the AWS extension.",
+            ).to_dict(),
+        )
+        return HTTPStatus.OK, order
     try:
         validated_order = validate_order(request.client, order)
     except Exception:
