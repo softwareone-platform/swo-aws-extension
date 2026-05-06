@@ -126,12 +126,13 @@ class BillingJournalService:
         self, authorization_id: str, generator_result: AuthorizationJournalResult
     ) -> None:
         logger.info(
-            "[DRY-RUN] Generated %d journal lines for authorization %s",
+            "%s - [DRY-RUN] Generated %d journal lines for authorization %s",
+            authorization_id,
             len(generator_result.lines),
             authorization_id,
         )
         logger.info("".join(entry.to_jsonl() for entry in generator_result.lines))
-        self._log_totals_by_mpa(generator_result.lines)
+        self._log_totals_by_mpa(authorization_id, generator_result.lines)
 
         attachments = [
             f"{agr}.json"
@@ -139,16 +140,17 @@ class BillingJournalService:
             if rep.organization_data or rep.accounts_data
         ]
         if attachments:
-            logger.info("[DRY-RUN] Attachments: %s", attachments)
+            logger.info("%s - [DRY-RUN] Attachments: %s", authorization_id, attachments)
 
-    def _log_totals_by_mpa(self, journal_lines: list[JournalLine]) -> None:
+    def _log_totals_by_mpa(self, authorization_id, journal_lines: list[JournalLine]) -> None:
         total_by_mpa: dict[str, Decimal] = defaultdict(Decimal)
         for line in journal_lines:
             total_by_mpa[line.external_ids.vendor] += line.price.pp_x1
 
         for mpa, total_amount in total_by_mpa.items():
             logger.info(
-                "[DRY-RUN] MPA %s total amount: %s",
+                "%s - [DRY-RUN] MPA %s total amount: %s",
+                authorization_id,
                 mpa,
                 total_amount,
             )
