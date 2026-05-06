@@ -20,6 +20,10 @@ from swo_aws_extension.logger import get_logger
 logger = get_logger(__name__)
 
 
+def _marketplace_billing_entity_filter() -> dict:
+    return {"Dimensions": {"Key": "BILLING_ENTITY", "Values": [AWS_MARKETPLACE]}}
+
+
 class CostExplorerReportFetcher:
     """Fetches cost and usage reports from AWS Cost Explorer."""
 
@@ -47,7 +51,7 @@ class CostExplorerReportFetcher:
             {"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"},
             {"Type": "DIMENSION", "Key": "SERVICE"},
         ]
-        filter_by = {"Dimensions": {"Key": "BILLING_ENTITY", "Values": [AWS_MARKETPLACE]}}
+        filter_by = _marketplace_billing_entity_filter()
         return self._aws_client.get_cost_and_usage(
             billing_period,
             group_by,
@@ -68,7 +72,12 @@ class CostExplorerReportFetcher:
             {"Type": "DIMENSION", "Key": "RECORD_TYPE"},
             {"Type": "DIMENSION", "Key": "SERVICE"},
         ]
-        filter_by = {"Dimensions": {"Key": "LINKED_ACCOUNT", "Values": [account_id]}}
+        filter_by = {
+            "And": [
+                {"Dimensions": {"Key": "LINKED_ACCOUNT", "Values": [account_id]}},
+                {"Not": _marketplace_billing_entity_filter()},
+            ]
+        }
         return self._aws_client.get_cost_and_usage(
             billing_period,
             group_by,
