@@ -137,3 +137,34 @@ def test_organization_usage_result(metric):
     assert result.reports == report
     assert "ACT-1" in result.usage_by_account
     assert len(result.usage_by_account["ACT-1"].metrics) == 1
+
+
+def test_has_enterprise_support_true():
+    account_usage = AccountUsage(
+        metrics=[
+            ServiceMetric(
+                service_name="AWS Support (Enterprise)",
+                record_type="Usage",
+            ),
+        ]
+    )
+    usage_result = OrganizationUsageResult(
+        reports=OrganizationReport(),
+        usage_by_account={"ACT-1": account_usage},
+    )
+
+    result = usage_result.has_enterprise_support()  # act
+
+    assert result is True
+
+
+def test_has_enterprise_support_false(metric):
+    account_usage = AccountUsage(metrics=[metric])
+    usage_result = OrganizationUsageResult(
+        reports=OrganizationReport(),
+        usage_by_account={"ACT-1": account_usage},
+    )
+
+    result = usage_result.has_enterprise_support()  # act
+
+    assert result is False

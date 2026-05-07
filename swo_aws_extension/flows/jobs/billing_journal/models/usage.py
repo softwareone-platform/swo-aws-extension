@@ -68,3 +68,10 @@ class OrganizationUsageResult:
 
     reports: OrganizationReport
     usage_by_account: dict[str, AccountUsage] = field(default_factory=dict)
+
+    def has_enterprise_support(self) -> bool:
+        """Check if any account has 'AWS Support (Enterprise)' in its metrics."""
+        return any(
+            account.get_metrics_by_service("AWS Support (Enterprise)")
+            for account in self.usage_by_account.values()
+        )

@@ -17,6 +17,7 @@ from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import (
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     AuthorizationJournalResult,
     BillingReportRow,
+    PlsMismatch,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.usage import OrganizationReport
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
@@ -254,6 +255,30 @@ def test_dry_run_skips_upload_with_empty_reports(
     service.run()  # act
 
     mock_journal_manager_cls.assert_not_called()
+
+
+def test_pls_mismatch_sends_warning(
+    mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
+):
+    mock_context.dry_run = False
+    authorization = {"id": "AUTH-1"}
+    mock_get_authorizations.return_value = [authorization]
+    mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
+    mock_line = mocker.MagicMock(spec=JournalLine)
+    mismatch = PlsMismatch(agreement_id="AGR-1", pls_in_order=True, report_has_enterprise=False)
+    mock_auth_gen.run.return_value = AuthorizationJournalResult(
+        lines=[mock_line], pls_mismatches=[mismatch]
+    )
+    mock_auth_generator_cls.return_value = mock_auth_gen
+    mocker.patch(f"{MODULE}.JournalManager", autospec=True)
+    service = BillingJournalService(mock_context)
+
+    service.run()  # act
+
+    mock_context.notifier.send_warning.assert_called_once_with(
+        title="PLS Mismatch Summary",
+        text=f"1 agreement(s) with PLS mismatch:\n\n• {mismatch.description}",
+    )
 
 
 def test_dry_run_skips_upload_with_empty_report_data(

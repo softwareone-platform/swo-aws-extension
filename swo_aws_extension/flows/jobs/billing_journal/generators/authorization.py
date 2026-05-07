@@ -117,7 +117,7 @@ class AuthorizationJournalGenerator:
         agreement: dict,
         result: AuthorizationJournalResult,
     ) -> None:
-        agreement_id = agreement.get("id")
+        agreement_id = agreement.get("id", "")
         try:
             agreement_result = generator.run(agreement)
         except Exception as exc:
@@ -133,6 +133,8 @@ class AuthorizationJournalGenerator:
             result.reports_by_agreement[agreement_id] = agreement_result.report
         if agreement_result.billing_report_rows:
             result.billing_report_rows.extend(agreement_result.billing_report_rows)
+        if agreement_result.pls_mismatches:
+            result.pls_mismatches.extend(agreement_result.pls_mismatches)
 
     def _apply_pma_usage_to_report(
         self,

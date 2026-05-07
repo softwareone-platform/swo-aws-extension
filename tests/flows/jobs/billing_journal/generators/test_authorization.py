@@ -18,6 +18,7 @@ from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     AgreementJournalResult,
     AuthorizationJournalResult,
     BillingReportRow,
+    PlsMismatch,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.usage import OrganizationReport
 
@@ -156,6 +157,31 @@ def test_includes_report_in_result(
 
     assert result.reports_by_agreement == {"AGR-1": report}
     assert result.billing_report_rows == [mock_row]
+
+
+def test_includes_pls_mismatches_in_result(
+    mocker,
+    mock_context,
+    mock_get_agreements,
+    mock_agreement_generator_cls,
+    mock_usage_generator_cls,
+    mock_invoice_generator_cls,
+    mock_aws_client_cls,
+    authorization,
+):
+    mismatch = PlsMismatch(agreement_id="AGR-1", pls_in_order=True, report_has_enterprise=False)
+    mock_get_agreements.return_value = [{"id": "AGR-1"}]
+    mock_journal_line = mocker.MagicMock(spec=JournalLine)
+    mock_agr_gen = mocker.MagicMock(spec=AgreementJournalGenerator)
+    mock_agr_gen.run.return_value = AgreementJournalResult(
+        lines=[mock_journal_line], pls_mismatches=[mismatch]
+    )
+    mock_agreement_generator_cls.return_value = mock_agr_gen
+    generator = AuthorizationJournalGenerator(mock_context)
+
+    result = generator.run(authorization)
+
+    assert result.pls_mismatches == [mismatch]
 
 
 def test_pma_usage_included_in_report_rows(
