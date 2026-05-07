@@ -10,7 +10,6 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.authorization impor
 )
 from swo_aws_extension.flows.jobs.billing_journal.journal_manager import JournalManager
 from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
-from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import JournalLine
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     AuthorizationJournalResult,
 )
@@ -19,6 +18,40 @@ from swo_aws_extension.swo.mpt.authorization import get_authorizations
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 logger = get_logger(__name__)
+
+
+def _log_totals_by_mpa(authorization_id: str, generator_result: AuthorizationJournalResult) -> None:
+    total_by_mpa: dict[str, Decimal] = defaultdict(Decimal)
+    for line in generator_result.lines:
+        total_by_mpa[line.external_ids.vendor] += line.price.pp_x1
+    for mpa, total_amount in total_by_mpa.items():
+        logger.info(
+            "%s - [DRY-RUN] MPA %s total amount: %s",
+            authorization_id,
+            mpa,
+            total_amount,
+        )
+
+
+def _log_dry_run_results(
+    authorization_id: str, generator_result: AuthorizationJournalResult
+) -> None:
+    logger.info(
+        "%s - [DRY-RUN] Generated %d journal lines for authorization %s",
+        authorization_id,
+        len(generator_result.lines),
+        authorization_id,
+    )
+    logger.info("".join(entry.to_jsonl() for entry in generator_result.lines))
+    _log_totals_by_mpa(authorization_id, generator_result)
+
+    attachments = [
+        f"{agr}.json"
+        for agr, rep in generator_result.reports_by_agreement.items()
+        if rep.organization_data or rep.accounts_data
+    ]
+    if attachments:
+        logger.info("%s - [DRY-RUN] Attachments: %s", authorization_id, attachments)
 
 
 class BillingJournalService:
@@ -39,30 +72,41 @@ class BillingJournalService:
                 "Starting execution in DRY-RUN mode. No journals will be created or uploaded."
             )
 
-        logger.info(
-            "Generating billing journals for %s",
-            self._context.billing_period,
-        )
+        logger.info("Generating billing journals for %s", self._context.billing_period)
 
         authorizations = get_authorizations(self._mpt_client, self._build_rql_query())
         if not authorizations:
             logger.info("No authorizations found")
             return
 
-        all_report_rows = []
-        for authorization in authorizations:
-            generator_result = self._process_authorization(authorization)
-            if generator_result and generator_result.billing_report_rows:
-                all_report_rows.extend(generator_result.billing_report_rows)
+        journal_results = [
+            auth_result
+            for auth in authorizations
+            if (auth_result := self._process_authorization(auth)) is not None
+        ]
 
-        if all_report_rows and not self._context.dry_run:
-            report_creator = BillingReportCreator(self._context.config, self._context.notifier)
-            report_creator.create_and_notify_teams(
-                str(self._context.billing_period), all_report_rows
+        self._process_journal_results(journal_results)
+
+    def _process_journal_results(self, journal_results: list[AuthorizationJournalResult]) -> None:
+        pls_mismatches = [
+            mismatch for auth_result in journal_results for mismatch in auth_result.pls_mismatches
+        ]
+        if pls_mismatches:
+            details = "\n\n".join(f"• {mismatch.description}" for mismatch in pls_mismatches)
+            self._notifier.send_warning(
+                title="PLS Mismatch Summary",
+                text=f"{len(pls_mismatches)} agreement(s) with PLS mismatch:\n\n{details}",
             )
 
+        report_rows = [
+            row for auth_result in journal_results for row in auth_result.billing_report_rows
+        ]
+        if report_rows and not self._context.dry_run:
+            report_creator = BillingReportCreator(self._context.config, self._context.notifier)
+            report_creator.create_and_notify_teams(str(self._context.billing_period), report_rows)
+
     def _process_authorization(self, authorization: dict) -> AuthorizationJournalResult | None:
-        authorization_id = authorization.get("id")
+        authorization_id = authorization.get("id", "")
 
         generator_result = self._generate_journal_lines(authorization, authorization_id)
         if not generator_result or not generator_result.lines:
@@ -79,7 +123,7 @@ class BillingJournalService:
         )
 
         if self._context.dry_run:
-            self._log_dry_run_results(authorization_id, generator_result)
+            _log_dry_run_results(authorization_id, generator_result)
             return None
 
         journal_manager = JournalManager(self._context, authorization_id)
@@ -121,36 +165,3 @@ class BillingJournalService:
             unique_ids = list(set(self._authorizations))
             rql_query = RQLQuery(id__in=unique_ids) & rql_query
         return rql_query
-
-    def _log_dry_run_results(
-        self, authorization_id: str, generator_result: AuthorizationJournalResult
-    ) -> None:
-        logger.info(
-            "%s - [DRY-RUN] Generated %d journal lines for authorization %s",
-            authorization_id,
-            len(generator_result.lines),
-            authorization_id,
-        )
-        logger.info("".join(entry.to_jsonl() for entry in generator_result.lines))
-        self._log_totals_by_mpa(authorization_id, generator_result.lines)
-
-        attachments = [
-            f"{agr}.json"
-            for agr, rep in generator_result.reports_by_agreement.items()
-            if rep.organization_data or rep.accounts_data
-        ]
-        if attachments:
-            logger.info("%s - [DRY-RUN] Attachments: %s", authorization_id, attachments)
-
-    def _log_totals_by_mpa(self, authorization_id, journal_lines: list[JournalLine]) -> None:
-        total_by_mpa: dict[str, Decimal] = defaultdict(Decimal)
-        for line in journal_lines:
-            total_by_mpa[line.external_ids.vendor] += line.price.pp_x1
-
-        for mpa, total_amount in total_by_mpa.items():
-            logger.info(
-                "%s - [DRY-RUN] MPA %s total amount: %s",
-                authorization_id,
-                mpa,
-                total_amount,
-            )

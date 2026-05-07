@@ -30,6 +30,7 @@ from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import (
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     AgreementJournalResult,
+    PlsMismatch,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.usage import OrganizationUsageResult
 from swo_aws_extension.logger import get_logger
@@ -111,9 +112,7 @@ class AgreementJournalGenerator:
         journal_details: JournalDetails,
         organization_invoice,
     ) -> AgreementJournalResult:
-        all_lines = self._generate_usage_lines(
-            agreement, usage_result, journal_details, organization_invoice
-        )
+        all_lines = self._generate_usage_lines(usage_result, journal_details, organization_invoice)
 
         # Process extra discounts after generating all usage lines.
         all_lines.extend(
@@ -125,9 +124,20 @@ class AgreementJournalGenerator:
             )
         )
 
-        # If PLS is active, calculate and add the PLS charge line.
-        is_pls = get_support_type(agreement) == SupportTypesEnum.PARTNER_LED_SUPPORT
-        if is_pls:
+        pls_in_order = get_support_type(agreement) == SupportTypesEnum.PARTNER_LED_SUPPORT
+        report_has_enterprise = usage_result.has_enterprise_support()
+
+        pls_mismatches: list[PlsMismatch] = []
+        if pls_in_order != report_has_enterprise:
+            pls_mismatches.append(
+                PlsMismatch(
+                    agreement_id=agreement.get("id", ""),
+                    pls_in_order=pls_in_order,
+                    report_has_enterprise=report_has_enterprise,
+                )
+            )
+
+        if report_has_enterprise:
             all_lines.extend(
                 PlSChargeManager().process(
                     self._pls_charge_percentage,
@@ -137,9 +147,8 @@ class AgreementJournalGenerator:
                 )
             )
 
-        context = ReportContext.from_contexts(self._auth_context, journal_details)
         report_rows = generate_billing_report_rows(
-            context=context,
+            context=ReportContext.from_contexts(self._auth_context, journal_details),
             usage_result=usage_result,
             organization_invoice=organization_invoice,
         )
@@ -148,16 +157,16 @@ class AgreementJournalGenerator:
             lines=all_lines,
             report=usage_result.reports,
             billing_report_rows=report_rows,
+            pls_mismatches=pls_mismatches,
         )
 
     def _generate_usage_lines(
         self,
-        agreement: dict,
         usage_result: OrganizationUsageResult,
         journal_details: JournalDetails,
         organization_invoice,
     ) -> list[JournalLine]:
-        is_pls = get_support_type(agreement) == SupportTypesEnum.PARTNER_LED_SUPPORT
+        is_pls = usage_result.has_enterprise_support()
         line_generator = JournalLineGenerator(is_pls=is_pls)
 
         lines: list[JournalLine] = []
