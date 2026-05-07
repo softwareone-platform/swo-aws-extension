@@ -93,3 +93,28 @@ class TestProcessOrderValidation:
         response_data = result.json()
         assert response_data["id"] == "Unexpected error"
         assert "Unexpected validation error" in response_data["message"]
+
+    def test_change_order_rejected(
+        self,
+        client,
+        order_factory,
+        jwt_token,
+        mock_validate_order,
+    ):
+        order = order_factory(order_type="Change")
+
+        result = client.post(
+            "/api/v1/orders/validate",
+            content_type="application/json",
+            headers={
+                "Authorization": f"Bearer {jwt_token}",
+                "X-Forwarded-Host": "aws.ext.s1.com",
+            },
+            data=json.dumps(order),
+        )
+
+        assert result.status_code == HTTPStatus.OK
+        response_data = result.json()
+        assert response_data["id"] == "ORD-0792-5000-2253-4210"
+        assert "Change orders are not supported" in response_data["error"]["message"]
+        mock_validate_order.assert_not_called()

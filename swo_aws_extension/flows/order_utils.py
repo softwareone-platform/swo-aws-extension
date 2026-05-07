@@ -160,3 +160,19 @@ def update_processing_template(
     }
 
     context.order = update_order(client, context.order_id, **kwargs)
+
+
+def set_order_error(order: dict, error: dict) -> dict:
+    """
+    Sets error in MPT order.
+
+    Args:
+        order: MPT order.
+        error: error (id, message).
+
+    Returns:
+        Updated MPT order.
+    """
+    updated_order = copy.deepcopy(order)
+    updated_order["error"] = error
+    return updated_order
