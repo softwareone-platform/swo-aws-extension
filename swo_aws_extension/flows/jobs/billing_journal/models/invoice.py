@@ -12,6 +12,7 @@ class InvoiceEntity:
     base_currency_code: str = ""
     payment_currency_code: str = ""
     exchange_rate: Decimal = field(default_factory=lambda: Decimal(0))
+    billing_entity: str = "AWS"
     primary: bool = field(default=False)
 
 
