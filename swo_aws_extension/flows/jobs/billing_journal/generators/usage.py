@@ -306,14 +306,18 @@ class CostExplorerUsageGenerator(BaseOrganizationUsageGenerator):
         record_type: str,
         entities: dict[str, str],
     ) -> ServiceMetric:
-
-        entity_name = entities.get(metric_data.service_name)
-        invoice_entity = self._organization_invoice.entities.get(entity_name, None)
+        invoicing_entity = entities.get(metric_data.service_name)
+        if invoicing_entity:
+            billing_entity = "AWS_MARKETPLACE" if record_type == "MARKETPLACE" else "AWS"
+            entity_key = f"{invoicing_entity}:{billing_entity}"
+        else:
+            entity_key = None
+        invoice_entity = self._organization_invoice.entities.get(entity_key or "", None)
         return ServiceMetric(
             service_name=metric_data.service_name,
             record_type=record_type,
             amount=metric_data.amount,
-            invoice_entity=entity_name,
+            invoice_entity=entity_key,
             invoice_id=invoice_entity.invoice_id if invoice_entity else "",
             start_date=metric_data.start_date,
             end_date=metric_data.end_date,

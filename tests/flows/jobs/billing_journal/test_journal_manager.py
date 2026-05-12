@@ -1,8 +1,11 @@
+import datetime as dt
+from decimal import Decimal
 from io import BytesIO
 
 from requests import HTTPError
 
 from swo_aws_extension.constants import BILLING_JOURNAL_SUCCESS_TITLE
+from swo_aws_extension.flows.jobs.billing_journal.journal_manager import serialize_default
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import JournalLine
 from swo_aws_extension.flows.jobs.billing_journal.models.usage import OrganizationReport
 from swo_aws_extension.swo.notifications.teams import Button
@@ -130,3 +133,19 @@ def test_upload_attachments_logs_error_on_failure(manager, mock_billing_client):
     manager.upload_attachments("JRN-001", {"AGR-1": report})  # act
 
     mock_billing_client.journal.attachments("JRN-001").upload.assert_called_once()
+
+
+def test_serialize_default_with_datetime():
+    datetime_value = dt.datetime.fromisoformat("2025-10-15T12:30:00+00:00")
+
+    result = serialize_default(datetime_value)  # act
+
+    assert result == "2025-10-15T12:30:00+00:00"
+
+
+def test_serialize_default_with_non_datetime():
+    decimal_value = Decimal("123.45")
+
+    result = serialize_default(decimal_value)  # act
+
+    assert result == "123.45"

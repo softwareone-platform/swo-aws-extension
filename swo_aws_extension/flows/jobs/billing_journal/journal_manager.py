@@ -1,4 +1,5 @@
 import calendar
+import datetime as dt
 import json
 from io import BytesIO
 from urllib.parse import urljoin
@@ -15,6 +16,13 @@ from swo_aws_extension.swo.notifications.teams import Button
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 logger = get_logger(__name__)
+
+
+def serialize_default(unserializable):
+    """JSON serializer for objects not serializable by default."""
+    if isinstance(unserializable, dt.datetime):
+        return unserializable.isoformat()
+    return str(unserializable)
 
 
 class JournalManager:  # noqa: WPS214
@@ -109,7 +117,13 @@ class JournalManager:  # noqa: WPS214
         filename = f"{agreement_id}.json"
 
         report_data = report.to_dict()
-        json_bytes = BytesIO(json.dumps(report_data, indent=2).encode("utf-8"))
+        json_bytes = BytesIO(
+            json.dumps(
+                report_data,
+                indent=2,
+                default=serialize_default,
+            ).encode("utf-8")
+        )
 
         attachment = JournalAttachment(
             name=filename,
