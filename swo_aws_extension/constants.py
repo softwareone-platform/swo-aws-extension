@@ -13,7 +13,7 @@ CRM_EXTERNAL_USERNAME = "mpt@marketplace.com"
 CRM_SERVICE_TYPE = "MarketPlaceServiceActivation"
 CRM_GLOBAL_EXT_USER_ID = "globalacademicExtUserId"
 CRM_REQUESTER = "Supplier.Portal"
-CRM_SUB_SERVICE = "Service Activation"
+CRM_SUB_SERVICE = "Customer Activation"
 
 BASIC_PRICING_PLAN_ARN = "arn:aws:billingconductor::aws:pricingplan/BasicPricingPlan"
 
