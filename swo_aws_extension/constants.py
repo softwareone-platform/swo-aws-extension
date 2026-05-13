@@ -28,6 +28,7 @@ class AgreementStatusEnum(StrEnum):
 
     ACTIVE = "Active"
     UPDATING = "Updating"
+    PROVISIONING = "Provisioning"
 
 
 class SubscriptionStatus(StrEnum):
