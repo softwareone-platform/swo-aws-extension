@@ -14,6 +14,24 @@ logger = get_logger(__name__)
 SPP_DISCOUNT_DESCRIPTION = "Discount (AWS SPP Discount)"
 
 
+def _belongs_to_mpa(invoice: dict, mpa_account: str) -> bool:
+    bill_source_accounts = invoice.get("BillSourceAccounts")
+    if bill_source_accounts is not None:
+        return mpa_account in bill_source_accounts
+    return invoice.get("AccountId") == mpa_account
+
+
+def _is_primary_invoice(invoice: dict) -> bool:
+    breakdowns = (
+        invoice
+        .get("BaseCurrencyAmount", {})
+        .get("AmountBreakdown", {})
+        .get("Discounts", {})
+        .get("Breakdown", [])
+    )
+    return any(breakdown.get("Description") == SPP_DISCOUNT_DESCRIPTION for breakdown in breakdowns)
+
+
 class ExchangeRateResolver:
     """Resolves exchange rates and payment currencies from invoices."""
 
@@ -62,6 +80,7 @@ class InvoiceGenerator:
 
     def run(
         self,
+        pma_account: str,
         mpa_account: str,
         billing_period: BillingPeriod,
         authorization_currency: str,
@@ -69,7 +88,8 @@ class InvoiceGenerator:
         """Fetch and process invoices for the given account and billing period.
 
         Args:
-            mpa_account: The MPA account ID.
+            pma_account: The PMA account ID used to call the AWS API.
+            mpa_account: The MPA account ID used to filter invoices from the map.
             billing_period: The billing period to fetch invoices for.
             authorization_currency: The currency for the authorization.
 
@@ -77,10 +97,9 @@ class InvoiceGenerator:
             OrganizationInvoiceResult containing raw data and processed invoice.
         """
         invoice_summaries = self._aws_client.list_invoice_summaries_by_account_id(
-            mpa_account, billing_period.year, billing_period.month
+            pma_account, billing_period.year, billing_period.month
         )
-        raw_invoices = [inv for inv in invoice_summaries if inv.get("AccountId") == mpa_account]
-
+        raw_invoices = [inv for inv in invoice_summaries if _belongs_to_mpa(inv, mpa_account)]
         invoice = self._build_organization_invoice(raw_invoices, authorization_currency)
 
         for entity_name, entity in invoice.entities.items():
@@ -120,37 +139,47 @@ class InvoiceGenerator:
         self, raw_invoices: list[dict], currency: str, resolver: ExchangeRateResolver
     ) -> dict[str, InvoiceEntity]:
         entities: dict[str, InvoiceEntity] = {}
-
         for invoice in raw_invoices:
-            entity_name = invoice.get("Entity", {}).get("InvoicingEntity")
-            existing = entities.get(entity_name)
-            if existing:
-                entities[entity_name] = InvoiceEntity(
-                    invoice_id=f"{existing.invoice_id},{invoice.get('InvoiceId', '')}",
-                    base_currency_code=existing.base_currency_code,
-                    payment_currency_code=existing.payment_currency_code,
-                    exchange_rate=existing.exchange_rate,
-                    primary=self._is_primary_invoice(invoice) or existing.primary,
-                )
-            else:
-                entity_name = invoice.get("Entity", {}).get("InvoicingEntity")
-                exchange_rate = resolver.get_rate(entity_name, currency)
-
-                entities[entity_name] = InvoiceEntity(
-                    invoice_id=invoice.get("InvoiceId", ""),
-                    base_currency_code=invoice.get("BaseCurrencyAmount", {}).get(
-                        "CurrencyCode", ""
-                    ),
-                    payment_currency_code=resolver.get_payment_currency(exchange_rate),
-                    exchange_rate=exchange_rate,
-                    primary=self._is_primary_invoice(invoice),
-                )
-
+            entity = invoice.get("Entity", {})
+            entity_key = f"{entity.get('InvoicingEntity', '')}:{entity.get('BillingEntity', 'AWS')}"
+            entities[entity_key] = self._build_invoice_entity(
+                invoice, entity, entities.get(entity_key), currency, resolver
+            )
         return entities
+
+    def _build_invoice_entity(
+        self,
+        invoice: dict,
+        entity: dict,
+        existing: InvoiceEntity | None,
+        currency: str,
+        resolver: ExchangeRateResolver,
+    ) -> InvoiceEntity:
+        billing_entity = entity.get("BillingEntity", "AWS")
+        if existing:
+            new_id = invoice.get("InvoiceId", "")
+            merged_id = ",".join(filter(None, [existing.invoice_id, new_id]))
+            return InvoiceEntity(
+                invoice_id=merged_id,
+                base_currency_code=existing.base_currency_code,
+                payment_currency_code=existing.payment_currency_code,
+                exchange_rate=existing.exchange_rate,
+                billing_entity=billing_entity,
+                primary=_is_primary_invoice(invoice) or existing.primary,
+            )
+        exchange_rate = resolver.get_rate(entity.get("InvoicingEntity", ""), currency)
+        return InvoiceEntity(
+            invoice_id=invoice.get("InvoiceId", ""),
+            base_currency_code=invoice.get("BaseCurrencyAmount", {}).get("CurrencyCode", ""),
+            payment_currency_code=resolver.get_payment_currency(exchange_rate),
+            exchange_rate=exchange_rate,
+            billing_entity=billing_entity,
+            primary=_is_primary_invoice(invoice),
+        )
 
     def _get_principal_amount(self, raw_invoices: list[dict]) -> Decimal | None:
         for invoice in raw_invoices:
-            if self._is_primary_invoice(invoice):
+            if _is_primary_invoice(invoice):
                 return Decimal(invoice.get("BaseCurrencyAmount", {}).get("TotalAmount", 0))
         return None
 
@@ -158,16 +187,4 @@ class InvoiceGenerator:
         return sum(
             (Decimal(inv.get(currency_key, {}).get(amount_key, 0)) for inv in invoices),
             DEC_ZERO,
-        )
-
-    def _is_primary_invoice(self, invoice: dict) -> bool:
-        breakdowns = (
-            invoice
-            .get("BaseCurrencyAmount", {})
-            .get("AmountBreakdown", {})
-            .get("Discounts", {})
-            .get("Breakdown", [])
-        )
-        return any(
-            breakdown.get("Description") == SPP_DISCOUNT_DESCRIPTION for breakdown in breakdowns
         )

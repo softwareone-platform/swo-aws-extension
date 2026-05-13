@@ -76,6 +76,7 @@ class AgreementJournalGenerator:
 
         logger.info("Generating billing journal for MPA account %s", mpa_account)
         invoice_result = self._invoice_generator.run(
+            self._auth_context.pma_account,
             mpa_account,
             self._billing_period,
             self._auth_context.currency,
@@ -87,6 +88,7 @@ class AgreementJournalGenerator:
             self._billing_period,
             organization_invoice=invoice_result.invoice,
         )
+        usage_result.reports.organization_data["INVOICES"] = invoice_result.raw_data
         logger.info("Usage generation completed for MPA account %s", mpa_account)
 
         journal_details = JournalDetails(
