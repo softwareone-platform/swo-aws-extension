@@ -4,8 +4,10 @@ import pytest
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import (
+    MAX_INVOICE_ID_LENGTH,
     ExchangeRateResolver,
     InvoiceGenerator,
+    merge_invoice_ids,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
 from swo_aws_extension.flows.jobs.billing_journal.models.invoice import (
@@ -115,9 +117,9 @@ def test_run_invoice_entity_has_correct_billing_entity(generator, mock_aws_clien
 
 def test_run_merges_entities_and_calculates_totals(generator, mock_aws_client, billing_period):
     invoices = [
-        build_invoice(invoice_id="INV-001", base_total="100.00", payment_total="95.00"),
+        build_invoice(invoice_id="2609293185", base_total="100.00", payment_total="95.00"),
         build_invoice(
-            invoice_id="INV-002",
+            invoice_id="SGIN26-350441",
             base_total="200.00",
             base_total_before_tax="180.00",
             payment_total="190.00",
@@ -129,7 +131,7 @@ def test_run_merges_entities_and_calculates_totals(generator, mock_aws_client, b
     result = generator.run("PMA-456", "MPA-123", billing_period, "EUR")
 
     entity = result.invoice.entities["AWS Inc.:AWS"]
-    assert entity.invoice_id == "INV-001,INV-002"
+    assert entity.invoice_id == "-3185,-0441"
     assert result.invoice.base_total_amount == Decimal("300.00")
     assert result.invoice.base_total_amount_before_tax == Decimal("270.00")
     assert result.invoice.payment_currency_total_amount == Decimal("285.00")
@@ -281,3 +283,36 @@ def test_run_falls_back_to_account_id_when_bill_source_accounts_absent(
 
     assert len(result.raw_data) == 1
     assert result.raw_data[0]["InvoiceId"] == "INV-001"
+
+
+@pytest.mark.parametrize(
+    ("existing_id", "new_id", "expected"),
+    [
+        ("2609293185", "", "2609293185"),
+        ("2609293185", "SGIN26-350441", "-3185,-0441"),
+        ("-3185,-0441", "EUINPL26-355205", "-3185,-0441,-5205"),
+        ("-3185,-0441,-5205", "NEXT26-000002", "-3185,-0441,-5205,.."),
+        ("-3185,-0441,-5205,..", "NEXT26-000003", "-3185,-0441,-5205,.."),
+    ],
+)
+def test_merge_invoice_ids(existing_id, new_id, expected):
+    result = merge_invoice_ids(existing_id, new_id)  # act
+
+    assert result == expected
+
+
+def test_merge_invoice_ids_result_never_exceeds_navision_limit(
+    generator, mock_aws_client, billing_period
+):
+    invoice_count = 10
+    invoice_id_template = "EUINPL26-3{0:05d}"
+    invoices = [
+        build_invoice(invoice_id=invoice_id_template.format(idx)) for idx in range(invoice_count)
+    ]
+    mock_aws_client.list_invoice_summaries_by_account_id.return_value = invoices
+
+    result = generator.run("PMA-456", "MPA-123", billing_period, "EUR")  # act
+
+    entity = result.invoice.entities["AWS Inc.:AWS"]
+    assert len(entity.invoice_id) <= MAX_INVOICE_ID_LENGTH
+    assert entity.invoice_id.endswith(",..")
