@@ -31,6 +31,7 @@ from swo_aws_extension.flows.steps.onboard_services import OnboardServices
 from swo_aws_extension.flows.steps.setup_context import SetupContext
 from swo_aws_extension.flows.steps.swo_job import SWOJobStep
 from swo_aws_extension.flows.steps.terminate import TerminateResponsibilityTransferStep
+from swo_aws_extension.flows.steps.validate_order import ValidateOrder
 from swo_aws_extension.swo.notifications.teams import (
     notify_one_time_error,
 )
@@ -63,6 +64,7 @@ def pipeline_error_handler(error: Exception, context: Context, next_step):
 
 purchase_new_aws_environment = Pipeline(
     SetupContext(config),
+    ValidateOrder(),
     CRMTicketNewAccount(config),
     CreateNewAWSEnvironment(config),
     CreateBillingTransferInvitation(config),
@@ -84,6 +86,7 @@ purchase_new_aws_environment = Pipeline(
 
 purchase_existing_aws_environment = Pipeline(
     SetupContext(config),
+    ValidateOrder(),
     CreateBillingTransferInvitation(config),
     CheckBillingTransferInvitation(config),
     ConfigureAPNProgram(config),

@@ -5,8 +5,15 @@ from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import get_product_items_by_skus
 from mpt_extension_sdk.mpt_http.wrap_http_error import ValidationError
 
-from swo_aws_extension.constants import AWS_ITEMS_SKUS, AccountTypesEnum, OrderParametersEnum
-from swo_aws_extension.flows.order_utils import strip_whitespace_from_mpa_account
+from swo_aws_extension.constants import (
+    AWS_ITEMS_SKUS,
+    AccountTypesEnum,
+    OrderParametersEnum,
+)
+from swo_aws_extension.flows.order_utils import (
+    get_previous_order,
+    strip_whitespace_from_mpa_account,
+)
 from swo_aws_extension.parameters import (
     get_account_type,
     get_ordering_parameter,
@@ -109,6 +116,24 @@ def _is_parameter_visible(order: dict, param_external_id: str) -> bool:
     return not constraints.get("hidden", True)
 
 
+def _validate_duplicate_agreement(client: MPTClient, order: dict) -> dict | None:
+    if order.get("type") != "Purchase":
+        return None
+    if get_previous_order(client, order):
+        return set_ordering_parameter_error(
+            order,
+            OrderParametersEnum.ACCOUNT_TYPE.value,
+            ValidationError(
+                err_id="AWS004",
+                message=(
+                    "An active agreement already exists for this licensee. "
+                    "A new agreement can only be created with a different licensee."
+                ),
+            ).to_dict(),
+        )
+    return None
+
+
 def _validate_new_account_constraints(order: dict) -> dict | None:
     """
     Validate that newAccountInstructions parameter is not visible.
@@ -154,6 +179,9 @@ def validate_order(client: MPTClient, order: dict) -> dict:
     validated_order = copy.deepcopy(order)
     validated_order = reset_ordering_parameters_error(validated_order)
     validated_order = strip_whitespace_from_mpa_account(validated_order)
+    error_order = _validate_duplicate_agreement(client, validated_order)
+    if error_order:
+        return error_order
     error_order = _validate_new_account_constraints(validated_order)
     if error_order:
         return error_order
