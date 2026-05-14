@@ -5,16 +5,18 @@ from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import (
     complete_order,
     fail_order,
+    get_agreements_by_query,
     get_product_template_or_default,
     query_order,
     update_order,
 )
 from mpt_extension_sdk.mpt_http.wrap_http_error import MPTError, wrap_mpt_http_error
 
-from swo_aws_extension.constants import MptOrderStatus
+from swo_aws_extension.constants import AgreementStatusEnum, MptOrderStatus
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.steps.errors import OrderStatusChangeError
 from swo_aws_extension.parameters import get_mpa_account_id, set_mpa_account_id
+from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 logger = logging.getLogger(__name__)
 MPT_ORDER_STATUS_QUERYING = "Querying"
@@ -160,6 +162,29 @@ def update_processing_template(
     }
 
     context.order = update_order(client, context.order_id, **kwargs)
+
+
+def get_previous_order(client: MPTClient, order: dict) -> dict | None:
+    """Return the first active agreement for the same licensee and product, or None."""
+    licensee_id = order.get("licensee", {}).get("id")
+    if not licensee_id:
+        return None
+    product_id = order.get("product", {}).get("id")
+    client_id = order.get("client", {}).get("id")
+    rql_filter = (
+        RQLQuery(licensee__id__eq=licensee_id)
+        & RQLQuery(client__id__eq=client_id)
+        & RQLQuery(
+            status__in=[
+                AgreementStatusEnum.ACTIVE,
+                AgreementStatusEnum.UPDATING,
+                AgreementStatusEnum.PROVISIONING,
+            ]
+        )
+        & RQLQuery(product__id__in=[product_id])
+    )
+    agreements = get_agreements_by_query(client, str(rql_filter))
+    return agreements[0] if agreements else None
 
 
 def set_order_error(order: dict, error: dict) -> dict:

@@ -31,6 +31,10 @@ def test_validate_order_orchestrates_all_steps_new_aws_environment(
         }
     ]
     mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_previous_order",
+        return_value=None,
+    )
+    mocker.patch(
         "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
         return_value=mock_items,
     )
@@ -77,6 +81,10 @@ def test_validate_order_orchestrates_all_steps_existing_aws_environment(
         }
     ]
     mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_previous_order",
+        return_value=None,
+    )
+    mocker.patch(
         "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
         return_value=mock_items,
     )
@@ -96,7 +104,7 @@ def test_validate_order_orchestrates_all_steps_existing_aws_environment(
 
 
 def test_validate_order_returns_error_when_new_account_instructions_visible(
-    order_factory, order_parameters_factory
+    order_factory, order_parameters_factory, mocker
 ):
     mock_client = MagicMock()
     order = order_factory(
@@ -109,6 +117,10 @@ def test_validate_order_returns_error_when_new_account_instructions_visible(
         order,
         OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value,
         constraints={"hidden": False, "required": False, "readonly": False},
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_previous_order",
+        return_value=None,
     )
 
     result = validate_order(mock_client, order)
@@ -126,6 +138,10 @@ def test_validate_order_with_invalid_account_type(order_factory, order_parameter
             account_type="INVALID_TYPE",
         ),
         lines=[],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_previous_order",
+        return_value=None,
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
@@ -150,6 +166,10 @@ def test_validate_order_when_product_items_not_found(
         lines=[],
     )
     mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_previous_order",
+        return_value=None,
+    )
+    mocker.patch(
         "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
         return_value=[],
     )
@@ -170,6 +190,10 @@ def test_validate_order_strips_whitespace_from_mpa_account(
             constraints={"hidden": None, "required": None, "readonly": None},
         ),
         lines=[],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_previous_order",
+        return_value=None,
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
