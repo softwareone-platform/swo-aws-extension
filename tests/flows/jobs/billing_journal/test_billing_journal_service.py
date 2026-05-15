@@ -140,7 +140,7 @@ def test_processes_authorizations_creates_billing_report(
     service.run()  # act
 
     mock_report_creator.create_and_notify_teams.assert_called_once_with(
-        str(mock_context.billing_period), [mock_row]
+        str(mock_context.billing_period), [mock_row], []
     )
 
 
