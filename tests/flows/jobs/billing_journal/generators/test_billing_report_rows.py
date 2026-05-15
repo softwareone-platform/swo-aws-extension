@@ -3,8 +3,8 @@ from decimal import Decimal
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import AWSRecordTypeEnum
 from swo_aws_extension.flows.jobs.billing_journal.generators.billing_report_rows import (
+    BillingReportRowsBuilder,
     ReportContext,
-    generate_billing_report_rows,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.context import (
     AuthorizationContext,
@@ -46,8 +46,9 @@ def test_generate_billing_report_rows_aggregates_metrics():
     usage_result = OrganizationUsageResult(
         reports=OrganizationReport(), usage_by_account={"ACC-1": account_usage}
     )
+    exchange_rate = Decimal("1.2")
     org_invoice = OrganizationInvoice(
-        entities={"INV-E1": InvoiceEntity("INV-1", "USD", "USD", Decimal("1.2"))}
+        entities={"INV-E1": InvoiceEntity("INV-1", "USD", "USD", exchange_rate)},
     )
     context = ReportContext("AUTH-1", "PMA-1", "AGR-1", "MPA-1", "USD")
     expected_row = BillingReportRow(
@@ -56,15 +57,17 @@ def test_generate_billing_report_rows_aggregates_metrics():
         agreement_id="AGR-1",
         mpa="MPA-1",
         service_name="EC2",
-        amount=Decimal(AGGREGATED_AMOUNT),
+        pp=(Decimal(AGGREGATED_AMOUNT) - abs(Decimal(TEST_AMOUNT_M5))) * exchange_rate,
+        sp=Decimal(AGGREGATED_AMOUNT) * exchange_rate,
         currency="USD",
         invoice_id="INV-1",
         invoice_entity="INV-E1",
-        exchange_rate=Decimal("1.2"),
-        spp_discount=Decimal(TEST_AMOUNT_M5),
+        exchange_rate=exchange_rate,
+        spp_discount=Decimal(TEST_AMOUNT_M5) * exchange_rate,
+        spp_discount_pct=abs(Decimal(TEST_AMOUNT_M5)) / (Decimal(AGGREGATED_AMOUNT)),
     )
 
-    result = generate_billing_report_rows(context, usage_result, org_invoice)
+    result = BillingReportRowsBuilder(context, usage_result, org_invoice).build()
 
     assert len(result) == 1
     assert result[0] == expected_row
@@ -104,7 +107,31 @@ def test_generate_billing_report_rows_defaults_exchange_rate_for_unknown_entity(
     org_invoice = OrganizationInvoice(entities={})
     context = ReportContext("AUTH-1", "PMA-1", "AGR-1", "MPA-1", "USD")
 
-    result = generate_billing_report_rows(context, usage_result, org_invoice)
+    result = BillingReportRowsBuilder(context, usage_result, org_invoice).build()
 
     assert len(result) == 1
     assert result[0].exchange_rate == Decimal("1.0")
+
+
+def test_build_by_account_groups_by_linked_account():
+    metric1 = ServiceMetric(
+        "EC2", AWSRecordTypeEnum.USAGE, Decimal(MEDIUM_AMOUNT), "INV-E1", "INV-1"
+    )
+    metric2 = ServiceMetric("S3", AWSRecordTypeEnum.USAGE, Decimal(SMALL_AMOUNT), "INV-E1", "INV-1")
+    usage_result = OrganizationUsageResult(
+        reports=OrganizationReport(),
+        usage_by_account={
+            "ACC-1": AccountUsage([metric1]),
+            "ACC-2": AccountUsage([metric2]),
+        },
+    )
+    org_invoice = OrganizationInvoice(
+        entities={"INV-E1": InvoiceEntity("INV-1", "USD", "USD", Decimal("1.0"))},
+    )
+    context = ReportContext("AUTH-1", "PMA-1", "AGR-1", "MPA-1", "USD")
+
+    result = BillingReportRowsBuilder(context, usage_result, org_invoice).build_by_account()
+
+    assert len(result) == 2
+    accounts = {row.linked_account for row in result}
+    assert accounts == {"ACC-1", "ACC-2"}

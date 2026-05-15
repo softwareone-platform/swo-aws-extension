@@ -101,9 +101,16 @@ class BillingJournalService:
         report_rows = [
             row for auth_result in journal_results for row in auth_result.billing_report_rows
         ]
+        report_rows_by_account = [
+            row
+            for auth_result in journal_results
+            for row in auth_result.billing_report_rows_by_account
+        ]
         if report_rows and not self._context.dry_run:
             report_creator = BillingReportCreator(self._context.config, self._context.notifier)
-            report_creator.create_and_notify_teams(str(self._context.billing_period), report_rows)
+            report_creator.create_and_notify_teams(
+                str(self._context.billing_period), report_rows, report_rows_by_account
+            )
 
     def _process_authorization(self, authorization: dict) -> AuthorizationJournalResult | None:
         authorization_id = authorization.get("id", "")

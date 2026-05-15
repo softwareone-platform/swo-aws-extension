@@ -35,3 +35,36 @@ def test_save_writes_bytes_to_file(tmp_path):
     builder.save(str(output_file), file_content)  # act
 
     assert output_file.read_bytes() == file_content
+
+
+def test_build_multi_sheet_creates_multiple_sheets():
+    builder = ExcelReportBuilder([], "Unused")
+    sheets = [
+        ("Sales", ["Region", "Amount"], [["EU", "100"], ["US", "200"]]),
+        ("Returns", ["Item", "Qty"], [["Widget", "5"]]),
+    ]
+
+    result = builder.build_multi_sheet(sheets)
+
+    wb = load_workbook(filename=BytesIO(result))
+    assert wb.sheetnames == ["Sales", "Returns"]
+    sales_ws = wb["Sales"]
+    assert sales_ws.cell(row=1, column=1).value == "Region"
+    assert sales_ws.cell(row=2, column=2).value == "100"
+    returns_ws = wb["Returns"]
+    assert returns_ws.cell(row=1, column=1).value == "Item"
+    assert returns_ws.cell(row=2, column=1).value == "Widget"
+
+
+def test_build_from_rows_keeps_existing_sheet_title(mocker):
+    builder = ExcelReportBuilder(["H1"], "Custom")
+    mock_wb = mocker.patch(
+        "swo_aws_extension.swo.excel_report_builder.Workbook",
+    ).return_value
+    mock_ws = mock_wb.active
+    mock_ws.title = "AlreadyNamed"
+    mock_ws.dimensions = "A1:A1"
+
+    builder.build_from_rows([])  # act
+
+    assert mock_ws.title == "AlreadyNamed"

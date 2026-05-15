@@ -114,7 +114,10 @@ def test_run(
     mock_extra_discounts_manager_cls,
     mock_pls_charge_manager_cls,
 ):
-    mocker.patch(f"{MODULE}.generate_billing_report_rows", return_value=[])
+    mock_builder = mocker.MagicMock()
+    mock_builder.build.return_value = []
+    mock_builder.build_by_account.return_value = []
+    mocker.patch(f"{MODULE}.BillingReportRowsBuilder", return_value=mock_builder)
     agreement = _build_agreement(support_type="PartnerLedSupport")
     mock_journal_line = mocker.MagicMock(spec=JournalLine)
     mock_discount_line = mocker.MagicMock(spec=JournalLine)
@@ -168,7 +171,10 @@ def test_run_without_pls(
     mock_extra_discounts_manager_cls,
     mock_pls_charge_manager_cls,
 ):
-    mocker.patch(f"{MODULE}.generate_billing_report_rows", return_value=[])
+    mock_builder = mocker.MagicMock()
+    mock_builder.build.return_value = []
+    mock_builder.build_by_account.return_value = []
+    mocker.patch(f"{MODULE}.BillingReportRowsBuilder", return_value=mock_builder)
     agreement = _build_agreement(support_type="DeveloperSupport")
     mock_journal_line = mocker.MagicMock(spec=JournalLine)
     mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
@@ -315,7 +321,10 @@ def test_run_processes_when_transfer_started_on_billing_start(
     mock_extra_discounts_manager_cls,
     mock_pls_charge_manager_cls,
 ):
-    mocker.patch(f"{MODULE}.generate_billing_report_rows", return_value=[])
+    mock_builder = mocker.MagicMock()
+    mock_builder.build.return_value = []
+    mock_builder.build_by_account.return_value = []
+    mocker.patch(f"{MODULE}.BillingReportRowsBuilder", return_value=mock_builder)
     agreement = _build_agreement()
     mock_aws_client.get_responsibility_transfer_details.return_value = {
         "ResponsibilityTransfer": {
@@ -368,7 +377,10 @@ def test_pls_mismatch_param_pls_but_no_enterprise_in_report(
     mock_pls_charge_manager_cls,
 ):
     """When param says PLS but report has no Enterprise Support, record mismatch."""
-    mocker.patch(f"{MODULE}.generate_billing_report_rows", return_value=[])
+    mock_builder = mocker.MagicMock()
+    mock_builder.build.return_value = []
+    mock_builder.build_by_account.return_value = []
+    mocker.patch(f"{MODULE}.BillingReportRowsBuilder", return_value=mock_builder)
     agreement = _build_agreement(support_type="PartnerLedSupport")
     mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
     mock_generator_instance.generate.return_value = []
@@ -411,7 +423,10 @@ def test_pls_mismatch_param_resold_but_enterprise_in_report(
     mock_pls_charge_manager_cls,
 ):
     """When param says Resold but report has Enterprise Support, record mismatch and apply PLS."""
-    mocker.patch(f"{MODULE}.generate_billing_report_rows", return_value=[])
+    mock_builder = mocker.MagicMock()
+    mock_builder.build.return_value = []
+    mock_builder.build_by_account.return_value = []
+    mocker.patch(f"{MODULE}.BillingReportRowsBuilder", return_value=mock_builder)
     agreement = _build_agreement(support_type="ResoldSupport")
     mock_journal_line = mocker.MagicMock(spec=JournalLine)
     mock_pls_line = mocker.MagicMock(spec=JournalLine)
