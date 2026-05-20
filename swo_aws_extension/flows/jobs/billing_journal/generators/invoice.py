@@ -1,4 +1,3 @@
-import logging
 from decimal import Decimal
 
 from swo_aws_extension.aws.client import AWSClient
@@ -9,8 +8,9 @@ from swo_aws_extension.flows.jobs.billing_journal.models.invoice import (
     OrganizationInvoice,
     OrganizationInvoiceResult,
 )
+from swo_aws_extension.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 SPP_DISCOUNT_DESCRIPTION = "Discount (AWS SPP Discount)"
 
 
