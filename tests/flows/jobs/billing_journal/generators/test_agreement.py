@@ -133,6 +133,7 @@ def test_run(
     mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
     mock_usage_result.reports = OrganizationReport()
     mock_usage_result.usage_by_account = {"ACC-1": mock_account_usage}
+    mock_usage_result.has_enterprise_support.return_value = True
     mock_usage_generator.run.return_value = mock_usage_result
     mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
     mock_invoice_generator.run.return_value = OrganizationInvoiceResult(
@@ -180,6 +181,7 @@ def test_run_without_pls(
     mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
     mock_usage_result.reports = OrganizationReport()
     mock_usage_result.usage_by_account = {"ACC-1": mocker.MagicMock(spec=AccountUsage)}
+    mock_usage_result.has_enterprise_support.return_value = False
     mock_usage_generator.run.return_value = mock_usage_result
     mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
     mock_invoice_generator.run.return_value = OrganizationInvoiceResult(
@@ -336,6 +338,7 @@ def test_run_processes_when_transfer_started_on_billing_start(
     mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
     mock_usage_result.reports = OrganizationReport()
     mock_usage_result.usage_by_account = {"ACC-1": mocker.MagicMock(spec=AccountUsage)}
+    mock_usage_result.has_enterprise_support.return_value = False
     mock_usage_generator.run.return_value = mock_usage_result
     mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
     mock_invoice_generator.run.return_value = OrganizationInvoiceResult(
@@ -353,3 +356,95 @@ def test_run_processes_when_transfer_started_on_billing_start(
     mock_invoice_generator.run.assert_called_once()
     mock_usage_generator.run.assert_called_once()
     assert result.lines is not None
+
+
+def test_pls_mismatch_param_pls_but_no_enterprise_in_report(
+    mocker,
+    mock_context,
+    mock_aws_client,
+    mock_get_responsibility_transfer_id,
+    mock_line_generator_cls,
+    mock_extra_discounts_manager_cls,
+    mock_pls_charge_manager_cls,
+):
+    """When param says PLS but report has no Enterprise Support, record mismatch."""
+    mocker.patch(f"{MODULE}.generate_billing_report_rows", return_value=[])
+    agreement = _build_agreement(support_type="PartnerLedSupport")
+    mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
+    mock_generator_instance.generate.return_value = []
+    mock_line_generator_cls.return_value = mock_generator_instance
+    mock_discounts_instance = mocker.MagicMock(spec=ExtraDiscountsManager)
+    mock_discounts_instance.process.return_value = []
+    mock_extra_discounts_manager_cls.return_value = mock_discounts_instance
+    mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
+    mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
+    mock_usage_result.reports = OrganizationReport()
+    mock_usage_result.usage_by_account = {"ACC-1": mocker.MagicMock(spec=AccountUsage)}
+    mock_usage_result.has_enterprise_support.return_value = False
+    mock_usage_generator.run.return_value = mock_usage_result
+    mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
+    mock_invoice_generator.run.return_value = OrganizationInvoiceResult(
+        invoice=OrganizationInvoice(),
+    )
+    generator = AgreementJournalGenerator(
+        _build_auth_context(mock_aws_client),
+        mock_context,
+        mock_usage_generator,
+        mock_invoice_generator,
+    )
+
+    result = generator.run(agreement)  # act
+
+    assert len(result.pls_mismatches) == 1
+    assert result.pls_mismatches[0].pls_in_order is True
+    assert result.pls_mismatches[0].report_has_enterprise is False
+    mock_pls_charge_manager_cls.assert_not_called()
+
+
+def test_pls_mismatch_param_resold_but_enterprise_in_report(
+    mocker,
+    mock_context,
+    mock_aws_client,
+    mock_get_responsibility_transfer_id,
+    mock_line_generator_cls,
+    mock_extra_discounts_manager_cls,
+    mock_pls_charge_manager_cls,
+):
+    """When param says Resold but report has Enterprise Support, record mismatch and apply PLS."""
+    mocker.patch(f"{MODULE}.generate_billing_report_rows", return_value=[])
+    agreement = _build_agreement(support_type="ResoldSupport")
+    mock_journal_line = mocker.MagicMock(spec=JournalLine)
+    mock_pls_line = mocker.MagicMock(spec=JournalLine)
+    mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
+    mock_generator_instance.generate.return_value = [mock_journal_line]
+    mock_line_generator_cls.return_value = mock_generator_instance
+    mock_discounts_instance = mocker.MagicMock(spec=ExtraDiscountsManager)
+    mock_discounts_instance.process.return_value = []
+    mock_extra_discounts_manager_cls.return_value = mock_discounts_instance
+    mock_pls_instance = mocker.MagicMock(spec=PlSChargeManager)
+    mock_pls_instance.process.return_value = [mock_pls_line]
+    mock_pls_charge_manager_cls.return_value = mock_pls_instance
+    mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
+    mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
+    mock_usage_result.reports = OrganizationReport()
+    mock_usage_result.usage_by_account = {"ACC-1": mocker.MagicMock(spec=AccountUsage)}
+    mock_usage_result.has_enterprise_support.return_value = True
+    mock_usage_generator.run.return_value = mock_usage_result
+    mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
+    mock_invoice_generator.run.return_value = OrganizationInvoiceResult(
+        invoice=OrganizationInvoice(),
+    )
+    generator = AgreementJournalGenerator(
+        _build_auth_context(mock_aws_client),
+        mock_context,
+        mock_usage_generator,
+        mock_invoice_generator,
+    )
+
+    result = generator.run(agreement)  # act
+
+    assert len(result.pls_mismatches) == 1
+    assert result.pls_mismatches[0].pls_in_order is False
+    assert result.pls_mismatches[0].report_has_enterprise is True
+    mock_pls_instance.process.assert_called_once()
+    assert mock_pls_line in result.lines
