@@ -176,7 +176,7 @@ def test_generate_returns_correct_invoice_entity(
 
     account_usage = result.usage_by_account["ACT-1"]
     metrics = [metric for metric in account_usage.metrics if metric.service_name == "AmazonEC2"]
-    assert metrics[0].invoice_entity == "Amazon Web Services, Inc."
+    assert metrics[0].invoice_entity == "Amazon Web Services, Inc.:AWS"
 
 
 def test_generate_handles_multiple_billing_views(
@@ -257,7 +257,7 @@ def test_generate_sets_invoice_id_from_organization_invoice(
     mock_aws_client.get_cost_and_usage.side_effect = single_account_usage
     organization_invoice = OrganizationInvoice(
         entities={
-            "Amazon Web Services, Inc.": InvoiceEntity(invoice_id="INV-001,INV-002"),
+            "Amazon Web Services, Inc.:AWS": InvoiceEntity(invoice_id="INV-001,INV-002"),
         },
     )
 
@@ -269,7 +269,11 @@ def test_generate_sets_invoice_id_from_organization_invoice(
     )
 
     account_usage = result.usage_by_account["ACT-1"]
-    metrics = [metric for metric in account_usage.metrics if metric.service_name == "AmazonEC2"]
+    metrics = [
+        metric
+        for metric in account_usage.metrics
+        if metric.service_name == "AmazonEC2" and metric.record_type != "MARKETPLACE"
+    ]
     assert metrics[0].invoice_id == "INV-001,INV-002"
 
 
@@ -292,3 +296,50 @@ def test_run_for_pma_fetches_correct_usage(
     assert mock_aws_client.get_cost_and_usage.call_count == 3
     first_call_kwargs = mock_aws_client.get_cost_and_usage.call_args_list[0].kwargs
     assert "view_arn" not in first_call_kwargs or first_call_kwargs["view_arn"] in {None, ""}
+
+
+def test_create_metric_without_invoicing_entity(
+    generator,
+    mock_aws_client,
+    billing_period,
+    single_billing_view,
+):
+    account_usage_data = [
+        [{"Groups": [{"Keys": ["ACT-1"]}]}],
+        [
+            {
+                "TimePeriod": {"Start": "2025-10-01", "End": "2025-10-02"},
+                "Groups": [
+                    {
+                        "Keys": ["ACT-1", "AmazonEC2"],
+                        "Metrics": {"UnblendedCost": {"Amount": "10.00"}},
+                    },
+                ],
+            },
+        ],
+        [{"Groups": [{"Keys": ["UnknownService", "SomeEntity"]}]}],
+        [
+            {
+                "TimePeriod": {"Start": "2025-10-01", "End": "2025-10-02"},
+                "Groups": [
+                    {
+                        "Keys": [AWSRecordTypeEnum.USAGE, "AmazonEC2"],
+                        "Metrics": {"UnblendedCost": {"Amount": "50.00"}},
+                    },
+                ],
+            },
+        ],
+    ]
+    mock_aws_client.get_billing_views_by_account_id.return_value = single_billing_view
+    mock_aws_client.get_cost_and_usage.side_effect = account_usage_data
+
+    result = generator.run("USD", "MPA-1", billing_period, OrganizationInvoice())
+
+    account_usage = result.usage_by_account["ACT-1"]
+    usage_metrics = [
+        metric
+        for metric in account_usage.metrics
+        if metric.service_name == "AmazonEC2" and metric.record_type != "MARKETPLACE"
+    ]
+    assert usage_metrics[0].invoice_entity is None
+    assert not usage_metrics[0].invoice_id

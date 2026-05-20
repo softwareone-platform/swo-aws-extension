@@ -213,7 +213,7 @@ def test_pma_usage_included_in_report_rows(
 
     result = generator.run(authorization)
 
-    mock_invoice_gen.run.assert_any_call("MPA-123", mock_context.billing_period, "USD")
+    mock_invoice_gen.run.assert_any_call("MPA-123", "MPA-123", mock_context.billing_period, "USD")
     mock_usage_gen.run_for_pma.assert_called_once_with(
         "MPA-123",
         mock_context.billing_period,

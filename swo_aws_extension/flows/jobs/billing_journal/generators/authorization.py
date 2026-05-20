@@ -177,6 +177,7 @@ class AuthorizationJournalGenerator:
         logger.info("Generating raw usage for PMA account to include in billing report")
         pma_invoice_result = invoice_generator.run(
             auth_context.pma_account,
+            auth_context.pma_account,
             self._billing_period,
             auth_context.currency,
         )
