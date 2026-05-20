@@ -1,3 +1,4 @@
+import pytest
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.constants import (
@@ -58,16 +59,25 @@ def test_fulfill_termination_order(mocker, mpt_client, order_factory):
     mock_terminate.assert_called_once()
 
 
-def test_fulfill_unsupported_order_type(mpt_client, order_factory, caplog):
-    unsupported_order = order_factory(
-        order_id="ORD-UNSUP",
-        order_type="Change",
+@pytest.mark.parametrize("order_type", ["Change", "Unknown"])
+def test_fulfill_unsupported_order_type_fails(mocker, order_factory, caplog, order_type):
+    mock_fail = mocker.patch(
+        "swo_aws_extension.flows.fulfillment.base.switch_order_status_to_failed"
     )
-    context = InitialAWSContext.from_order_data(unsupported_order)
+    order = order_factory(order_id="ORD-UNSUP", order_type=order_type)
+    context = InitialAWSContext.from_order_data(order)
 
-    fulfill_order(mpt_client, context)  # act
+    fulfill_order(mocker.MagicMock(spec=MPTClient), context)  # act
 
-    assert "ORD-UNSUP - Unsupported order type: Change" in caplog.text
+    assert f"ORD-UNSUP - Order type {order_type} is not supported, failing order" in caplog.text
+    mock_fail.assert_called_once_with(
+        mocker.ANY,
+        context,
+        {
+            "id": "AWS003",
+            "message": f"Order type {order_type} is not supported by the AWS extension.",
+        },
+    )
 
 
 def test_setup_contexts(mpt_client, order_factory):
