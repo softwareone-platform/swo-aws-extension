@@ -63,7 +63,11 @@ def mock_aws_client_cls(mocker):
 
 @pytest.fixture
 def mock_generate_billing_report_rows(mocker):
-    return mocker.patch(f"{MODULE}.generate_billing_report_rows", autospec=True)
+    mock_builder = mocker.MagicMock()
+    mock_builder.build.return_value = []
+    mock_builder.build_by_account.return_value = []
+    mocker.patch(f"{MODULE}.BillingReportRowsBuilder", return_value=mock_builder)
+    return mock_builder
 
 
 def test_no_agreements_returns_empty_list(
@@ -146,9 +150,13 @@ def test_includes_report_in_result(
     mock_get_agreements.return_value = [{"id": "AGR-1"}]
     mock_journal_line = mocker.MagicMock(spec=JournalLine)
     mock_row = mocker.MagicMock(spec=BillingReportRow)
+    mock_row_by_account = mocker.MagicMock(spec=BillingReportRow)
     mock_agr_gen = mocker.MagicMock(spec=AgreementJournalGenerator)
     mock_agr_gen.run.return_value = AgreementJournalResult(
-        lines=[mock_journal_line], report=report, billing_report_rows=[mock_row]
+        lines=[mock_journal_line],
+        report=report,
+        billing_report_rows=[mock_row],
+        billing_report_rows_by_account=[mock_row_by_account],
     )
     mock_agreement_generator_cls.return_value = mock_agr_gen
     generator = AuthorizationJournalGenerator(mock_context)
@@ -157,6 +165,7 @@ def test_includes_report_in_result(
 
     assert result.reports_by_agreement == {"AGR-1": report}
     assert result.billing_report_rows == [mock_row]
+    assert result.billing_report_rows_by_account == [mock_row_by_account]
 
 
 def test_includes_pls_mismatches_in_result(
@@ -208,7 +217,7 @@ def test_pma_usage_included_in_report_rows(
     mock_invoice_gen.run.return_value = mock_pma_invoice_result
     mock_usage_gen.run_for_pma.return_value = mock_pma_usage_result
     mock_row = mocker.MagicMock(spec=BillingReportRow)
-    mock_generate_billing_report_rows.return_value = [mock_row]
+    mock_generate_billing_report_rows.build.return_value = [mock_row]
     generator = AuthorizationJournalGenerator(mock_context)
 
     result = generator.run(authorization)
@@ -220,7 +229,7 @@ def test_pma_usage_included_in_report_rows(
         organization_invoice=mock_pma_invoice_result.invoice,
         granularity="MONTHLY",
     )
-    mock_generate_billing_report_rows.assert_called_once()
+    mock_generate_billing_report_rows.build.assert_called_once()
     assert mock_row in result.billing_report_rows
 
 
