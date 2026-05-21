@@ -4,8 +4,8 @@ from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
 
 from swo_aws_extension.constants import ResponsibilityTransferStatus, SupportTypesEnum
 from swo_aws_extension.flows.jobs.billing_journal.generators.billing_report_rows import (
+    BillingReportRowsBuilder,
     ReportContext,
-    generate_billing_report_rows,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.discount.extra_discounts import (
     ExtraDiscountsManager,
@@ -149,16 +149,17 @@ class AgreementJournalGenerator:
                 )
             )
 
-        report_rows = generate_billing_report_rows(
-            context=ReportContext.from_contexts(self._auth_context, journal_details),
-            usage_result=usage_result,
-            organization_invoice=organization_invoice,
+        report_builder = BillingReportRowsBuilder(
+            ReportContext.from_contexts(self._auth_context, journal_details),
+            usage_result,
+            organization_invoice,
         )
 
         return AgreementJournalResult(
             lines=all_lines,
             report=usage_result.reports,
-            billing_report_rows=report_rows,
+            billing_report_rows=report_builder.build(),
+            billing_report_rows_by_account=report_builder.build_by_account(),
             pls_mismatches=pls_mismatches,
         )
 

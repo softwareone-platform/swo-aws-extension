@@ -14,12 +14,15 @@ class BillingReportRow:
     agreement_id: str
     mpa: str
     service_name: str
-    amount: Decimal
+    pp: Decimal
+    sp: Decimal
     currency: str
     invoice_id: str
     invoice_entity: str
     exchange_rate: Decimal
     spp_discount: Decimal
+    spp_discount_pct: Decimal
+    linked_account: str = ""
 
 
 @dataclass
@@ -48,6 +51,7 @@ class AgreementJournalResult:
     lines: list[JournalLine] = field(default_factory=list)
     report: OrganizationReport | None = None
     billing_report_rows: list[BillingReportRow] = field(default_factory=list)
+    billing_report_rows_by_account: list[BillingReportRow] = field(default_factory=list)
     pls_mismatches: list[PlsMismatch] = field(default_factory=list)
 
 
@@ -58,4 +62,5 @@ class AuthorizationJournalResult:
     lines: list[JournalLine] = field(default_factory=list)
     reports_by_agreement: dict[str, OrganizationReport] = field(default_factory=dict)
     billing_report_rows: list[BillingReportRow] = field(default_factory=list)
+    billing_report_rows_by_account: list[BillingReportRow] = field(default_factory=list)
     pls_mismatches: list[PlsMismatch] = field(default_factory=list)

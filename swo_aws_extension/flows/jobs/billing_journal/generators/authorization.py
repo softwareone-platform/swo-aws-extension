@@ -8,8 +8,8 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
     AgreementJournalGenerator,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.billing_report_rows import (
+    BillingReportRowsBuilder,
     ReportContext,
-    generate_billing_report_rows,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.invoice import InvoiceGenerator
 from swo_aws_extension.flows.jobs.billing_journal.generators.usage import CostExplorerUsageGenerator
@@ -133,6 +133,10 @@ class AuthorizationJournalGenerator:
             result.reports_by_agreement[agreement_id] = agreement_result.report
         if agreement_result.billing_report_rows:
             result.billing_report_rows.extend(agreement_result.billing_report_rows)
+        if agreement_result.billing_report_rows_by_account:
+            result.billing_report_rows_by_account.extend(
+                agreement_result.billing_report_rows_by_account
+            )
         if agreement_result.pls_mismatches:
             result.pls_mismatches.extend(agreement_result.pls_mismatches)
 
@@ -161,12 +165,13 @@ class AuthorizationJournalGenerator:
             mpa=auth_context.pma_account,
             currency=auth_context.currency,
         )
-        pma_report_rows = generate_billing_report_rows(
-            context=pma_report_context,
-            usage_result=pma_usage,
-            organization_invoice=pma_invoice,
+        report_builder = BillingReportRowsBuilder(
+            pma_report_context,
+            pma_usage,
+            pma_invoice,
         )
-        result.billing_report_rows.extend(pma_report_rows)
+        result.billing_report_rows.extend(report_builder.build())
+        result.billing_report_rows_by_account.extend(report_builder.build_by_account())
 
     def _fetch_raw_pma_usage(
         self,
