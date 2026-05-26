@@ -29,7 +29,7 @@ app_config = "swo_aws_extension.apps:ExtensionConfig"
 [dependency-groups]
 dev = [
   "boto3-stubs==1.43.*",
-  "botocore-stubs==1.42.*",
+  "botocore-stubs==1.43.*",
   "flake8==7.3.*", # also update in pre-commit config
   "flake8-aaa==0.17.*", # also update in pre-commit config
   "flake8-pyproject==1.2.*", # also update in pre-commit config
