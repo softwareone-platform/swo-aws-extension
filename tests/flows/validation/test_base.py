@@ -31,8 +31,8 @@ def test_validate_order_orchestrates_all_steps_new_aws_environment(
         }
     ]
     mocker.patch(
-        "swo_aws_extension.flows.validation.base.get_previous_order",
-        return_value=None,
+        "swo_aws_extension.flows.validation.base.has_previous_order",
+        return_value=False,
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
@@ -81,8 +81,8 @@ def test_validate_order_orchestrates_all_steps_existing_aws_environment(
         }
     ]
     mocker.patch(
-        "swo_aws_extension.flows.validation.base.get_previous_order",
-        return_value=None,
+        "swo_aws_extension.flows.validation.base.has_previous_order",
+        return_value=False,
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
@@ -119,8 +119,8 @@ def test_validate_order_returns_error_when_new_account_instructions_visible(
         constraints={"hidden": False, "required": False, "readonly": False},
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.base.get_previous_order",
-        return_value=None,
+        "swo_aws_extension.flows.validation.base.has_previous_order",
+        return_value=False,
     )
 
     result = validate_order(mock_client, order)
@@ -140,8 +140,8 @@ def test_validate_order_with_invalid_account_type(order_factory, order_parameter
         lines=[],
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.base.get_previous_order",
-        return_value=None,
+        "swo_aws_extension.flows.validation.base.has_previous_order",
+        return_value=False,
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
@@ -166,8 +166,8 @@ def test_validate_order_when_product_items_not_found(
         lines=[],
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.base.get_previous_order",
-        return_value=None,
+        "swo_aws_extension.flows.validation.base.has_previous_order",
+        return_value=False,
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
@@ -192,8 +192,8 @@ def test_validate_order_strips_whitespace_from_mpa_account(
         lines=[],
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.base.get_previous_order",
-        return_value=None,
+        "swo_aws_extension.flows.validation.base.has_previous_order",
+        return_value=False,
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.base.get_product_items_by_skus",

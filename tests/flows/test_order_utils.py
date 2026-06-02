@@ -4,7 +4,7 @@ from mpt_extension_sdk.mpt_http.wrap_http_error import MPTError
 from swo_aws_extension.constants import OrderCompletedTemplate, OrderQueryingTemplateEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.order_utils import (
-    get_previous_order,
+    has_previous_order,
     set_order_template,
     strip_whitespace_from_mpa_account,
     switch_order_status_to_complete,
@@ -271,21 +271,20 @@ def test_strip_whitespace_from_mpa_account_without_value(order_factory, order_pa
     assert not get_mpa_account_id(result)
 
 
-def test_get_previous_order_returns_agreement_when_found(mocker, order_factory):
+def test_has_previous_order_returns_true_when_found(mocker, order_factory):
     client = mocker.MagicMock(spec=MPTClient)
-    agreement = {"id": "AGR-0001"}
     mocker.patch(
         "swo_aws_extension.flows.order_utils.get_agreements_by_query",
-        return_value=[agreement],
+        return_value=[{"id": "AGR-0001"}],
     )
     order = order_factory()
 
-    result = get_previous_order(client, order)
+    result = has_previous_order(client, order, "AGR-9999")
 
-    assert result == agreement
+    assert result is True
 
 
-def test_get_previous_order_returns_none_when_not_found(mocker, order_factory):
+def test_has_previous_order_returns_false_when_not_found(mocker, order_factory):
     client = mocker.MagicMock(spec=MPTClient)
     mocker.patch(
         "swo_aws_extension.flows.order_utils.get_agreements_by_query",
@@ -293,16 +292,16 @@ def test_get_previous_order_returns_none_when_not_found(mocker, order_factory):
     )
     order = order_factory()
 
-    result = get_previous_order(client, order)
+    result = has_previous_order(client, order, "AGR-9999")
 
-    assert result is None
+    assert result is False
 
 
-def test_get_previous_order_returns_none_when_no_licensee(mocker):
+def test_has_previous_order_returns_false_when_no_licensee(mocker):
     client = mocker.MagicMock(spec=MPTClient)
     mock_query = mocker.patch("swo_aws_extension.flows.order_utils.get_agreements_by_query")
 
-    result = get_previous_order(client, {})
+    result = has_previous_order(client, {}, "AGR-9999")
 
-    assert result is None
+    assert result is False
     mock_query.assert_not_called()

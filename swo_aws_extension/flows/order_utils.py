@@ -164,11 +164,11 @@ def update_processing_template(
     context.order = update_order(client, context.order_id, **kwargs)
 
 
-def get_previous_order(client: MPTClient, order: dict) -> dict | None:
-    """Return the first active agreement for the same licensee and product, or None."""
+def has_previous_order(client: MPTClient, order: dict, agreement_id: str) -> bool:
+    """Check if there is an active agreement for the same licensee, client and product."""
     licensee_id = order.get("licensee", {}).get("id")
     if not licensee_id:
-        return None
+        return False
     product_id = order.get("product", {}).get("id")
     client_id = order.get("client", {}).get("id")
     rql_filter = (
@@ -182,9 +182,10 @@ def get_previous_order(client: MPTClient, order: dict) -> dict | None:
             ]
         )
         & RQLQuery(product__id__in=[product_id])
+        & RQLQuery(id__ne=agreement_id)
     )
     agreements = get_agreements_by_query(client, str(rql_filter))
-    return agreements[0] if agreements else None
+    return bool(agreements)
 
 
 def set_order_error(order: dict, error: dict) -> dict:
