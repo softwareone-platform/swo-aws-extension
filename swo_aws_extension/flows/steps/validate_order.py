@@ -3,10 +3,12 @@ from typing import override
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
+from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.order import InitialAWSContext
-from swo_aws_extension.flows.order_utils import get_previous_order
+from swo_aws_extension.flows.order_utils import has_previous_order
 from swo_aws_extension.flows.steps.base import BasePhaseStep
-from swo_aws_extension.flows.steps.errors import FailStepError
+from swo_aws_extension.flows.steps.errors import FailStepError, SkipStepError
+from swo_aws_extension.parameters import get_phase
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +19,15 @@ class ValidateOrder(BasePhaseStep):
     @override
     def pre_step(self, context: InitialAWSContext) -> None:
         logger.debug("%s - ValidateOrder - starting order validation", context.order_id)
+        phase = get_phase(context.order)
+        if phase != PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION:
+            raise SkipStepError(
+                f"{context.order_id} - Next - Skip order validation",
+            )
 
     @override
     def process(self, client: MPTClient, context: InitialAWSContext) -> None:
-        if get_previous_order(client, context.order):
+        if has_previous_order(client, context.order, context.agreement.get("id")):
             logger.warning(
                 "%s - Duplicate agreement found for licensee %s, failing order",
                 context.order_id,
