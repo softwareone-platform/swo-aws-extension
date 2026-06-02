@@ -22,8 +22,8 @@ def test_validate_order_blocks_purchase_when_active_agreement_exists_for_license
         lines=[],
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.base.get_previous_order",
-        return_value={"id": "AGR-0001"},
+        "swo_aws_extension.flows.validation.base.has_previous_order",
+        return_value=True,
     )
 
     result = validate_order(mock_client, order)
@@ -45,8 +45,8 @@ def test_validate_order_allows_purchase_when_no_existing_agreement_for_licensee(
         lines=[],
     )
     mocker.patch(
-        "swo_aws_extension.flows.validation.base.get_previous_order",
-        return_value=None,
+        "swo_aws_extension.flows.validation.base.has_previous_order",
+        return_value=False,
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
@@ -72,7 +72,7 @@ def test_validate_order_skips_duplicate_check_for_non_purchase_orders(
         lines=[],
     )
     mock_get_previous = mocker.patch(
-        "swo_aws_extension.flows.validation.base.get_previous_order",
+        "swo_aws_extension.flows.validation.base.has_previous_order",
     )
     mocker.patch(
         "swo_aws_extension.flows.validation.base.get_product_items_by_skus",

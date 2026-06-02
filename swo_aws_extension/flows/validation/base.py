@@ -11,7 +11,7 @@ from swo_aws_extension.constants import (
     OrderParametersEnum,
 )
 from swo_aws_extension.flows.order_utils import (
-    get_previous_order,
+    has_previous_order,
     strip_whitespace_from_mpa_account,
 )
 from swo_aws_extension.parameters import (
@@ -119,7 +119,7 @@ def _is_parameter_visible(order: dict, param_external_id: str) -> bool:
 def _validate_duplicate_agreement(client: MPTClient, order: dict) -> dict | None:
     if order.get("type") != "Purchase":
         return None
-    if get_previous_order(client, order):
+    if has_previous_order(client, order, order.get("agreement", {}).get("id", "")):
         return set_ordering_parameter_error(
             order,
             OrderParametersEnum.ACCOUNT_TYPE.value,
