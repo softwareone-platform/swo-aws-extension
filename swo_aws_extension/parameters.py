@@ -580,3 +580,23 @@ def set_erp_project_no(order: dict, erp_project_no: str) -> dict[str, Any]:
     )
     fulfillment_param["value"] = erp_project_no
     return updated_order
+
+
+def get_termination_date(source: dict[str, Any]) -> str | None:
+    """Get the termination date from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.TERMINATION_DATE.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def set_termination_date(order: dict, termination_date: str) -> dict[str, Any]:
+    """Set the termination date on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.TERMINATION_DATE.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = termination_date
+    return updated_order
