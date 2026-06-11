@@ -18,6 +18,7 @@ Each integration document covers: purpose, authentication mechanism, required en
 | [Confluence](external/confluence.md) | Billing report attachment to Confluence pages | Basic Auth (username + API token) | [confluence.md](external/confluence.md) |
 | [MS Teams](external/ms-teams.md) | Internal operational notifications | Incoming Webhook (no auth) | [ms-teams.md](external/ms-teams.md) |
 | [AWS SES](external/aws-ses.md) | Customer-facing email delivery | AWS Access Key + Secret Key | [aws-ses.md](external/aws-ses.md) |
+| [Airtable](external/airtable.md) | FinOps entitlements table (per-agreement records) | Personal Access Token | [airtable.md](external/airtable.md) |
 
 ## Code Location
 
