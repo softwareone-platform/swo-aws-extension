@@ -62,9 +62,9 @@ The runtime is organised as a pipeline-driven fulfilment flow:
 | `swo_aws_extension/management/` | Django management commands run by the worker |
 | `swo_aws_extension/utils/`, `file_builder/` | Shared helpers and ZIP/report file building |
 
-The repository also vendors several standalone client packages used by the
-extension and reusable across repos: `swo_mpt_api`, `swo_ccp_client`,
-`swo_crm_service_client`, `swo_finops_client`, and `swo_rql`.
+The per-service API clients live under `swo_aws_extension/swo/`, grouped by
+service (`mpt/`, `ccp/`, `cco/`, `crm_service/`, `finops/`, `cloud_orchestrator/`,
+`rql/`, `notifications/`, …) on top of the shared `base_client.py`.
 
 ## External integrations
 
