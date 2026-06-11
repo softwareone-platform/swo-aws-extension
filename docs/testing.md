@@ -16,8 +16,8 @@ The repository currently has stable coverage in these areas:
 - extension registration and startup checks in [`tests/test_extension.py`](../tests/test_extension.py), [`tests/test_initializer.py`](../tests/test_initializer.py), and Django settings under [`tests/django/`](../tests/django)
 - AWS client and configuration behavior in [`tests/aws/`](../tests/aws)
 - fulfillment, jobs, steps, and validation flows in [`tests/flows/`](../tests/flows)
-- management commands and helpers in [`tests/management/`](../tests/management) and [`tests/commands/`](../tests/commands)
-- Marketplace, CCP, CRM, FinOps, notification, and query-builder integrations under [`tests/swo/`](../tests/swo), [`tests/swo_mpt_api/`](../tests/swo_mpt_api), [`tests/swo_ccp_client/`](../tests/swo_ccp_client), [`tests/swo_crm_service_client/`](../tests/swo_crm_service_client), [`tests/swo_finops_client/`](../tests/swo_finops_client), and [`tests/swo_rql/`](../tests/swo_rql)
+- management commands and helpers in [`tests/management/`](../tests/management)
+- Marketplace, CCP, CRM, FinOps, notification, and query-builder integrations under [`tests/swo/`](../tests/swo), with per-service subdirectories such as [`tests/swo/mpt/`](../tests/swo/mpt), [`tests/swo/ccp/`](../tests/swo/ccp), [`tests/swo/crm_service/`](../tests/swo/crm_service), [`tests/swo/finops/`](../tests/swo/finops), [`tests/swo/rql/`](../tests/swo/rql), and [`tests/swo/notifications/`](../tests/swo/notifications)
 - Airtable, file-builder, processor, and utility behavior in [`tests/airtable/`](../tests/airtable), [`tests/file_builder/`](../tests/file_builder), [`tests/processor/`](../tests/processor), and [`tests/utils/`](../tests/utils)
 
 ## Commands
