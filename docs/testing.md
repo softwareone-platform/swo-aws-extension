@@ -17,7 +17,7 @@ The repository currently has stable coverage in these areas:
 - AWS client and configuration behavior in [`tests/aws/`](../tests/aws)
 - fulfillment, jobs, steps, and validation flows in [`tests/flows/`](../tests/flows)
 - management commands and helpers in [`tests/management/`](../tests/management)
-- Marketplace, CCP, CRM, FinOps, notification, and query-builder integrations under [`tests/swo/`](../tests/swo), with per-service subdirectories such as [`tests/swo/mpt/`](../tests/swo/mpt), [`tests/swo/ccp/`](../tests/swo/ccp), [`tests/swo/crm_service/`](../tests/swo/crm_service), [`tests/swo/finops/`](../tests/swo/finops), [`tests/swo/rql/`](../tests/swo/rql), and [`tests/swo/notifications/`](../tests/swo/notifications)
+- Marketplace, CCP, CRM, FinOps, notification, and query-builder integrations under [`tests/swo/`](../tests/swo), with per-service subdirectories such as [`tests/swo/mpt/`](../tests/swo/mpt), [`tests/swo/ccp/`](../tests/swo/ccp), [`tests/swo/cco/`](../tests/swo/cco), [`tests/swo/crm_service/`](../tests/swo/crm_service), [`tests/swo/finops/`](../tests/swo/finops), [`tests/swo/rql/`](../tests/swo/rql), and [`tests/swo/notifications/`](../tests/swo/notifications)
 - Airtable, file-builder, processor, and utility behavior in [`tests/airtable/`](../tests/airtable), [`tests/file_builder/`](../tests/file_builder), [`tests/processor/`](../tests/processor), and [`tests/utils/`](../tests/utils)
 
 ## Commands

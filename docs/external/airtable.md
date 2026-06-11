@@ -24,7 +24,7 @@ The table name is `FinOps Entitlements`.
 | Operation | Description |
 | --- | --- |
 | Get by agreement | `get_by_agreement_id(agreement_id)` — returns the entitlement records for an agreement |
-| Save | `save(record)` — creates a new entitlement record |
+| Save | `save(record)` — creates or updates an entitlement record (depending on whether it is new) |
 | Update status and usage date | `update_status_and_usage_date(...)` — updates an existing record |
 
 Operations are performed through the `pyairtable` table API rather than direct
