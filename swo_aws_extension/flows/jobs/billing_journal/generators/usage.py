@@ -1,3 +1,4 @@
+import datetime as dt
 from abc import ABC, abstractmethod
 
 from swo_aws_extension.aws.client import AWSClient
@@ -320,5 +321,7 @@ class CostExplorerUsageGenerator(BaseOrganizationUsageGenerator):
             invoice_entity=entity_key,
             invoice_id=invoice_entity.invoice_id if invoice_entity else "",
             start_date=metric_data.start_date,
-            end_date=metric_data.end_date,
+            end_date=(
+                dt.date.fromisoformat(metric_data.end_date) - dt.timedelta(days=1)
+            ).isoformat(),
         )
