@@ -94,26 +94,38 @@ def duplicate_billing_views():
 @pytest.fixture
 def duplicate_account_usage():
     view_data = [
-        [{"Groups": [{"Keys": ["ACT-1"]}]}],
         [
             {
+                "TimePeriod": {"Start": "2025-10-01", "End": "2025-10-02"},
+                "Groups": [{"Keys": ["ACT-1"]}],
+            }
+        ],
+        [
+            {
+                "TimePeriod": {"Start": "2025-10-01", "End": "2025-10-02"},
                 "Groups": [
                     {
                         "Keys": ["ACT-1", "AmazonRDS"],
                         "Metrics": {"UnblendedCost": {"Amount": "100.0"}},
                     }
-                ]
+                ],
             }
         ],
-        [{"Groups": [{"Keys": ["AmazonRDS", "Amazon Web Services, Inc."]}]}],
         [
             {
+                "TimePeriod": {"Start": "2025-10-01", "End": "2025-10-02"},
+                "Groups": [{"Keys": ["AmazonRDS", "Amazon Web Services, Inc."]}],
+            }
+        ],
+        [
+            {
+                "TimePeriod": {"Start": "2025-10-01", "End": "2025-10-02"},
                 "Groups": [
                     {
                         "Keys": [AWSRecordTypeEnum.USAGE, "AmazonRDS"],
                         "Metrics": {"UnblendedCost": {"Amount": "50.0"}},
                     }
-                ]
+                ],
             }
         ],
     ]
@@ -144,7 +156,7 @@ def test_generate_processes_single_account(
     assert (metric.amount, metric.start_date, metric.end_date) == (
         Decimal("10.25"),
         "2025-10-01",
-        "2025-10-02",
+        "2025-10-01",
     )
 
 
@@ -157,17 +169,28 @@ def test_generate_returns_correct_invoice_entity(
 ):
     mock_aws_client.get_billing_views_by_account_id.return_value = single_billing_view
     mock_aws_client.get_cost_and_usage.side_effect = [
-        [{"Groups": [{"Keys": ["ACT-1"]}]}],
-        [{"Groups": []}],
-        [{"Groups": [{"Keys": ["AmazonEC2", "Amazon Web Services, Inc."]}]}],
         [
             {
+                "TimePeriod": {"Start": "2025-10-01", "End": "2025-10-02"},
+                "Groups": [{"Keys": ["ACT-1"]}],
+            }
+        ],
+        [{"TimePeriod": {"Start": "2025-10-01", "End": "2025-10-02"}, "Groups": []}],
+        [
+            {
+                "TimePeriod": {"Start": "2025-10-01", "End": "2025-10-02"},
+                "Groups": [{"Keys": ["AmazonEC2", "Amazon Web Services, Inc."]}],
+            }
+        ],
+        [
+            {
+                "TimePeriod": {"Start": "2025-10-01", "End": "2025-10-02"},
                 "Groups": [
                     {
                         "Keys": [AWSRecordTypeEnum.USAGE, "AmazonEC2"],
                         "Metrics": {"UnblendedCost": {"Amount": "10.0"}},
                     }
-                ]
+                ],
             }
         ],
     ]
