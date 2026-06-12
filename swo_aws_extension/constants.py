@@ -129,6 +129,7 @@ class FulfillmentParametersEnum(StrEnum):
     FEATURE_VERSION_DEPLOYMENT_ERROR_NOTIFIED = "featureVersionDeploymentErrorNotified"
     CCO_CONTRACT_NUMBER = "ccoContractNumber"
     ERP_PROJECT_NO = "erpProjectNo"
+    TERMINATION_DATE = "terminationDate"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
