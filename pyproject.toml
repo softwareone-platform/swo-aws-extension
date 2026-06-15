@@ -9,7 +9,7 @@ license = { text = "Apache-2.0 license" }
 
 dependencies = [
   "atlassian-python-api==4.0.*",
-  "azure-storage-blob==12.29.*",
+  "azure-storage-blob==12.30.*",
   "boto3==1.43.*",
   "django==4.2.*",
   "jinja2==3.1.*",
