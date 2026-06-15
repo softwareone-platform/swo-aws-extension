@@ -134,22 +134,46 @@ class AWSClient:
         granularity: str = "MONTHLY",
     ) -> list[dict]:
         """Get cost and usage data for the specified date range."""
-        kwarg: dict = {
-            "TimePeriod": {"Start": billing_period.start_date, "End": billing_period.end_date},
-            "Granularity": granularity,
-            "Metrics": ["UnblendedCost"],
-        }
-        if group_by:
-            kwarg["GroupBy"] = group_by
-        if filter_by:
-            kwarg["Filter"] = filter_by
-        if view_arn:
-            kwarg["BillingViewArn"] = view_arn
+        api_params = self._build_cost_and_usage_params(
+            billing_period, group_by, filter_by, view_arn, granularity
+        )
         return get_paged_response(
             self._get_cost_explorer_client().get_cost_and_usage,
             "ResultsByTime",
-            kwarg,
+            api_params,
         )
+
+    @wrap_boto3_error
+    def get_cost_and_usage_with_attributes(
+        self,
+        billing_period: BillingPeriod,
+        group_by: list[dict] | None = None,
+        filter_by: dict | None = None,
+        view_arn: str | None = None,
+        granularity: str = "MONTHLY",
+    ) -> tuple[list[dict], list[dict]]:
+        """Get cost and usage data with dimension value attributes.
+
+        Returns a tuple of (ResultsByTime, DimensionValueAttributes).
+        DimensionValueAttributes contains descriptions/names for dimension values
+        (e.g., linked account names).
+        """
+        api_params = self._build_cost_and_usage_params(
+            billing_period, group_by, filter_by, view_arn, granularity
+        )
+        results_by_time: list[dict] = []
+        dimension_attrs: dict[str, dict] = {}
+
+        while True:
+            response = self._get_cost_explorer_client().get_cost_and_usage(**api_params)
+            results_by_time.extend(response.get("ResultsByTime", []))
+            for attr in response.get("DimensionValueAttributes", []):
+                dimension_attrs.setdefault(attr["Value"], attr)
+            if not response.get("NextPageToken"):
+                break
+            api_params["NextPageToken"] = response["NextPageToken"]
+
+        return results_by_time, list(dimension_attrs.values())
 
     @wrap_boto3_error
     def get_current_billing_view_by_account_id(self, account_id: str) -> list[dict]:
@@ -347,6 +371,28 @@ class AWSClient:
             },
         )
 
+    def _build_cost_and_usage_params(
+        self,
+        billing_period: BillingPeriod,
+        group_by: list[dict] | None = None,
+        filter_by: dict | None = None,
+        view_arn: str | None = None,
+        granularity: str = "MONTHLY",
+    ) -> dict:
+        """Build the parameters dict for a Cost Explorer get_cost_and_usage call."""
+        api_params: dict = {
+            "TimePeriod": {"Start": billing_period.start_date, "End": billing_period.end_date},
+            "Granularity": granularity,
+            "Metrics": ["UnblendedCost"],
+        }
+        if group_by:
+            api_params["GroupBy"] = group_by
+        if filter_by:
+            api_params["Filter"] = filter_by
+        if view_arn:
+            api_params["BillingViewArn"] = view_arn
+        return api_params
+
     @wrap_boto3_error
     def _get_credentials(self):
         if not self.account_id:
@@ -468,21 +514,51 @@ def _extract_linked_account_keys(cost_and_usage: list[dict]) -> list[str]:
     return keys
 
 
+def _build_account_names_map(dimension_attributes: list[dict]) -> dict[str, str]:
+    """Build a mapping of account ID to account name from DimensionValueAttributes."""
+    return {
+        attr.get("Value", ""): attr.get("Attributes", {}).get("description", "")
+        for attr in dimension_attributes
+    }
+
+
+def _collect_new_accounts(
+    results_by_time: list[dict],
+    dimension_attributes: list[dict],
+    seen_account_ids: set[str],
+) -> list[dict[str, str]]:
+    """Return new linked accounts from cost-and-usage results, updating seen set."""
+    accounts: list[dict[str, str]] = []
+    account_names = _build_account_names_map(dimension_attributes)
+    for account_id in _extract_linked_account_keys(results_by_time):
+        if account_id not in seen_account_ids:
+            seen_account_ids.add(account_id)
+            accounts.append({
+                "account_id": account_id,
+                "account_name": account_names.get(account_id, account_id),
+            })
+    return accounts
+
+
 def get_linked_accounts_with_usage(
     aws_client: AWSClient,
     mpa_account_id: str,
     billing_period: BillingPeriod,
     agreement_id: str = "",
-) -> list[str]:
-    """Return linked account IDs that have cost usage for the given MPA and billing period."""
-    accounts: list[str] = []
+) -> list[dict[str, str]]:
+    """Return linked accounts with usage for the given MPA and billing period.
+
+    Returns a list of dicts with 'account_id' and 'account_name' keys.
+    """
+    accounts: list[dict[str, str]] = []
+    seen_account_ids: set[str] = set()
     for billing_view in aws_client.get_billing_views_by_account_id(
         mpa_account_id,
         start_date=billing_period.start_date,
         end_date=billing_period.last_day,
     ):
         try:
-            cost_and_usage = aws_client.get_cost_and_usage(
+            results_by_time, dimension_attributes = aws_client.get_cost_and_usage_with_attributes(
                 billing_period=billing_period,
                 view_arn=billing_view.get("arn"),
                 group_by=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
@@ -495,5 +571,7 @@ def get_linked_accounts_with_usage(
                 error,
             )
             continue
-        accounts.extend(_extract_linked_account_keys(cost_and_usage))
+        accounts.extend(
+            _collect_new_accounts(results_by_time, dimension_attributes, seen_account_ids)
+        )
     return accounts

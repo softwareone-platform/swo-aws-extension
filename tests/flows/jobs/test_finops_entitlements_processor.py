@@ -103,7 +103,10 @@ def test_sync_creates_new_entitlement(
     mock_aws_client.get_billing_views_by_account_id.return_value = [
         {"arn": "arn:aws:billing::123:billingview/test"}
     ]
-    mock_aws_client.get_cost_and_usage.return_value = [{"Groups": [{"Keys": ["123456789"]}]}]
+    mock_aws_client.get_cost_and_usage_with_attributes.return_value = (
+        [{"Groups": [{"Keys": ["123456789"]}]}],
+        [{"Value": "123456789", "Attributes": {"description": "Test Account"}}],
+    )
     processor = finops_processor()
 
     processor.sync()  # act
@@ -139,7 +142,10 @@ def test_sync_updates_existing(
     mock_aws_client.get_billing_views_by_account_id.return_value = [
         {"arn": "arn:aws:billing::123:billingview/test"}
     ]
-    mock_aws_client.get_cost_and_usage.return_value = [{"Groups": [{"Keys": ["123456789"]}]}]
+    mock_aws_client.get_cost_and_usage_with_attributes.return_value = (
+        [{"Groups": [{"Keys": ["123456789"]}]}],
+        [{"Value": "123456789", "Attributes": {"description": "Test Account"}}],
+    )
     processor = finops_processor()
 
     processor.sync()  # act
@@ -330,7 +336,10 @@ def test_sync_uses_existing_finops_entitlement(
     mock_aws_client.get_billing_views_by_account_id.return_value = [
         {"arn": "arn:aws:billing::123:billingview/test"}
     ]
-    mock_aws_client.get_cost_and_usage.return_value = [{"Groups": [{"Keys": ["123456789"]}]}]
+    mock_aws_client.get_cost_and_usage_with_attributes.return_value = (
+        [{"Groups": [{"Keys": ["123456789"]}]}],
+        [{"Value": "123456789", "Attributes": {"description": "Test Account"}}],
+    )
     processor = finops_processor()
 
     processor.sync()  # act
@@ -355,7 +364,10 @@ def test_sync_handles_finops_error_on_create(
     mock_aws_client.get_billing_views_by_account_id.return_value = [
         {"arn": "arn:aws:billing::123:billingview/test"}
     ]
-    mock_aws_client.get_cost_and_usage.return_value = [{"Groups": [{"Keys": ["123456789"]}]}]
+    mock_aws_client.get_cost_and_usage_with_attributes.return_value = (
+        [{"Groups": [{"Keys": ["123456789"]}]}],
+        [{"Value": "123456789", "Attributes": {"description": "Test Account"}}],
+    )
     processor = finops_processor()
 
     processor.sync()  # act
@@ -380,7 +392,10 @@ def test_sync_finops_error_on_get_entitlement(
     mock_aws_client.get_billing_views_by_account_id.return_value = [
         {"arn": "arn:aws:billing::123:billingview/test"}
     ]
-    mock_aws_client.get_cost_and_usage.return_value = [{"Groups": [{"Keys": ["123456789"]}]}]
+    mock_aws_client.get_cost_and_usage_with_attributes.return_value = (
+        [{"Groups": [{"Keys": ["123456789"]}]}],
+        [{"Value": "123456789", "Attributes": {"description": "Test Account"}}],
+    )
     processor = finops_processor()
 
     processor.sync()  # act
@@ -415,7 +430,10 @@ def test_sync_updates_existing_with_finops_error(
     mock_aws_client.get_billing_views_by_account_id.return_value = [
         {"arn": "arn:aws:billing::123:billingview/test"}
     ]
-    mock_aws_client.get_cost_and_usage.return_value = [{"Groups": [{"Keys": ["123456789"]}]}]
+    mock_aws_client.get_cost_and_usage_with_attributes.return_value = (
+        [{"Groups": [{"Keys": ["123456789"]}]}],
+        [{"Value": "123456789", "Attributes": {"description": "Test Account"}}],
+    )
     processor = finops_processor()
 
     processor.sync()  # act
@@ -437,7 +455,7 @@ def test_sync_handles_aws_error_on_cost_and_usage(
     mock_aws_client.get_billing_views_by_account_id.return_value = [
         {"arn": "arn:aws:billing::123:billingview/test"}
     ]
-    mock_aws_client.get_cost_and_usage.side_effect = AWSError("AWS API error")
+    mock_aws_client.get_cost_and_usage_with_attributes.side_effect = AWSError("AWS API error")
     processor = finops_processor()
 
     processor.sync()  # act

@@ -61,6 +61,22 @@ def mock_get_linked_accounts_with_usage(mocker):
 
 
 @pytest.fixture
+def mock_get_product_items_by_skus(mocker):
+    return mocker.patch(
+        "swo_aws_extension.swo.mpt.sync.syncer.get_product_items_by_skus",
+        return_value=[{"id": "ITM-1234-1234-1234-0010"}],
+    )
+
+
+@pytest.fixture
+def mock_create_agreement_subscription(mocker):
+    return mocker.patch(
+        "swo_aws_extension.swo.mpt.sync.syncer.create_agreement_subscription",
+        return_value={"id": "SUB-NEW-0001"},
+    )
+
+
+@pytest.fixture
 def mock_get_accepted_transfer_for_account(mocker):
     return mocker.patch(
         "swo_aws_extension.swo.mpt.sync.syncer.get_accepted_transfer_for_account",

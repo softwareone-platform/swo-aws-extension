@@ -732,19 +732,26 @@ def test_get_linked_accounts_with_usage(mocker):
     mock_aws.get_billing_views_by_account_id.return_value = [
         {"arn": "arn:aws:billing::123:billingview/v1"}
     ]
-    mock_aws.get_cost_and_usage.return_value = [
-        {"Groups": [{"Keys": ["111111111111"]}, {"Keys": ["222222222222"]}]}
-    ]
+    mock_aws.get_cost_and_usage_with_attributes.return_value = (
+        [{"Groups": [{"Keys": ["111111111111"]}, {"Keys": ["222222222222"]}]}],
+        [
+            {"Value": "111111111111", "Attributes": {"description": "Account One"}},
+            {"Value": "222222222222", "Attributes": {"description": "Account Two"}},
+        ],
+    )
 
     result = get_linked_accounts_with_usage(mock_aws, "123456789012", billing_period, "AGR-001")
 
-    assert result == ["111111111111", "222222222222"]
+    assert result == [
+        {"account_id": "111111111111", "account_name": "Account One"},
+        {"account_id": "222222222222", "account_name": "Account Two"},
+    ]
     mock_aws.get_billing_views_by_account_id.assert_called_once_with(
         "123456789012",
         start_date="2025-12-01",
         end_date="2025-12-31",
     )
-    mock_aws.get_cost_and_usage.assert_called_once_with(
+    mock_aws.get_cost_and_usage_with_attributes.assert_called_once_with(
         billing_period=billing_period,
         view_arn="arn:aws:billing::123:billingview/v1",
         group_by=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
@@ -758,15 +765,24 @@ def test_get_linked_accounts_multiple_views(mocker):
         {"arn": "arn:aws:billing::123:billingview/v1"},
         {"arn": "arn:aws:billing::123:billingview/v2"},
     ]
-    mock_aws.get_cost_and_usage.side_effect = [
-        [{"Groups": [{"Keys": ["111111111111"]}]}],
-        [{"Groups": [{"Keys": ["222222222222"]}]}],
+    mock_aws.get_cost_and_usage_with_attributes.side_effect = [
+        (
+            [{"Groups": [{"Keys": ["111111111111"]}]}],
+            [{"Value": "111111111111", "Attributes": {"description": "Account One"}}],
+        ),
+        (
+            [{"Groups": [{"Keys": ["222222222222"]}]}],
+            [{"Value": "222222222222", "Attributes": {"description": "Account Two"}}],
+        ),
     ]
 
     result = get_linked_accounts_with_usage(mock_aws, "123456789012", billing_period)
 
-    assert result == ["111111111111", "222222222222"]
-    assert mock_aws.get_cost_and_usage.call_count == 2
+    assert result == [
+        {"account_id": "111111111111", "account_name": "Account One"},
+        {"account_id": "222222222222", "account_name": "Account Two"},
+    ]
+    assert mock_aws.get_cost_and_usage_with_attributes.call_count == 2
 
 
 def test_get_linked_accounts_skips_error_view(mocker):
@@ -776,15 +792,18 @@ def test_get_linked_accounts_skips_error_view(mocker):
         {"arn": "arn:aws:billing::123:billingview/v1"},
         {"arn": "arn:aws:billing::123:billingview/v2"},
     ]
-    mock_aws.get_cost_and_usage.side_effect = [
+    mock_aws.get_cost_and_usage_with_attributes.side_effect = [
         AWSError("Access denied"),
-        [{"Groups": [{"Keys": ["222222222222"]}]}],
+        (
+            [{"Groups": [{"Keys": ["222222222222"]}]}],
+            [{"Value": "222222222222", "Attributes": {"description": "Account Two"}}],
+        ),
     ]
 
     result = get_linked_accounts_with_usage(mock_aws, "123456789012", billing_period, "AGR-001")
 
-    assert result == ["222222222222"]
-    assert mock_aws.get_cost_and_usage.call_count == 2
+    assert result == [{"account_id": "222222222222", "account_name": "Account Two"}]
+    assert mock_aws.get_cost_and_usage_with_attributes.call_count == 2
 
 
 def test_get_linked_accounts_no_billing_views(mocker):
@@ -795,4 +814,108 @@ def test_get_linked_accounts_no_billing_views(mocker):
     result = get_linked_accounts_with_usage(mock_aws, "123456789012", billing_period)
 
     assert result == []
-    mock_aws.get_cost_and_usage.assert_not_called()
+    mock_aws.get_cost_and_usage_with_attributes.assert_not_called()
+
+
+def test_cost_and_usage_with_attrs_single_page(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.get_cost_and_usage.return_value = {
+        "ResultsByTime": [
+            {"Groups": [{"Keys": ["111"], "Metrics": {"UnblendedCost": {"Amount": "10"}}}]}
+        ],
+        "DimensionValueAttributes": [
+            {"Value": "111", "Attributes": {"description": "Account One"}},
+        ],
+    }
+    billing_period = BillingPeriod(start_date="2025-12-01", end_date="2026-01-01")
+
+    result = mock_aws_client.get_cost_and_usage_with_attributes(billing_period)
+
+    assert result == (
+        [{"Groups": [{"Keys": ["111"], "Metrics": {"UnblendedCost": {"Amount": "10"}}}]}],
+        [{"Value": "111", "Attributes": {"description": "Account One"}}],
+    )
+
+
+def test_cost_and_usage_with_attrs_paginated(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.get_cost_and_usage.side_effect = [
+        {
+            "ResultsByTime": [
+                {"Groups": [{"Keys": ["111"], "Metrics": {"UnblendedCost": {"Amount": "10"}}}]}
+            ],
+            "DimensionValueAttributes": [
+                {"Value": "111", "Attributes": {"description": "Account One"}},
+            ],
+            "NextPageToken": "page2",
+        },
+        {
+            "ResultsByTime": [
+                {"Groups": [{"Keys": ["222"], "Metrics": {"UnblendedCost": {"Amount": "20"}}}]}
+            ],
+            "DimensionValueAttributes": [
+                {"Value": "222", "Attributes": {"description": "Account Two"}},
+            ],
+        },
+    ]
+    billing_period = BillingPeriod(start_date="2025-12-01", end_date="2026-01-01")
+    group_by = [{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}]
+
+    result = mock_aws_client.get_cost_and_usage_with_attributes(billing_period, group_by)
+
+    assert len(result[0]) == 2
+    assert len(result[1]) == 2
+    assert mock_client.get_cost_and_usage.call_count == 2
+
+
+def test_cost_and_usage_attrs_dedup(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.get_cost_and_usage.side_effect = [
+        {
+            "ResultsByTime": [{"Groups": []}],
+            "DimensionValueAttributes": [
+                {"Value": "111", "Attributes": {"description": "Account One"}},
+            ],
+            "NextPageToken": "page2",
+        },
+        {
+            "ResultsByTime": [{"Groups": []}],
+            "DimensionValueAttributes": [
+                {"Value": "111", "Attributes": {"description": "Account One"}},
+            ],
+        },
+    ]
+    billing_period = BillingPeriod(start_date="2025-12-01", end_date="2026-01-01")
+
+    result = mock_aws_client.get_cost_and_usage_with_attributes(billing_period)
+
+    assert len(result[1]) == 1
+
+
+def test_get_linked_accounts_dedup_across_views(mocker):
+    billing_period = BillingPeriod(start_date="2025-12-01", end_date="2026-01-01")
+    mock_aws = mocker.MagicMock()
+    mock_aws.get_billing_views_by_account_id.return_value = [
+        {"arn": "arn:aws:billing::123:billingview/v1"},
+        {"arn": "arn:aws:billing::123:billingview/v2"},
+    ]
+    mock_aws.get_cost_and_usage_with_attributes.side_effect = [
+        (
+            [{"Groups": [{"Keys": ["111111111111"]}]}],
+            [{"Value": "111111111111", "Attributes": {"description": "Account One"}}],
+        ),
+        (
+            [{"Groups": [{"Keys": ["111111111111"]}, {"Keys": ["222222222222"]}]}],
+            [
+                {"Value": "111111111111", "Attributes": {"description": "Account One"}},
+                {"Value": "222222222222", "Attributes": {"description": "Account Two"}},
+            ],
+        ),
+    ]
+
+    result = get_linked_accounts_with_usage(mock_aws, "123456789012", billing_period)
+
+    assert result == [
+        {"account_id": "111111111111", "account_name": "Account One"},
+        {"account_id": "222222222222", "account_name": "Account Two"},
+    ]

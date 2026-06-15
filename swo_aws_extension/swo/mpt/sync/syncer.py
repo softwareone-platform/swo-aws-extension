@@ -3,9 +3,12 @@ import logging
 from functools import cache
 from typing import Any, override
 
+from mpt_api_client.exceptions import MPTError
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import (
+    create_agreement_subscription,
     get_agreements_by_query,
+    get_product_items_by_skus,
     get_subscriptions_by_query,
     terminate_subscription,
     update_agreement,
@@ -20,6 +23,8 @@ from swo_aws_extension.aws.client import (
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.config import get_config
 from swo_aws_extension.constants import (
+    AWS_ITEMS_SKUS,
+    MPT_DATE_TIME_FORMAT,
     FulfillmentParametersEnum,
     ParamPhasesEnum,
     ResponsibilityTransferStatus,
@@ -267,6 +272,88 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
                     logger.exception(msg)
                     TeamsNotificationManager().send_exception("Inactive transfer", msg)
 
+    def _sync_subscriptions(
+        self, agreement: AgreementType, linked_accounts: list[dict[str, str]]
+    ) -> None:
+        if not linked_accounts:
+            return
+        subscription_items = get_product_items_by_skus(
+            self.mpt_client, agreement["product"]["id"], AWS_ITEMS_SKUS
+        )
+
+        for account_info in linked_accounts:
+            self._ensure_subscription(
+                agreement,
+                subscription_items,
+                account_info["account_id"],
+                account_info["account_name"],
+            )
+
+    def _ensure_subscription(
+        self,
+        agreement: AgreementType,
+        subscription_items: list[dict],
+        account_id: str,
+        account_name: str,
+    ) -> None:
+        agreement_id = agreement["id"]
+        active_statuses = {SubscriptionStatus.ACTIVE, SubscriptionStatus.UPDATING}
+        existing = next(
+            (
+                sub
+                for sub in agreement.get("subscriptions", [])
+                if sub.get("externalIds", {}).get("vendor") == account_id
+                and sub.get("status") in active_statuses
+            ),
+            None,
+        )
+        if existing:
+            logger.info(
+                "%s - Subscription for linked account %s already exists (%s), skipping",
+                agreement_id,
+                account_id,
+                existing.get("id"),
+            )
+            return
+        if self.dry_run:
+            logger.info(
+                "%s - dry run mode - skipping subscription creation for account: %s",
+                agreement_id,
+                account_id,
+            )
+            return
+        now = dt.datetime.now(dt.UTC)
+        start_date = now.strftime(MPT_DATE_TIME_FORMAT)
+        subscription = {
+            "name": f"Subscription for {account_name} ({account_id})",
+            "startDate": now.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+            "commitmentDate": start_date,
+            "autoRenew": True,
+            "agreement": {"id": agreement_id},
+            "externalIds": {"vendor": account_id},
+            "template": None,
+            "lines": [
+                {"item": subscription_item, "quantity": 1}
+                for subscription_item in subscription_items
+            ],
+            "parameters": {"fulfillment": []},
+        }
+        try:
+            created = create_agreement_subscription(self.mpt_client, subscription)
+        except MPTError:
+            logger.warning(
+                "%s - Error creating subscription for linked account %s",
+                agreement_id,
+                account_id,
+            )
+            return
+        logger.info(
+            "%s - Created subscription %s for linked account %s",
+            agreement_id,
+            created.get("id"),
+            account_id,
+        )
+
     def _get_billing_period(self) -> BillingPeriod:
         today = dt.datetime.now(dt.UTC).date()
         next_month = today.replace(day=MINIMUM_DAYS_MONTH) + dt.timedelta(days=4)
@@ -293,10 +380,10 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
         linked_accounts = get_linked_accounts_with_usage(
             aws_client, mpa_account_id, self._get_billing_period(), agreement.get("id", "")
         )
-        # TODO MPT-21792: sync subscriptions for each linked account with usage
         logger.info(
             "%s - Found %d linked accounts with usage", agreement.get("id"), len(linked_accounts)
         )
+        self._sync_subscriptions(agreement, linked_accounts)
 
         logger.info("%s - End - Sync completed", agreement.get("id"))
 
