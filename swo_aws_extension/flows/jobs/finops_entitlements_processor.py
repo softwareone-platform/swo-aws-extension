@@ -6,8 +6,11 @@ from mpt_extension_sdk.mpt_http.mpt import get_agreements_by_query
 
 from swo_aws_extension.airtable.finops_table import FinOpsEntitlementsTable
 from swo_aws_extension.airtable.models import FinOpsRecord
-from swo_aws_extension.aws.client import MINIMUM_DAYS_MONTH, AWSClient
-from swo_aws_extension.aws.errors import AWSError
+from swo_aws_extension.aws.client import (
+    MINIMUM_DAYS_MONTH,
+    AWSClient,
+    get_linked_accounts_with_usage,
+)
 from swo_aws_extension.config import Config
 from swo_aws_extension.constants import FinOpsStatusEnum
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
@@ -117,13 +120,14 @@ class FinOpsEntitlementsProcessor:  # noqa: WPS214
         finops_entitlements: list[FinOpsRecord],
     ):
         aws_client = AWSClient(self.config, pma_account_id, self.config.management_role_name)
-        billing_views = aws_client.get_current_billing_view_by_account_id(mpa_account_id)
-        accounts = self._get_accounts_with_usage(agreement_id, billing_views, aws_client)
+        billing_period = self._get_billing_period()
+        accounts = get_linked_accounts_with_usage(
+            aws_client, mpa_account_id, billing_period, agreement_id
+        )
         for account_id in accounts:
             existing = self._find_existing_entitlement(finops_entitlements, account_id)
             if existing:
                 self._update_existing_entitlement(agreement_id, account_id, buyer_id, existing)
-
             else:
                 self._create_new_entitlement(agreement_id, account_id, buyer_id)
 
@@ -163,38 +167,6 @@ class FinOpsEntitlementsProcessor:  # noqa: WPS214
         else:
             rql_filter = RQLQuery(status="Active") & RQLQuery(product__id__in=self.product_ids)
         return get_agreements_by_query(self.mpt_client, f"{rql_filter}{select}")
-
-    def _get_accounts_with_usage(
-        self, agreement_id: str, billing_views: list[dict], aws_client: AWSClient
-    ) -> list[str]:
-        accounts_with_usage = []
-        billing_period = self._get_billing_period()
-        for billing_view in billing_views:
-            try:
-                cost_and_usage = aws_client.get_cost_and_usage(
-                    billing_period=billing_period,
-                    view_arn=billing_view.get("arn"),
-                    group_by=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
-                )
-            except AWSError as error:
-                logger.info(
-                    "%s - Error retrieving cost and usage for billing view %s: %s",
-                    agreement_id,
-                    billing_view.get("arn"),
-                    error,
-                )
-                continue
-            accounts_with_usage.extend(self._get_account_keys(cost_and_usage))
-
-        return accounts_with_usage
-
-    def _get_account_keys(self, cost_and_usage) -> list[str]:
-        keys: list[str] = []
-        for period in cost_and_usage:
-            for group in period.get("Groups", []):
-                keys.extend(group.get("Keys", []))
-
-        return keys
 
     def _get_or_create_entitlement_in_finops(
         self, agreement_id: str, account_id: str, buyer_id: str

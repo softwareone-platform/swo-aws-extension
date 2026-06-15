@@ -100,7 +100,7 @@ def test_sync_creates_new_entitlement(
     mock_entitlements_table.get_by_agreement_id.return_value = []
     mock_finops_client.get_entitlement_by_datasource.return_value = None
     mock_finops_client.create_entitlement.return_value = {"id": "ENT-001"}
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = [
+    mock_aws_client.get_billing_views_by_account_id.return_value = [
         {"arn": "arn:aws:billing::123:billingview/test"}
     ]
     mock_aws_client.get_cost_and_usage.return_value = [{"Groups": [{"Keys": ["123456789"]}]}]
@@ -136,7 +136,7 @@ def test_sync_updates_existing(
         "id": "ENT-001",
         "status": "active",
     }
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = [
+    mock_aws_client.get_billing_views_by_account_id.return_value = [
         {"arn": "arn:aws:billing::123:billingview/test"}
     ]
     mock_aws_client.get_cost_and_usage.return_value = [{"Groups": [{"Keys": ["123456789"]}]}]
@@ -171,7 +171,7 @@ def test_sync_terminates_inactive(
         "id": "ENT-001",
         "status": "active",
     }
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = []
+    mock_aws_client.get_billing_views_by_account_id.return_value = []
     processor = finops_processor()
 
     processor.sync()  # act
@@ -207,7 +207,7 @@ def test_sync_deletes_new_entitlement(
         "id": "ENT-001",
         "status": "new",
     }
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = []
+    mock_aws_client.get_billing_views_by_account_id.return_value = []
     processor = finops_processor()
 
     processor.sync()  # act
@@ -277,7 +277,7 @@ def test_sync_with_agreement_ids(
 ):
     mock_agreements_response(url=AGREEMENTS_WITH_IDS_URL)
     mock_entitlements_table.get_by_agreement_id.return_value = []
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = []
+    mock_aws_client.get_billing_views_by_account_id.return_value = []
     processor = finops_processor(agreement_ids=["AGR-0001"])
 
     processor.sync()  # act
@@ -304,7 +304,7 @@ def test_sync_skips_terminated(
         last_usage_date=OLD_DATE,
     )
     mock_entitlements_table.get_by_agreement_id.return_value = [terminated_record]
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = []
+    mock_aws_client.get_billing_views_by_account_id.return_value = []
     processor = finops_processor()
 
     processor.sync()  # act
@@ -327,7 +327,7 @@ def test_sync_uses_existing_finops_entitlement(
         "id": "ENT-EXISTING",
         "status": "active",
     }
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = [
+    mock_aws_client.get_billing_views_by_account_id.return_value = [
         {"arn": "arn:aws:billing::123:billingview/test"}
     ]
     mock_aws_client.get_cost_and_usage.return_value = [{"Groups": [{"Keys": ["123456789"]}]}]
@@ -352,7 +352,7 @@ def test_sync_handles_finops_error_on_create(
     mock_entitlements_table.get_by_agreement_id.return_value = []
     mock_finops_client.get_entitlement_by_datasource.return_value = None
     mock_finops_client.create_entitlement.side_effect = FinOpsError("FinOps API error")
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = [
+    mock_aws_client.get_billing_views_by_account_id.return_value = [
         {"arn": "arn:aws:billing::123:billingview/test"}
     ]
     mock_aws_client.get_cost_and_usage.return_value = [{"Groups": [{"Keys": ["123456789"]}]}]
@@ -377,7 +377,7 @@ def test_sync_finops_error_on_get_entitlement(
     mock_agreements_response()
     mock_entitlements_table.get_by_agreement_id.return_value = []
     mock_finops_client.get_entitlement_by_datasource.side_effect = FinOpsError("FinOps API error")
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = [
+    mock_aws_client.get_billing_views_by_account_id.return_value = [
         {"arn": "arn:aws:billing::123:billingview/test"}
     ]
     mock_aws_client.get_cost_and_usage.return_value = [{"Groups": [{"Keys": ["123456789"]}]}]
@@ -412,7 +412,7 @@ def test_sync_updates_existing_with_finops_error(
     )
     mock_entitlements_table.get_by_agreement_id.return_value = [existing_record]
     mock_finops_client.get_entitlement_by_datasource.side_effect = FinOpsError("FinOps API error")
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = [
+    mock_aws_client.get_billing_views_by_account_id.return_value = [
         {"arn": "arn:aws:billing::123:billingview/test"}
     ]
     mock_aws_client.get_cost_and_usage.return_value = [{"Groups": [{"Keys": ["123456789"]}]}]
@@ -434,7 +434,7 @@ def test_sync_handles_aws_error_on_cost_and_usage(
 ):
     mock_agreements_response()
     mock_entitlements_table.get_by_agreement_id.return_value = []
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = [
+    mock_aws_client.get_billing_views_by_account_id.return_value = [
         {"arn": "arn:aws:billing::123:billingview/test"}
     ]
     mock_aws_client.get_cost_and_usage.side_effect = AWSError("AWS API error")
@@ -467,7 +467,7 @@ def test_sync_terminate_not_found_in_finops(
     )
     mock_entitlements_table.get_by_agreement_id.return_value = [inactive_record]
     mock_finops_client.get_entitlement_by_datasource.return_value = None
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = []
+    mock_aws_client.get_billing_views_by_account_id.return_value = []
     processor = finops_processor()
 
     processor.sync()  # act
@@ -505,7 +505,7 @@ def test_sync_deletes_new_entitlement_and_update(
         "id": "ENT-001",
         "status": "new",
     }
-    mock_aws_client.get_current_billing_view_by_account_id.return_value = []
+    mock_aws_client.get_billing_views_by_account_id.return_value = []
     processor = finops_processor()
 
     processor.sync()  # act

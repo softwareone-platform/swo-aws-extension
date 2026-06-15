@@ -1,3 +1,4 @@
+import datetime as dt
 import logging
 from functools import cache
 from typing import Any, override
@@ -11,7 +12,11 @@ from mpt_extension_sdk.mpt_http.mpt import (
 )
 from mpt_extension_sdk.mpt_http.wrap_http_error import wrap_mpt_http_error
 
-from swo_aws_extension.aws.client import AWSClient
+from swo_aws_extension.aws.client import (
+    MINIMUM_DAYS_MONTH,
+    AWSClient,
+    get_linked_accounts_with_usage,
+)
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.config import get_config
 from swo_aws_extension.constants import (
@@ -20,6 +25,7 @@ from swo_aws_extension.constants import (
     ResponsibilityTransferStatus,
     SubscriptionStatus,
 )
+from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
 from swo_aws_extension.parameters import (
     get_billing_group_arn,
     get_relationship_id,
@@ -261,6 +267,13 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
                     logger.exception(msg)
                     TeamsNotificationManager().send_exception("Inactive transfer", msg)
 
+    def _get_billing_period(self) -> BillingPeriod:
+        today = dt.datetime.now(dt.UTC).date()
+        next_month = today.replace(day=MINIMUM_DAYS_MONTH) + dt.timedelta(days=4)
+        return BillingPeriod(
+            today.replace(day=1).isoformat(), next_month.replace(day=1).isoformat()
+        )
+
     @override
     def _process(self, agreement: AgreementType) -> None:
         logger.info("%s - Action - Start sync agreement", agreement.get("id"))
@@ -274,6 +287,17 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
             return
 
         self.sync_responsibility_transfer_id(self.mpt_client, agreement, accepted_transfer["Id"])
+
+        config = get_config()
+        aws_client = AWSClient(config, pma_account_id, config.management_role_name)
+        linked_accounts = get_linked_accounts_with_usage(
+            aws_client, mpa_account_id, self._get_billing_period(), agreement.get("id", "")
+        )
+        # TODO MPT-21792: sync subscriptions for each linked account with usage
+        logger.info(
+            "%s - Found %d linked accounts with usage", agreement.get("id"), len(linked_accounts)
+        )
+
         logger.info("%s - End - Sync completed", agreement.get("id"))
 
 

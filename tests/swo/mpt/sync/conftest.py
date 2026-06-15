@@ -53,6 +53,14 @@ def mock_awsclient(mocker):
 
 
 @pytest.fixture
+def mock_get_linked_accounts_with_usage(mocker):
+    return mocker.patch(
+        "swo_aws_extension.swo.mpt.sync.syncer.get_linked_accounts_with_usage",
+        return_value=[],
+    )
+
+
+@pytest.fixture
 def mock_get_accepted_transfer_for_account(mocker):
     return mocker.patch(
         "swo_aws_extension.swo.mpt.sync.syncer.get_accepted_transfer_for_account",
