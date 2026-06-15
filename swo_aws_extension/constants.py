@@ -250,6 +250,9 @@ class AWSRecordTypeEnum(StrEnum):
     SAVING_PLAN_RECURRING_FEE = "SavingsPlanRecurringFee"
     RECURRING = "Recurring"
     CREDIT = "Credit"
+    BUNDLE_DISCOUNT = "Bundled Discount"
+    OTHER = "Other"
+    FLAT_RATE_SUBSCRIPTION = "FlatRateSubscription"
 
 
 class DeploymentStatusEnum(StrEnum):
