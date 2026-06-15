@@ -3,7 +3,11 @@ import datetime as dt
 import pytest
 from botocore.exceptions import ClientError
 
-from swo_aws_extension.aws.client import MAX_RESULTS_PER_PAGE, get_paged_response
+from swo_aws_extension.aws.client import (
+    MAX_RESULTS_PER_PAGE,
+    get_linked_accounts_with_usage,
+    get_paged_response,
+)
 from swo_aws_extension.aws.errors import (
     AWSError,
     InvalidDateInTerminateResponsibilityError,
@@ -720,3 +724,75 @@ def test_list_invoice_summaries_success(config, aws_client_factory, mock_get_pag
     assert len(result) == 1
     assert result[0]["InvoiceId"] == "INV-001"
     mock_get_paged_response.assert_called_once()
+
+
+def test_get_linked_accounts_with_usage(mocker):
+    billing_period = BillingPeriod(start_date="2025-12-01", end_date="2026-01-01")
+    mock_aws = mocker.MagicMock()
+    mock_aws.get_billing_views_by_account_id.return_value = [
+        {"arn": "arn:aws:billing::123:billingview/v1"}
+    ]
+    mock_aws.get_cost_and_usage.return_value = [
+        {"Groups": [{"Keys": ["111111111111"]}, {"Keys": ["222222222222"]}]}
+    ]
+
+    result = get_linked_accounts_with_usage(mock_aws, "123456789012", billing_period, "AGR-001")
+
+    assert result == ["111111111111", "222222222222"]
+    mock_aws.get_billing_views_by_account_id.assert_called_once_with(
+        "123456789012",
+        start_date="2025-12-01",
+        end_date="2025-12-31",
+    )
+    mock_aws.get_cost_and_usage.assert_called_once_with(
+        billing_period=billing_period,
+        view_arn="arn:aws:billing::123:billingview/v1",
+        group_by=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
+    )
+
+
+def test_get_linked_accounts_multiple_views(mocker):
+    billing_period = BillingPeriod(start_date="2025-12-01", end_date="2026-01-01")
+    mock_aws = mocker.MagicMock()
+    mock_aws.get_billing_views_by_account_id.return_value = [
+        {"arn": "arn:aws:billing::123:billingview/v1"},
+        {"arn": "arn:aws:billing::123:billingview/v2"},
+    ]
+    mock_aws.get_cost_and_usage.side_effect = [
+        [{"Groups": [{"Keys": ["111111111111"]}]}],
+        [{"Groups": [{"Keys": ["222222222222"]}]}],
+    ]
+
+    result = get_linked_accounts_with_usage(mock_aws, "123456789012", billing_period)
+
+    assert result == ["111111111111", "222222222222"]
+    assert mock_aws.get_cost_and_usage.call_count == 2
+
+
+def test_get_linked_accounts_skips_error_view(mocker):
+    billing_period = BillingPeriod(start_date="2025-12-01", end_date="2026-01-01")
+    mock_aws = mocker.MagicMock()
+    mock_aws.get_billing_views_by_account_id.return_value = [
+        {"arn": "arn:aws:billing::123:billingview/v1"},
+        {"arn": "arn:aws:billing::123:billingview/v2"},
+    ]
+    mock_aws.get_cost_and_usage.side_effect = [
+        AWSError("Access denied"),
+        [{"Groups": [{"Keys": ["222222222222"]}]}],
+    ]
+
+    result = get_linked_accounts_with_usage(mock_aws, "123456789012", billing_period, "AGR-001")
+
+    assert result == ["222222222222"]
+    assert mock_aws.get_cost_and_usage.call_count == 2
+
+
+def test_get_linked_accounts_no_billing_views(mocker):
+    billing_period = BillingPeriod(start_date="2025-12-01", end_date="2026-01-01")
+    mock_aws = mocker.MagicMock()
+    mock_aws.get_billing_views_by_account_id.return_value = []
+
+    result = get_linked_accounts_with_usage(mock_aws, "123456789012", billing_period)
+
+    assert result == []
+    mock_aws.get_cost_and_usage.assert_not_called()

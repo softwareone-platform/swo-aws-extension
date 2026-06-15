@@ -23,6 +23,8 @@ def test_agreement_syncer_sync_success(
     agreement,
     mock_get_accepted_transfer_for_account,
     mock_sync_responsibility_transfer_id_method,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
     syncer,
 ):
     mock_get_accepted_transfer_for_account.return_value = {
@@ -116,6 +118,8 @@ def test_sync_agreements_with_active_transfer(
     mock_terminate_agreement_method,
     mock_delete_billing_group_method,
     mock_sync_responsibility_transfer_id_method,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
     mpt_client,
 ):
     mock_get_agreements_by_query.return_value = [agreement]

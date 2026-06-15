@@ -458,3 +458,42 @@ class AWSClient:
             aws_session_token=self.credentials["SessionToken"],
             region_name="us-east-1",
         )
+
+
+def _extract_linked_account_keys(cost_and_usage: list[dict]) -> list[str]:
+    keys: list[str] = []
+    for period in cost_and_usage:
+        for group in period.get("Groups", []):
+            keys.extend(group.get("Keys", []))
+    return keys
+
+
+def get_linked_accounts_with_usage(
+    aws_client: AWSClient,
+    mpa_account_id: str,
+    billing_period: BillingPeriod,
+    agreement_id: str = "",
+) -> list[str]:
+    """Return linked account IDs that have cost usage for the given MPA and billing period."""
+    accounts: list[str] = []
+    for billing_view in aws_client.get_billing_views_by_account_id(
+        mpa_account_id,
+        start_date=billing_period.start_date,
+        end_date=billing_period.last_day,
+    ):
+        try:
+            cost_and_usage = aws_client.get_cost_and_usage(
+                billing_period=billing_period,
+                view_arn=billing_view.get("arn"),
+                group_by=[{"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"}],
+            )
+        except AWSError as error:
+            logger.info(
+                "%s - Error retrieving cost and usage for billing view %s: %s",
+                agreement_id,
+                billing_view.get("arn"),
+                error,
+            )
+            continue
+        accounts.extend(_extract_linked_account_keys(cost_and_usage))
+    return accounts
