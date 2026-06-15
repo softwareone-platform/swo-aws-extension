@@ -2,6 +2,9 @@ from swo_aws_extension.constants import AWSRecordTypeEnum
 from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.base import (
     JournalLineProcessor,
 )
+from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.bundle_discount import (  # noqa: E501
+    BundleDiscountJournalLineProcessor,
+)
 from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.credit import (
     CreditJournalLineProcessor,
 )
@@ -28,6 +31,7 @@ def _build_processor_registry() -> dict[str, JournalLineProcessor]:
     support = SupportJournalLineProcessor()
     credit = CreditJournalLineProcessor()
     marketplace = MarketplaceJournalLineProcessor()
+    bundle_discount = BundleDiscountJournalLineProcessor()
 
     return {
         AWSRecordTypeEnum.USAGE: default,
@@ -36,6 +40,9 @@ def _build_processor_registry() -> dict[str, JournalLineProcessor]:
         AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE: default,
         AWSRecordTypeEnum.CREDIT: credit,
         "MARKETPLACE": marketplace,
+        AWSRecordTypeEnum.BUNDLE_DISCOUNT: bundle_discount,
+        AWSRecordTypeEnum.OTHER: default,
+        AWSRecordTypeEnum.FLAT_RATE_SUBSCRIPTION: default,
     }
 
 
