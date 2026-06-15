@@ -38,7 +38,7 @@ dev = [
   "ipython==9.*",
   "mypy==2.1.*",
   "pre-commit==4.6.*",
-  "pytest==9.0.*",
+  "pytest==9.1.*",
   "pytest-cov==7.1.*",
   "pytest-deadfixtures==3.1.*",
   "pytest-django==4.12.*",
@@ -228,6 +228,7 @@ ignore = [
   "PLR2004", # do not report magic numbers
   "PLR6301", # do not require classmethod / staticmethod when self not used
   "PT011", # pytest.raises({exception}) is too broad, set the match parameter or use a more specific exception
+  "RUF076", # allow `autouse=True` in pytest fixtures (new rule in ruff 0.15.17)
   "TRY003", # long exception messages from `tryceratops`
 ]
 external = [ "AAA", "WPS" ]
