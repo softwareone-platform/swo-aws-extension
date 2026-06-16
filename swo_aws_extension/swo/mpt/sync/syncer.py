@@ -3,6 +3,7 @@ import logging
 from functools import cache
 from typing import Any, override
 
+from dateutil.relativedelta import relativedelta
 from mpt_api_client.exceptions import MPTError
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import (
@@ -12,6 +13,7 @@ from mpt_extension_sdk.mpt_http.mpt import (
     get_subscriptions_by_query,
     terminate_subscription,
     update_agreement,
+    update_agreement_subscription,
 )
 from mpt_extension_sdk.mpt_http.wrap_http_error import wrap_mpt_http_error
 
@@ -35,12 +37,14 @@ from swo_aws_extension.parameters import (
     get_billing_group_arn,
     get_relationship_id,
     get_responsibility_transfer_id,
+    get_termination_date,
 )
 from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 logger = logging.getLogger(__name__)
 
+LINKED_ACCOUNT_INACTIVITY_MONTHS = 3
 
 AgreementType = dict[str, Any]
 
@@ -275,19 +279,20 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
     def _sync_subscriptions(
         self, agreement: AgreementType, linked_accounts: list[dict[str, str]]
     ) -> None:
-        if not linked_accounts:
-            return
-        subscription_items = get_product_items_by_skus(
-            self.mpt_client, agreement["product"]["id"], AWS_ITEMS_SKUS
-        )
-
-        for account_info in linked_accounts:
-            self._ensure_subscription(
-                agreement,
-                subscription_items,
-                account_info["account_id"],
-                account_info["account_name"],
+        if linked_accounts:
+            subscription_items = get_product_items_by_skus(
+                self.mpt_client, agreement["product"]["id"], AWS_ITEMS_SKUS
             )
+            for account_info in linked_accounts:
+                self._ensure_subscription(
+                    agreement,
+                    subscription_items,
+                    account_info["account_id"],
+                    account_info["account_name"],
+                )
+
+        linked_account_ids = {acc["account_id"] for acc in linked_accounts}
+        self._handle_inactive_subscriptions(agreement, linked_account_ids)
 
     def _ensure_subscription(
         self,
@@ -308,12 +313,22 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
             None,
         )
         if existing:
-            logger.info(
-                "%s - Subscription for linked account %s already exists (%s), skipping",
-                agreement_id,
-                account_id,
-                existing.get("id"),
-            )
+            termination_date = get_termination_date(existing)
+            if termination_date:
+                logger.info(
+                    "%s - Linked account %s is active again - clearing countdown (%s)",
+                    agreement_id,
+                    account_id,
+                    existing["id"],
+                )
+                self._clear_inactivity_countdown(agreement_id, existing["id"])
+            else:
+                logger.info(
+                    "%s - Subscription for linked account %s already exists (%s), skipping",
+                    agreement_id,
+                    account_id,
+                    existing["id"],
+                )
             return
         if self.dry_run:
             logger.info(
@@ -354,6 +369,159 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
             account_id,
         )
 
+    def _clear_inactivity_countdown(self, agreement_id: str, subscription_id: str) -> None:
+        if self.dry_run:
+            logger.info(
+                "%s - dry run mode - skipping countdown clear for subscription: %s",
+                agreement_id,
+                subscription_id,
+            )
+            return
+        try:
+            update_agreement_subscription(
+                self.mpt_client,
+                subscription_id,
+                parameters={
+                    ParamPhasesEnum.FULFILLMENT.value: [
+                        {
+                            "externalId": FulfillmentParametersEnum.TERMINATION_DATE.value,
+                            "value": "",
+                        }
+                    ]
+                },
+            )
+        except MPTError:
+            msg = (
+                f"{agreement_id} - Error clearing inactivity countdown "
+                f"for subscription {subscription_id}"
+            )
+            logger.exception(msg)
+            TeamsNotificationManager().send_exception(self._operation_description, msg)
+
+    def _set_inactivity_countdown(
+        self, agreement_id: str, subscription_id: str, termination_date: str
+    ) -> None:
+        logger.info(
+            "%s - Setting inactivity countdown to %s for subscription %s",
+            agreement_id,
+            termination_date,
+            subscription_id,
+        )
+        if self.dry_run:
+            logger.info(
+                "%s - dry run mode - skipping countdown set for subscription: %s",
+                agreement_id,
+                subscription_id,
+            )
+            return
+        try:
+            update_agreement_subscription(
+                self.mpt_client,
+                subscription_id,
+                parameters={
+                    ParamPhasesEnum.FULFILLMENT.value: [
+                        {
+                            "externalId": FulfillmentParametersEnum.TERMINATION_DATE.value,
+                            "value": termination_date,
+                        }
+                    ]
+                },
+            )
+        except Exception:
+            msg = (
+                f"{agreement_id} - Error setting inactivity countdown "
+                f"for subscription {subscription_id}"
+            )
+            logger.exception(msg)
+            TeamsNotificationManager().send_exception(self._operation_description, msg)
+
+    def _terminate_linked_account_subscription(
+        self, agreement_id: str, subscription_id: str
+    ) -> None:
+        logger.info(
+            "%s - Inactivity countdown expired for subscription %s - terminating",
+            agreement_id,
+            subscription_id,
+        )
+        if self.dry_run:
+            logger.info(
+                "%s - dry run mode - skipping subscription termination: %s",
+                agreement_id,
+                subscription_id,
+            )
+            return
+        try:
+            terminate_subscription(
+                self.mpt_client,
+                subscription_id,
+                f"Linked account inactive: no usage for {LINKED_ACCOUNT_INACTIVITY_MONTHS} months",
+            )
+        except Exception:
+            msg = (
+                f"{agreement_id} - Error terminating linked account "
+                f"subscription {subscription_id} after inactivity period"
+            )
+            logger.exception(msg)
+            TeamsNotificationManager().send_exception(self._operation_description, msg)
+
+    def _handle_inactive_subscriptions(
+        self, agreement: AgreementType, linked_account_ids: set[str]
+    ) -> None:
+        master_payer_id = agreement.get("externalIds", {}).get("vendor", "")
+        active_statuses = {SubscriptionStatus.ACTIVE, SubscriptionStatus.UPDATING}
+        termination_date = dt.datetime.now(dt.UTC).date() + relativedelta(
+            months=LINKED_ACCOUNT_INACTIVITY_MONTHS
+        )
+
+        for sub in agreement.get("subscriptions", []):
+            if sub.get("status") not in active_statuses:
+                continue
+            sub_vendor_id = sub.get("externalIds", {}).get("vendor", "")
+            if not sub_vendor_id or sub_vendor_id == master_payer_id:
+                continue
+            if sub_vendor_id in linked_account_ids:
+                continue
+            current_termination_date = get_termination_date(sub)
+
+            if current_termination_date:
+                logger.info(
+                    "%s - Inactivity countdown already set for subscription %s, skipping",
+                    agreement.get("id"),
+                    sub["id"],
+                )
+                continue
+            self._set_inactivity_countdown(
+                agreement.get("id", ""), sub["id"], termination_date.isoformat()
+            )
+
+    def _terminate_expired_subscriptions(self, agreement: AgreementType) -> None:
+        master_payer_id = agreement.get("externalIds", {}).get("vendor", "")
+        active_statuses = {SubscriptionStatus.ACTIVE, SubscriptionStatus.UPDATING}
+        today = dt.datetime.now(dt.UTC).date()
+
+        for sub in agreement.get("subscriptions", []):
+            if sub.get("status") not in active_statuses:
+                continue
+            sub_vendor_id = sub.get("externalIds", {}).get("vendor", "")
+            if not sub_vendor_id or sub_vendor_id == master_payer_id:
+                continue
+            termination_date_str = (
+                get_termination_date(sub)
+                if sub.get("parameters", {}).get(ParamPhasesEnum.FULFILLMENT.value)
+                else None
+            )
+            if not termination_date_str:
+                continue
+            if dt.date.fromisoformat(termination_date_str) > today:
+                logger.info(
+                    "%s - Inactivity countdown not expired for subscription %s (expires %s)",
+                    agreement.get("id"),
+                    sub["id"],
+                    termination_date_str,
+                )
+                continue
+            self._terminate_linked_account_subscription(agreement.get("id", ""), sub["id"])
+
     def _get_billing_period(self) -> BillingPeriod:
         today = dt.datetime.now(dt.UTC).date()
         next_month = today.replace(day=MINIMUM_DAYS_MONTH) + dt.timedelta(days=4)
@@ -384,6 +552,7 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
             "%s - Found %d linked accounts with usage", agreement.get("id"), len(linked_accounts)
         )
         self._sync_subscriptions(agreement, linked_accounts)
+        self._terminate_expired_subscriptions(agreement)
 
         logger.info("%s - End - Sync completed", agreement.get("id"))
 
@@ -455,7 +624,10 @@ def synchronize_agreements(
         dry_run: Whether to perform a dry run.
     """
     product_ids = set(product_ids)
-    select = "&select=parameters,subscriptions,authorization.externalIds.operations"
+    select = (
+        "&select=parameters,subscriptions.parameters"
+        ",subscriptions,authorization.externalIds.operations"
+    )
     if agreement_ids:
         rql_filter = (
             RQLQuery(id__in=agreement_ids)

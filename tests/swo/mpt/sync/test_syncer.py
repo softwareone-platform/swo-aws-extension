@@ -1,11 +1,18 @@
+import datetime as dt
+
 import pytest
+from dateutil.relativedelta import relativedelta
+from freezegun import freeze_time
 from mpt_api_client.exceptions import MPTError
 
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import (
+    FulfillmentParametersEnum,
+    ParamPhasesEnum,
     ResponsibilityTransferStatus,
 )
 from swo_aws_extension.swo.mpt.sync.syncer import (
+    LINKED_ACCOUNT_INACTIVITY_MONTHS,
     AgreementProcessorError,
     get_accepted_inbound_responsibility_transfers,
     get_accepted_transfer_for_account,
@@ -550,6 +557,7 @@ def test_sync_subscriptions_skips_existing(
         "id": "SUB-EXISTING",
         "status": "Active",
         "externalIds": {"vendor": "111111111111"},
+        "parameters": {"fulfillment": []},
     }
     agreement = agreement_factory(subscriptions=[existing_sub])
     mock_get_accepted_transfer_for_account.return_value = {
@@ -639,3 +647,576 @@ def test_sync_subscriptions_create_error(
     syncer.process(agreement)  # act
 
     assert mock_create_agreement_subscription.call_count == 1
+
+
+def test_ensure_subscription_existing_no_countdown_skips_update(
+    agreement_factory,
+    syncer,
+    mock_get_accepted_transfer_for_account,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_get_product_items_by_skus,
+    mock_sync_responsibility_transfer_id_method,
+    mock_update_agreement_subscription,
+):
+    existing_sub = {
+        "id": "SUB-EXISTING",
+        "status": "Active",
+        "externalIds": {"vendor": "111111111111"},
+        "parameters": {"fulfillment": []},
+    }
+    agreement = agreement_factory(subscriptions=[existing_sub])
+    mock_get_accepted_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+    }
+    mock_get_linked_accounts_with_usage.return_value = [
+        {"account_id": "111111111111", "account_name": "Test Account"}
+    ]
+
+    syncer.process(agreement)  # act
+
+    mock_update_agreement_subscription.assert_not_called()
+
+
+def test_ensure_subscription_clears_countdown_when_account_active_again(
+    agreement_factory,
+    syncer,
+    mock_get_accepted_transfer_for_account,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_get_product_items_by_skus,
+    mock_sync_responsibility_transfer_id_method,
+    mock_update_agreement_subscription,
+):
+    existing_sub = {
+        "id": "SUB-EXISTING",
+        "status": "Active",
+        "externalIds": {"vendor": "111111111111"},
+        "parameters": {
+            "fulfillment": [
+                {
+                    "externalId": FulfillmentParametersEnum.TERMINATION_DATE.value,
+                    "value": "2026-09-16",
+                }
+            ]
+        },
+    }
+    agreement = agreement_factory(subscriptions=[existing_sub])
+    mock_get_accepted_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+    }
+    mock_get_linked_accounts_with_usage.return_value = [
+        {"account_id": "111111111111", "account_name": "Test Account"}
+    ]
+
+    syncer.process(agreement)  # act
+
+    mock_update_agreement_subscription.assert_called_once_with(
+        syncer.mpt_client,
+        "SUB-EXISTING",
+        parameters={
+            ParamPhasesEnum.FULFILLMENT.value: [
+                {"externalId": FulfillmentParametersEnum.TERMINATION_DATE.value, "value": ""}
+            ]
+        },
+    )
+
+
+def test_ensure_subscription_clears_countdown_dry_run(
+    agreement_factory,
+    syncer_dry_run,
+    mock_get_accepted_transfer_for_account,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_get_product_items_by_skus,
+    mock_sync_responsibility_transfer_id_method,
+    mock_update_agreement_subscription,
+):
+    existing_sub = {
+        "id": "SUB-EXISTING",
+        "status": "Active",
+        "externalIds": {"vendor": "111111111111"},
+        "parameters": {
+            "fulfillment": [
+                {
+                    "externalId": FulfillmentParametersEnum.TERMINATION_DATE.value,
+                    "value": "2026-09-16",
+                }
+            ]
+        },
+    }
+    agreement = agreement_factory(subscriptions=[existing_sub])
+    mock_get_accepted_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+    }
+    mock_get_linked_accounts_with_usage.return_value = [
+        {"account_id": "111111111111", "account_name": "Test Account"}
+    ]
+
+    syncer_dry_run.process(agreement)  # act
+
+    mock_update_agreement_subscription.assert_not_called()
+
+
+def test_ensure_subscription_clears_countdown_logs_exception_on_error(
+    agreement_factory,
+    syncer,
+    mock_get_accepted_transfer_for_account,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_get_product_items_by_skus,
+    mock_sync_responsibility_transfer_id_method,
+    mock_update_agreement_subscription,
+    mock_send_exception,
+):
+    existing_sub = {
+        "id": "SUB-EXISTING",
+        "status": "Active",
+        "externalIds": {"vendor": "111111111111"},
+        "parameters": {
+            "fulfillment": [
+                {
+                    "externalId": FulfillmentParametersEnum.TERMINATION_DATE.value,
+                    "value": "2026-09-16",
+                }
+            ]
+        },
+    }
+    agreement = agreement_factory(subscriptions=[existing_sub])
+    mock_get_accepted_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+    }
+    mock_get_linked_accounts_with_usage.return_value = [
+        {"account_id": "111111111111", "account_name": "Test Account"}
+    ]
+    mock_update_agreement_subscription.side_effect = Exception("update failed")
+
+    syncer.process(agreement)  # act
+
+    mock_send_exception.assert_called_once()
+
+
+@freeze_time("2026-06-16")
+def test_handle_inactive_subscriptions_sets_countdown(
+    agreement_factory,
+    syncer,
+    mock_get_accepted_transfer_for_account,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_get_product_items_by_skus,
+    mock_sync_responsibility_transfer_id_method,
+    mock_update_agreement_subscription,
+):
+    linked_sub = {
+        "id": "SUB-LINKED",
+        "status": "Active",
+        "externalIds": {"vendor": "222222222222"},
+        "parameters": {"fulfillment": []},
+    }
+    agreement = agreement_factory(subscriptions=[linked_sub])
+    mock_get_accepted_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+    }
+    mock_get_linked_accounts_with_usage.return_value = []
+    expected_date = dt.date(2026, 6, 16) + relativedelta(months=LINKED_ACCOUNT_INACTIVITY_MONTHS)
+
+    syncer.process(agreement)  # act
+
+    mock_update_agreement_subscription.assert_called_once_with(
+        syncer.mpt_client,
+        "SUB-LINKED",
+        parameters={
+            ParamPhasesEnum.FULFILLMENT.value: [
+                {
+                    "externalId": FulfillmentParametersEnum.TERMINATION_DATE.value,
+                    "value": expected_date.isoformat(),
+                }
+            ]
+        },
+    )
+
+
+def test_handle_inactive_subscriptions_skips_if_countdown_already_set(
+    agreement_factory,
+    syncer,
+    mock_get_accepted_transfer_for_account,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_get_product_items_by_skus,
+    mock_sync_responsibility_transfer_id_method,
+    mock_update_agreement_subscription,
+):
+    linked_sub = {
+        "id": "SUB-LINKED",
+        "status": "Active",
+        "externalIds": {"vendor": "222222222222"},
+        "parameters": {
+            "fulfillment": [
+                {
+                    "externalId": FulfillmentParametersEnum.TERMINATION_DATE.value,
+                    "value": "2026-09-16",
+                }
+            ]
+        },
+    }
+    agreement = agreement_factory(subscriptions=[linked_sub])
+    mock_get_accepted_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+    }
+    mock_get_linked_accounts_with_usage.return_value = []
+
+    syncer.process(agreement)  # act
+
+    mock_update_agreement_subscription.assert_not_called()
+
+
+def test_handle_inactive_subscriptions_skips_master_payer(
+    agreement_factory,
+    syncer,
+    mock_get_accepted_transfer_for_account,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_get_product_items_by_skus,
+    mock_sync_responsibility_transfer_id_method,
+    mock_update_agreement_subscription,
+):
+    """Master payer subscription is never touched by inactive handling."""
+    master_sub = {
+        "id": "SUB-MASTER",
+        "status": "Active",
+        "externalIds": {"vendor": "225989344502"},  # matches agreement externalIds.vendor
+        "parameters": {"fulfillment": []},
+    }
+    agreement = agreement_factory(vendor_id="225989344502", subscriptions=[master_sub])
+    mock_get_accepted_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+    }
+    mock_get_linked_accounts_with_usage.return_value = []
+
+    syncer.process(agreement)  # act
+
+    mock_update_agreement_subscription.assert_not_called()
+
+
+def test_handle_inactive_subscriptions_skips_subscriptions_in_usage_list(
+    agreement_factory,
+    syncer,
+    mock_get_accepted_transfer_for_account,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_get_product_items_by_skus,
+    mock_sync_responsibility_transfer_id_method,
+    mock_update_agreement_subscription,
+):
+    """Subscriptions whose account is in the usage list are not touched."""
+    linked_sub = {
+        "id": "SUB-LINKED",
+        "status": "Active",
+        "externalIds": {"vendor": "111111111111"},
+        "parameters": {"fulfillment": []},
+    }
+    agreement = agreement_factory(subscriptions=[linked_sub])
+    mock_get_accepted_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+    }
+    mock_get_linked_accounts_with_usage.return_value = [
+        {"account_id": "111111111111", "account_name": "Test Account"}
+    ]
+
+    syncer.process(agreement)  # act
+
+    mock_update_agreement_subscription.assert_not_called()
+
+
+def test_handle_inactive_subscriptions_dry_run(
+    agreement_factory,
+    syncer_dry_run,
+    mock_get_accepted_transfer_for_account,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_get_product_items_by_skus,
+    mock_sync_responsibility_transfer_id_method,
+    mock_update_agreement_subscription,
+):
+    """TC-03 dry run: Countdown set is skipped in dry-run mode."""
+    linked_sub = {
+        "id": "SUB-LINKED",
+        "status": "Active",
+        "externalIds": {"vendor": "222222222222"},
+        "parameters": {"fulfillment": []},
+    }
+    agreement = agreement_factory(subscriptions=[linked_sub])
+    mock_get_accepted_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+    }
+    mock_get_linked_accounts_with_usage.return_value = []
+
+    syncer_dry_run.process(agreement)  # act
+
+    mock_update_agreement_subscription.assert_not_called()
+
+
+def test_handle_inactive_subscriptions_exception(
+    agreement_factory,
+    syncer,
+    mock_get_accepted_transfer_for_account,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_get_product_items_by_skus,
+    mock_sync_responsibility_transfer_id_method,
+    mock_update_agreement_subscription,
+    mock_send_exception,
+):
+    """Error setting countdown is caught and reported via Teams notification."""
+    linked_sub = {
+        "id": "SUB-LINKED",
+        "status": "Active",
+        "externalIds": {"vendor": "222222222222"},
+        "parameters": {"fulfillment": []},
+    }
+    agreement = agreement_factory(subscriptions=[linked_sub])
+    mock_get_accepted_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+    }
+    mock_get_linked_accounts_with_usage.return_value = []
+    mock_update_agreement_subscription.side_effect = Exception("update failed")
+
+    syncer.process(agreement)  # act
+
+    mock_send_exception.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# _terminate_expired_subscriptions
+# ---------------------------------------------------------------------------
+
+
+@freeze_time("2026-06-16")
+def test_terminate_expired_subscriptions_terminates_past_countdown(
+    agreement_factory,
+    syncer,
+    mock_get_accepted_transfer_for_account,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_get_product_items_by_skus,
+    mock_sync_responsibility_transfer_id_method,
+    mock_terminate_subscription,
+):
+    """TC-06: Subscription whose countdown is today or earlier is terminated."""
+    linked_sub = {
+        "id": "SUB-LINKED",
+        "status": "Active",
+        "externalIds": {"vendor": "222222222222"},
+        "parameters": {
+            "fulfillment": [
+                {
+                    "externalId": FulfillmentParametersEnum.TERMINATION_DATE.value,
+                    "value": "2026-06-16",
+                }
+            ]
+        },
+    }
+    agreement = agreement_factory(subscriptions=[linked_sub])
+    mock_get_accepted_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+    }
+    mock_get_linked_accounts_with_usage.return_value = []
+
+    syncer.process(agreement)  # act
+
+    mock_terminate_subscription.assert_called_once_with(
+        syncer.mpt_client,
+        "SUB-LINKED",
+        f"Linked account inactive: no usage for {LINKED_ACCOUNT_INACTIVITY_MONTHS} months",
+    )
+
+
+@freeze_time("2026-06-16")
+def test_terminate_expired_subscriptions_skips_future_countdown(
+    agreement_factory,
+    syncer,
+    mock_get_accepted_transfer_for_account,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_get_product_items_by_skus,
+    mock_sync_responsibility_transfer_id_method,
+    mock_terminate_subscription,
+):
+    """TC-07: Subscription with future countdown is not terminated."""
+    linked_sub = {
+        "id": "SUB-LINKED",
+        "status": "Active",
+        "externalIds": {"vendor": "222222222222"},
+        "parameters": {
+            "fulfillment": [
+                {
+                    "externalId": FulfillmentParametersEnum.TERMINATION_DATE.value,
+                    "value": "2026-09-16",
+                }
+            ]
+        },
+    }
+    agreement = agreement_factory(subscriptions=[linked_sub])
+    mock_get_accepted_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+    }
+    mock_get_linked_accounts_with_usage.return_value = []
+
+    syncer.process(agreement)  # act
+
+    mock_terminate_subscription.assert_not_called()
+
+
+def test_terminate_expired_subscriptions_skips_no_countdown(
+    agreement_factory,
+    syncer,
+    mock_get_accepted_transfer_for_account,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_get_product_items_by_skus,
+    mock_sync_responsibility_transfer_id_method,
+    mock_update_agreement_subscription,
+    mock_terminate_subscription,
+):
+    """Subscriptions with no countdown are not terminated."""
+    linked_sub = {
+        "id": "SUB-LINKED",
+        "status": "Active",
+        "externalIds": {"vendor": "222222222222"},
+        "parameters": {"fulfillment": []},
+    }
+    agreement = agreement_factory(subscriptions=[linked_sub])
+    mock_get_accepted_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+    }
+    mock_get_linked_accounts_with_usage.return_value = []
+
+    syncer.process(agreement)  # act
+
+    mock_terminate_subscription.assert_not_called()
+
+
+@freeze_time("2026-06-16")
+def test_terminate_expired_subscriptions_skips_master_payer(
+    agreement_factory,
+    syncer,
+    mock_get_accepted_transfer_for_account,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_get_product_items_by_skus,
+    mock_sync_responsibility_transfer_id_method,
+    mock_terminate_subscription,
+):
+    """Master payer subscription is never terminated by the cleanup step."""
+    master_sub = {
+        "id": "SUB-MASTER",
+        "status": "Active",
+        "externalIds": {"vendor": "225989344502"},
+        "parameters": {
+            "fulfillment": [
+                {
+                    "externalId": FulfillmentParametersEnum.TERMINATION_DATE.value,
+                    "value": "2026-01-01",
+                }
+            ]
+        },
+    }
+    agreement = agreement_factory(vendor_id="225989344502", subscriptions=[master_sub])
+    mock_get_accepted_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+    }
+    mock_get_linked_accounts_with_usage.return_value = []
+
+    syncer.process(agreement)  # act
+
+    mock_terminate_subscription.assert_not_called()
+
+
+@freeze_time("2026-06-16")
+def test_terminate_expired_subscriptions_dry_run(
+    agreement_factory,
+    syncer_dry_run,
+    mock_get_accepted_transfer_for_account,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_get_product_items_by_skus,
+    mock_sync_responsibility_transfer_id_method,
+    mock_terminate_subscription,
+):
+    """Termination is skipped in dry-run mode."""
+    linked_sub = {
+        "id": "SUB-LINKED",
+        "status": "Active",
+        "externalIds": {"vendor": "222222222222"},
+        "parameters": {
+            "fulfillment": [
+                {
+                    "externalId": FulfillmentParametersEnum.TERMINATION_DATE.value,
+                    "value": "2026-06-16",
+                }
+            ]
+        },
+    }
+    agreement = agreement_factory(subscriptions=[linked_sub])
+    mock_get_accepted_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+    }
+    mock_get_linked_accounts_with_usage.return_value = []
+
+    syncer_dry_run.process(agreement)  # act
+
+    mock_terminate_subscription.assert_not_called()
+
+
+@freeze_time("2026-06-16")
+def test_terminate_expired_subscriptions_exception(
+    agreement_factory,
+    syncer,
+    mock_get_accepted_transfer_for_account,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_get_product_items_by_skus,
+    mock_sync_responsibility_transfer_id_method,
+    mock_terminate_subscription,
+    mock_send_exception,
+):
+    """Error terminating subscription is caught and reported via Teams notification."""
+    linked_sub = {
+        "id": "SUB-LINKED",
+        "status": "Active",
+        "externalIds": {"vendor": "222222222222"},
+        "parameters": {
+            "fulfillment": [
+                {
+                    "externalId": FulfillmentParametersEnum.TERMINATION_DATE.value,
+                    "value": "2026-06-16",
+                }
+            ]
+        },
+    }
+    agreement = agreement_factory(subscriptions=[linked_sub])
+    mock_get_accepted_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+    }
+    mock_get_linked_accounts_with_usage.return_value = []
+    mock_terminate_subscription.side_effect = Exception("terminate failed")
+
+    syncer.process(agreement)  # act
+
+    mock_send_exception.assert_called_once()

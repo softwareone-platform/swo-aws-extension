@@ -128,6 +128,13 @@ def mock_update_agreement(mocker):
 
 
 @pytest.fixture
+def mock_update_agreement_subscription(mocker):
+    return mocker.patch(
+        "swo_aws_extension.swo.mpt.sync.syncer.update_agreement_subscription", autospec=True
+    )
+
+
+@pytest.fixture
 def mock_get_billing_group_arn(mocker):
     return mocker.patch("swo_aws_extension.swo.mpt.sync.syncer.get_billing_group_arn")
 
