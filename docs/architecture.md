@@ -46,7 +46,10 @@ The runtime is organised as a pipeline-driven fulfilment flow:
 5. **Integration clients** (`aws/`, `swo/`, `airtable/`) — typed clients that
    wrap each external system behind a single boundary.
 6. **Background jobs** (`flows/jobs/`) — reporting and sync work invoked by
-   management commands, including billing journal generation.
+   management commands, including billing journal generation. The
+   `AgreementSyncer` background job also queries Cost Explorer for linked AWS
+   accounts with active usage and creates an MPT subscription per account that
+   does not already have one (`swo_aws_extension/swo/mpt/sync/syncer.py`).
 
 ## Major components
 
@@ -54,9 +57,9 @@ The runtime is organised as a pipeline-driven fulfilment flow:
 |---|---|
 | `swo_aws_extension/` | Extension config, runtime `config.py`, order `parameters.py`, `constants.py` |
 | `swo_aws_extension/flows/` | Fulfilment orchestration, pipelines, steps, validation, order context |
-| `swo_aws_extension/flows/jobs/` | Background jobs: billing journal, reports, FinOps entitlement sync |
+| `swo_aws_extension/flows/jobs/` | Background jobs: billing journal, reports, FinOps entitlement sync, MPT subscription sync for linked AWS accounts |
 | `swo_aws_extension/processors/` | Chain-of-responsibility processors for querying AWS roles, handshakes, transfers |
-| `swo_aws_extension/aws/` | `AWSClient` (boto3 AssumeRole, account/billing/CUR operations) |
+| `swo_aws_extension/aws/` | `AWSClient` (boto3 AssumeRole, account/billing/CUR operations, Cost Explorer with dimension attributes) |
 | `swo_aws_extension/swo/` | External-service clients (CCP, CRM, FinOps, CCO, Cloud Orchestrator, MPT, Key Vault, Blob, notifications, OpenID) |
 | `swo_aws_extension/airtable/` | FinOps entitlements Airtable sync |
 | `swo_aws_extension/management/` | Django management commands run by the worker |
