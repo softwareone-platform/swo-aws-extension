@@ -124,12 +124,16 @@ class FinOpsEntitlementsProcessor:  # noqa: WPS214
         accounts = get_linked_accounts_with_usage(
             aws_client, mpa_account_id, billing_period, agreement_id
         )
-        for account_id in accounts:
-            existing = self._find_existing_entitlement(finops_entitlements, account_id)
+        for account_info in accounts:
+            existing = self._find_existing_entitlement(
+                finops_entitlements, account_info["account_id"]
+            )
             if existing:
-                self._update_existing_entitlement(agreement_id, account_id, buyer_id, existing)
+                self._update_existing_entitlement(
+                    agreement_id, account_info["account_id"], buyer_id, existing
+                )
             else:
-                self._create_new_entitlement(agreement_id, account_id, buyer_id)
+                self._create_new_entitlement(agreement_id, account_info["account_id"], buyer_id)
 
     def _find_existing_entitlement(
         self, entitlements: list[FinOpsRecord], account_id: str
