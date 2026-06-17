@@ -2,7 +2,7 @@ from django.conf import settings
 from mpt_extension_sdk.core.utils import setup_client
 
 from swo_aws_extension.management.commands_helpers import StyledPrintCommand
-from swo_aws_extension.swo.mpt.sync.syncer import synchronize_agreements
+from swo_aws_extension.swo.mpt.sync.agreement_syncer import synchronize_agreements
 
 
 class Command(StyledPrintCommand):
