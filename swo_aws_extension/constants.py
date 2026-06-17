@@ -130,6 +130,7 @@ class FulfillmentParametersEnum(StrEnum):
     CCO_CONTRACT_NUMBER = "ccoContractNumber"
     ERP_PROJECT_NO = "erpProjectNo"
     TERMINATION_DATE = "terminationDate"
+    SPLIT_BILLING_POLICY = "splitBillingPolicy"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
@@ -279,3 +280,10 @@ DEFAULT_SCU = "DM-SCU-000000"
 
 
 ROLES_DEPLOYED_CRM_TICKET_COMMENT = "Customer roles have been deployed. Please resolve this ticket."
+
+
+class SplitBillingPolicyEnum(StrEnum):
+    """Enum for split billing policies."""
+
+    MASTER_PAYER = "MASTER_PAYER"
+    LINKED_ACCOUNT_PERCENTAGE = "LINKED_ACCOUNT_PERCENTAGE"

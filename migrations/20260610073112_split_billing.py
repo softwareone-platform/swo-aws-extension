@@ -9,6 +9,11 @@ from mpt_tool.migration.mixins import MPTAPIClientMixin
 
 logger = logging.getLogger(__name__)
 
+_TERMINATION_DATE_EXTERNAL_ID = "terminationDate"
+_SPLIT_BILLING_POLICY_EXTERNAL_ID = "splitBillingPolicy"
+_SPLIT_BILLING_MASTER_PAYER = "MASTER_PAYER"
+_SPLIT_BILLING_LINKED_ACCOUNT_PERCENTAGE = "LINKED_ACCOUNT_PERCENTAGE"
+
 _termination_date_parameter = {
     "name": "Termination Date",
     "scope": "Subscription",
@@ -16,7 +21,7 @@ _termination_date_parameter = {
     "context": "None",
     "description": "Termination Date",
     "multiple": False,
-    "externalId": "terminationDate",
+    "externalId": _TERMINATION_DATE_EXTERNAL_ID,
     "displayOrder": 130,
     "constraints": {"required": False},
     "options": {
@@ -27,9 +32,38 @@ _termination_date_parameter = {
     "status": "Active",
 }
 
+_split_billing_policy_parameter = {
+    "name": "Shared-Charges Policy",
+    "scope": "Agreement",
+    "phase": "Fulfillment",
+    "context": "None",
+    "description": "Shared-Charges Policy",
+    "multiple": False,
+    "externalId": _SPLIT_BILLING_POLICY_EXTERNAL_ID,
+    "constraints": {"hidden": True, "required": False},
+    "options": {
+        "placeholderText": "Shared-Charges Policy",
+        "hintText": "Shared-Charges Policy",
+        "defaultValue": _SPLIT_BILLING_MASTER_PAYER,
+        "optionsList": [
+            {
+                "label": "Split billing - global concept to master payer",
+                "value": _SPLIT_BILLING_MASTER_PAYER,
+            },
+            {
+                "label": "Split billing - global concept to linked account in percentage",
+                "value": _SPLIT_BILLING_LINKED_ACCOUNT_PERCENTAGE,
+            },
+        ],
+    },
+    "type": "DropDown",
+    "status": "Active",
+    "displayOrder": 100,
+}
+
 
 class Migration(SchemaBaseMigration, MPTAPIClientMixin):
-    """Migration to add terminationDate subscription parameter for split billing."""
+    """Migration to add terminationDate and splitBillingPolicy parameters for split billing."""
 
     def run(self) -> None:
         """Run the migration."""
@@ -50,8 +84,61 @@ class Migration(SchemaBaseMigration, MPTAPIClientMixin):
 
     def _migrate_product(self, product_id: str) -> None:
         logger.info("Migrating product '%s'", product_id)
-        existing = self._get_product_parameter(product_id, "terminationDate")
-        self._ensure_parameter(product_id, existing, _termination_date_parameter)
+        existing_termination_date = self._get_product_parameter(
+            product_id, _TERMINATION_DATE_EXTERNAL_ID
+        )
+        self._ensure_parameter(product_id, existing_termination_date, _termination_date_parameter)
+
+        existing_split_billing_policy = self._get_product_parameter(
+            product_id, _SPLIT_BILLING_POLICY_EXTERNAL_ID
+        )
+        self._ensure_parameter(
+            product_id, existing_split_billing_policy, _split_billing_policy_parameter
+        )
+
+        self._migrate_agreements(product_id)
+
+    def _migrate_agreements(self, product_id: str) -> None:
+        logger.info("Migrating agreements for product '%s'", product_id)
+        query = RQLQuery(product__id=product_id) & RQLQuery(status="Active")
+        agreements = list(
+            self.mpt_client.commerce.agreements.filter(query).select("+parameters").iterate()
+        )
+        logger.info(
+            "Found %s active agreement(s) for product '%s'",
+            len(agreements),
+            product_id,
+        )
+        for agreement in agreements:
+            self._ensure_agreement_split_billing_policy(agreement.to_dict())
+
+    def _ensure_agreement_split_billing_policy(self, agreement: dict[str, Any]) -> None:
+        agreement_id = agreement["id"]
+        fulfillment_params = agreement.get("parameters", {}).get("fulfillment", [])
+        already_present = any(
+            parameter.get("externalId") == _SPLIT_BILLING_POLICY_EXTERNAL_ID
+            for parameter in fulfillment_params
+        )
+        if already_present:
+            logger.info(
+                "Parameter 'splitBillingPolicy' already exists for agreement '%s'; skipping",
+                agreement_id,
+            )
+            return
+        logger.info("Adding parameter 'splitBillingPolicy' to agreement '%s'", agreement_id)
+        self.mpt_client.commerce.agreements.update(
+            agreement_id,
+            {
+                "parameters": {
+                    "fulfillment": [
+                        {
+                            "externalId": _SPLIT_BILLING_POLICY_EXTERNAL_ID,
+                            "value": _SPLIT_BILLING_MASTER_PAYER,
+                        }
+                    ]
+                }
+            },
+        )
 
     def _ensure_parameter(
         self,
