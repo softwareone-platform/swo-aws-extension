@@ -119,3 +119,11 @@ Deployed workloads receive configuration through Helm config maps and secrets. T
 - The extension startup check in [`swo_aws_extension/apps.py`](../swo_aws_extension/apps.py) rejects multiple product ids.
 - Helm config maps and secrets under [`helm/swo-extension-aws/`](../helm/swo-extension-aws) are the best source for deployed variable names.
 - If configuration behavior is unclear, document the current code path instead of inventing expected values.
+
+## Behavioral Constants
+
+The following values are hardcoded in the source and are not configurable via environment variables:
+
+| Constant | Value | Location | Description |
+| --- | --- | --- | --- |
+| `LINKED_ACCOUNT_INACTIVITY_MONTHS` | `3` | `swo_aws_extension/swo/mpt/sync/agreement_subscription_syncer.py` | Number of months of billing inactivity before a linked-account subscription receives a termination countdown and is eventually terminated |

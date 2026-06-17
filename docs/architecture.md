@@ -46,10 +46,16 @@ The runtime is organised as a pipeline-driven fulfilment flow:
 5. **Integration clients** (`aws/`, `swo/`, `airtable/`) — typed clients that
    wrap each external system behind a single boundary.
 6. **Background jobs** (`flows/jobs/`) — reporting and sync work invoked by
-   management commands, including billing journal generation. The
-   `AgreementSyncer` background job also queries Cost Explorer for linked AWS
-   accounts with active usage and creates an MPT subscription per account that
-   does not already have one (`swo_aws_extension/swo/mpt/sync/syncer.py`).
+   management commands, including billing journal generation. The agreement sync
+   pipeline lives in `swo_aws_extension/swo/mpt/sync/` and is split across three
+   modules: `base.py` (shared `AgreementProcessor` base and error types),
+   `agreement_syncer.py` (`AgreementSyncer` — validates the AWS responsibility
+   transfer and delegates subscription lifecycle), and
+   `agreement_subscription_syncer.py` (`AgreementSubscriptionsSyncer` — queries
+   Cost Explorer for linked AWS accounts with active usage, creates a subscription
+   per active account that does not yet have one, sets an inactivity countdown of
+   `LINKED_ACCOUNT_INACTIVITY_MONTHS = 3` months on subscriptions whose accounts
+   have no usage, and terminates them once the countdown expires).
 
 ## Major components
 

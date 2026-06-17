@@ -2,10 +2,8 @@ import pytest
 from mpt_api_client.exceptions import MPTError
 
 from swo_aws_extension.aws.errors import AWSError
-from swo_aws_extension.constants import (
-    ResponsibilityTransferStatus,
-)
-from swo_aws_extension.swo.mpt.sync.syncer import (
+from swo_aws_extension.constants import ResponsibilityTransferStatus
+from swo_aws_extension.swo.mpt.sync.agreement_syncer import (
     AgreementProcessorError,
     get_accepted_inbound_responsibility_transfers,
     get_accepted_transfer_for_account,
@@ -42,18 +40,10 @@ def test_agreement_syncer_sync_success(
 
 
 @pytest.mark.parametrize(
-    ("factory_kwargs", "expected_msg", "expected_op"),
+    ("factory_kwargs", "expected_msg"),
     [
-        (
-            {"vendor_id": ""},
-            "Skipping - MPA not found",
-            "Synchronize AWS agreement subscriptions",
-        ),
-        (
-            {"pma_account_id": ""},
-            "Skipping - PMA not found",
-            "Synchronize AWS agreement subscriptions",
-        ),
+        ({"vendor_id": ""}, "Skipping - MPA not found"),
+        ({"pma_account_id": ""}, "Skipping - PMA not found"),
     ],
 )
 def test_agreement_syncer_sync_missing_accounts(
@@ -62,14 +52,13 @@ def test_agreement_syncer_sync_missing_accounts(
     syncer,
     factory_kwargs,
     expected_msg,
-    expected_op,
 ):
     mock_agreement = agreement_factory(**factory_kwargs)
 
     syncer.process(mock_agreement)  # act
 
     mock_send_warning.assert_called_once_with(
-        expected_op, f"{mock_agreement.get('id')} - {expected_msg}"
+        f"{mock_agreement.get('id')} - Synchronize AWS agreement", expected_msg
     )
 
 
@@ -84,8 +73,8 @@ def test_agreement_syncer_sync_aws_exception(
     syncer.process(agreement)  # act
 
     mock_send_warning.assert_called_once_with(
-        "Synchronize AWS agreement subscriptions",
-        f"{agreement.get('id')} - Error occurred while fetching responsibility transfers",
+        f"{agreement.get('id')} - Synchronize AWS agreement",
+        "Error occurred while fetching responsibility transfers",
     )
 
 
@@ -104,8 +93,8 @@ def test_agreement_syncer_sync_no_active_transfer(
     syncer.process(mock_agreement)  # act
 
     mock_send_warning.assert_called_once_with(
-        "Synchronize AWS agreement subscriptions",
-        f"{mock_agreement.get('id')} - agreement with an inactive transfer - terminating",
+        f"{mock_agreement.get('id')} - Synchronize AWS agreement subscriptions",
+        "Agreement with an inactive transfer - terminating",
     )
     mock_terminate_agreement_method.assert_called_once_with(mock_agreement)
     mock_delete_billing_group_method.assert_called_once_with(mock_agreement, "651706759263")
@@ -135,7 +124,7 @@ def test_sync_agreements_with_active_transfer(
     mock_terminate_agreement_method.assert_not_called()
     mock_delete_billing_group_method.assert_not_called()
     mock_get_accepted_transfer_method.assert_called_once_with(
-        agreement, "225989344502", "651706759263"
+        agreement["id"], "225989344502", "651706759263"
     )
     mock_sync_responsibility_transfer_id_method.assert_called_once_with(
         mpt_client, agreement, "rt-8lr3q6sn"
@@ -157,7 +146,7 @@ def test_synchronize_agreements_exception(
 
     assert mock_get_accepted_transfer_method.call_count == 1
     mock_get_accepted_transfer_method.assert_called_once_with(
-        agreement, "225989344502", "651706759263"
+        agreement["id"], "225989344502", "651706759263"
     )
     mock_send_exception.assert_called_once()
 
@@ -314,8 +303,8 @@ def test_terminate_agr_logs_error(
     )
     assert mock_send_exception.call_count == 1
     mock_send_exception.assert_called_once_with(
-        "Inactive transfer",
-        "AGR-2119-4550-8674-5962 - terminating agreement due to inactive transfer - "
+        "AGR-2119-4550-8674-5962 - Inactive transfer",
+        "Terminating agreement due to inactive transfer - "
         "error terminating subscription SUB-1000-2000-3000.",
     )
 
@@ -477,7 +466,7 @@ def test_sync_responsibility_transfer_id_error(
     mock_update_agreement,
     mock_get_responsibility_transfer_id,
 ):
-    mock_update_agreement.side_effect = Exception("error")
+    mock_update_agreement.side_effect = MPTError("error")
     mock_get_responsibility_transfer_id.return_value = "old"
 
     syncer.sync_responsibility_transfer_id(syncer.mpt_client, agreement, "new")  # act
@@ -497,145 +486,33 @@ def test_get_pma(agreement, syncer):
     assert result == "651706759263"
 
 
-def test_sync_subscriptions_creates_new(
+def test_remove_apn_pm_identifier_empty(
+    agreement, mock_awsclient, mock_get_relationship_id, syncer
+):
+    mock_get_relationship_id.return_value = "rel-123"
+    mock_awsclient.get_program_management_id_by_account.return_value = ""
+
+    syncer.remove_apn(agreement, "123456789012")  # act
+
+    mock_awsclient.delete_pc_relationship.assert_not_called()
+
+
+def test_synchronize_agreements_no_agreement_ids(
     agreement,
-    syncer,
-    mock_get_accepted_transfer_for_account,
+    mock_get_agreements_by_query,
+    mock_get_accepted_transfer_method,
+    mock_sync_responsibility_transfer_id_method,
     mock_awsclient,
     mock_get_linked_accounts_with_usage,
-    mock_get_product_items_by_skus,
-    mock_create_agreement_subscription,
-    mock_sync_responsibility_transfer_id_method,
+    mpt_client,
 ):
-    mock_get_accepted_transfer_for_account.return_value = {
+    mock_get_agreements_by_query.return_value = [agreement]
+    mock_get_accepted_transfer_method.return_value = {
         "Id": "rt-8lr3q6sn",
         "Status": ResponsibilityTransferStatus.ACCEPTED.value,
     }
-    mock_get_linked_accounts_with_usage.return_value = [
-        {"account_id": "111111111111", "account_name": "Test Account"}
-    ]
-    expected_subscription = {
-        "name": "Subscription for Test Account (111111111111)",
-        "autoRenew": True,
-        "externalIds": {"vendor": "111111111111"},
-        "agreement": {"id": "AGR-2119-4550-8674-5962"},
-        "template": None,
-        "lines": [{"item": {"id": "ITM-1234-1234-1234-0010"}, "quantity": 1}],
-        "parameters": {"fulfillment": []},
-    }
 
-    syncer.process(agreement)  # act
+    synchronize_agreements(mpt_client, [], ["PROD-123-456"], dry_run=False)  # act
 
-    mock_create_agreement_subscription.assert_called_once()
-    call_args = mock_create_agreement_subscription.call_args[0]
-    subscription = call_args[1]
-    assert subscription == {
-        **expected_subscription,
-        "startDate": subscription["startDate"],
-        "commitmentDate": subscription["commitmentDate"],
-    }
-
-
-def test_sync_subscriptions_skips_existing(
-    agreement_factory,
-    syncer,
-    mock_get_accepted_transfer_for_account,
-    mock_awsclient,
-    mock_get_linked_accounts_with_usage,
-    mock_get_product_items_by_skus,
-    mock_create_agreement_subscription,
-    mock_sync_responsibility_transfer_id_method,
-):
-    existing_sub = {
-        "id": "SUB-EXISTING",
-        "status": "Active",
-        "externalIds": {"vendor": "111111111111"},
-    }
-    agreement = agreement_factory(subscriptions=[existing_sub])
-    mock_get_accepted_transfer_for_account.return_value = {
-        "Id": "rt-8lr3q6sn",
-        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
-    }
-    mock_get_linked_accounts_with_usage.return_value = [
-        {"account_id": "111111111111", "account_name": "Test Account"}
-    ]
-
-    syncer.process(agreement)  # act
-
-    mock_create_agreement_subscription.assert_not_called()
-
-
-def test_sync_subscriptions_dry_run(
-    agreement,
-    syncer_dry_run,
-    mock_get_accepted_transfer_for_account,
-    mock_awsclient,
-    mock_get_linked_accounts_with_usage,
-    mock_get_product_items_by_skus,
-    mock_create_agreement_subscription,
-    mock_sync_responsibility_transfer_id_method,
-):
-    mock_get_accepted_transfer_for_account.return_value = {
-        "Id": "rt-8lr3q6sn",
-        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
-    }
-    mock_get_linked_accounts_with_usage.return_value = [
-        {"account_id": "111111111111", "account_name": "Test Account"}
-    ]
-
-    syncer_dry_run.process(agreement)  # act
-
-    mock_create_agreement_subscription.assert_not_called()
-
-
-def test_sync_subscriptions_skips_terminated(
-    agreement_factory,
-    syncer,
-    mock_get_accepted_transfer_for_account,
-    mock_awsclient,
-    mock_get_linked_accounts_with_usage,
-    mock_get_product_items_by_skus,
-    mock_create_agreement_subscription,
-    mock_sync_responsibility_transfer_id_method,
-):
-    terminated_sub = {
-        "id": "SUB-OLD",
-        "status": "Terminated",
-        "externalIds": {"vendor": "111111111111"},
-    }
-    agreement = agreement_factory(subscriptions=[terminated_sub])
-    mock_get_accepted_transfer_for_account.return_value = {
-        "Id": "rt-8lr3q6sn",
-        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
-    }
-    mock_get_linked_accounts_with_usage.return_value = [
-        {"account_id": "111111111111", "account_name": "Test Account"}
-    ]
-
-    syncer.process(agreement)  # act
-
-    mock_create_agreement_subscription.assert_called_once()
-
-
-def test_sync_subscriptions_create_error(
-    agreement,
-    syncer,
-    mock_get_accepted_transfer_for_account,
-    mock_awsclient,
-    mock_get_linked_accounts_with_usage,
-    mock_get_product_items_by_skus,
-    mock_create_agreement_subscription,
-    mock_sync_responsibility_transfer_id_method,
-):
-    mock_get_accepted_transfer_for_account.return_value = {
-        "Id": "rt-8lr3q6sn",
-        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
-    }
-    mock_get_linked_accounts_with_usage.return_value = [
-        {"account_id": "111111111111", "account_name": "Test Account"}
-    ]
-    mock_create_agreement_subscription.side_effect = MPTError("create failed")
-
-    syncer.process(agreement)  # act
-
-    assert mock_create_agreement_subscription.call_count == 1
+    mock_get_agreements_by_query.assert_called_once()
+    mock_get_accepted_transfer_method.assert_called_once()
