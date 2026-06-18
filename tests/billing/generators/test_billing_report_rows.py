@@ -30,17 +30,31 @@ TEST_AMOUNT_M5 = -5
 
 def test_generate_billing_report_rows_aggregates_metrics():
     metric1 = ServiceMetric(
-        "EC2", AWSRecordTypeEnum.USAGE, Decimal(MEDIUM_AMOUNT), "INV-E1", "INV-1"
+        service_name="EC2",
+        record_type=AWSRecordTypeEnum.USAGE,
+        start_date="2026-01-01",
+        end_date="2026-01-31",
+        amount=Decimal(MEDIUM_AMOUNT),
+        invoice_entity="INV-E1",
+        invoice_id="INV-1",
     )
     metric2 = ServiceMetric(
-        "EC2", AWSRecordTypeEnum.USAGE, Decimal(SMALL_AMOUNT), "INV-E1", "INV-1"
+        service_name="EC2",
+        record_type=AWSRecordTypeEnum.USAGE,
+        start_date="2026-01-01",
+        end_date="2026-01-31",
+        amount=Decimal(SMALL_AMOUNT),
+        invoice_entity="INV-E1",
+        invoice_id="INV-1",
     )
     metric3 = ServiceMetric(
-        "EC2",
-        AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT,
-        Decimal(TEST_AMOUNT_M5),
-        "INV-E1",
-        "INV-1",
+        service_name="EC2",
+        record_type=AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT,
+        start_date="2026-01-01",
+        end_date="2026-01-31",
+        amount=Decimal(TEST_AMOUNT_M5),
+        invoice_entity="INV-E1",
+        invoice_id="INV-1",
     )
     account_usage = AccountUsage([metric1, metric2, metric3])
     usage_result = OrganizationUsageResult(
@@ -98,7 +112,13 @@ def test_report_context_from_contexts_builds_correctly(mocker):
 
 def test_generate_billing_report_rows_defaults_exchange_rate_for_unknown_entity():
     metric = ServiceMetric(
-        "EC2", AWSRecordTypeEnum.USAGE, Decimal(MEDIUM_AMOUNT), "UNKNOWN-ENTITY", "INV-X"
+        service_name="EC2",
+        record_type=AWSRecordTypeEnum.USAGE,
+        start_date="2026-01-01",
+        end_date="2026-01-31",
+        amount=Decimal(MEDIUM_AMOUNT),
+        invoice_entity="UNKNOWN-ENTITY",
+        invoice_id="INV-X",
     )
     account_usage = AccountUsage([metric])
     usage_result = OrganizationUsageResult(
@@ -115,9 +135,23 @@ def test_generate_billing_report_rows_defaults_exchange_rate_for_unknown_entity(
 
 def test_build_by_account_groups_by_linked_account():
     metric1 = ServiceMetric(
-        "EC2", AWSRecordTypeEnum.USAGE, Decimal(MEDIUM_AMOUNT), "INV-E1", "INV-1"
+        service_name="EC2",
+        record_type=AWSRecordTypeEnum.USAGE,
+        start_date="2026-01-01",
+        end_date="2026-01-31",
+        amount=Decimal(MEDIUM_AMOUNT),
+        invoice_entity="INV-E1",
+        invoice_id="INV-1",
     )
-    metric2 = ServiceMetric("S3", AWSRecordTypeEnum.USAGE, Decimal(SMALL_AMOUNT), "INV-E1", "INV-1")
+    metric2 = ServiceMetric(
+        service_name="S3",
+        record_type=AWSRecordTypeEnum.USAGE,
+        start_date="2026-01-01",
+        end_date="2026-01-31",
+        amount=Decimal(SMALL_AMOUNT),
+        invoice_entity="INV-E1",
+        invoice_id="INV-1",
+    )
     usage_result = OrganizationUsageResult(
         reports=OrganizationReport(),
         usage_by_account={

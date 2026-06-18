@@ -600,3 +600,12 @@ def set_termination_date(order: dict, termination_date: str) -> dict[str, Any]:
     )
     fulfillment_param["value"] = termination_date
     return updated_order
+
+
+def get_split_billing_policy(source: dict[str, Any]) -> str | None:
+    """Get the split billing policy from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.SPLIT_BILLING_POLICY.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)

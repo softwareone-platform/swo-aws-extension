@@ -2,9 +2,7 @@ from decimal import Decimal
 
 import pytest
 
-from swo_aws_extension.billing.generators.journal_line import (
-    JournalLineGenerator,
-)
+from swo_aws_extension.billing.generators.journal_line import JournalLineGenerator
 from swo_aws_extension.billing.generators.line_processors.bundle_discount import (
     BUNDLE_DISCOUNT_PREFIX,
 )
@@ -39,6 +37,8 @@ def test_bundle_discount_metric_has_prefix(journal_details, generator, organizat
         service_name="Amazon S3",
         record_type=AWSRecordTypeEnum.BUNDLE_DISCOUNT,
         amount=Decimal("-25.00"),
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
     account_usage = AccountUsage(metrics=[metric])
 
@@ -53,6 +53,8 @@ def test_bundle_discount_skips_zero_amount(journal_details, generator, organizat
         service_name="Amazon S3",
         record_type=AWSRecordTypeEnum.BUNDLE_DISCOUNT,
         amount=Decimal(0),
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
     account_usage = AccountUsage(metrics=[metric])
 
@@ -66,6 +68,8 @@ def test_bundle_discount_preserves_amount(journal_details, generator, organizati
         service_name="Amazon EC2",
         record_type=AWSRecordTypeEnum.BUNDLE_DISCOUNT,
         amount=Decimal("-15.75"),
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
     account_usage = AccountUsage(metrics=[metric])
 
@@ -81,11 +85,15 @@ def test_bundle_discount_multiple_services(journal_details, generator, organizat
             service_name="Amazon S3",
             record_type=AWSRecordTypeEnum.BUNDLE_DISCOUNT,
             amount=Decimal("-10.00"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
         ServiceMetric(
             service_name="Amazon EC2",
             record_type=AWSRecordTypeEnum.BUNDLE_DISCOUNT,
             amount=Decimal("-20.00"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
     ]
     account_usage = AccountUsage(metrics=metrics)
@@ -103,6 +111,8 @@ def test_bundle_discount_includes_invoice_entity(journal_details, generator, org
         record_type=AWSRecordTypeEnum.BUNDLE_DISCOUNT,
         amount=Decimal("-25.00"),
         invoice_entity="AWS Inc.",
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
     account_usage = AccountUsage(metrics=[metric])
 

@@ -36,6 +36,8 @@ def test_process_skips_tax_service(processor, context):
         service_name="Tax",
         record_type="MARKETPLACE",
         amount=Decimal("248.98"),
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
 
     result = processor.process(metric, context)
@@ -48,6 +50,8 @@ def test_process_returns_line_for_non_tax_service(processor, context):
         service_name="CloudGuard Network Security",
         record_type="MARKETPLACE",
         amount=Decimal("1310.40"),
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
 
     result = processor.process(metric, context)

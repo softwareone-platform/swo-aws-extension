@@ -3,18 +3,18 @@ import datetime as dt
 import pytest
 
 from swo_aws_extension.aws.client import AWSClient
+from swo_aws_extension.billing.generators.additional_line_processors.extra_discounts import (
+    ExtraDiscountsManager,
+)
+from swo_aws_extension.billing.generators.additional_line_processors.pls_charge import (
+    PlSChargeProcessor,
+)
 from swo_aws_extension.billing.generators.agreement import (
     AgreementJournalGenerator,
 )
 from swo_aws_extension.billing.generators.invoice import InvoiceGenerator
 from swo_aws_extension.billing.generators.journal_line import (
     JournalLineGenerator,
-)
-from swo_aws_extension.billing.generators.line_processors.extra_discounts import (
-    ExtraDiscountsManager,
-)
-from swo_aws_extension.billing.generators.line_processors.pls_charge import (
-    PlSChargeProcessor,
 )
 from swo_aws_extension.billing.generators.usage import (
     CostExplorerUsageGenerator,

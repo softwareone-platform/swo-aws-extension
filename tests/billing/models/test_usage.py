@@ -17,6 +17,8 @@ def metric():
         record_type="Usage",
         amount=Decimal("100.00"),
         invoice_entity="AWS Inc.",
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
 
 
@@ -24,6 +26,8 @@ def test_service_metric_default_values():
     result = ServiceMetric(
         service_name="Amazon S3",
         record_type="Usage",
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
 
     assert result.service_name == "Amazon S3"
@@ -40,6 +44,8 @@ def test_service_metric_with_values():
         amount=Decimal("100.50"),
         invoice_entity="AWS Inc.",
         invoice_id="INV-001",
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
 
     assert result.service_name == "Amazon S3"
@@ -64,16 +70,22 @@ def test_account_usage_filter_metrics():
             service_name="Amazon S3",
             record_type="Usage",
             amount=Decimal("100.00"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
         ServiceMetric(
             service_name="Amazon EC2",
             record_type="Usage",
             amount=Decimal("200.00"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
         ServiceMetric(
             service_name="Amazon S3",
             record_type="Support",
             amount=Decimal("10.00"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
     ]
     account_usage = AccountUsage(metrics=metrics)
@@ -91,16 +103,22 @@ def test_account_usage_get_metrics_by_service():
             service_name="Amazon S3",
             record_type="Usage",
             amount=Decimal("100.00"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
         ServiceMetric(
             service_name="Amazon EC2",
             record_type="Usage",
             amount=Decimal("200.00"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
         ServiceMetric(
             service_name="Amazon S3",
             record_type="Support",
             amount=Decimal("10.00"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
     ]
     account_usage = AccountUsage(metrics=metrics)
@@ -145,6 +163,8 @@ def test_has_enterprise_support_true():
             ServiceMetric(
                 service_name="AWS Support (Enterprise)",
                 record_type="Usage",
+                start_date="2026-01-01",
+                end_date="2026-01-31",
             ),
         ]
     )

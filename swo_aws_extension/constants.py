@@ -255,6 +255,10 @@ class AWSRecordTypeEnum(StrEnum):
     BUNDLE_DISCOUNT = "Bundled Discount"
     OTHER = "Other"
     FLAT_RATE_SUBSCRIPTION = "FlatRateSubscription"
+    TAX = "Tax"
+    SAVING_PLAN_COVERED_USAGE = "SavingsPlanCoveredUsage"
+    SAVING_PLAN_NEGATION = "SavingsPlanNegation"
+    MARKETPLACE = "MARKETPLACE"
 
 
 class DeploymentStatusEnum(StrEnum):
@@ -287,3 +291,10 @@ class SplitBillingPolicyEnum(StrEnum):
 
     MASTER_PAYER = "MASTER_PAYER"
     LINKED_ACCOUNT_PERCENTAGE = "LINKED_ACCOUNT_PERCENTAGE"
+
+
+class ItemSkuEnum(StrEnum):
+    """Enum for item skus."""
+
+    USAGE_SKU = "AWS Usage"
+    ADDITIONAL_CHARGES_SKU = "Additional Charges"

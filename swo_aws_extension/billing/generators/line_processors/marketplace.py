@@ -6,6 +6,7 @@ from swo_aws_extension.billing.generators.line_processors.base import (
 from swo_aws_extension.billing.models.context import LineProcessorContext
 from swo_aws_extension.billing.models.journal_line import JournalLine
 from swo_aws_extension.billing.models.usage import ServiceMetric
+from swo_aws_extension.constants import ItemSkuEnum
 
 TAX_SERVICE_NAME = "Tax"
 
@@ -31,3 +32,7 @@ class MarketplaceJournalLineProcessor(JournalLineProcessor):
         if metric.service_name == TAX_SERVICE_NAME:
             return []
         return super().process(metric, context)
+
+    @override
+    def _resolve_sku(self, metric: ServiceMetric, context: LineProcessorContext) -> str:
+        return ItemSkuEnum.ADDITIONAL_CHARGES_SKU.value

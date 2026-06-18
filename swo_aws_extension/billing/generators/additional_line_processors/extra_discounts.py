@@ -2,25 +2,20 @@ from abc import ABC, abstractmethod
 from decimal import Decimal
 from typing import override
 
-from swo_aws_extension.billing.generators.currency import (
-    resolve_service_amount,
-)
-from swo_aws_extension.billing.generators.usage_utils import (
-    calculate_total_by_record_types,
-)
+from swo_aws_extension.billing.generators.currency import resolve_service_amount
+from swo_aws_extension.billing.generators.usage_utils import calculate_total_by_record_types
 from swo_aws_extension.billing.models.invoice import OrganizationInvoice
 from swo_aws_extension.billing.models.journal_line import (
     InvoiceDetails,
     JournalDetails,
     JournalLine,
 )
-from swo_aws_extension.billing.models.usage import (
-    OrganizationUsageResult,
-)
+from swo_aws_extension.billing.models.usage import OrganizationUsageResult
 from swo_aws_extension.constants import (
     DEC_ZERO,
     AWSRecordTypeEnum,
     ChannelHandshakeDeployed,
+    ItemSkuEnum,
     SupportTypesEnum,
 )
 from swo_aws_extension.logger import get_logger
@@ -32,12 +27,14 @@ from swo_aws_extension.parameters import (
     get_support_type,
 )
 
-ITEM_SKU = "AWS Usage"
 logger = get_logger(__name__)
 
 
 class BaseExtraDiscountProcessor(ABC):
     """Base class for all extra discounts processor."""
+
+    item_sku: str = ItemSkuEnum.ADDITIONAL_CHARGES_SKU
+    is_organization_charge: bool = True
 
     def __init__(self, service_name: str) -> None:
         self._service_name = service_name
@@ -74,7 +71,6 @@ class BaseExtraDiscountProcessor(ABC):
         refund_amount = self._calculate_refund_amount(base_amount, discount_percentage)
 
         invoice_details = InvoiceDetails(
-            item_sku=ITEM_SKU,
             service_name=self._service_name,
             amount=refund_amount,
             account_id=journal_details.mpa_id,
@@ -83,7 +79,14 @@ class BaseExtraDiscountProcessor(ABC):
             start_date=journal_details.start_date,
             end_date=journal_details.end_date,
         )
-        return [JournalLine.build(ITEM_SKU, journal_details, invoice_details)]
+        return [
+            JournalLine.build(
+                self.item_sku,
+                journal_details,
+                invoice_details,
+                is_organization_charge=self.is_organization_charge,
+            )
+        ]
 
     @abstractmethod
     def _is_applicable(self, agreement: dict) -> bool:

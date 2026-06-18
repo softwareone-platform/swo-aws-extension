@@ -6,7 +6,7 @@ from swo_aws_extension.billing.generators.line_processors.base import (
 from swo_aws_extension.billing.models.context import LineProcessorContext
 from swo_aws_extension.billing.models.journal_line import JournalLine
 from swo_aws_extension.billing.models.usage import AccountUsage, ServiceMetric
-from swo_aws_extension.constants import DEC_ZERO, AWSRecordTypeEnum
+from swo_aws_extension.constants import DEC_ZERO, AWSRecordTypeEnum, ItemSkuEnum
 
 CREDIT_PREFIX = "CREDIT - "
 SPP_PREFIX = "SPP - "
@@ -16,6 +16,17 @@ SPP_SUFFIX = (
 )
 
 
+class SppRecoveryJournalLineProcessor(JournalLineProcessor):
+    """Generates SPP recovery lines in zero-invoice credit scenarios."""
+
+    def __init__(self) -> None:
+        super().__init__(prefix_name=SPP_PREFIX, suffix_name=SPP_SUFFIX)
+
+    @override
+    def _resolve_sku(self, metric: ServiceMetric, context: LineProcessorContext) -> str:
+        return ItemSkuEnum.ADDITIONAL_CHARGES_SKU.value
+
+
 class CreditJournalLineProcessor(JournalLineProcessor):
     """Generates journal lines for Credit metrics.
 
@@ -23,12 +34,11 @@ class CreditJournalLineProcessor(JournalLineProcessor):
     zero, also generates an SPP discount line to return the SPP provider benefit to the customer.
     """
 
+    item_sku: str = ItemSkuEnum.ADDITIONAL_CHARGES_SKU
+
     def __init__(self) -> None:
         super().__init__(prefix_name=CREDIT_PREFIX)
-        self._spp_processor = JournalLineProcessor(
-            prefix_name=SPP_PREFIX,
-            suffix_name=SPP_SUFFIX,
-        )
+        self._spp_processor = SppRecoveryJournalLineProcessor()
 
     @override
     def process(
@@ -49,6 +59,10 @@ class CreditJournalLineProcessor(JournalLineProcessor):
                 lines.extend(self._spp_processor.process(spp_metric, context))
 
         return lines
+
+    @override
+    def _resolve_sku(self, metric: ServiceMetric, context: LineProcessorContext) -> str:
+        return ItemSkuEnum.ADDITIONAL_CHARGES_SKU.value
 
     def _should_add_spp_line(self, context: LineProcessorContext) -> bool:
         principal_amount = context.organization_invoice.principal_invoice_amount

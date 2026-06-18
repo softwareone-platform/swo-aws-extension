@@ -7,12 +7,13 @@ from swo_aws_extension.billing.generators.line_processors.credit import (
     SPP_PREFIX,
     SPP_SUFFIX,
     CreditJournalLineProcessor,
+    SppRecoveryJournalLineProcessor,
 )
 from swo_aws_extension.billing.models.context import LineProcessorContext
 from swo_aws_extension.billing.models.invoice import OrganizationInvoice
 from swo_aws_extension.billing.models.journal_line import JournalDetails
 from swo_aws_extension.billing.models.usage import AccountUsage, ServiceMetric
-from swo_aws_extension.constants import AWSRecordTypeEnum
+from swo_aws_extension.constants import AWSRecordTypeEnum, ItemSkuEnum
 
 
 @pytest.fixture
@@ -37,6 +38,8 @@ def credit_metric():
         record_type=AWSRecordTypeEnum.CREDIT,
         amount=Decimal("-50.00"),
         invoice_entity="AWS Inc.",
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
 
 
@@ -47,6 +50,8 @@ def spp_metric():
         record_type=AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT,
         amount=Decimal("-5.00"),
         invoice_entity="AWS Inc.",
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
 
 
@@ -55,6 +60,8 @@ def test_process_skips_zero_amount(processor, journal_details):
         service_name="Amazon S3",
         record_type=AWSRecordTypeEnum.CREDIT,
         amount=Decimal(0),
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
     context = LineProcessorContext(
         account_id="ACC-001",
@@ -121,3 +128,18 @@ def test_process_adds_spp_when_principal_zero(
     assert result[0].description.value1 == f"{CREDIT_PREFIX}Amazon S3"
     assert result[1].description.value1 == f"{SPP_PREFIX}Amazon S3{SPP_SUFFIX}"
     assert result[1].price.pp_x1 == Decimal("-5.00")
+
+
+def test_spp_recovery_processor_uses_usage_sku_for_spp_metric(journal_details, spp_metric):
+    context = LineProcessorContext(
+        account_id="ACC-001",
+        account_usage=AccountUsage(metrics=[spp_metric]),
+        journal_details=journal_details,
+        organization_invoice=OrganizationInvoice(),
+    )
+
+    result = SppRecoveryJournalLineProcessor().process(spp_metric, context)
+
+    assert len(result) == 1
+    assert result[0].search.search_item.criteria_value == ItemSkuEnum.ADDITIONAL_CHARGES_SKU
+    assert result[0].description.value1 == f"{SPP_PREFIX}Amazon S3{SPP_SUFFIX}"

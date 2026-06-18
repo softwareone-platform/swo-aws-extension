@@ -42,6 +42,8 @@ def test_generate_single_metric(journal_details, generator, organization_invoice
         record_type=AWSRecordTypeEnum.USAGE,
         amount=Decimal("100.50"),
         invoice_entity="AWS Inc.",
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
     account_usage = AccountUsage(metrics=[metric])
 
@@ -58,18 +60,24 @@ def test_generate_multiple_metrics(journal_details, generator, organization_invo
             record_type=AWSRecordTypeEnum.USAGE,
             amount=Decimal("100.00"),
             invoice_entity="AWS Inc.",
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
         ServiceMetric(
             service_name="Amazon S3",
             record_type=AWSRecordTypeEnum.SUPPORT,
             amount=Decimal("10.00"),
             invoice_entity="AWS Inc.",
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
         ServiceMetric(
             service_name="Amazon EC2",
             record_type=AWSRecordTypeEnum.RECURRING,
             amount=Decimal("50.00"),
             invoice_entity="AWS Inc.",
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
     ]
     account_usage = AccountUsage(metrics=metrics)
@@ -89,6 +97,8 @@ def test_generate_multiple_metrics(journal_details, generator, organization_invo
                     service_name="Amazon S3",
                     record_type=AWSRecordTypeEnum.USAGE,
                     amount=Decimal(0),
+                    start_date="2026-01-01",
+                    end_date="2026-01-31",
                 )
             ],
             0,
@@ -119,16 +129,22 @@ def test_generate_excludes_non_billable_record_types(
             service_name="Amazon S3",
             record_type=AWSRecordTypeEnum.USAGE,
             amount=Decimal("100.00"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
         ServiceMetric(
             service_name="Amazon S3",
             record_type=AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT,
             amount=Decimal("-10.00"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
         ServiceMetric(
             service_name="Tax",
             record_type="Tax",
             amount=Decimal("10.00"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
     ]
     account_usage = AccountUsage(metrics=metrics)
@@ -157,6 +173,8 @@ def test_generate_includes_all_billable_record_types(
             service_name="Amazon S3",
             record_type=record_type,
             amount=Decimal("10.00"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         )
         for record_type in billable_types
     ]
@@ -186,6 +204,8 @@ def test_generate_handles_invoice_id(
         record_type=AWSRecordTypeEnum.USAGE,
         amount=Decimal("100.00"),
         invoice_id=invoice_id,
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
     account_usage = AccountUsage(metrics=[metric])
 
@@ -200,6 +220,8 @@ def test_generate_includes_invoice_entity(journal_details, generator, organizati
         record_type=AWSRecordTypeEnum.USAGE,
         amount=Decimal("100.00"),
         invoice_entity="AWS Inc.",
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
     account_usage = AccountUsage(metrics=[metric])
 
@@ -213,6 +235,8 @@ def test_generate_credit_metric_has_prefix(journal_details, generator, organizat
         service_name="Amazon S3",
         record_type=AWSRecordTypeEnum.CREDIT,
         amount=Decimal("-50.00"),
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
     account_usage = AccountUsage(metrics=[metric])
 
@@ -228,12 +252,16 @@ def test_generate_credit_processor_integration(journal_details, generator):
             service_name="Amazon S3",
             record_type=AWSRecordTypeEnum.CREDIT,
             amount=Decimal("-50.00"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
         ServiceMetric(
             service_name="Amazon S3",
             record_type=AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT,
             amount=Decimal("-5.00"),
             invoice_entity="AWS Inc.",
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
     ]
     account_usage = AccountUsage(metrics=metrics)
@@ -253,11 +281,15 @@ def test_generate_excludes_marketplace_tax(journal_details, generator, organizat
             service_name="CloudGuard Network Security",
             record_type="MARKETPLACE",
             amount=Decimal("1310.40"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
         ServiceMetric(
             service_name="Tax",
             record_type="MARKETPLACE",
             amount=Decimal("248.98"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
     ]
     account_usage = AccountUsage(metrics=metrics)
@@ -275,11 +307,15 @@ def test_generate_excludes_support_when_pls_active(journal_details, organization
             service_name="Amazon S3",
             record_type=AWSRecordTypeEnum.USAGE,
             amount=Decimal("100.00"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
         ServiceMetric(
             service_name="AWS Support (Enterprise)",
             record_type=AWSRecordTypeEnum.SUPPORT,
             amount=Decimal("10.00"),
+            start_date="2026-01-01",
+            end_date="2026-01-31",
         ),
     ]
     account_usage = AccountUsage(metrics=metrics)
