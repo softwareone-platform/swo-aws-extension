@@ -5,7 +5,7 @@ import pytest
 
 from swo_aws_extension.constants import OrderProcessingTemplateEnum
 from swo_aws_extension.flows.order import PurchaseContext
-from swo_aws_extension.processors.querying.helper import get_template_name, is_querying_timeout
+from swo_aws_extension.processor.querying.helper import get_template_name, is_querying_timeout
 
 
 @pytest.fixture

@@ -10,7 +10,7 @@ from swo_aws_extension.aws.errors import (
     wrap_boto3_error,
 )
 from swo_aws_extension.config import Config
-from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
+from swo_aws_extension.models import BillingPeriod
 from swo_aws_extension.swo.openid.client import OpenIDClient
 
 MINIMUM_DAYS_MONTH = 28

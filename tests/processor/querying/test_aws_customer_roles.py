@@ -11,7 +11,7 @@ from swo_aws_extension.constants import (
     PhasesEnum,
 )
 from swo_aws_extension.flows.order import PurchaseContext
-from swo_aws_extension.processors.querying.aws_customer_roles import (
+from swo_aws_extension.processor.querying.aws_customer_roles import (
     AWSCustomerRolesProcessor,
 )
 from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
@@ -59,27 +59,27 @@ def test_process_customer_roles_deployed(
     mock_context: MagicMock,
 ) -> None:
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.get_mpa_account_id",
+        "swo_aws_extension.processor.querying.aws_customer_roles.get_mpa_account_id",
         return_value="mpa-account-123",
     )
     mock_co_client = MagicMock()
     mock_co_client.get_bootstrap_role_status.return_value = {"deployed": True}
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.CloudOrchestratorClient",
+        "swo_aws_extension.processor.querying.aws_customer_roles.CloudOrchestratorClient",
         return_value=mock_co_client,
     )
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process"
+        "swo_aws_extension.processor.querying.aws_customer_roles.switch_order_status_to_process"
     )
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.get_template_name",
+        "swo_aws_extension.processor.querying.aws_customer_roles.get_template_name",
         return_value="TEMPLATE_NAME",
     )
     mock_service_client = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.get_service_client"
+        "swo_aws_extension.processor.querying.aws_customer_roles.get_service_client"
     )
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.get_crm_customer_role_ticket_id",
+        "swo_aws_extension.processor.querying.aws_customer_roles.get_crm_customer_role_ticket_id",
         return_value=None,
     )
 
@@ -103,24 +103,24 @@ def test_process_customer_roles_deployed_with_ticket_id(
         )
     )
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.get_mpa_account_id",
+        "swo_aws_extension.processor.querying.aws_customer_roles.get_mpa_account_id",
         return_value="mpa-account-123",
     )
     mock_co_client = MagicMock()
     mock_co_client.get_bootstrap_role_status.return_value = {"deployed": True}
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.CloudOrchestratorClient",
+        "swo_aws_extension.processor.querying.aws_customer_roles.CloudOrchestratorClient",
         return_value=mock_co_client,
     )
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process"
+        "swo_aws_extension.processor.querying.aws_customer_roles.switch_order_status_to_process"
     )
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.get_template_name",
+        "swo_aws_extension.processor.querying.aws_customer_roles.get_template_name",
         return_value="TEMPLATE_NAME",
     )
     mock_service_client = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.get_service_client"
+        "swo_aws_extension.processor.querying.aws_customer_roles.get_service_client"
     )
     mock_context.order = order
 
@@ -149,24 +149,24 @@ def test_process_customer_roles_deployed_with_ticket_id_crm_error(
         )
     )
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.get_mpa_account_id",
+        "swo_aws_extension.processor.querying.aws_customer_roles.get_mpa_account_id",
         return_value="mpa-account-123",
     )
     mock_co_client = MagicMock()
     mock_co_client.get_bootstrap_role_status.return_value = {"deployed": True}
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.CloudOrchestratorClient",
+        "swo_aws_extension.processor.querying.aws_customer_roles.CloudOrchestratorClient",
         return_value=mock_co_client,
     )
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process"
+        "swo_aws_extension.processor.querying.aws_customer_roles.switch_order_status_to_process"
     )
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.get_template_name",
+        "swo_aws_extension.processor.querying.aws_customer_roles.get_template_name",
         return_value="TEMPLATE_NAME",
     )
     mock_service_client = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.get_service_client"
+        "swo_aws_extension.processor.querying.aws_customer_roles.get_service_client"
     )
     mock_service_client.return_value.add_comment.side_effect = CRMHttpError(
         HTTPStatus.INTERNAL_SERVER_ERROR, "server error"
@@ -187,23 +187,23 @@ def test_process_cr_not_deployed_no_timeout(
     mock_context: MagicMock,
 ) -> None:
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.get_mpa_account_id",
+        "swo_aws_extension.processor.querying.aws_customer_roles.get_mpa_account_id",
         return_value="mpa-account-123",
     )
     mock_co_client = MagicMock()
     mock_co_client.get_bootstrap_role_status.return_value = {"deployed": False}
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.CloudOrchestratorClient",
+        "swo_aws_extension.processor.querying.aws_customer_roles.CloudOrchestratorClient",
         return_value=mock_co_client,
     )
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.is_querying_timeout",
+        "swo_aws_extension.processor.querying.aws_customer_roles.is_querying_timeout",
         return_value=False,
     )
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process"
+        "swo_aws_extension.processor.querying.aws_customer_roles.switch_order_status_to_process"
     )
-    mocker.patch("swo_aws_extension.processors.querying.aws_customer_roles.get_service_client")
+    mocker.patch("swo_aws_extension.processor.querying.aws_customer_roles.get_service_client")
 
     processor.process(mock_context)  # act
 
@@ -224,30 +224,30 @@ def test_process_cr_not_deployed_timeout_reached(
         )
     )
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.get_mpa_account_id",
+        "swo_aws_extension.processor.querying.aws_customer_roles.get_mpa_account_id",
         return_value="mpa-account-123",
     )
     mock_co_client = MagicMock()
     mock_co_client.get_bootstrap_role_status.return_value = {"deployed": False}
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.CloudOrchestratorClient",
+        "swo_aws_extension.processor.querying.aws_customer_roles.CloudOrchestratorClient",
         return_value=mock_co_client,
     )
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.is_querying_timeout",
+        "swo_aws_extension.processor.querying.aws_customer_roles.is_querying_timeout",
         return_value=True,
     )
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process"
+        "swo_aws_extension.processor.querying.aws_customer_roles.switch_order_status_to_process"
     )
     mock_set_phase = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.set_phase"
+        "swo_aws_extension.processor.querying.aws_customer_roles.set_phase"
     )
     mock_update_order = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.update_order"
+        "swo_aws_extension.processor.querying.aws_customer_roles.update_order"
     )
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.get_template_name",
+        "swo_aws_extension.processor.querying.aws_customer_roles.get_template_name",
         return_value="TEMPLATE_NAME",
     )
     mock_context.order = order
@@ -255,7 +255,7 @@ def test_process_cr_not_deployed_timeout_reached(
     mock_crm_client.return_value.get_service_request.return_value = {
         "state": "Active",
     }
-    mocker.patch("swo_aws_extension.processors.querying.aws_customer_roles.get_service_client")
+    mocker.patch("swo_aws_extension.processor.querying.aws_customer_roles.get_service_client")
 
     processor.process(mock_context)  # act
 
@@ -278,28 +278,28 @@ def test_process_cr_not_deployed_timeout_reached_to_create_new_ticket(
         )
     )
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.get_mpa_account_id",
+        "swo_aws_extension.processor.querying.aws_customer_roles.get_mpa_account_id",
         return_value="mpa-account-123",
     )
     mock_co_client = MagicMock()
     mock_co_client.get_bootstrap_role_status.return_value = {"deployed": False}
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.CloudOrchestratorClient",
+        "swo_aws_extension.processor.querying.aws_customer_roles.CloudOrchestratorClient",
         return_value=mock_co_client,
     )
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.is_querying_timeout",
+        "swo_aws_extension.processor.querying.aws_customer_roles.is_querying_timeout",
         side_effect=[True, False],
     )
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process"
+        "swo_aws_extension.processor.querying.aws_customer_roles.switch_order_status_to_process"
     )
-    mocker.patch("swo_aws_extension.processors.querying.aws_customer_roles.set_phase")
+    mocker.patch("swo_aws_extension.processor.querying.aws_customer_roles.set_phase")
     mock_update_order = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.update_order"
+        "swo_aws_extension.processor.querying.aws_customer_roles.update_order"
     )
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.get_template_name",
+        "swo_aws_extension.processor.querying.aws_customer_roles.get_template_name",
         return_value="TEMPLATE_NAME",
     )
     mock_context.order = order
@@ -308,7 +308,7 @@ def test_process_cr_not_deployed_timeout_reached_to_create_new_ticket(
         "state": CRM_TICKET_RESOLVED_STATE,
     }
     mock_crm_client.return_value.create_service_request.return_value = {"id": "TICKET-999"}
-    mocker.patch("swo_aws_extension.processors.querying.aws_customer_roles.get_service_client")
+    mocker.patch("swo_aws_extension.processor.querying.aws_customer_roles.get_service_client")
 
     processor.process(mock_context)  # act
 
@@ -321,19 +321,19 @@ def test_process_cloud_orchestrator_error(
     mock_context: MagicMock,
 ) -> None:
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.get_mpa_account_id",
+        "swo_aws_extension.processor.querying.aws_customer_roles.get_mpa_account_id",
         return_value="mpa-account-123",
     )
     mock_co_client = MagicMock()
     mock_co_client.get_bootstrap_role_status.side_effect = CloudOrchestratorError("error")
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.CloudOrchestratorClient",
+        "swo_aws_extension.processor.querying.aws_customer_roles.CloudOrchestratorClient",
         return_value=mock_co_client,
     )
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_customer_roles.switch_order_status_to_process"
+        "swo_aws_extension.processor.querying.aws_customer_roles.switch_order_status_to_process"
     )
-    mocker.patch("swo_aws_extension.processors.querying.aws_customer_roles.get_service_client")
+    mocker.patch("swo_aws_extension.processor.querying.aws_customer_roles.get_service_client")
 
     processor.process(mock_context)  # act
 

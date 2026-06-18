@@ -13,7 +13,7 @@ from swo_aws_extension.aws.client import (
 )
 from swo_aws_extension.config import Config
 from swo_aws_extension.constants import FinOpsStatusEnum
-from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
+from swo_aws_extension.models import BillingPeriod
 from swo_aws_extension.swo.finops.client import get_ffc_client
 from swo_aws_extension.swo.finops.errors import FinOpsError
 from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager

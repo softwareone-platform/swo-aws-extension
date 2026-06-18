@@ -1,0 +1,48 @@
+from dataclasses import asdict
+from decimal import Decimal
+
+from swo_aws_extension.billing.models.context import BillingJournalContext
+from swo_aws_extension.models import BillingPeriod
+
+
+def test_initialization():
+    billing_period = BillingPeriod(start_date="2025-10-01", end_date="2025-11-01")
+
+    result = BillingJournalContext(
+        mpt_client="mpt_client",
+        billing_api_client="billing_client",
+        config="config",
+        billing_period=billing_period,
+        product_ids=["PROD-1"],
+        notifier="notifier",
+        authorizations=["AUTH-1"],
+    )
+
+    expected = {
+        "mpt_client": "mpt_client",
+        "billing_api_client": "billing_client",
+        "config": "config",
+        "billing_period": asdict(billing_period),
+        "product_ids": ["PROD-1"],
+        "notifier": "notifier",
+        "authorizations": ["AUTH-1"],
+        "pls_charge_percentage": Decimal("5.0"),
+        "dry_run": False,
+    }
+    assert asdict(result) == expected
+
+
+def test_authorizations_defaults_to_none():
+    billing_period = BillingPeriod(start_date="2025-01-01", end_date="2025-02-01")
+
+    result = BillingJournalContext(
+        mpt_client="mock",
+        billing_api_client="mock_billing",
+        config="mock",
+        billing_period=billing_period,
+        product_ids=[],
+        notifier="mock",
+    )
+
+    assert result.authorizations is None
+    assert result.pls_charge_percentage == Decimal("5.0")

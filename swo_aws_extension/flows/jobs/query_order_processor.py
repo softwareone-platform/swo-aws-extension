@@ -8,12 +8,12 @@ from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.config import Config
 from swo_aws_extension.flows.order import PurchaseContext
-from swo_aws_extension.processors.processor import ProcessorChain
-from swo_aws_extension.processors.querying.aws_billing_transfer_invitation import (
+from swo_aws_extension.processor.processor import ProcessorChain
+from swo_aws_extension.processor.querying.aws_billing_transfer_invitation import (
     AWSBillingTransferInvitationProcessor,
 )
-from swo_aws_extension.processors.querying.aws_channel_handshake import AWSChannelHandshakeProcessor
-from swo_aws_extension.processors.querying.aws_customer_roles import AWSCustomerRolesProcessor
+from swo_aws_extension.processor.querying.aws_channel_handshake import AWSChannelHandshakeProcessor
+from swo_aws_extension.processor.querying.aws_customer_roles import AWSCustomerRolesProcessor
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 logger = logging.getLogger(__name__)

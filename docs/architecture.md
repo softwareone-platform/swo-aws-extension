@@ -45,8 +45,8 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    parameter visibility/requirement rules driven by account type.
 5. **Integration clients** (`aws/`, `swo/`, `airtable/`) — typed clients that
    wrap each external system behind a single boundary.
-6. **Background jobs** (`flows/jobs/`) — reporting and sync work invoked by
-   management commands, including billing journal generation. The agreement sync
+6. **Background jobs** (`flows/jobs/`, `billing/`) — reporting and sync work invoked by
+   management commands, including billing journal generation (`billing/`). The agreement sync
    pipeline lives in `swo_aws_extension/swo/mpt/sync/` and is split across three
    modules: `base.py` (shared `AgreementProcessor` base and error types),
    `agreement_syncer.py` (`AgreementSyncer` — validates the AWS responsibility
@@ -63,8 +63,9 @@ The runtime is organised as a pipeline-driven fulfilment flow:
 |---|---|
 | `swo_aws_extension/` | Extension config, runtime `config.py`, order `parameters.py`, `constants.py` |
 | `swo_aws_extension/flows/` | Fulfilment orchestration, pipelines, steps, validation, order context |
-| `swo_aws_extension/flows/jobs/` | Background jobs: billing journal, reports, FinOps entitlement sync, MPT subscription sync for linked AWS accounts |
-| `swo_aws_extension/processors/` | Chain-of-responsibility processors for querying AWS roles, handshakes, transfers |
+| `swo_aws_extension/flows/jobs/` | Background jobs: reports, FinOps entitlement sync, MPT subscription sync for linked AWS accounts |
+| `swo_aws_extension/billing/` | Billing journal generation, line processors, generators, and models |
+| `swo_aws_extension/processor/` | Chain-of-responsibility processors for querying AWS roles, handshakes, transfers |
 | `swo_aws_extension/aws/` | `AWSClient` (boto3 AssumeRole, account/billing/CUR operations, Cost Explorer with dimension attributes) |
 | `swo_aws_extension/swo/` | External-service clients (CCP, CRM, FinOps, CCO, Cloud Orchestrator, MPT, Key Vault, Blob, notifications, OpenID) |
 | `swo_aws_extension/airtable/` | FinOps entitlements Airtable sync |

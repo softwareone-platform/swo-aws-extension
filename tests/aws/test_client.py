@@ -12,7 +12,7 @@ from swo_aws_extension.aws.errors import (
     AWSError,
     InvalidDateInTerminateResponsibilityError,
 )
-from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
+from swo_aws_extension.models import BillingPeriod
 
 
 # InvalidInputException is the name given by AWS boto3 to the error we are testing:

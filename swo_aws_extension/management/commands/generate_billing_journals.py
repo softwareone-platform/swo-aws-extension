@@ -5,17 +5,17 @@ from decimal import Decimal
 from django.conf import settings
 from mpt_extension_sdk.core.utils import setup_client
 
+from swo_aws_extension.billing.billing_journal_service import (
+    BillingJournalService,
+)
+from swo_aws_extension.billing.models.context import BillingJournalContext
 from swo_aws_extension.config import get_config
 from swo_aws_extension.constants import (
     COMMAND_INVALID_BILLING_DATE,
     COMMAND_INVALID_BILLING_DATE_FUTURE,
 )
-from swo_aws_extension.flows.jobs.billing_journal.billing_journal_service import (
-    BillingJournalService,
-)
-from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
-from swo_aws_extension.flows.jobs.billing_journal.models.context import BillingJournalContext
 from swo_aws_extension.management.commands_helpers import StyledPrintCommand
+from swo_aws_extension.models import BillingPeriod
 from swo_aws_extension.swo.mpt.billing.billing_client import BillingClient
 from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
