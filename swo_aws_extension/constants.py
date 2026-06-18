@@ -226,7 +226,7 @@ class ExpirationPeriodEnum(IntEnum):
     NEXT_MONTH = 2
 
 
-AWS_ITEMS_SKUS = ("AWS Usage",)
+AWS_ITEMS_SKUS = ("AWS Usage", "Additional Charges")
 COMMAND_INVALID_BILLING_DATE = (
     "Invalid billing date. The billing date must be in the past. "
     "You can't generate the billing of the current month until the 5th."
