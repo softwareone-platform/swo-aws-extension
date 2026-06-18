@@ -1,0 +1,45 @@
+from dataclasses import dataclass
+from decimal import Decimal
+from typing import Any
+
+from swo_aws_extension.aws.client import AWSClient
+from swo_aws_extension.billing.models.invoice import OrganizationInvoice
+from swo_aws_extension.billing.models.journal_line import JournalDetails
+from swo_aws_extension.billing.models.usage import AccountUsage
+from swo_aws_extension.models import BillingPeriod
+
+
+@dataclass
+class AuthorizationContext:
+    """Context holding authorization-level data for billing journal generation."""
+
+    id: str
+    pma_account: str
+    currency: str
+    aws_client: AWSClient
+
+
+@dataclass
+class BillingJournalContext:
+    """Context holding necessary components for billing journal generation."""
+
+    mpt_client: Any
+    billing_api_client: Any
+    config: Any
+    billing_period: BillingPeriod
+    product_ids: list[str]
+    notifier: Any
+    authorizations: list[str] | None = None
+    pls_charge_percentage: Decimal = Decimal("5.0")
+    dry_run: bool = False
+
+
+@dataclass
+class LineProcessorContext:
+    """Context passed to line processor during journal line generation."""
+
+    account_id: str
+    account_usage: AccountUsage
+    journal_details: JournalDetails
+    organization_invoice: OrganizationInvoice
+    is_pls: bool = False

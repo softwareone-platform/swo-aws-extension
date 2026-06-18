@@ -25,8 +25,8 @@ from swo_aws_extension.constants import (
     ParamPhasesEnum,
     SubscriptionStatus,
 )
-from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
 from swo_aws_extension.logger import get_logger
+from swo_aws_extension.models import BillingPeriod
 from swo_aws_extension.parameters import get_termination_date
 from swo_aws_extension.swo.mpt.sync.base import AgreementProcessor, AgreementType
 from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager

@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 
 from swo_aws_extension.flows.order import PurchaseContext
-from swo_aws_extension.processors.processor import Processor, ProcessorChain
+from swo_aws_extension.processor.processor import Processor, ProcessorChain
 
 
 class ConcreteProcessor(Processor):

@@ -24,8 +24,9 @@ Then inspect the code paths relevant to the task:
 - [`swo_aws_extension/config.py`](swo_aws_extension/config.py) and [`swo_aws_extension/parameters.py`](swo_aws_extension/parameters.py): runtime configuration access and parameter definitions
 - [`swo_aws_extension/flows/fulfillment/`](swo_aws_extension/flows/fulfillment): fulfillment workflows
 - [`swo_aws_extension/flows/validation/`](swo_aws_extension/flows/validation): order validation workflows
-- [`swo_aws_extension/flows/jobs/`](swo_aws_extension/flows/jobs): background jobs, billing journal generation, and reporting flows
-- [`swo_aws_extension/processors/querying/`](swo_aws_extension/processors/querying): querying processors and AWS-related order processing logic
+- [`swo_aws_extension/flows/jobs/`](swo_aws_extension/flows/jobs): background jobs and reporting flows
+- [`swo_aws_extension/billing/`](swo_aws_extension/billing): billing journal generation, line processors, generators, and models
+- [`swo_aws_extension/processor/querying/`](swo_aws_extension/processor/querying): querying processors and AWS-related order processing logic
 - [`swo_aws_extension/swo/`](swo_aws_extension/swo): Marketplace, CCP, CRM, FinOps, notification, and auth integrations
 - [`swo_aws_extension/aws/`](swo_aws_extension/aws) and [`swo_aws_extension/airtable/`](swo_aws_extension/airtable): AWS and Airtable integration helpers
 - [`swo_aws_extension/management/commands/`](swo_aws_extension/management/commands): operational and scheduled command entry points

@@ -56,7 +56,7 @@ Repository-specific guidance:
 - add or update tests next to the affected domain area instead of creating catch-all test files
 - keep external service calls mocked; do not make live AWS, Marketplace, CCP, CRM, FinOps, Airtable, Confluence, or notification calls in tests
 - cover management command behavior in [`tests/management/commands/`](../tests/management/commands) when changing operational command entry points
-- cover billing journal behavior in [`tests/flows/jobs/billing_journal/`](../tests/flows/jobs/billing_journal) when changing billing exports, discounts, or line processing
+- cover billing journal behavior in [`tests/billing/`](../tests/billing) when changing billing exports, discounts, or line processing
 
 ## When Tests Are Required
 

@@ -11,7 +11,7 @@ from swo_aws_extension.constants import (
     ResponsibilityTransferStatus,
 )
 from swo_aws_extension.flows.order import PurchaseContext
-from swo_aws_extension.processors.querying.aws_billing_transfer_invitation import (
+from swo_aws_extension.processor.querying.aws_billing_transfer_invitation import (
     AWSBillingTransferInvitationProcessor,
 )
 
@@ -62,7 +62,7 @@ def test_process_missing_transfer_id(
     mock_context: MagicMock,
 ) -> None:
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_billing_transfer_invitation.get_responsibility_transfer_id",
+        "swo_aws_extension.processor.querying.aws_billing_transfer_invitation.get_responsibility_transfer_id",
         return_value=None,
     )
 
@@ -77,7 +77,7 @@ def test_process_missing_pm_account_id(
     mock_context: MagicMock,
 ) -> None:
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_billing_transfer_invitation.get_responsibility_transfer_id",
+        "swo_aws_extension.processor.querying.aws_billing_transfer_invitation.get_responsibility_transfer_id",
         return_value="tr-123",
     )
     mock_context.pm_account_id = None
@@ -93,17 +93,17 @@ def test_process_success(
     mock_context: MagicMock,
 ) -> None:
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_billing_transfer_invitation.get_responsibility_transfer_id",
+        "swo_aws_extension.processor.querying.aws_billing_transfer_invitation.get_responsibility_transfer_id",
         return_value="tr-123",
     )
     mock_config = MagicMock()
     mock_config.management_role_name = "role-name"
     mocker.patch(
-        "swo_aws_extension.processors.querying.aws_billing_transfer_invitation.get_config",
+        "swo_aws_extension.processor.querying.aws_billing_transfer_invitation.get_config",
         return_value=mock_config,
     )
     mock_aws_client_class = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_billing_transfer_invitation.AWSClient",
+        "swo_aws_extension.processor.querying.aws_billing_transfer_invitation.AWSClient",
         return_value=mock_context.aws_client,
     )
     mock_process_invitation = mocker.patch.object(processor, "process_invitation")
@@ -123,7 +123,7 @@ def test_process_invitation_aws_error(
 ) -> None:
     mock_context.aws_client.get_responsibility_transfer_details.side_effect = AWSError("AWS Error")
     mock_notify = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_billing_transfer_invitation.notify_one_time_error"
+        "swo_aws_extension.processor.querying.aws_billing_transfer_invitation.notify_one_time_error"
     )
 
     processor.process_invitation(mock_context, "tr-123")  # act
@@ -141,7 +141,7 @@ def test_process_invitation_status_requested(
         "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.REQUESTED}
     }
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_billing_transfer_invitation.switch_order_status_to_process"
+        "swo_aws_extension.processor.querying.aws_billing_transfer_invitation.switch_order_status_to_process"
     )
 
     processor.process_invitation(mock_context, "tr-123")  # act
@@ -158,7 +158,7 @@ def test_process_invitation_status_accepted(
         "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
     }
     mock_switch = mocker.patch(
-        "swo_aws_extension.processors.querying.aws_billing_transfer_invitation.switch_order_status_to_process"
+        "swo_aws_extension.processor.querying.aws_billing_transfer_invitation.switch_order_status_to_process"
     )
 
     processor.process_invitation(mock_context, "tr-123")  # act
