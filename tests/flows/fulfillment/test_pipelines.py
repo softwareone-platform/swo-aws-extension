@@ -62,6 +62,7 @@ def test_purchase_existing_steps():
 def test_terminate_steps():
     expected_step_classes = [
         "SetupContext",
+        "ValidateTerminationOrder",
         "TerminateResponsibilityTransferStep",
         "TerminateFinOpsEntitlementStep",
         "CRMTicketTerminateOrder",

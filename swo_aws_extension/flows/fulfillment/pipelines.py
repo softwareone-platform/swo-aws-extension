@@ -32,6 +32,7 @@ from swo_aws_extension.flows.steps.setup_context import SetupContext
 from swo_aws_extension.flows.steps.swo_job import SWOJobStep
 from swo_aws_extension.flows.steps.terminate import TerminateResponsibilityTransferStep
 from swo_aws_extension.flows.steps.validate_order import ValidateOrder
+from swo_aws_extension.flows.steps.validate_termination_order import ValidateTerminationOrder
 from swo_aws_extension.swo.notifications.teams import (
     notify_one_time_error,
 )
@@ -105,6 +106,7 @@ purchase_existing_aws_environment = Pipeline(
 )
 terminate = Pipeline(
     SetupContext(config),
+    ValidateTerminationOrder(),
     TerminateResponsibilityTransferStep(config),
     TerminateFinOpsEntitlementStep(config),
     CRMTicketTerminateOrder(config),
