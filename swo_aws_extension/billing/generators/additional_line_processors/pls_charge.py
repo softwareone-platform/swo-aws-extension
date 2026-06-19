@@ -1,29 +1,24 @@
 from decimal import Decimal
 
-from swo_aws_extension.billing.generators.usage_utils import (
-    calculate_total_by_record_types,
-)
+from swo_aws_extension.billing.generators.usage_utils import calculate_total_by_record_types
 from swo_aws_extension.billing.models.invoice import OrganizationInvoice
 from swo_aws_extension.billing.models.journal_line import (
     InvoiceDetails,
     JournalDetails,
     JournalLine,
 )
-from swo_aws_extension.billing.models.usage import (
-    OrganizationUsageResult,
-)
-from swo_aws_extension.constants import (
-    DEC_ZERO,
-    AWSRecordTypeEnum,
-)
+from swo_aws_extension.billing.models.usage import OrganizationUsageResult
+from swo_aws_extension.constants import DEC_ZERO, AWSRecordTypeEnum, ItemSkuEnum
 from swo_aws_extension.logger import get_logger
 
-ITEM_SKU = "AWS Usage"
 logger = get_logger(__name__)
 
 
 class PlSChargeProcessor:
     """Processor to calculate and generate SWO Enterprise Support for AWS (PLS) charges."""
+
+    item_sku: str = ItemSkuEnum.ADDITIONAL_CHARGES_SKU
+    is_organization_charge: bool = True
 
     def __init__(self) -> None:
         self._service_name = "SWO Enterprise support for AWS"
@@ -63,7 +58,6 @@ class PlSChargeProcessor:
         logger.info("PLS Charge amount: %s ", charge_amount)
 
         invoice_details = InvoiceDetails(
-            item_sku=ITEM_SKU,
             service_name=self._service_name,
             amount=charge_amount,
             account_id=journal_details.mpa_id,
@@ -72,7 +66,14 @@ class PlSChargeProcessor:
             start_date=journal_details.start_date,
             end_date=journal_details.end_date,
         )
-        return [JournalLine.build(ITEM_SKU, journal_details, invoice_details)]
+        return [
+            JournalLine.build(
+                self.item_sku,
+                journal_details,
+                invoice_details,
+                is_organization_charge=self.is_organization_charge,
+            )
+        ]
 
     def _calculate_base_amount(
         self,

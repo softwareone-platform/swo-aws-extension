@@ -52,7 +52,6 @@ def test_to_jsonl(sample_journal_line):
 def test_build():
     journal_details = JournalDetails("AGR-123", "MPA-456", "2025-10-01", "2025-10-31")
     invoice_details = InvoiceDetails(
-        item_sku="AWS Usage",
         service_name="AWS S3",
         amount=Decimal("99.99"),
         account_id="ACC-789",
@@ -63,11 +62,7 @@ def test_build():
     )
 
     result = JournalLine.build(
-        item_external_id="EXT-1",
-        journal_details=journal_details,
-        invoice_details=invoice_details,
-        quantity=5,
-        segment="EDU",
+        item_external_id="EXT-1", journal_details=journal_details, invoice_details=invoice_details
     )
 
     expected = {
@@ -75,8 +70,8 @@ def test_build():
         "externalIds": {"invoice": "INV-111", "reference": "AGR-123", "vendor": "MPA-456"},
         "period": {"start": "2025-10-01", "end": "2025-10-31"},
         "price": {"PPx1": Decimal("99.99"), "UnitPP": Decimal("99.99")},
-        "quantity": 5,
-        "segment": "EDU",
+        "quantity": 1,
+        "segment": "COM",
         "search": {
             "item": {"criteria": "item.externalIds.vendor", "value": "EXT-1"},
             "source": {
@@ -92,7 +87,6 @@ def test_build():
 def test_build_with_error_and_no_item():
     journal_details = JournalDetails("AGR", "MPA", "START", "END")
     invoice_details = InvoiceDetails(
-        item_sku="AWS Usage",
         service_name="SVC",
         amount=Decimal(0),
         account_id="ACC",
@@ -108,3 +102,25 @@ def test_build_with_error_and_no_item():
     assert result.search.search_item.criteria_value == "Item Not Found"
     assert result.error == "Missing Item"
     assert result.is_valid() is False
+
+
+def test_build_organization_charge_with_split_billing():
+    journal_details = JournalDetails(
+        "AGR-123", "MPA-456", "2025-10-01", "2025-10-31", split_billing_enabled=True
+    )
+    invoice_details = InvoiceDetails(
+        service_name="AWS Support",
+        amount=Decimal("50.00"),
+        account_id="ACC-789",
+        invoice_entity="ENT-0",
+        invoice_id="INV-222",
+        start_date="2025-10-01",
+        end_date="2025-10-31",
+    )
+
+    result = JournalLine.build(
+        "EXT-1", journal_details, invoice_details, is_organization_charge=True
+    )
+
+    assert result.search.source.type == "Agreement"
+    assert result.search.source.criteria_value == "AGR-123"

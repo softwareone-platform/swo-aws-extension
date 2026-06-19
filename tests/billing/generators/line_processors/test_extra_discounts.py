@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import pytest
 
-from swo_aws_extension.billing.generators.line_processors.extra_discounts import (
+from swo_aws_extension.billing.generators.additional_line_processors.extra_discounts import (
     ExtraDiscountsManager,
     PlSDiscountProcessor,
     ServiceDiscountProcessor,

@@ -2,39 +2,34 @@ import datetime as dt
 
 from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
 
+from swo_aws_extension.billing.generators.additional_line_processors.extra_discounts import (
+    ExtraDiscountsManager,
+)
+from swo_aws_extension.billing.generators.additional_line_processors.pls_charge import (
+    PlSChargeProcessor,
+)
 from swo_aws_extension.billing.generators.billing_report_rows import (
     BillingReportRowsBuilder,
     ReportContext,
 )
 from swo_aws_extension.billing.generators.invoice import InvoiceGenerator
-from swo_aws_extension.billing.generators.journal_line import (
-    JournalLineGenerator,
-)
-from swo_aws_extension.billing.generators.line_processors.extra_discounts import (
-    ExtraDiscountsManager,
-)
-from swo_aws_extension.billing.generators.line_processors.pls_charge import (
-    PlSChargeProcessor,
-)
-from swo_aws_extension.billing.generators.usage import (
-    BaseOrganizationUsageGenerator,
-)
-from swo_aws_extension.billing.models.context import (
-    AuthorizationContext,
-    BillingJournalContext,
-)
-from swo_aws_extension.billing.models.journal_line import (
-    JournalDetails,
-    JournalLine,
-)
-from swo_aws_extension.billing.models.journal_result import (
-    AgreementJournalResult,
-    PlsMismatch,
-)
+from swo_aws_extension.billing.generators.journal_line import JournalLineGenerator
+from swo_aws_extension.billing.generators.usage import BaseOrganizationUsageGenerator
+from swo_aws_extension.billing.models.context import AuthorizationContext, BillingJournalContext
+from swo_aws_extension.billing.models.journal_line import JournalDetails, JournalLine
+from swo_aws_extension.billing.models.journal_result import AgreementJournalResult, PlsMismatch
 from swo_aws_extension.billing.models.usage import OrganizationUsageResult
-from swo_aws_extension.constants import ResponsibilityTransferStatus, SupportTypesEnum
+from swo_aws_extension.constants import (
+    ResponsibilityTransferStatus,
+    SplitBillingPolicyEnum,
+    SupportTypesEnum,
+)
 from swo_aws_extension.logger import get_logger
-from swo_aws_extension.parameters import get_responsibility_transfer_id, get_support_type
+from swo_aws_extension.parameters import (
+    get_responsibility_transfer_id,
+    get_split_billing_policy,
+    get_support_type,
+)
 from swo_aws_extension.utils.decorators import with_log_context
 
 logger = get_logger(__name__)
@@ -96,6 +91,8 @@ class AgreementJournalGenerator:
             mpa_id=mpa_account,
             start_date=self._billing_period.start_date,
             end_date=self._billing_period.last_day,
+            split_billing_enabled=get_split_billing_policy(agreement)
+            == SplitBillingPolicyEnum.LINKED_ACCOUNT_PERCENTAGE,
         )
 
         agreement_result = self._generate_lines_for_accounts(

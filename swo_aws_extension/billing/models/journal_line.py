@@ -5,11 +5,7 @@ from dataclasses import asdict, dataclass, field
 from decimal import Decimal
 from typing import Any, Self
 
-from swo_aws_extension.billing.models.search import (
-    Search,
-    SearchItem,
-    SearchSource,
-)
+from swo_aws_extension.billing.models.search import Search, SearchItem, SearchSource
 
 
 @dataclass
@@ -53,13 +49,13 @@ class JournalDetails:
     mpa_id: str
     start_date: str
     end_date: str
+    split_billing_enabled: bool = False
 
 
 @dataclass
 class InvoiceDetails:
     """Details specific to an invoice line."""
 
-    item_sku: str
     service_name: str
     amount: Decimal
     account_id: str
@@ -115,21 +111,34 @@ class JournalLine:
         item_external_id: str | None,
         journal_details: JournalDetails,
         invoice_details: InvoiceDetails,
-        quantity: int = 1,
-        segment: str = "COM",
+        *,
+        is_organization_charge: bool = False,
     ) -> Self:
         """Create a new journal line for billing purposes.
 
         Args:
-            item_external_id: External item ID.
+            item_external_id: External item ID (SKU).
             journal_details: Journal metadata.
             invoice_details: Invoice details.
-            quantity: Quantity of the item. Defaults to 1.
-            segment: Segment for the journal line. Defaults to "COM".
+            is_organization_charge: Whether this charge belongs to the whole organization
+                rather than a specific linked account.
 
         Returns:
             JournalLine: Journal line object.
         """
+        route_to_agreement = is_organization_charge and journal_details.split_billing_enabled
+        if route_to_agreement:
+            source = SearchSource(
+                type="Agreement",
+                criteria="id",
+                criteria_value=journal_details.agreement_id,
+            )
+        else:
+            source = SearchSource(
+                type="Subscription",
+                criteria="externalIds.vendor",
+                criteria_value=invoice_details.account_id or journal_details.mpa_id,
+            )
         return cls(
             description=Description(
                 value1=invoice_details.service_name,
@@ -148,18 +157,14 @@ class JournalLine:
                 pp_x1=invoice_details.amount,
                 unit_pp=invoice_details.amount,
             ),
-            quantity=quantity,
+            quantity=1,
             search=Search(
                 search_item=SearchItem(
                     criteria="item.externalIds.vendor",
                     criteria_value=item_external_id or "Item Not Found",
                 ),
-                source=SearchSource(
-                    type="Subscription",
-                    criteria="externalIds.vendor",
-                    criteria_value=invoice_details.account_id or journal_details.mpa_id,
-                ),
+                source=source,
             ),
-            segment=segment,
+            segment="COM",
             error=invoice_details.error,
         )

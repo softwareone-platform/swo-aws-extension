@@ -45,6 +45,8 @@ def test_excludes_enterprise_support_when_pls_active(processor_context):
         amount=Decimal("100.00"),
         invoice_entity="INV-1",
         invoice_id="INV-001",
+        start_date="2023-01-01",
+        end_date="2023-01-31",
     )
     processor = SupportJournalLineProcessor()
 
@@ -69,6 +71,8 @@ def test_includes_non_excluded_support(processor_context, is_pls, service_name):
         amount=Decimal("100.00"),
         invoice_entity="INV-1",
         invoice_id="INV-001",
+        start_date="2023-01-01",
+        end_date="2023-01-31",
     )
     processor = SupportJournalLineProcessor()
 

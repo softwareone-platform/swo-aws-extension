@@ -21,11 +21,11 @@ class ServiceMetric:
 
     service_name: str
     record_type: str
+    start_date: str
+    end_date: str
     amount: Decimal = field(default_factory=lambda: Decimal(0))
     invoice_entity: str | None = None
     invoice_id: str | None = None
-    start_date: str | None = None
-    end_date: str | None = None
 
 
 @dataclass

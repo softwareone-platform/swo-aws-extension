@@ -2,14 +2,9 @@ from decimal import Decimal
 
 import pytest
 
-from swo_aws_extension.billing.generators.line_processors.base import (
-    JournalLineProcessor,
-)
+from swo_aws_extension.billing.generators.line_processors.base import JournalLineProcessor
 from swo_aws_extension.billing.models.context import LineProcessorContext
-from swo_aws_extension.billing.models.invoice import (
-    InvoiceEntity,
-    OrganizationInvoice,
-)
+from swo_aws_extension.billing.models.invoice import InvoiceEntity, OrganizationInvoice
 from swo_aws_extension.billing.models.journal_line import JournalDetails
 from swo_aws_extension.billing.models.usage import AccountUsage, ServiceMetric
 from swo_aws_extension.constants import AWSRecordTypeEnum
@@ -70,6 +65,8 @@ def usage_metric():
         record_type=AWSRecordTypeEnum.USAGE,
         amount=Decimal("100.00"),
         invoice_entity="AWS Inc.",
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
 
 
@@ -80,6 +77,8 @@ def test_process_returns_journal_line(processor, context):
         amount=Decimal("100.50"),
         invoice_entity="AWS Inc.",
         invoice_id="INV-001",
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
 
     result = processor.process(metric, context)
@@ -94,6 +93,8 @@ def test_process_skips_zero_amount(processor, context):
         service_name="Amazon S3",
         record_type=AWSRecordTypeEnum.USAGE,
         amount=Decimal(0),
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
 
     result = processor.process(metric, context)
@@ -106,6 +107,8 @@ def test_process_uses_default_invoice_id(processor, context):
         service_name="Amazon S3",
         record_type=AWSRecordTypeEnum.USAGE,
         amount=Decimal("10.00"),
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
 
     result = processor.process(metric, context)
@@ -126,6 +129,8 @@ def test_process_applies_name_affixes(context, prefix_name, suffix_name, expecte
         service_name="Amazon S3",
         record_type=AWSRecordTypeEnum.USAGE,
         amount=Decimal("10.00"),
+        start_date="2026-01-01",
+        end_date="2026-01-31",
     )
 
     result = processor.process(metric, context)

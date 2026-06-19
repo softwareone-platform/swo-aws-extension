@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import pytest
 
-from swo_aws_extension.billing.generators.line_processors.pls_charge import (
+from swo_aws_extension.billing.generators.additional_line_processors.pls_charge import (
     PlSChargeProcessor,
 )
 from swo_aws_extension.billing.models.invoice import (
