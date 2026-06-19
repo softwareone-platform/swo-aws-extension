@@ -31,6 +31,10 @@ def create_metric(service_name, record_type, amount, invoice_entity="Entity1"):
     )
 
 
+def create_enterprise_metric(account="ACC-1"):
+    return create_metric("AWS Support (Enterprise)", AWSRecordTypeEnum.SUPPORT, "0.00")
+
+
 def build_usage_result(metrics_by_account):
     return OrganizationUsageResult(
         reports=OrganizationReport(),
@@ -71,11 +75,12 @@ def test_process_with_custom_percentage(journal_details, organization_invoice):
         "ACC-1": [
             create_metric("EC2", AWSRecordTypeEnum.USAGE, "200.00"),
             create_metric("RDS", AWSRecordTypeEnum.USAGE, "100.00"),
+            create_enterprise_metric(),
         ],
     })
-    manager = PlSChargeProcessor()
+    manager = PlSChargeProcessor(Decimal("10.0"))
 
-    result = manager.process(Decimal("10.0"), usage_result, journal_details, organization_invoice)
+    result = manager.process({}, usage_result, journal_details, organization_invoice)
 
     assert len(result) == 1
     assert result[0].price.unit_pp == Decimal("30.0")
@@ -85,11 +90,14 @@ def test_process_with_custom_percentage(journal_details, organization_invoice):
 
 def test_process_with_default_percentage(journal_details, organization_invoice):
     usage_result = build_usage_result({
-        "ACC-1": [create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00")],
+        "ACC-1": [
+            create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00"),
+            create_enterprise_metric(),
+        ],
     })
-    manager = PlSChargeProcessor()
+    manager = PlSChargeProcessor(Decimal("5.0"))
 
-    result = manager.process(Decimal("5.0"), usage_result, journal_details, organization_invoice)
+    result = manager.process({}, usage_result, journal_details, organization_invoice)
 
     assert len(result) == 1
     assert result[0].price.unit_pp == Decimal("5.0")
@@ -97,12 +105,15 @@ def test_process_with_default_percentage(journal_details, organization_invoice):
 
 def test_process_sums_across_multiple_accounts(journal_details, organization_invoice):
     usage_result = build_usage_result({
-        "ACC-1": [create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00")],
+        "ACC-1": [
+            create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00"),
+            create_enterprise_metric(),
+        ],
         "ACC-2": [create_metric("RDS", AWSRecordTypeEnum.USAGE, "100.00")],
     })
-    manager = PlSChargeProcessor()
+    manager = PlSChargeProcessor(Decimal("10.0"))
 
-    result = manager.process(Decimal("10.0"), usage_result, journal_details, organization_invoice)
+    result = manager.process({}, usage_result, journal_details, organization_invoice)
 
     assert len(result) == 1
     assert result[0].price.unit_pp == Decimal("20.0")
@@ -110,20 +121,25 @@ def test_process_sums_across_multiple_accounts(journal_details, organization_inv
 
 def test_process_returns_empty_when_zero_percentage(journal_details, organization_invoice):
     usage_result = build_usage_result({
-        "ACC-1": [create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00")],
+        "ACC-1": [
+            create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00"),
+            create_enterprise_metric(),
+        ],
     })
-    manager = PlSChargeProcessor()
+    manager = PlSChargeProcessor(Decimal("0.0"))
 
-    result = manager.process(Decimal("0.0"), usage_result, journal_details, organization_invoice)
+    result = manager.process({}, usage_result, journal_details, organization_invoice)
 
     assert len(result) == 0
 
 
 def test_process_returns_empty_when_no_usage(journal_details, organization_invoice):
-    usage_result = build_usage_result({"ACC-1": []})
-    manager = PlSChargeProcessor()
+    usage_result = build_usage_result({
+        "ACC-1": [create_enterprise_metric()],
+    })
+    manager = PlSChargeProcessor(Decimal("5.0"))
 
-    result = manager.process(Decimal("5.0"), usage_result, journal_details, organization_invoice)
+    result = manager.process({}, usage_result, journal_details, organization_invoice)
 
     assert len(result) == 0
 
@@ -135,11 +151,12 @@ def test_process_only_sums_usage_record_type(journal_details, organization_invoi
             create_metric("Support", AWSRecordTypeEnum.SUPPORT, "50.00"),
             create_metric("EC2", AWSRecordTypeEnum.CREDIT, "-10.00"),
             create_metric("EC2", AWSRecordTypeEnum.RECURRING, "20.00"),
+            create_enterprise_metric(),
         ],
     })
-    manager = PlSChargeProcessor()
+    manager = PlSChargeProcessor(Decimal("5.0"))
 
-    result = manager.process(Decimal("5.0"), usage_result, journal_details, organization_invoice)
+    result = manager.process({}, usage_result, journal_details, organization_invoice)
 
     assert len(result) == 1
     assert result[0].price.unit_pp == Decimal("5.0")
@@ -158,11 +175,14 @@ def test_process_applies_exchange_rate(journal_details):
         },
     )
     usage_result = build_usage_result({
-        "ACC-1": [create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00", "AWS EMEA")],
+        "ACC-1": [
+            create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00", "AWS EMEA"),
+            create_enterprise_metric(),
+        ],
     })
-    manager = PlSChargeProcessor()
+    manager = PlSChargeProcessor(Decimal("5.0"))
 
-    result = manager.process(Decimal("5.0"), usage_result, journal_details, invoice)
+    result = manager.process({}, usage_result, journal_details, invoice)
 
     assert len(result) == 1
     assert result[0].price.unit_pp == Decimal("4.5")
@@ -171,10 +191,24 @@ def test_process_applies_exchange_rate(journal_details):
 def test_process_returns_empty_when_invoice_amount_is_zero(journal_details, organization_invoice):
     organization_invoice.principal_invoice_amount = Decimal(0)
     usage_result = build_usage_result({
-        "ACC-1": [create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00")],
+        "ACC-1": [
+            create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00"),
+            create_enterprise_metric(),
+        ],
     })
-    manager = PlSChargeProcessor()
+    manager = PlSChargeProcessor(Decimal("5.0"))
 
-    result = manager.process(Decimal("5.0"), usage_result, journal_details, organization_invoice)
+    result = manager.process({}, usage_result, journal_details, organization_invoice)
 
     assert len(result) == 0
+
+
+def test_returns_empty_when_no_enterprise_support(journal_details, organization_invoice):
+    usage_result = build_usage_result({
+        "ACC-1": [create_metric("EC2", AWSRecordTypeEnum.USAGE, "200.00")],
+    })
+    manager = PlSChargeProcessor(Decimal("10.0"))
+
+    result = manager.process({}, usage_result, journal_details, organization_invoice)
+
+    assert result == []

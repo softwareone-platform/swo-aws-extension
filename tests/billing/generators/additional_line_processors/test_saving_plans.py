@@ -64,7 +64,7 @@ def test_distributes_sp_fee_proportionally(journal_details, organization_invoice
     })
     processor = SavingPlansDistributionProcessor()
 
-    result = processor.process(usage_result, journal_details, organization_invoice)
+    result = processor.process({}, usage_result, journal_details, organization_invoice)
 
     assert len(result) == 2
     amounts_by_account = {line.search.source.criteria_value: line.price.pp_x1 for line in result}
@@ -79,7 +79,7 @@ def test_routes_to_linked_account_subscription(journal_details, organization_inv
     })
     processor = SavingPlansDistributionProcessor()
 
-    result = processor.process(usage_result, journal_details, organization_invoice)
+    result = processor.process({}, usage_result, journal_details, organization_invoice)
 
     assert len(result) == 1
     source = result[0].search.source
@@ -95,7 +95,7 @@ def test_uses_usage_sku(journal_details, organization_invoice):
     })
     processor = SavingPlansDistributionProcessor()
 
-    result = processor.process(usage_result, journal_details, organization_invoice)
+    result = processor.process({}, usage_result, journal_details, organization_invoice)
 
     assert len(result) == 1
     assert result[0].search.search_item.criteria_value == ItemSkuEnum.USAGE_SKU
@@ -109,7 +109,7 @@ def test_skips_account_with_zero_covered_usage(journal_details, organization_inv
     })
     processor = SavingPlansDistributionProcessor()
 
-    result = processor.process(usage_result, journal_details, organization_invoice)
+    result = processor.process({}, usage_result, journal_details, organization_invoice)
 
     account_ids = [line.search.source.criteria_value for line in result]
     assert "ACC-A" in account_ids
@@ -122,7 +122,7 @@ def test_returns_empty_when_no_recurring_fee(journal_details, organization_invoi
     })
     processor = SavingPlansDistributionProcessor()
 
-    result = processor.process(usage_result, journal_details, organization_invoice)
+    result = processor.process({}, usage_result, journal_details, organization_invoice)
 
     assert result == []
 
@@ -133,7 +133,7 @@ def test_returns_empty_when_no_covered_usage(journal_details, organization_invoi
     })
     processor = SavingPlansDistributionProcessor()
 
-    result = processor.process(usage_result, journal_details, organization_invoice)
+    result = processor.process({}, usage_result, journal_details, organization_invoice)
 
     assert result == []
 
@@ -152,10 +152,29 @@ def test_sums_multiple_recurring_fee_metrics(journal_details, organization_invoi
     })
     processor = SavingPlansDistributionProcessor()
 
-    result = processor.process(usage_result, journal_details, organization_invoice)
+    result = processor.process({}, usage_result, journal_details, organization_invoice)
 
     assert len(result) == 1
     assert result[0].price.pp_x1 == Decimal("36000.00")
+
+
+def test_returns_empty_when_split_billing_disabled(organization_invoice):
+    journal_details_no_split = JournalDetails(
+        agreement_id="AGR-123",
+        mpa_id="MPA-001",
+        start_date="2025-01-01",
+        end_date="2025-01-31",
+        split_billing_enabled=False,
+    )
+    usage_result = _make_usage_result({
+        "MPA-001": [_make_metric(AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE, "1000")],
+        "ACC-A": [_make_metric(AWSRecordTypeEnum.SAVING_PLAN_COVERED_USAGE, "500")],
+    })
+    processor = SavingPlansDistributionProcessor()
+
+    result = processor.process({}, usage_result, journal_details_no_split, organization_invoice)
+
+    assert result == []
 
 
 def test_skips_account_when_distributed_amount_rounds_to_zero(
@@ -171,7 +190,7 @@ def test_skips_account_when_distributed_amount_rounds_to_zero(
     })
     processor = SavingPlansDistributionProcessor()
 
-    result = processor.process(usage_result, journal_details, organization_invoice)
+    result = processor.process({}, usage_result, journal_details, organization_invoice)
 
     account_ids = [line.search.source.criteria_value for line in result]
     assert "ACC-A" in account_ids

@@ -1,12 +1,14 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from decimal import Decimal
 from typing import override
 
+from swo_aws_extension.billing.generators.additional_line_processors.base import (
+    AdditionalLineProcessor,
+)
 from swo_aws_extension.billing.generators.currency import resolve_service_amount
 from swo_aws_extension.billing.generators.usage_utils import calculate_total_by_record_types
 from swo_aws_extension.billing.models.invoice import OrganizationInvoice
 from swo_aws_extension.billing.models.journal_line import (
-    InvoiceDetails,
     JournalDetails,
     JournalLine,
 )
@@ -15,7 +17,6 @@ from swo_aws_extension.constants import (
     DEC_ZERO,
     AWSRecordTypeEnum,
     ChannelHandshakeDeployed,
-    ItemSkuEnum,
     SupportTypesEnum,
 )
 from swo_aws_extension.logger import get_logger
@@ -30,15 +31,15 @@ from swo_aws_extension.parameters import (
 logger = get_logger(__name__)
 
 
-class BaseExtraDiscountProcessor(ABC):
+class BaseExtraDiscountProcessor(AdditionalLineProcessor):
     """Base class for all extra discounts processor."""
 
-    item_sku: str = ItemSkuEnum.ADDITIONAL_CHARGES_SKU
     is_organization_charge: bool = True
 
     def __init__(self, service_name: str) -> None:
         self._service_name = service_name
 
+    @override
     def process(
         self,
         agreement: dict,
@@ -46,17 +47,10 @@ class BaseExtraDiscountProcessor(ABC):
         journal_details: JournalDetails,
         organization_invoice: OrganizationInvoice,
     ) -> list[JournalLine]:
-        """Process extra discount and return journal lines.
+        if organization_invoice.principal_invoice_amount == DEC_ZERO:
+            logger.info("Principal invoice amount is zero, skipping extra discounts processing.")
+            return []
 
-        Args:
-            agreement: The agreement data containing the parameters.
-            usage_result: The global organization usage result.
-            journal_details: Shared journal details containing the MPA ID.
-            organization_invoice: The organization invoice.
-
-        Returns:
-            List of journal lines containing the discount refund.
-        """
         if not self._is_applicable(agreement):
             return []
 
@@ -68,23 +62,10 @@ class BaseExtraDiscountProcessor(ABC):
         if base_amount == DEC_ZERO:
             return []
 
-        refund_amount = self._calculate_refund_amount(base_amount, discount_percentage)
-
-        invoice_details = InvoiceDetails(
-            service_name=self._service_name,
-            amount=refund_amount,
-            account_id=journal_details.mpa_id,
-            invoice_entity=organization_invoice.primary_entity_name,
-            invoice_id=organization_invoice.primary_invoice_id,
-            start_date=journal_details.start_date,
-            end_date=journal_details.end_date,
-        )
+        refund_amount = self._calculate_percentage_amount(base_amount, discount_percentage)
         return [
-            JournalLine.build(
-                self.item_sku,
-                journal_details,
-                invoice_details,
-                is_organization_charge=self.is_organization_charge,
+            self._build_org_journal_line(
+                self._service_name, refund_amount, journal_details, organization_invoice
             )
         ]
 
@@ -103,10 +84,6 @@ class BaseExtraDiscountProcessor(ABC):
         organization_invoice: OrganizationInvoice,
     ) -> Decimal:
         """Calculate the sum of metrics over which the discount is applied."""
-
-    def _calculate_refund_amount(self, base_amount: Decimal, percentage: Decimal) -> Decimal:
-        refund = base_amount * (percentage / Decimal(100))
-        return round(refund, 6)
 
 
 class ServiceDiscountProcessor(BaseExtraDiscountProcessor):
@@ -235,39 +212,3 @@ class PlSDiscountProcessor(BaseExtraDiscountProcessor):
             organization_invoice,
             {AWSRecordTypeEnum.USAGE},
         )
-
-
-class ExtraDiscountsManager:
-    """Manager to process all extra discounts globally across an organization."""
-
-    def __init__(self, pls_charge_percentage: Decimal) -> None:
-        self._processors = [
-            ServiceDiscountProcessor(),
-            SupportDiscountProcessor(),
-            PlSDiscountProcessor(pls_charge_percentage),
-        ]
-
-    def process(
-        self,
-        agreement: dict,
-        usage_result: OrganizationUsageResult,
-        journal_details: JournalDetails,
-        organization_invoice: OrganizationInvoice,
-    ) -> list[JournalLine]:
-        """Apply all extra discounts over the organization usage result."""
-        lines = []
-        principal_amount = organization_invoice.principal_invoice_amount
-        if principal_amount == DEC_ZERO:
-            logger.info("Principal invoice amount is zero, skipping extra discounts processing.")
-            return lines
-
-        for processor in self._processors:
-            lines.extend(
-                processor.process(
-                    agreement,
-                    usage_result,
-                    journal_details,
-                    organization_invoice,
-                )
-            )
-        return lines

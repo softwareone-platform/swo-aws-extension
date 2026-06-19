@@ -1,6 +1,10 @@
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import override
 
+from swo_aws_extension.billing.generators.additional_line_processors.base import (
+    AdditionalLineProcessor,
+)
 from swo_aws_extension.billing.generators.currency import resolve_service_amount
 from swo_aws_extension.billing.models.invoice import OrganizationInvoice
 from swo_aws_extension.billing.models.journal_line import (
@@ -23,7 +27,7 @@ class _SPFeeData:
     invoice_id: str
 
 
-class SavingPlansDistributionProcessor:
+class SavingPlansDistributionProcessor(AdditionalLineProcessor):
     """Distribute org-level Saving Plans recurring fee to linked accounts by covered usage share.
 
     Only runs when split billing is enabled (splitBillingPolicy=LINKED_ACCOUNT_PERCENTAGE).
@@ -37,22 +41,18 @@ class SavingPlansDistributionProcessor:
 
     item_sku: str = ItemSkuEnum.USAGE_SKU
 
+    @override
     def process(
         self,
+        agreement: dict,
         usage_result: OrganizationUsageResult,
         journal_details: JournalDetails,
         organization_invoice: OrganizationInvoice,
     ) -> list[JournalLine]:
-        """Return one journal line per linked account with non-zero covered SP usage.
+        """Return one journal line per linked account with non-zero covered SP usage."""
+        if not journal_details.split_billing_enabled:
+            return []
 
-        Args:
-            usage_result: Usage data for all accounts in the organization.
-            journal_details: Journal metadata including agreement and MPA IDs.
-            organization_invoice: The organization invoice for currency resolution.
-
-        Returns:
-            Journal lines targeting each linked-account subscription directly.
-        """
         fee_data = self._collect_recurring_fee(usage_result, organization_invoice)
         if fee_data.total == DEC_ZERO:
             logger.info("No Saving Plans recurring fee found; skipping SP distribution.")
@@ -63,7 +63,7 @@ class SavingPlansDistributionProcessor:
             logger.info("No Saving Plans covered usage found; skipping SP distribution.")
             return []
 
-        total_covered = sum(covered_by_account.values())
+        total_covered = sum(covered_by_account.values(), DEC_ZERO)
         return self._build_distribution_lines(
             covered_by_account, total_covered, fee_data, journal_details
         )
@@ -79,11 +79,14 @@ class SavingPlansDistributionProcessor:
             return _SPFeeData(DEC_ZERO, "", "", "")
         return _SPFeeData(
             total=sum(
-                resolve_service_amount(
-                    metric.amount,
-                    organization_invoice.entities.get(metric.invoice_entity or ""),
-                )
-                for metric in metrics
+                (
+                    resolve_service_amount(
+                        metric.amount,
+                        organization_invoice.entities.get(metric.invoice_entity or ""),
+                    )
+                    for metric in metrics
+                ),
+                DEC_ZERO,
             ),
             service_name=metrics[0].service_name,
             invoice_entity=metrics[0].invoice_entity or "",
@@ -106,10 +109,13 @@ class SavingPlansDistributionProcessor:
         covered: dict[str, Decimal] = {}
         for account_id, account_usage in usage_result.usage_by_account.items():
             amount = sum(
-                metric.amount
-                for metric in account_usage.get_metrics_by_record_type(
-                    AWSRecordTypeEnum.SAVING_PLAN_COVERED_USAGE
-                )
+                (
+                    metric.amount
+                    for metric in account_usage.get_metrics_by_record_type(
+                        AWSRecordTypeEnum.SAVING_PLAN_COVERED_USAGE
+                    )
+                ),
+                DEC_ZERO,
             )
             if amount > DEC_ZERO:
                 covered[account_id] = amount
