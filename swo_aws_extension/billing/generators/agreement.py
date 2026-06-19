@@ -8,6 +8,9 @@ from swo_aws_extension.billing.generators.additional_line_processors.extra_disco
 from swo_aws_extension.billing.generators.additional_line_processors.pls_charge import (
     PlSChargeProcessor,
 )
+from swo_aws_extension.billing.generators.additional_line_processors.saving_plans import (
+    SavingPlansDistributionProcessor,
+)
 from swo_aws_extension.billing.generators.billing_report_rows import (
     BillingReportRowsBuilder,
     ReportContext,
@@ -140,6 +143,15 @@ class AgreementJournalGenerator:
             all_lines.extend(
                 PlSChargeProcessor().process(
                     self._pls_charge_percentage,
+                    usage_result,
+                    journal_details,
+                    organization_invoice,
+                )
+            )
+
+        if journal_details.split_billing_enabled:
+            all_lines.extend(
+                SavingPlansDistributionProcessor().process(
                     usage_result,
                     journal_details,
                     organization_invoice,
