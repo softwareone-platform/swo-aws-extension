@@ -609,3 +609,12 @@ def get_split_billing_policy(source: dict[str, Any]) -> str | None:
         source,
     )
     return fulfillment_param.get("value", None)
+
+
+def get_service_discount_type(source: dict[str, Any]) -> str | None:
+    """Get the service discount type from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.SERVICE_DISCOUNT_TYPE.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
