@@ -43,9 +43,7 @@ def test_validate_order_orchestrates_all_steps_new_aws_environment(
         OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value,
         constraints={"hidden": True, "required": False, "readonly": False},
     )
-    new_account_instructions_param = get_ordering_parameter(
-        OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value, order
-    )
+    get_ordering_parameter(OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value, order)
 
     result = validate_order(mock_client, order)
 
@@ -204,3 +202,135 @@ def test_validate_order_strips_whitespace_from_mpa_account(
 
     mpa_param = get_ordering_parameter(OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value, result)
     assert mpa_param["value"] == "651706759263"
+
+
+def test_validate_order_rejects_change_order(order_factory):
+    mock_client = MagicMock(spec=MPTClient)
+    order = order_factory(order_type="Change")
+
+    result = validate_order(mock_client, order)
+
+    assert result["error"]["id"] == "AWS003"
+    assert "Change orders are not supported" in result["error"]["message"]
+
+
+def test_validate_termination_order_rejected_for_linked_account(order_factory, mocker):
+    mock_client = MagicMock(spec=MPTClient)
+    agreement_info = {
+        "externalIds": {"vendor": "225989344502"},
+        "subscriptions": [
+            {
+                "id": "SUB-MASTER-001",
+                "externalIds": {"vendor": "225989344502"},
+                "status": "Active",
+            },
+            {
+                "id": "SUB-LINKED-001",
+                "externalIds": {"vendor": "LINKED-111111111111"},
+                "status": "Active",
+            },
+        ],
+    }
+    order = order_factory(
+        order_type="Termination",
+        lines=[
+            {"subscription": {"id": "SUB-LINKED-001"}, "quantity": 0, "oldQuantity": 1},
+        ],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.setup_client",
+        return_value=MagicMock(),
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_agreement",
+        return_value=agreement_info,
+    )
+
+    result = validate_order(mock_client, order)
+
+    assert result["error"]["id"] == "AWS005"
+    assert "linked-account subscriptions are not supported" in result["error"]["message"]
+
+
+def test_validate_termination_order_allowed_when_master_subscription_is_terminating(
+    order_factory, mocker
+):
+    mock_client = MagicMock(spec=MPTClient)
+    agreement_info = {
+        "externalIds": {"vendor": "225989344502"},
+        "subscriptions": [
+            {
+                "id": "SUB-MASTER-001",
+                "externalIds": {"vendor": "225989344502"},
+                "status": "Active",
+            },
+        ],
+    }
+    order = order_factory(
+        order_type="Termination",
+        lines=[
+            {"subscription": {"id": "SUB-MASTER-001"}, "quantity": 0, "oldQuantity": 1},
+        ],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.setup_client",
+        return_value=MagicMock(),
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_agreement",
+        return_value=agreement_info,
+    )
+
+    result = validate_order(mock_client, order)
+
+    assert result.get("error") is None
+
+
+def test_validate_termination_order_rejected_when_no_master_subscription_in_lines(
+    order_factory, mocker
+):
+    mock_client = MagicMock(spec=MPTClient)
+    agreement_info = {
+        "externalIds": {"vendor": "225989344502"},
+        "subscriptions": [
+            {
+                "id": "SUB-MASTER-001",
+                "externalIds": {"vendor": "225989344502"},
+                "status": "Active",
+            },
+            {
+                "id": "SUB-LINKED-001",
+                "externalIds": {"vendor": "LINKED-111111111111"},
+                "status": "Active",
+            },
+        ],
+    }
+    order = order_factory(
+        order_type="Termination",
+        lines=[
+            {"subscription": {"id": "SUB-LINKED-001"}, "quantity": 0, "oldQuantity": 1},
+            {"subscription": {"id": "SUB-MASTER-001"}, "quantity": 1, "oldQuantity": 1},
+        ],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.setup_client",
+        return_value=MagicMock(),
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_agreement",
+        return_value=agreement_info,
+    )
+
+    result = validate_order(mock_client, order)
+
+    assert result["error"]["id"] == "AWS005"
+
+
+def test_validate_order_returns_order_unchanged_for_unknown_type(order_factory):
+    mock_client = MagicMock(spec=MPTClient)
+    order = order_factory(order_type="Unknown")
+
+    result = validate_order(mock_client, order)
+
+    assert result["type"] == "Unknown"
+    assert result.get("error") is None

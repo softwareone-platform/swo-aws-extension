@@ -1,8 +1,15 @@
 import copy
 import logging
+from types import MappingProxyType
 
+from mpt_extension_sdk.core.utils import setup_client
+from mpt_extension_sdk.flows.context import (
+    ORDER_TYPE_CHANGE,
+    ORDER_TYPE_PURCHASE,
+    ORDER_TYPE_TERMINATION,
+)
 from mpt_extension_sdk.mpt_http.base import MPTClient
-from mpt_extension_sdk.mpt_http.mpt import get_product_items_by_skus
+from mpt_extension_sdk.mpt_http.mpt import get_agreement, get_product_items_by_skus
 from mpt_extension_sdk.mpt_http.wrap_http_error import ValidationError
 
 from swo_aws_extension.constants import (
@@ -12,6 +19,7 @@ from swo_aws_extension.constants import (
 )
 from swo_aws_extension.flows.order_utils import (
     has_previous_order,
+    set_order_error,
     strip_whitespace_from_mpa_account,
 )
 from swo_aws_extension.parameters import (
@@ -25,39 +33,37 @@ from swo_aws_extension.parameters import (
 
 logger = logging.getLogger(__name__)
 
-VISIBLE_REQUIRED = {"hidden": False, "required": True, "readonly": False}
-VISIBLE = {"hidden": False, "required": False, "readonly": False}
+VISIBLE_REQUIRED = MappingProxyType({"hidden": False, "required": True, "readonly": False})
+VISIBLE = MappingProxyType({"hidden": False, "required": False, "readonly": False})
 
 
-ACCOUNT_TYPE_CONFIG = {
-    AccountTypesEnum.NEW_AWS_ENVIRONMENT.value: {
-        "visible_params": [
-            OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value,
-        ],
-        "required_params": [],
-        "reset_params": [
+ACCOUNT_TYPE_CONFIG = MappingProxyType({
+    AccountTypesEnum.NEW_AWS_ENVIRONMENT.value: MappingProxyType({
+        "visible_params": (OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value,),
+        "required_params": (),
+        "reset_params": (
             OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value,
             OrderParametersEnum.TECHNICAL_CONTACT_INFO.value,
             OrderParametersEnum.CONNECT_AWS_BILLING_ACCOUNT.value,
             OrderParametersEnum.CONTACT.value,
-        ],
-    },
-    AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value: {
-        "visible_params": [
+        ),
+    }),
+    AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value: MappingProxyType({
+        "visible_params": (
             OrderParametersEnum.TECHNICAL_CONTACT_INFO.value,
             OrderParametersEnum.CONNECT_AWS_BILLING_ACCOUNT.value,
-        ],
-        "required_params": [
+        ),
+        "required_params": (
             OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value,
             OrderParametersEnum.CONTACT.value,
-        ],
-        "reset_params": [
+        ),
+        "reset_params": (
             OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value,
             OrderParametersEnum.ORDER_ACCOUNT_NAME.value,
             OrderParametersEnum.ORDER_ACCOUNT_EMAIL.value,
-        ],
-    },
-}
+        ),
+    }),
+})
 
 
 def _apply_account_type_constraints(order: dict, account_type: str | None) -> dict:
@@ -117,8 +123,6 @@ def _is_parameter_visible(order: dict, param_external_id: str) -> bool:
 
 
 def _validate_duplicate_agreement(client: MPTClient, order: dict) -> dict | None:
-    if order.get("type") != "Purchase":
-        return None
     if has_previous_order(client, order, order.get("agreement", {}).get("id", "")):
         return set_ordering_parameter_error(
             order,
@@ -178,14 +182,59 @@ def validate_order(client: MPTClient, order: dict) -> dict:
     """
     validated_order = copy.deepcopy(order)
     validated_order = reset_ordering_parameters_error(validated_order)
-    validated_order = strip_whitespace_from_mpa_account(validated_order)
-    error_order = _validate_duplicate_agreement(client, validated_order)
-    if error_order:
-        return error_order
-    error_order = _validate_new_account_constraints(validated_order)
-    if error_order:
-        return error_order
-    validated_order = _apply_account_type_constraints(
-        validated_order, get_account_type(validated_order)
+    if order.get("type") == ORDER_TYPE_CHANGE:
+        validated_order = set_order_error(
+            validated_order,
+            ValidationError(
+                err_id="AWS003",
+                message="Change orders are not supported by the AWS extension.",
+            ).to_dict(),
+        )
+    if order.get("type") == ORDER_TYPE_TERMINATION:
+        validated_order = _validate_termination_order(validated_order)
+    if order.get("type") == ORDER_TYPE_PURCHASE:
+        validated_order = strip_whitespace_from_mpa_account(validated_order)
+        error_order = _validate_duplicate_agreement(client, validated_order)
+        if error_order:
+            return error_order
+        error_order = _validate_new_account_constraints(validated_order)
+        if error_order:
+            return error_order
+        validated_order = _apply_account_type_constraints(
+            validated_order, get_account_type(validated_order)
+        )
+        validated_order = _add_default_lines(client, validated_order)
+    return validated_order
+
+
+def _validate_termination_order(order: dict) -> dict:
+    mpt_client = setup_client()
+    agreement_info = get_agreement(mpt_client, order["agreement"]["id"])
+    agreement_external_id = agreement_info.get("externalIds", {}).get("vendor")
+    terminating_subscription_ids = [
+        line["subscription"]["id"]
+        for line in order["lines"]
+        if line["quantity"] == 0 and line["oldQuantity"] > 0
+    ]
+    master_subscription = next(
+        (
+            sub
+            for sub in agreement_info.get("subscriptions", [])
+            if sub.get("externalIds", {}).get("vendor") == agreement_external_id
+            and sub["status"] == "Active"
+        ),
+        None,
     )
-    return _add_default_lines(client, validated_order)
+    logger.info(master_subscription["id"])
+    if master_subscription["id"] not in terminating_subscription_ids:
+        return set_order_error(
+            order,
+            ValidationError(
+                err_id="AWS005",
+                message=(
+                    "Termination orders on linked-account subscriptions are not supported. "
+                    "Only the master payer subscription can be terminated."
+                ),
+            ).to_dict(),
+        )
+    return order
