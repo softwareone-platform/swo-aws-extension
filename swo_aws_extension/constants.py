@@ -129,6 +129,7 @@ class FulfillmentParametersEnum(StrEnum):
     FEATURE_VERSION_DEPLOYMENT_ERROR_NOTIFIED = "featureVersionDeploymentErrorNotified"
     CCO_CONTRACT_NUMBER = "ccoContractNumber"
     ERP_PROJECT_NO = "erpProjectNo"
+    SERVICE_DISCOUNT_TYPE = "serviceDiscountType"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
@@ -278,3 +279,10 @@ DEFAULT_SCU = "DM-SCU-000000"
 
 
 ROLES_DEPLOYED_CRM_TICKET_COMMENT = "Customer roles have been deployed. Please resolve this ticket."
+
+
+class ServiceDiscountTypeEnum(StrEnum):
+    """Enum for service discount calculation types."""
+
+    SPP_DISCOUNT = "SPP_DISCOUNT"
+    USAGE_AMOUNT = "USAGE_AMOUNT"

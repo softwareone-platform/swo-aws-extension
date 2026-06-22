@@ -6,6 +6,7 @@ from swo_aws_extension.constants import (
     DEC_ZERO,
     AWSRecordTypeEnum,
     ChannelHandshakeDeployed,
+    ServiceDiscountTypeEnum,
     SupportTypesEnum,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.currency import (
@@ -28,6 +29,7 @@ from swo_aws_extension.parameters import (
     get_channel_handshake_approval_status,
     get_pls_discount,
     get_service_discount,
+    get_service_discount_type,
     get_support_discount,
     get_support_type,
 )
@@ -67,7 +69,7 @@ class BaseExtraDiscountProcessor(ABC):
         if not discount_percentage or discount_percentage <= DEC_ZERO:
             return []
 
-        base_amount = self._calculate_base_amount(usage_result, organization_invoice)
+        base_amount = self._calculate_base_amount(usage_result, organization_invoice, agreement)
         if base_amount == DEC_ZERO:
             return []
 
@@ -76,7 +78,7 @@ class BaseExtraDiscountProcessor(ABC):
         invoice_details = InvoiceDetails(
             item_sku=ITEM_SKU,
             service_name=self._service_name,
-            amount=refund_amount,
+            amount=-abs(refund_amount),
             account_id=journal_details.mpa_id,
             invoice_entity=organization_invoice.primary_entity_name,
             invoice_id=organization_invoice.primary_invoice_id,
@@ -98,6 +100,7 @@ class BaseExtraDiscountProcessor(ABC):
         self,
         usage_result: OrganizationUsageResult,
         organization_invoice: OrganizationInvoice,
+        agreement: dict,
     ) -> Decimal:
         """Calculate the sum of metrics over which the discount is applied."""
 
@@ -123,6 +126,17 @@ class ServiceDiscountProcessor(BaseExtraDiscountProcessor):
 
     @override
     def _calculate_base_amount(
+        self,
+        usage_result: OrganizationUsageResult,
+        organization_invoice: OrganizationInvoice,
+        agreement: dict,
+    ) -> Decimal:
+        discount_type = get_service_discount_type(agreement)
+        if discount_type == ServiceDiscountTypeEnum.USAGE_AMOUNT:
+            return self._calculate_base_amount_by_usage(usage_result, organization_invoice)
+        return self._calculate_base_amount_by_spp(usage_result, organization_invoice)
+
+    def _calculate_base_amount_by_spp(
         self,
         usage_result: OrganizationUsageResult,
         organization_invoice: OrganizationInvoice,
@@ -156,6 +170,21 @@ class ServiceDiscountProcessor(BaseExtraDiscountProcessor):
             )
         return total
 
+    def _calculate_base_amount_by_usage(
+        self,
+        usage_result: OrganizationUsageResult,
+        organization_invoice: OrganizationInvoice,
+    ) -> Decimal:
+        return calculate_total_by_record_types(
+            usage_result,
+            organization_invoice,
+            {
+                AWSRecordTypeEnum.USAGE,
+                AWSRecordTypeEnum.RECURRING,
+                AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE,
+            },
+        )
+
 
 class SupportDiscountProcessor(BaseExtraDiscountProcessor):
     """Processor for Support Extra Discount."""
@@ -179,6 +208,7 @@ class SupportDiscountProcessor(BaseExtraDiscountProcessor):
         self,
         usage_result: OrganizationUsageResult,
         organization_invoice: OrganizationInvoice,
+        agreement: dict,
     ) -> Decimal:
         total = DEC_ZERO
         for account_usage in usage_result.usage_by_account.values():
@@ -226,6 +256,7 @@ class PlSDiscountProcessor(BaseExtraDiscountProcessor):
         self,
         usage_result: OrganizationUsageResult,
         organization_invoice: OrganizationInvoice,
+        agreement: dict,
     ) -> Decimal:
         return calculate_total_by_record_types(
             usage_result,
