@@ -33,7 +33,7 @@ class BillingPeriod:
 
     @property
     def last_day(self) -> str:
-        """Get the last day of the billing period (end_date - 1 day)."""
+        """The last day of the billing period (end_date - 1 day)."""
         end = dt.date.fromisoformat(self.end_date)
         last = end - dt.timedelta(days=1)
         return last.strftime(COST_EXPLORER_DATE_FORMAT)

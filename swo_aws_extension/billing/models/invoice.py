@@ -29,7 +29,7 @@ class OrganizationInvoice:
 
     @property
     def primary_entity_name(self) -> str:
-        """Return the name of the entity marked as primary, or empty string."""
+        """The name of the entity marked as primary, or empty string."""
         for name, entity in self.entities.items():
             if entity.primary:
                 return name
@@ -37,7 +37,7 @@ class OrganizationInvoice:
 
     @property
     def primary_invoice_id(self) -> str:
-        """Return the invoice ID of the entity marked as primary."""
+        """The invoice ID of the entity marked as primary."""
         for entity in self.entities.values():
             if entity.primary:
                 return entity.invoice_id

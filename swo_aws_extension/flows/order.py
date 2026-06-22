@@ -33,17 +33,17 @@ class InitialAWSContext(BaseContext):
 
     @property
     def master_payer_account_id(self):
-        """Get Master Payer Account ID from agreement."""
+        """Master Payer Account ID from agreement."""
         return self.agreement.get("externalIds", {}).get("vendor", "")
 
     @property
     def order_status(self):
-        """Return the order status."""
+        """The order status."""
         return self.order.get("status")
 
     @property
     def template(self):
-        """Return the order template."""
+        """The order template."""
         return self.order.get("template")
 
     def is_type_new_aws_environment(self):

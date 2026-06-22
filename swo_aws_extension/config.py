@@ -54,142 +54,142 @@ class Config:
 
     @property
     def ccp_api_base_url(self) -> str:
-        """Get the base URL for the CCP API."""
+        """The base URL for the CCP API."""
         return settings.EXTENSION_CONFIG["CCP_API_BASE_URL"]
 
     @property
     def ccp_oauth_credentials_scope(self) -> str:
-        """Get the scope for the CCP OAuth."""
+        """The scope for the CCP OAuth."""
         return settings.EXTENSION_CONFIG["CCP_OAUTH_CREDENTIALS_SCOPE"]
 
     @property
     def apn_role_name(self) -> str:
-        """Get the APN role name."""
+        """The APN role name."""
         return settings.EXTENSION_CONFIG["APN_ROLE_NAME"]
 
     @property
     def apn_account_id(self) -> str:
-        """Get the APN account ID."""
+        """The APN account ID."""
         return settings.EXTENSION_CONFIG["APN_ACCOUNT_ID"]
 
     @property
     def management_role_name(self) -> str:
-        """Get the Management role name."""
+        """The Management role name."""
         return settings.EXTENSION_CONFIG.get("MANAGEMENT_ROLE")
 
     @property
     def billing_role_name(self) -> str:
-        """Get the Billing role name."""
+        """The Billing role name."""
         return settings.EXTENSION_CONFIG.get("BILLING_ROLE")
 
     @property
     def querying_timeout_days(self) -> int:
-        """Get the timeout for channel handshake in days."""
+        """The timeout for channel handshake in days."""
         return int(settings.EXTENSION_CONFIG["QUERYING_TIMEOUT_DAYS"])
 
     @property
     def customer_roles_querying_timeout_days(self) -> int:
-        """Get the timeout for customer roles querying in days."""
+        """The timeout for customer roles querying in days."""
         return int(settings.EXTENSION_CONFIG["CUSTOMER_ROLES_QUERYING_TIMEOUT_DAYS"])
 
     @property
     def cloud_orchestrator_api_base_url(self) -> str:
-        """Get the base URL for the Cloud Orchestrator API."""
+        """The base URL for the Cloud Orchestrator API."""
         return settings.EXTENSION_CONFIG["CLOUD_ORCHESTRATOR_API_BASE_URL"]
 
     @property
     def crm_api_base_url(self) -> str:
-        """Get the base URL for the CRM API."""
+        """The base URL for the CRM API."""
         return settings.EXTENSION_CONFIG["CRM_API_BASE_URL"]
 
     @property
     def crm_oauth_url(self) -> str:
-        """Get the OAuth URL for the CRM API."""
+        """The OAuth URL for the CRM API."""
         return settings.EXTENSION_CONFIG["CRM_OAUTH_URL"]
 
     @property
     def crm_client_id(self) -> str:
-        """Get the client ID for the CRM API."""
+        """The client ID for the CRM API."""
         return settings.EXTENSION_CONFIG["CRM_CLIENT_ID"]
 
     @property
     def crm_client_secret(self) -> str:
-        """Get the client secret for the CRM API."""
+        """The client secret for the CRM API."""
         return settings.EXTENSION_CONFIG["CRM_CLIENT_SECRET"]
 
     @property
     def crm_audience(self) -> str:
-        """Get the audience for the CRM API."""
+        """The audience for the CRM API."""
         return settings.EXTENSION_CONFIG["CRM_AUDIENCE"]
 
     @property
     def cco_api_base_url(self) -> str:
-        """Get the base URL for the CCO API."""
+        """The base URL for the CCO API."""
         return settings.EXTENSION_CONFIG["CCO_API_BASE_URL"]
 
     @property
     def cco_oauth_url(self) -> str:
-        """Get the OAuth URL for the CCO API."""
+        """The OAuth URL for the CCO API."""
         return settings.EXTENSION_CONFIG["CCO_OAUTH_URL"]
 
     @property
     def cco_client_id(self) -> str:
-        """Get the client ID for the CCO API."""
+        """The client ID for the CCO API."""
         return settings.EXTENSION_CONFIG["CCO_CLIENT_ID"]
 
     @property
     def cco_client_secret(self) -> str:
-        """Get the client secret for the CCO API."""
+        """The client secret for the CCO API."""
         return settings.EXTENSION_CONFIG["CCO_CLIENT_SECRET"]
 
     @property
     def cco_audience(self) -> str:
-        """Get the audience for the CCO API."""
+        """The audience for the CCO API."""
         return settings.EXTENSION_CONFIG["CCO_AUDIENCE"]
 
     @property
     def cco_manufacturer_code(self) -> str:
-        """Get the manufacturer code used for CCO contract creation."""
+        """The manufacturer code used for CCO contract creation."""
         return settings.EXTENSION_CONFIG["CCO_MANUFACTURER_CODE"]
 
     @property
     def svc_provisioning_api_base_url(self) -> str:
-        """Get the base URL for the Service Provisioning API."""
+        """The base URL for the Service Provisioning API."""
         return settings.EXTENSION_CONFIG["SVC_PROVISIONING_API_BASE_URL"]
 
     @property
     def svc_provisioning_oauth_url(self) -> str:
-        """Get the OAuth URL for the Service Provisioning API."""
+        """The OAuth URL for the Service Provisioning API."""
         return settings.EXTENSION_CONFIG["SVC_PROVISIONING_OAUTH_URL"]
 
     @property
     def svc_provisioning_client_id(self) -> str:
-        """Get the client ID for the Service Provisioning API."""
+        """The client ID for the Service Provisioning API."""
         return settings.EXTENSION_CONFIG["SVC_PROVISIONING_CLIENT_ID"]
 
     @property
     def svc_provisioning_client_secret(self) -> str:
-        """Get the client secret for the Service Provisioning API."""
+        """The client secret for the Service Provisioning API."""
         return settings.EXTENSION_CONFIG["SVC_PROVISIONING_CLIENT_SECRET"]
 
     @property
     def svc_provisioning_audience(self) -> str:
-        """Get the audience for the Service Provisioning API."""
+        """The audience for the Service Provisioning API."""
         return settings.EXTENSION_CONFIG["SVC_PROVISIONING_AUDIENCE"]
 
     @property
     def aws_ses_access_key(self) -> str:
-        """Get the AWS SES access key."""
+        """The AWS SES access key."""
         return settings.EXTENSION_CONFIG["AWS_SES_CREDENTIALS"].split(":")[0]
 
     @property
     def aws_ses_secret_key(self) -> str:
-        """Get the AWS SES secret key."""
+        """The AWS SES secret key."""
         return settings.EXTENSION_CONFIG["AWS_SES_CREDENTIALS"].split(":")[1]
 
     @property
     def aws_ses_region(self) -> str:
-        """Get the AWS SES region."""
+        """The AWS SES region."""
         return settings.EXTENSION_CONFIG["AWS_SES_REGION"]
 
     @property
@@ -199,68 +199,68 @@ class Config:
 
     @property
     def email_notifications_sender(self) -> str:
-        """Get the email notifications sender."""
+        """The email notifications sender."""
         return settings.EXTENSION_CONFIG["EMAIL_NOTIFICATIONS_SENDER"]
 
     @property
     def deploy_services_feature_recipients(self) -> list[str]:
-        """Get the deploy services feature recipients."""
+        """The deploy services feature recipients."""
         recipients = settings.EXTENSION_CONFIG.get("DEPLOY_SERVICES_FEATURE_RECIPIENTS", "")
         return [email.strip() for email in recipients.split(",") if email.strip()]
 
     @property
     def azure_storage_connection_string(self) -> str:
-        """Get the Azure Storage account connection string."""
+        """The Azure Storage account connection string."""
         return settings.EXTENSION_CONFIG["AZURE_STORAGE_CONNECTION_STRING"]
 
     @property
     def azure_storage_container(self) -> str:
-        """Get the Azure Storage Blob container name for reports."""
+        """The Azure Storage Blob container name for reports."""
         return settings.EXTENSION_CONFIG["AZURE_STORAGE_CONTAINER"]
 
     @property
     def report_invitations_folder(self) -> str:
-        """Get the folder name in Azure Storage Blob container for invitations reports."""
+        """The folder name in Azure Storage Blob container for invitations reports."""
         return settings.EXTENSION_CONFIG["REPORT_INVITATIONS_FOLDER"]
 
     @property
     def report_billing_folder(self) -> str:
-        """Get the folder name in Azure Storage Blob container for billing reports."""
+        """The folder name in Azure Storage Blob container for billing reports."""
         return settings.EXTENSION_CONFIG["REPORT_BILLING_FOLDER"]
 
     @property
     def azure_storage_sas_expiry_days(self) -> int:
-        """Get the Azure Storage SAS expiry days."""
+        """The Azure Storage SAS expiry days."""
         return int(settings.EXTENSION_CONFIG["AZURE_STORAGE_SAS_EXPIRY_DAYS"])
 
     @property
     def confluence_base_url(self) -> str:
-        """Get the Confluence base URL."""
+        """The Confluence base URL."""
         return settings.EXTENSION_CONFIG["CONFLUENCE_BASE_URL"]
 
     @property
     def confluence_user(self) -> str:
-        """Get the Confluence user."""
+        """The Confluence user."""
         return settings.EXTENSION_CONFIG["CONFLUENCE_USER"]
 
     @property
     def confluence_token(self) -> str:
-        """Get the Confluence API token."""
+        """The Confluence API token."""
         return settings.EXTENSION_CONFIG["CONFLUENCE_TOKEN"]
 
     @property
     def pending_orders_information_report_page_id(self) -> str:
-        """Get the Confluence page ID for pending orders information report."""
+        """The Confluence page ID for pending orders information report."""
         return settings.EXTENSION_CONFIG["PENDING_ORDERS_INFORMATION_REPORT_PAGE_ID"]
 
     @property
     def mpt_portal_base_url(self) -> str:
-        """Get the base URL for the MPT Portal."""
+        """The base URL for the MPT Portal."""
         return settings.MPT_PORTAL_BASE_URL
 
     @property
     def pls_charge_percentage(self) -> float:
-        """Get the PLS charge percentage (defaults to 5.0)."""
+        """The PLS charge percentage (defaults to 5.0)."""
         return float(
             settings.EXTENSION_CONFIG.get("PLS_CHARGE_PERCENTAGE", DEFAULT_PLS_CHARGE_PERCENTAGE),
         )
