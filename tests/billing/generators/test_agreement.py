@@ -9,6 +9,9 @@ from swo_aws_extension.billing.generators.additional_line_processors.extra_disco
 from swo_aws_extension.billing.generators.additional_line_processors.pls_charge import (
     PlSChargeProcessor,
 )
+from swo_aws_extension.billing.generators.additional_line_processors.saving_plans import (
+    SavingPlansDistributionProcessor,
+)
 from swo_aws_extension.billing.generators.agreement import (
     AgreementJournalGenerator,
 )
@@ -463,3 +466,62 @@ def test_pls_mismatch_param_resold_but_enterprise_in_report(
     assert result.pls_mismatches[0].report_has_enterprise is True
     mock_pls_instance.process.assert_called_once()
     assert mock_pls_line in result.lines
+
+
+def test_run_with_split_billing_enabled(
+    mocker,
+    mock_context,
+    mock_aws_client,
+    mock_get_responsibility_transfer_id,
+    mock_line_generator_cls,
+    mock_extra_discounts_manager_cls,
+    mock_pls_charge_manager_cls,
+):
+    mock_builder = mocker.MagicMock()
+    mock_builder.build.return_value = []
+    mock_builder.build_by_account.return_value = []
+    mocker.patch(f"{MODULE}.BillingReportRowsBuilder", return_value=mock_builder)
+    mock_sp_processor = mocker.patch(f"{MODULE}.SavingPlansDistributionProcessor", autospec=True)
+    mock_sp_instance = mocker.MagicMock(spec=SavingPlansDistributionProcessor)
+    mock_sp_line = mocker.MagicMock(spec=JournalLine)
+    mock_sp_instance.process.return_value = [mock_sp_line]
+    mock_sp_processor.return_value = mock_sp_instance
+    agreement = {
+        "id": "AGR-1",
+        "externalIds": {"vendor": "MPA"},
+        "parameters": {
+            "ordering": [
+                {"externalId": "supportType", "value": "ResoldSupport"},
+            ],
+            "fulfillment": [
+                {"externalId": "splitBillingPolicy", "value": "LINKED_ACCOUNT_PERCENTAGE"},
+            ],
+        },
+    }
+    mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
+    mock_generator_instance.generate.return_value = []
+    mock_line_generator_cls.return_value = mock_generator_instance
+    mock_discounts_instance = mocker.MagicMock(spec=ExtraDiscountsManager)
+    mock_discounts_instance.process.return_value = []
+    mock_extra_discounts_manager_cls.return_value = mock_discounts_instance
+    mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
+    mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
+    mock_usage_result.reports = OrganizationReport()
+    mock_usage_result.usage_by_account = {"ACC-1": mocker.MagicMock(spec=AccountUsage)}
+    mock_usage_result.has_enterprise_support.return_value = False
+    mock_usage_generator.run.return_value = mock_usage_result
+    mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
+    mock_invoice_generator.run.return_value = OrganizationInvoiceResult(
+        invoice=OrganizationInvoice(),
+    )
+    generator = AgreementJournalGenerator(
+        _build_auth_context(mock_aws_client),
+        mock_context,
+        mock_usage_generator,
+        mock_invoice_generator,
+    )
+
+    result = generator.run(agreement)
+
+    mock_sp_instance.process.assert_called_once()
+    assert mock_sp_line in result.lines

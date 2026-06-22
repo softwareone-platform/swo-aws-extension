@@ -8,6 +8,9 @@ from swo_aws_extension.billing.generators.line_processors.credit import CreditJo
 from swo_aws_extension.billing.generators.line_processors.marketplace import (
     MarketplaceJournalLineProcessor,
 )
+from swo_aws_extension.billing.generators.line_processors.saving_plans import (
+    SavingsPlanJournalLineProcessor,
+)
 from swo_aws_extension.billing.generators.line_processors.support import SupportJournalLineProcessor
 from swo_aws_extension.billing.models.context import LineProcessorContext
 from swo_aws_extension.billing.models.invoice import OrganizationInvoice
@@ -40,6 +43,7 @@ def _build_processor_registry() -> dict[str, JournalLineProcessor]:
             AWSRecordTypeEnum.CREDIT: credit,
             "MARKETPLACE": marketplace,
             AWSRecordTypeEnum.BUNDLE_DISCOUNT: bundle_discount,
+            AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE: SavingsPlanJournalLineProcessor(),
         },
     )
 
