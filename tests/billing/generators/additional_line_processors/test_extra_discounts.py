@@ -3,7 +3,6 @@ from decimal import Decimal
 import pytest
 
 from swo_aws_extension.billing.generators.additional_line_processors.extra_discounts import (
-    ExtraDiscountsManager,
     PlSDiscountProcessor,
     ServiceDiscountProcessor,
     SupportDiscountProcessor,
@@ -160,7 +159,7 @@ def test_returns_empty_when_handshake_not_approved(
     assert len(lines) == 0
 
 
-def test_extra_discounts_manager(
+def test_extra_discounts_processors_combined(
     agreement,
     usage_result,
     journal_details,
@@ -184,11 +183,13 @@ def test_extra_discounts_manager(
             create_metric("Support", AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT, "-5.00"),
         ]
     )
-    manager = ExtraDiscountsManager(Decimal("5.0"))
+    processors = [ServiceDiscountProcessor(), SupportDiscountProcessor()]
 
-    lines = manager.process(  # act
-        agreement, usage_result, journal_details, organization_invoice
-    )
+    lines = [  # act
+        line
+        for proc in processors
+        for line in proc.process(agreement, usage_result, journal_details, organization_invoice)
+    ]
 
     assert len(lines) == 2
     service_line = next(
@@ -326,15 +327,18 @@ def test_pls_discount_processor(
     [None, Decimal(0)],
     ids=["none", "zero"],
 )
-def test_extra_discounts_manager_skips_when_principal_amount_is_zero_or_none(
+def test_extra_discount_skips_when_principal_amount_is_zero_or_none(
     agreement,
     usage_result,
     journal_details,
     principal_amount,
 ):
+    agreement["parameters"]["fulfillment"].append(
+        {"externalId": "serviceDiscount", "value": "5.0"},
+    )
     invoice = OrganizationInvoice(principal_invoice_amount=principal_amount)
-    manager = ExtraDiscountsManager(Decimal("5.0"))
+    processor = ServiceDiscountProcessor()
 
-    result = manager.process(agreement, usage_result, journal_details, invoice)
+    result = processor.process(agreement, usage_result, journal_details, invoice)
 
     assert not result

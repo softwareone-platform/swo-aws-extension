@@ -3,7 +3,9 @@ import datetime as dt
 from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
 
 from swo_aws_extension.billing.generators.additional_line_processors.extra_discounts import (
-    ExtraDiscountsManager,
+    PlSDiscountProcessor,
+    ServiceDiscountProcessor,
+    SupportDiscountProcessor,
 )
 from swo_aws_extension.billing.generators.additional_line_processors.pls_charge import (
     PlSChargeProcessor,
@@ -49,12 +51,18 @@ class AgreementJournalGenerator:
         invoice_generator: InvoiceGenerator,
     ) -> None:
         self._auth_context = auth_context
-        self._pls_charge_percentage = context.pls_charge_percentage
         self._config = context.config
         self._mpt_client = context.mpt_client
         self._billing_period = context.billing_period
         self._usage_generator = usage_generator
         self._invoice_generator = invoice_generator
+        self._additional_processors = [
+            ServiceDiscountProcessor(),
+            SupportDiscountProcessor(),
+            PlSDiscountProcessor(context.pls_charge_percentage),
+            PlSChargeProcessor(context.pls_charge_percentage),
+            SavingPlansDistributionProcessor(),
+        ]
 
     @with_log_context(lambda _, agreement, **kwargs: agreement.get("id"))
     @dynamic_trace_span(lambda _, agreement, **kwargs: f"Agreement {agreement.get('id')}")
@@ -114,16 +122,13 @@ class AgreementJournalGenerator:
         journal_details: JournalDetails,
         organization_invoice,
     ) -> AgreementJournalResult:
+        # Generate lines from AWS usage report
         all_lines = self._generate_usage_lines(usage_result, journal_details, organization_invoice)
-
-        # Process extra discounts after generating all usage lines.
+        # Generate additional lines from custom processors
         all_lines.extend(
-            ExtraDiscountsManager(self._pls_charge_percentage).process(
-                agreement,
-                usage_result,
-                journal_details,
-                organization_invoice,
-            )
+            line
+            for proc in self._additional_processors
+            for line in proc.process(agreement, usage_result, journal_details, organization_invoice)
         )
 
         pls_in_order = get_support_type(agreement) == SupportTypesEnum.PARTNER_LED_SUPPORT
@@ -136,25 +141,6 @@ class AgreementJournalGenerator:
                     agreement_id=agreement.get("id", ""),
                     pls_in_order=pls_in_order,
                     report_has_enterprise=report_has_enterprise,
-                )
-            )
-
-        if report_has_enterprise:
-            all_lines.extend(
-                PlSChargeProcessor().process(
-                    self._pls_charge_percentage,
-                    usage_result,
-                    journal_details,
-                    organization_invoice,
-                )
-            )
-
-        if journal_details.split_billing_enabled:
-            all_lines.extend(
-                SavingPlansDistributionProcessor().process(
-                    usage_result,
-                    journal_details,
-                    organization_invoice,
                 )
             )
 

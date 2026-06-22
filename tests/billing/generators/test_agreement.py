@@ -3,9 +3,6 @@ import datetime as dt
 import pytest
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.billing.generators.additional_line_processors.extra_discounts import (
-    ExtraDiscountsManager,
-)
 from swo_aws_extension.billing.generators.additional_line_processors.pls_charge import (
     PlSChargeProcessor,
 )
@@ -78,12 +75,22 @@ def mock_line_generator_cls(mocker):
 
 @pytest.fixture
 def mock_extra_discounts_manager_cls(mocker):
-    return mocker.patch(f"{MODULE}.ExtraDiscountsManager", autospec=True)
+    service_mock = mocker.patch(f"{MODULE}.ServiceDiscountProcessor", autospec=True)
+    service_mock.return_value.process.return_value = []
+    mocker.patch(
+        f"{MODULE}.SupportDiscountProcessor", autospec=True
+    ).return_value.process.return_value = []
+    mocker.patch(
+        f"{MODULE}.PlSDiscountProcessor", autospec=True
+    ).return_value.process.return_value = []
+    return service_mock
 
 
 @pytest.fixture
 def mock_pls_charge_manager_cls(mocker):
-    return mocker.patch(f"{MODULE}.PlSChargeProcessor", autospec=True)
+    cls_mock = mocker.patch(f"{MODULE}.PlSChargeProcessor", autospec=True)
+    cls_mock.return_value.process.return_value = []
+    return cls_mock
 
 
 def _build_agreement(support_type="ResoldSupport"):
@@ -128,9 +135,7 @@ def test_run(
     mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
     mock_generator_instance.generate.return_value = [mock_journal_line]
     mock_line_generator_cls.return_value = mock_generator_instance
-    mock_discounts_instance = mocker.MagicMock(spec=ExtraDiscountsManager)
-    mock_discounts_instance.process.return_value = [mock_discount_line]
-    mock_extra_discounts_manager_cls.return_value = mock_discounts_instance
+    mock_extra_discounts_manager_cls.return_value.process.return_value = [mock_discount_line]
     mock_pls_instance = mocker.MagicMock(spec=PlSChargeProcessor)
     mock_pls_instance.process.return_value = [mock_pls_line]
     mock_pls_charge_manager_cls.return_value = mock_pls_instance
@@ -157,7 +162,6 @@ def test_run(
     assert result.lines == [mock_journal_line, mock_discount_line, mock_pls_line]
     mock_invoice_generator.run.assert_called_once()
     mock_generator_instance.generate.assert_called_once()
-    mock_discounts_instance.process.assert_called_once()
     mock_pls_instance.process.assert_called_once()
     call_args = mock_generator_instance.generate.call_args
     assert call_args[0][0] == "ACC-1"
@@ -183,9 +187,6 @@ def test_run_without_pls(
     mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
     mock_generator_instance.generate.return_value = [mock_journal_line]
     mock_line_generator_cls.return_value = mock_generator_instance
-    mock_discounts_instance = mocker.MagicMock(spec=ExtraDiscountsManager)
-    mock_discounts_instance.process.return_value = []
-    mock_extra_discounts_manager_cls.return_value = mock_discounts_instance
     mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
     mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
     mock_usage_result.reports = OrganizationReport()
@@ -206,7 +207,6 @@ def test_run_without_pls(
     result = generator.run(agreement)
 
     assert result.lines == [mock_journal_line]
-    mock_pls_charge_manager_cls.assert_not_called()
 
 
 def test_run_returns_empty_when_no_mpa_account(
@@ -343,9 +343,6 @@ def test_run_processes_when_transfer_started_on_billing_start(
     mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
     mock_generator_instance.generate.return_value = []
     mock_line_generator_cls.return_value = mock_generator_instance
-    mock_discounts_instance = mocker.MagicMock(spec=ExtraDiscountsManager)
-    mock_discounts_instance.process.return_value = []
-    mock_extra_discounts_manager_cls.return_value = mock_discounts_instance
     mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
     mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
     mock_usage_result.reports = OrganizationReport()
@@ -388,9 +385,6 @@ def test_pls_mismatch_param_pls_but_no_enterprise_in_report(
     mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
     mock_generator_instance.generate.return_value = []
     mock_line_generator_cls.return_value = mock_generator_instance
-    mock_discounts_instance = mocker.MagicMock(spec=ExtraDiscountsManager)
-    mock_discounts_instance.process.return_value = []
-    mock_extra_discounts_manager_cls.return_value = mock_discounts_instance
     mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
     mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
     mock_usage_result.reports = OrganizationReport()
@@ -413,7 +407,6 @@ def test_pls_mismatch_param_pls_but_no_enterprise_in_report(
     assert len(result.pls_mismatches) == 1
     assert result.pls_mismatches[0].pls_in_order is True
     assert result.pls_mismatches[0].report_has_enterprise is False
-    mock_pls_charge_manager_cls.assert_not_called()
 
 
 def test_pls_mismatch_param_resold_but_enterprise_in_report(
@@ -436,9 +429,6 @@ def test_pls_mismatch_param_resold_but_enterprise_in_report(
     mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
     mock_generator_instance.generate.return_value = [mock_journal_line]
     mock_line_generator_cls.return_value = mock_generator_instance
-    mock_discounts_instance = mocker.MagicMock(spec=ExtraDiscountsManager)
-    mock_discounts_instance.process.return_value = []
-    mock_extra_discounts_manager_cls.return_value = mock_discounts_instance
     mock_pls_instance = mocker.MagicMock(spec=PlSChargeProcessor)
     mock_pls_instance.process.return_value = [mock_pls_line]
     mock_pls_charge_manager_cls.return_value = mock_pls_instance
@@ -501,9 +491,6 @@ def test_run_with_split_billing_enabled(
     mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
     mock_generator_instance.generate.return_value = []
     mock_line_generator_cls.return_value = mock_generator_instance
-    mock_discounts_instance = mocker.MagicMock(spec=ExtraDiscountsManager)
-    mock_discounts_instance.process.return_value = []
-    mock_extra_discounts_manager_cls.return_value = mock_discounts_instance
     mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
     mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
     mock_usage_result.reports = OrganizationReport()
