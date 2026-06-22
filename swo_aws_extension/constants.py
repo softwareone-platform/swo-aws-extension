@@ -131,6 +131,7 @@ class FulfillmentParametersEnum(StrEnum):
     ERP_PROJECT_NO = "erpProjectNo"
     TERMINATION_DATE = "terminationDate"
     SPLIT_BILLING_POLICY = "splitBillingPolicy"
+    SERVICE_DISCOUNT_TYPE = "serviceDiscountType"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
@@ -291,6 +292,13 @@ class SplitBillingPolicyEnum(StrEnum):
 
     MASTER_PAYER = "MASTER_PAYER"
     LINKED_ACCOUNT_PERCENTAGE = "LINKED_ACCOUNT_PERCENTAGE"
+
+
+class ServiceDiscountTypeEnum(StrEnum):
+    """Enum for service discount calculation types."""
+
+    SPP_DISCOUNT = "SPP_DISCOUNT"
+    USAGE_AMOUNT = "USAGE_AMOUNT"
 
 
 class ItemSkuEnum(StrEnum):
