@@ -16,7 +16,7 @@ Each integration document covers: purpose, authentication mechanism, required en
 | [Service Provisioning](external/service-provisioning.md) | Customer service onboarding from CCO contracts | OAuth 2.0 Client Credentials | [service-provisioning.md](external/service-provisioning.md) |
 | [Azure Blob Storage](external/azure-blob-storage.md) | Report upload and SAS URL generation | Azure Storage Connection String | [azure-blob-storage.md](external/azure-blob-storage.md) |
 | [Confluence](external/confluence.md) | Billing report attachment to Confluence pages | Basic Auth (username + API token) | [confluence.md](external/confluence.md) |
-| [MS Teams](external/ms-teams.md) | Internal operational notifications | Incoming Webhook (no auth) | [ms-teams.md](external/ms-teams.md) |
+| [MS Teams](external/ms-teams.md) | Internal operational notifications | Workflow Webhook (no auth) | [ms-teams.md](external/ms-teams.md) |
 | [AWS SES](external/aws-ses.md) | Customer-facing email delivery | AWS Access Key + Secret Key | [aws-ses.md](external/aws-ses.md) |
 | [Airtable](external/airtable.md) | FinOps entitlements table (per-agreement records) | Personal Access Token | [airtable.md](external/airtable.md) |
 

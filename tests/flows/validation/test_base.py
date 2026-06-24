@@ -334,3 +334,26 @@ def test_validate_order_returns_order_unchanged_for_unknown_type(order_factory):
 
     assert result["type"] == "Unknown"
     assert result.get("error") is None
+
+
+def test_validate_order_returns_error_for_duplicate_agreement(
+    order_factory, order_parameters_factory, mocker
+):
+    mock_client = MagicMock(spec=MPTClient)
+    order = order_factory(
+        order_parameters=order_parameters_factory(
+            account_type=AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value,
+            constraints={"hidden": None, "required": None, "readonly": None},
+        ),
+        lines=[],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.has_previous_order",
+        return_value=True,
+    )
+
+    result = validate_order(mock_client, order)
+
+    account_type_param = get_ordering_parameter(OrderParametersEnum.ACCOUNT_TYPE.value, result)
+    assert account_type_param["error"]["id"] == "AWS004"
+    assert "active agreement already exists" in account_type_param["error"]["message"]

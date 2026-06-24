@@ -1,11 +1,12 @@
 import logging
 
-import pymsteams
 import pytest
+import requests
 
 from swo_aws_extension.swo.notifications.teams import (
     Button,
     FactsSection,
+    Style,
     TeamsNotificationManager,
     notify_one_time_error,
 )
@@ -15,15 +16,8 @@ def test_send_notification_full(mocker, settings):
     settings.EXTENSION_CONFIG = {
         "MSTEAMS_WEBHOOK_URL": "https://teams.webhook",
     }
-    mocked_message = mocker.MagicMock()
-    mocked_section = mocker.MagicMock()
-    mocked_card = mocker.patch(
-        "swo_aws_extension.swo.notifications.teams.pymsteams.connectorcard",
-        return_value=mocked_message,
-    )
-    mocker.patch(
-        "swo_aws_extension.swo.notifications.teams.pymsteams.cardsection",
-        return_value=mocked_section,
+    mocked_post = mocker.patch(
+        "swo_aws_extension.swo.notifications.teams.requests.post",
     )
     button = Button("button-label", "button-url")
     facts_section = FactsSection("section-title", {"key": "value"})
@@ -35,75 +29,98 @@ def test_send_notification_full(mocker, settings):
         facts=facts_section,
     )  # act
 
-    mocked_message.title.assert_called_once_with("\u2705 not-title")
-    mocked_message.text.assert_called_once_with("not-text")
-    mocked_message.color.assert_called_once_with("#00FF00")
-    mocked_message.addLinkButton.assert_called_once_with(button.label, button.url)
-    mocked_section.title.assert_called_once_with(facts_section.title)
-    mocked_section.addFact.assert_called_once_with("key", "value")
-    mocked_message.addSection.assert_called_once_with(mocked_section)
-    mocked_message.send.assert_called_once()
-    mocked_card.assert_called_once_with("https://teams.webhook")
+    mocked_post.assert_called_once()
+    call_args = mocked_post.call_args
+    assert call_args.args[0] == "https://teams.webhook"
+    assert isinstance(call_args.kwargs["timeout"], int)
+    payload = call_args.kwargs["json"]
+    card = payload["attachments"][0]["content"]
+    card_body = card["body"]
+    title_container = card_body[0]["items"][0]
+    fact_sets = [block for block in card_body if block.get("type") == "FactSet"]
+    expected = {
+        "payload_type": "message",
+        "card_type": "AdaptiveCard",
+        "body_text": "not-text",
+        "actions": [
+            {"type": "Action.OpenUrl", "title": "button-label", "url": "button-url"},
+        ],
+        "facts": [{"title": "key", "value": "value"}],
+    }
+    assert (
+        payload["type"],
+        card["type"],
+        card_body[1]["text"],
+        card["actions"],
+        fact_sets[0]["facts"],
+    ) == (
+        expected["payload_type"],
+        expected["card_type"],
+        expected["body_text"],
+        expected["actions"],
+        expected["facts"],
+    )
+    assert "✅ not-title" in title_container["text"]
+    assert any(block.get("text") == "section-title" for block in card_body)
 
 
 def test_send_notification_simple(mocker, settings):
     settings.EXTENSION_CONFIG = {
         "MSTEAMS_WEBHOOK_URL": "https://teams.webhook",
     }
-    mocked_message = mocker.MagicMock()
-    mocker.patch(
-        "swo_aws_extension.swo.notifications.teams.pymsteams.connectorcard",
-        return_value=mocked_message,
+    mocked_post = mocker.patch(
+        "swo_aws_extension.swo.notifications.teams.requests.post",
     )
-    mocked_cardsection = mocker.patch(
-        "swo_aws_extension.swo.notifications.teams.pymsteams.cardsection",
-    )
-    teams_notification_manager = TeamsNotificationManager()
 
-    teams_notification_manager.send_success(
-        "not-title",
-        "not-text",
-    )  # act
+    TeamsNotificationManager().send_success("not-title", "not-text")  # act
 
-    mocked_message.title.assert_called_once_with("\u2705 not-title")
-    mocked_message.text.assert_called_once_with("not-text")
-    mocked_message.color.assert_called_once_with("#00FF00")
-    mocked_message.addLinkButton.assert_not_called()
-    mocked_cardsection.assert_not_called()
-    mocked_message.send.assert_called_once()
+    mocked_post.assert_called_once()
+    payload = mocked_post.call_args.kwargs["json"]
+    card = payload["attachments"][0]["content"]
+    assert "actions" not in card
+    assert len(card["body"]) == 2
 
 
 def test_send_notification_exception(mocker, settings, caplog):
     settings.EXTENSION_CONFIG = {
         "MSTEAMS_WEBHOOK_URL": "https://teams.webhook",
     }
-    mocked_message = mocker.MagicMock()
-    mocked_message.send.side_effect = pymsteams.TeamsWebhookException("error")
-    mocker.patch(
-        "swo_aws_extension.swo.notifications.teams.pymsteams.connectorcard",
-        return_value=mocked_message,
+    mocked_post = mocker.patch(
+        "swo_aws_extension.swo.notifications.teams.requests.post",
     )
-    teams_notification_manager = TeamsNotificationManager()
+    mocked_post.side_effect = requests.RequestException("error")
 
     with caplog.at_level(logging.ERROR):
-        teams_notification_manager.send_success(
-            "not-title",
-            "not-text",
-        )  # act
+        TeamsNotificationManager().send_success("not-title", "not-text")  # act
+
+    assert "Error sending notification to MSTeams!" in caplog.text
+
+
+def test_send_notification_exception_on_raise_for_status(mocker, settings, caplog):
+    settings.EXTENSION_CONFIG = {
+        "MSTEAMS_WEBHOOK_URL": "https://teams.webhook",
+    }
+    mocked_post = mocker.patch(
+        "swo_aws_extension.swo.notifications.teams.requests.post",
+    )
+    mocked_post.return_value.raise_for_status.side_effect = requests.HTTPError("bad status")
+
+    with caplog.at_level(logging.ERROR):
+        TeamsNotificationManager().send_success("not-title", "not-text")  # act
 
     assert "Error sending notification to MSTeams!" in caplog.text
 
 
 @pytest.mark.parametrize(
-    ("function", "color", "icon"),
+    ("function", "style", "icon"),
     [
-        (TeamsNotificationManager().send_warning, "#ffa500", "\u2622"),
-        (TeamsNotificationManager().send_error, "#df3422", "\U0001f4a3"),
-        (TeamsNotificationManager().send_exception, "#541c2e", "\U0001f525"),
-        (TeamsNotificationManager().send_success, "#00FF00", "\u2705"),
+        (TeamsNotificationManager().send_warning, Style.WARNING, "☢"),
+        (TeamsNotificationManager().send_error, Style.ATTENTION, "\U0001f4a3"),
+        (TeamsNotificationManager().send_exception, Style.ATTENTION, "\U0001f525"),
+        (TeamsNotificationManager().send_success, Style.SUCCESS, "✅"),
     ],
 )
-def test_send_others(mocker, function, color, icon):
+def test_send_others(mocker, function, style, icon):
     mocked_send_notification = mocker.patch(
         "swo_aws_extension.swo.notifications.teams.TeamsNotificationManager._send_notification",
     )
@@ -115,7 +132,7 @@ def test_send_others(mocker, function, color, icon):
     mocked_send_notification.assert_called_once_with(
         f"{icon} title",
         "text",
-        color,
+        style,
         button=mocked_button,
         facts=mocked_facts_section,
     )

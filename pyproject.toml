@@ -19,7 +19,6 @@ dependencies = [
   "openpyxl==3.1.*",
   "opentelemetry-instrumentation-botocore==0.60b0",  # fix version, because extension-sdk has opentelemetry-sdk==1.39.0 fixed
   "pyairtable==3.3.*",
-  "pymsteams==0.2.*",
   "requests==2.32.*",
 ]
 
@@ -285,10 +284,6 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "gunicorn.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "pymsteams.*"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

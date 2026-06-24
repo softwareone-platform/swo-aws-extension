@@ -4,24 +4,24 @@ Sends operational notifications to internal engineering channels. Used throughou
 
 ## Authentication
 
-No authentication. Uses an Incoming Webhook URL that posts directly to a specific Teams channel. The webhook URL itself acts as the secret.
+No authentication. Uses a Workflow Webhook URL that posts directly to a specific Teams channel via a Power Automate Workflow. The webhook URL itself acts as the secret.
 
 ## Configuration
 
 | Environment Variable | Description |
 | --- | --- |
-| `EXT_MSTEAMS_WEBHOOK_URL` | Incoming Webhook URL for the target Teams channel |
+| `EXT_MSTEAMS_WEBHOOK_URL` | Workflow Webhook URL for the target Teams channel |
 
 ## Operations
 
-The `TeamsNotificationManager` sends Connector Card messages via `pymsteams`. All methods accept `title`, `text`, an optional `Button`, and an optional `FactsSection`.
+The `TeamsNotificationManager` sends Adaptive Card messages via `requests.post`. All methods accept `title`, `text`, an optional `Button`, and an optional `FactsSection`.
 
-| Method | Color | Prefix | Use Case |
+| Method | Style | Prefix | Use Case |
 | --- | --- | --- | --- |
-| `send_warning(...)` | Orange | ☢ | Non-critical issues that need attention |
-| `send_success(...)` | Green | ✅ | Successful completions |
-| `send_error(...)` | Red | 💣 | Recoverable errors |
-| `send_exception(...)` | Dark Red | 🔥 | Unhandled exceptions |
+| `send_warning(...)` | Warning | ☢ | Non-critical issues that need attention |
+| `send_success(...)` | Good | ✅ | Successful completions |
+| `send_error(...)` | Attention | 💣 | Recoverable errors |
+| `send_exception(...)` | Attention | 🔥 | Unhandled exceptions |
 
 The `notify_one_time_error()` helper ensures a given `(title, message)` pair is sent at most once per process lifetime.
 
