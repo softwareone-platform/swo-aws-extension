@@ -5,6 +5,7 @@ import pytest
 from swo_aws_extension.constants import (
     AWSRecordTypeEnum,
     ChannelHandshakeDeployed,
+    ServiceDiscountTypeEnum,
     SupportTypesEnum,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.discount.extra_discounts import (
@@ -295,6 +296,55 @@ def test_resolve_service_amount_with_exchange_rate_rules(
     assert result[0].price.unit_pp == expected_amount
 
 
+def test_service_discount_processor_usage_amount_type(
+    agreement,
+    journal_details,
+    organization_invoice,
+):
+    agreement["parameters"]["fulfillment"].extend([
+        {"externalId": "serviceDiscount", "value": "10.0"},
+        {"externalId": "serviceDiscountType", "value": ServiceDiscountTypeEnum.USAGE_AMOUNT},
+    ])
+    usage_result = build_usage_result({
+        "ACC-1": [
+            create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00"),
+            create_metric("RDS", AWSRecordTypeEnum.RECURRING, "50.00"),
+            create_metric("SP", AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE, "20.00"),
+            create_metric("EC2", AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT, "-10.00"),
+        ]
+    })
+    processor = ServiceDiscountProcessor()
+
+    result = processor.process(agreement, usage_result, journal_details, organization_invoice)
+
+    assert len(result) == 1
+    assert result[0].price.unit_pp == Decimal("-17.000000")
+    assert result[0].description.value1 == "SWO additional Usage discount"
+
+
+def test_service_discount_processor_spp_type_explicit(
+    agreement,
+    journal_details,
+    organization_invoice,
+):
+    agreement["parameters"]["fulfillment"].extend([
+        {"externalId": "serviceDiscount", "value": "5.0"},
+        {"externalId": "serviceDiscountType", "value": ServiceDiscountTypeEnum.SPP_DISCOUNT},
+    ])
+    usage_result = build_usage_result({
+        "ACC-1": [
+            create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00"),
+            create_metric("EC2", AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT, "-10.00"),
+        ]
+    })
+    processor = ServiceDiscountProcessor()
+
+    result = processor.process(agreement, usage_result, journal_details, organization_invoice)
+
+    assert len(result) == 1
+    assert result[0].price.unit_pp == Decimal("-0.5")
+
+
 def test_pls_discount_processor(
     agreement,
     usage_result,
@@ -316,7 +366,7 @@ def test_pls_discount_processor(
     result = processor.process(agreement, usage_result, journal_details, organization_invoice)
 
     assert len(result) == 1
-    assert result[0].price.unit_pp == Decimal("30.000000")
+    assert result[0].price.unit_pp == Decimal("-30.000000")
     assert result[0].description.value1 == "SWO additional PLS Support discount"
     assert result[0].external_ids.vendor == "MPA-1"
 

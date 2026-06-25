@@ -580,3 +580,12 @@ def set_erp_project_no(order: dict, erp_project_no: str) -> dict[str, Any]:
     )
     fulfillment_param["value"] = erp_project_no
     return updated_order
+
+
+def get_service_discount_type(source: dict[str, Any]) -> str | None:
+    """Get the service discount type from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.SERVICE_DISCOUNT_TYPE.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
