@@ -22,6 +22,16 @@ updates:
         versions: ["*"]
       - dependency-name: "opentelemetry-instrumentation-botocore"
         versions: ["*"]
+      # This repo must stay on mpt-extension-sdk 5.x: the 6.x line pulls
+      # opentelemetry-instrumentation 0.61b0 (via -fastapi), incompatible with
+      # opentelemetry-instrumentation-botocore 0.60b0, so a 6.x bump is
+      # unresolvable and must never be selected.
+      - dependency-name: "mpt-extension-sdk"
+        versions: [">=6"]
+      # mpt-extension-sdk 5.21.* pins requests==2.32.*, so a newer requests is
+      # unresolvable until the sdk lifts that cap.
+      - dependency-name: "requests"
+        versions: [">=2.33"]
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
