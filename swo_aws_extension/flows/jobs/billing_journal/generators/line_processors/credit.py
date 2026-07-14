@@ -42,8 +42,7 @@ class CreditJournalLineProcessor(JournalLineProcessor):
 
         if self._should_add_spp_line(context):
             spp_metric = self._find_spp_for_service(
-                context.account_usage,
-                metric.service_name,
+                context.account_usage, metric.service_name, metric.start_date, metric.end_date
             )
             if spp_metric:
                 lines.extend(self._spp_processor.process(spp_metric, context))
@@ -55,13 +54,13 @@ class CreditJournalLineProcessor(JournalLineProcessor):
         return principal_amount == DEC_ZERO
 
     def _find_spp_for_service(
-        self,
-        account_usage: AccountUsage,
-        service_name: str,
+        self, account_usage: AccountUsage, service_name: str, start_date: str, end_date: str
     ) -> ServiceMetric | None:
         spp_metrics = [
             metric
             for metric in account_usage.get_metrics_by_service(service_name)
             if metric.record_type == AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT
+            and metric.start_date == start_date
+            and metric.end_date == end_date
         ]
         return spp_metrics[0] if spp_metrics else None
