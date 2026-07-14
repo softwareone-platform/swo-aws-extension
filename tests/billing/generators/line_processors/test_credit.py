@@ -130,6 +130,82 @@ def test_process_adds_spp_when_principal_zero(
     assert result[1].price.pp_x1 == Decimal("-5.00")
 
 
+def test_process_matches_spp_by_period_not_first_in_list(
+    processor,
+    journal_details,
+):
+    credit_jan02 = ServiceMetric(
+        service_name="Amazon CloudWatch",
+        record_type=AWSRecordTypeEnum.CREDIT,
+        amount=Decimal("-2.00"),
+        invoice_entity="AWS Inc.",
+        start_date="2026-01-02",
+        end_date="2026-01-02",
+    )
+    spp_jan01 = ServiceMetric(
+        service_name="Amazon CloudWatch",
+        record_type=AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT,
+        amount=Decimal("-0.11"),
+        invoice_entity="AWS Inc.",
+        start_date="2026-01-01",
+        end_date="2026-01-01",
+    )
+    spp_jan02 = ServiceMetric(
+        service_name="Amazon CloudWatch",
+        record_type=AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT,
+        amount=Decimal("-0.22"),
+        invoice_entity="AWS Inc.",
+        start_date="2026-01-02",
+        end_date="2026-01-02",
+    )
+    context = LineProcessorContext(
+        account_id="ACC-001",
+        account_usage=AccountUsage(metrics=[credit_jan02, spp_jan01, spp_jan02]),
+        journal_details=journal_details,
+        organization_invoice=OrganizationInvoice(principal_invoice_amount=Decimal(0)),
+    )
+
+    result = processor.process(credit_jan02, context)
+
+    assert len(result) == 2
+    assert result[1].price.pp_x1 == Decimal("-0.22"), (
+        "SPP line must use the Jan-02 SPP metric, not the first (Jan-01) one"
+    )
+
+
+def test_process_skips_spp_when_no_matching_period(
+    processor,
+    journal_details,
+):
+    credit_jan02 = ServiceMetric(
+        service_name="AWS Data Transfer",
+        record_type=AWSRecordTypeEnum.CREDIT,
+        amount=Decimal("-1.00"),
+        invoice_entity="AWS Inc.",
+        start_date="2026-01-02",
+        end_date="2026-01-02",
+    )
+    spp_jan01 = ServiceMetric(
+        service_name="AWS Data Transfer",
+        record_type=AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT,
+        amount=Decimal("-0.10"),
+        invoice_entity="AWS Inc.",
+        start_date="2026-01-01",
+        end_date="2026-01-01",
+    )
+    context = LineProcessorContext(
+        account_id="ACC-001",
+        account_usage=AccountUsage(metrics=[credit_jan02, spp_jan01]),
+        journal_details=journal_details,
+        organization_invoice=OrganizationInvoice(principal_invoice_amount=Decimal(0)),
+    )
+
+    result = processor.process(credit_jan02, context)
+
+    assert len(result) == 1
+    assert result[0].description.value1 == f"{CREDIT_PREFIX}AWS Data Transfer"
+
+
 def test_spp_recovery_processor_uses_usage_sku_for_spp_metric(journal_details, spp_metric):
     context = LineProcessorContext(
         account_id="ACC-001",
