@@ -422,23 +422,18 @@ def test_pls_mismatch_param_resold_but_enterprise_in_report(
     mock_extra_discounts_manager_cls,
     mock_pls_charge_manager_cls,
 ):
-    """When param says Resold but report has Enterprise Support, record mismatch and apply PLS."""
     mock_builder = mocker.MagicMock()
     mock_builder.build.return_value = []
     mock_builder.build_by_account.return_value = []
     mocker.patch(f"{MODULE}.BillingReportRowsBuilder", return_value=mock_builder)
     agreement = _build_agreement(support_type="ResoldSupport")
     mock_journal_line = mocker.MagicMock(spec=JournalLine)
-    mock_pls_line = mocker.MagicMock(spec=JournalLine)
     mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
     mock_generator_instance.generate.return_value = [mock_journal_line]
     mock_line_generator_cls.return_value = mock_generator_instance
     mock_discounts_instance = mocker.MagicMock(spec=ExtraDiscountsManager)
     mock_discounts_instance.process.return_value = []
     mock_extra_discounts_manager_cls.return_value = mock_discounts_instance
-    mock_pls_instance = mocker.MagicMock(spec=PlSChargeManager)
-    mock_pls_instance.process.return_value = [mock_pls_line]
-    mock_pls_charge_manager_cls.return_value = mock_pls_instance
     mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
     mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
     mock_usage_result.reports = OrganizationReport()
@@ -461,5 +456,6 @@ def test_pls_mismatch_param_resold_but_enterprise_in_report(
     assert len(result.pls_mismatches) == 1
     assert result.pls_mismatches[0].pls_in_order is False
     assert result.pls_mismatches[0].report_has_enterprise is True
-    mock_pls_instance.process.assert_called_once()
-    assert mock_pls_line in result.lines
+    mock_pls_charge_manager_cls.assert_not_called()
+    assert result.lines == [mock_journal_line]
+    mock_line_generator_cls.assert_called_once_with(is_pls=False)

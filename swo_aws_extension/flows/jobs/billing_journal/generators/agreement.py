@@ -114,7 +114,15 @@ class AgreementJournalGenerator:
         journal_details: JournalDetails,
         organization_invoice,
     ) -> AgreementJournalResult:
-        all_lines = self._generate_usage_lines(usage_result, journal_details, organization_invoice)
+        pls_in_order = get_support_type(agreement) == SupportTypesEnum.PARTNER_LED_SUPPORT
+        report_has_enterprise = usage_result.has_enterprise_support()
+
+        all_lines = self._generate_usage_lines(
+            is_pls=pls_in_order and report_has_enterprise,
+            usage_result=usage_result,
+            journal_details=journal_details,
+            organization_invoice=organization_invoice,
+        )
 
         # Process extra discounts after generating all usage lines.
         all_lines.extend(
@@ -126,9 +134,6 @@ class AgreementJournalGenerator:
             )
         )
 
-        pls_in_order = get_support_type(agreement) == SupportTypesEnum.PARTNER_LED_SUPPORT
-        report_has_enterprise = usage_result.has_enterprise_support()
-
         pls_mismatches: list[PlsMismatch] = []
         if pls_in_order != report_has_enterprise:
             pls_mismatches.append(
@@ -139,7 +144,7 @@ class AgreementJournalGenerator:
                 )
             )
 
-        if report_has_enterprise:
+        if pls_in_order and report_has_enterprise:
             all_lines.extend(
                 PlSChargeManager().process(
                     self._pls_charge_percentage,
@@ -165,11 +170,12 @@ class AgreementJournalGenerator:
 
     def _generate_usage_lines(
         self,
+        *,
+        is_pls: bool,
         usage_result: OrganizationUsageResult,
         journal_details: JournalDetails,
         organization_invoice,
     ) -> list[JournalLine]:
-        is_pls = usage_result.has_enterprise_support()
         line_generator = JournalLineGenerator(is_pls=is_pls)
 
         lines: list[JournalLine] = []
