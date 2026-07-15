@@ -8,8 +8,9 @@ from swo_aws_extension.billing.generators.usage_utils import calculate_total_by_
 from swo_aws_extension.billing.models.invoice import OrganizationInvoice
 from swo_aws_extension.billing.models.journal_line import JournalDetails, JournalLine
 from swo_aws_extension.billing.models.usage import OrganizationUsageResult
-from swo_aws_extension.constants import DEC_ZERO, AWSRecordTypeEnum
+from swo_aws_extension.constants import DEC_ZERO, AWSRecordTypeEnum, SupportTypesEnum
 from swo_aws_extension.logger import get_logger
+from swo_aws_extension.parameters import get_support_type
 
 logger = get_logger(__name__)
 
@@ -31,7 +32,10 @@ class PlSChargeProcessor(AdditionalLineProcessor):
         journal_details: JournalDetails,
         organization_invoice: OrganizationInvoice,
     ) -> list[JournalLine]:
-        if not usage_result.has_enterprise_support():
+        if (
+            get_support_type(agreement) != SupportTypesEnum.PARTNER_LED_SUPPORT
+            or not usage_result.has_enterprise_support()
+        ):
             return []
 
         logger.info("Processing '%s' charge with %s", self._service_name, self._charge_percentage)
