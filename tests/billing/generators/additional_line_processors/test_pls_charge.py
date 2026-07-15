@@ -45,6 +45,18 @@ def build_usage_result(metrics_by_account):
     )
 
 
+def build_agreement(support_type="PartnerLedSupport"):
+    return {
+        "id": "AGR-1",
+        "parameters": {
+            "ordering": [
+                {"externalId": "supportType", "value": support_type},
+            ],
+            "fulfillment": [],
+        },
+    }
+
+
 @pytest.fixture
 def organization_invoice():
     return OrganizationInvoice(
@@ -80,7 +92,7 @@ def test_process_with_custom_percentage(journal_details, organization_invoice):
     })
     manager = PlSChargeProcessor(Decimal("10.0"))
 
-    result = manager.process({}, usage_result, journal_details, organization_invoice)
+    result = manager.process(build_agreement(), usage_result, journal_details, organization_invoice)
 
     assert len(result) == 1
     assert result[0].price.unit_pp == Decimal("30.0")
@@ -97,7 +109,7 @@ def test_process_with_default_percentage(journal_details, organization_invoice):
     })
     manager = PlSChargeProcessor(Decimal("5.0"))
 
-    result = manager.process({}, usage_result, journal_details, organization_invoice)
+    result = manager.process(build_agreement(), usage_result, journal_details, organization_invoice)
 
     assert len(result) == 1
     assert result[0].price.unit_pp == Decimal("5.0")
@@ -113,7 +125,7 @@ def test_process_sums_across_multiple_accounts(journal_details, organization_inv
     })
     manager = PlSChargeProcessor(Decimal("10.0"))
 
-    result = manager.process({}, usage_result, journal_details, organization_invoice)
+    result = manager.process(build_agreement(), usage_result, journal_details, organization_invoice)
 
     assert len(result) == 1
     assert result[0].price.unit_pp == Decimal("20.0")
@@ -128,7 +140,7 @@ def test_process_returns_empty_when_zero_percentage(journal_details, organizatio
     })
     manager = PlSChargeProcessor(Decimal("0.0"))
 
-    result = manager.process({}, usage_result, journal_details, organization_invoice)
+    result = manager.process(build_agreement(), usage_result, journal_details, organization_invoice)
 
     assert len(result) == 0
 
@@ -139,7 +151,7 @@ def test_process_returns_empty_when_no_usage(journal_details, organization_invoi
     })
     manager = PlSChargeProcessor(Decimal("5.0"))
 
-    result = manager.process({}, usage_result, journal_details, organization_invoice)
+    result = manager.process(build_agreement(), usage_result, journal_details, organization_invoice)
 
     assert len(result) == 0
 
@@ -156,7 +168,7 @@ def test_process_only_sums_usage_record_type(journal_details, organization_invoi
     })
     manager = PlSChargeProcessor(Decimal("5.0"))
 
-    result = manager.process({}, usage_result, journal_details, organization_invoice)
+    result = manager.process(build_agreement(), usage_result, journal_details, organization_invoice)
 
     assert len(result) == 1
     assert result[0].price.unit_pp == Decimal("5.0")
@@ -182,7 +194,7 @@ def test_process_applies_exchange_rate(journal_details):
     })
     manager = PlSChargeProcessor(Decimal("5.0"))
 
-    result = manager.process({}, usage_result, journal_details, invoice)
+    result = manager.process(build_agreement(), usage_result, journal_details, invoice)
 
     assert len(result) == 1
     assert result[0].price.unit_pp == Decimal("4.5")
@@ -198,7 +210,7 @@ def test_process_returns_empty_when_invoice_amount_is_zero(journal_details, orga
     })
     manager = PlSChargeProcessor(Decimal("5.0"))
 
-    result = manager.process({}, usage_result, journal_details, organization_invoice)
+    result = manager.process(build_agreement(), usage_result, journal_details, organization_invoice)
 
     assert len(result) == 0
 
@@ -209,6 +221,25 @@ def test_returns_empty_when_no_enterprise_support(journal_details, organization_
     })
     manager = PlSChargeProcessor(Decimal("10.0"))
 
-    result = manager.process({}, usage_result, journal_details, organization_invoice)
+    result = manager.process(build_agreement(), usage_result, journal_details, organization_invoice)
+
+    assert result == []
+
+
+def test_returns_empty_when_support_type_is_resold(journal_details, organization_invoice):
+    usage_result = build_usage_result({
+        "ACC-1": [
+            create_metric("EC2", AWSRecordTypeEnum.USAGE, "200.00"),
+            create_enterprise_metric(),
+        ],
+    })
+    manager = PlSChargeProcessor(Decimal("10.0"))
+
+    result = manager.process(
+        build_agreement(support_type="ResoldSupport"),
+        usage_result,
+        journal_details,
+        organization_invoice,
+    )
 
     assert result == []

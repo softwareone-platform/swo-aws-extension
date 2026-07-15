@@ -122,17 +122,22 @@ class AgreementJournalGenerator:
         journal_details: JournalDetails,
         organization_invoice,
     ) -> AgreementJournalResult:
+        pls_in_order = get_support_type(agreement) == SupportTypesEnum.PARTNER_LED_SUPPORT
+        report_has_enterprise = usage_result.has_enterprise_support()
+
         # Generate lines from AWS usage report
-        all_lines = self._generate_usage_lines(usage_result, journal_details, organization_invoice)
+        all_lines = self._generate_usage_lines(
+            is_pls=pls_in_order and report_has_enterprise,
+            usage_result=usage_result,
+            journal_details=journal_details,
+            organization_invoice=organization_invoice,
+        )
         # Generate additional lines from custom processors
         all_lines.extend(
             line
             for proc in self._additional_processors
             for line in proc.process(agreement, usage_result, journal_details, organization_invoice)
         )
-
-        pls_in_order = get_support_type(agreement) == SupportTypesEnum.PARTNER_LED_SUPPORT
-        report_has_enterprise = usage_result.has_enterprise_support()
 
         pls_mismatches: list[PlsMismatch] = []
         if pls_in_order != report_has_enterprise:
@@ -160,11 +165,12 @@ class AgreementJournalGenerator:
 
     def _generate_usage_lines(
         self,
+        *,
+        is_pls: bool,
         usage_result: OrganizationUsageResult,
         journal_details: JournalDetails,
         organization_invoice,
     ) -> list[JournalLine]:
-        is_pls = usage_result.has_enterprise_support()
         line_generator = JournalLineGenerator(is_pls=is_pls)
 
         lines: list[JournalLine] = []
