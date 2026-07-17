@@ -139,6 +139,7 @@ class AuthorizationJournalGenerator:
             )
         if agreement_result.pls_mismatches:
             result.pls_mismatches.extend(agreement_result.pls_mismatches)
+        result.invoice_ids.update(agreement_result.invoice_ids)
 
     def _apply_pma_usage_to_report(
         self,

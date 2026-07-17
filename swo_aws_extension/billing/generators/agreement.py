@@ -111,6 +111,7 @@ class AgreementJournalGenerator:
             usage_result,
             journal_details,
             invoice_result.invoice,
+            invoice_result.invoice_ids,
         )
         logger.info("Generated %d journal lines", len(agreement_result.lines))
         return agreement_result
@@ -121,6 +122,7 @@ class AgreementJournalGenerator:
         usage_result: OrganizationUsageResult,
         journal_details: JournalDetails,
         organization_invoice,
+        invoice_ids: set[str],
     ) -> AgreementJournalResult:
         pls_in_order = get_support_type(agreement) == SupportTypesEnum.PARTNER_LED_SUPPORT
         report_has_enterprise = usage_result.has_enterprise_support()
@@ -161,6 +163,7 @@ class AgreementJournalGenerator:
             billing_report_rows=report_builder.build(),
             billing_report_rows_by_account=report_builder.build_by_account(),
             pls_mismatches=pls_mismatches,
+            invoice_ids=invoice_ids,
         )
 
     def _generate_usage_lines(
