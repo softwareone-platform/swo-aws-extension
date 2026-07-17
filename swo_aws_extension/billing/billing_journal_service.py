@@ -107,9 +107,8 @@ class BillingJournalService:
             if (auth_result := self._process_authorization(auth)) is not None
         ]
 
-        self._process_journal_results(journal_results)
+        self._generate_billing_report(journal_results)
 
-    def _process_journal_results(self, journal_results: list[AuthorizationJournalResult]) -> None:
         pls_mismatches = [
             mismatch for auth_result in journal_results for mismatch in auth_result.pls_mismatches
         ]
@@ -120,6 +119,7 @@ class BillingJournalService:
                 text=f"{len(pls_mismatches)} agreement(s) with PLS mismatch:\n\n{details}",
             )
 
+    def _generate_billing_report(self, journal_results: list[AuthorizationJournalResult]) -> None:
         report_rows = [
             row for auth_result in journal_results for row in auth_result.billing_report_rows
         ]
@@ -128,10 +128,16 @@ class BillingJournalService:
             for auth_result in journal_results
             for row in auth_result.billing_report_rows_by_account
         ]
+        spp_summary_rows = [
+            row for auth_result in journal_results for row in auth_result.spp_summary_rows
+        ]
         if report_rows and not self._context.dry_run:
             report_creator = BillingReportCreator(self._context.config, self._context.notifier)
             report_creator.create_and_notify_teams(
-                str(self._context.billing_period), report_rows, report_rows_by_account
+                str(self._context.billing_period),
+                report_rows,
+                report_rows_by_account,
+                spp_summary_rows,
             )
 
     def _process_authorization(self, authorization: dict) -> AuthorizationJournalResult | None:

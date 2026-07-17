@@ -1,53 +1,85 @@
-from decimal import Decimal
+from enum import StrEnum
 
-from swo_aws_extension.billing.models.journal_result import BillingReportRow
+from swo_aws_extension.billing.models.journal_result import (
+    BillingReportRow,
+    OrganizationSppSummaryRow,
+)
 from swo_aws_extension.config import Config
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.swo.azure_blob_uploader import AzureBlobUploader
-from swo_aws_extension.swo.excel_report_builder import ExcelReportBuilder
+from swo_aws_extension.swo.excel_report_builder import CellValue, ExcelReportBuilder, Percent
 from swo_aws_extension.swo.notifications.teams import Button, TeamsNotificationManager
 
 logger = get_logger(__name__)
 
 
-def _format_spp_discount_pct(discount_pct: Decimal) -> str:
-    rounded = discount_pct.quantize(Decimal("0.0001"))
-    ratio_str = f"{rounded:.4f}".replace(".", ",")
-    pct = discount_pct * 100
-    return f"{ratio_str} ({pct:.2f}%)"
+class BillingReportHeader(StrEnum):
+    """Column headers used across the billing report sheets."""
+
+    AUTHORIZATION_ID = "Authorization ID"
+    PMA = "PMA"
+    AGREEMENT_ID = "Agreement ID"
+    MPA = "MPA"
+    LINKED_ACCOUNT = "Linked Account"
+    SERVICE_NAME = "Service Name"
+    PP = "PP"
+    SP = "SP"
+    CURRENCY = "Currency"
+    INVOICE_ID = "Invoice ID"
+    INVOICE_ENTITY = "Invoice Entity"
+    EXCHANGE_RATE = "Exchange Rate"
+    SPP_DISCOUNT = "SPP Discount"
+    SPP_DISCOUNT_PCT = "SPP Discount %"
+    LIST_PRICE = "List price"
+    MARKUP = "Markup"
 
 
 BILLING_REPORT_HEADERS = (
-    "Authorization ID",
-    "PMA",
-    "Agreement ID",
-    "MPA",
-    "Service Name",
-    "PP",
-    "SP",
-    "Currency",
-    "Invoice ID",
-    "Invoice Entity",
-    "Exchange Rate",
-    "SPP Discount",
-    "SPP Discount %",
+    BillingReportHeader.AUTHORIZATION_ID,
+    BillingReportHeader.PMA,
+    BillingReportHeader.AGREEMENT_ID,
+    BillingReportHeader.MPA,
+    BillingReportHeader.SERVICE_NAME,
+    BillingReportHeader.PP,
+    BillingReportHeader.SP,
+    BillingReportHeader.CURRENCY,
+    BillingReportHeader.INVOICE_ID,
+    BillingReportHeader.INVOICE_ENTITY,
+    BillingReportHeader.EXCHANGE_RATE,
+    BillingReportHeader.SPP_DISCOUNT,
+    BillingReportHeader.SPP_DISCOUNT_PCT,
 )
 
 BILLING_REPORT_BY_ACCOUNT_HEADERS = (
-    "Authorization ID",
-    "PMA",
-    "Agreement ID",
-    "MPA",
-    "Linked Account",
-    "Service Name",
-    "PP",
-    "SP",
-    "Currency",
-    "Invoice ID",
-    "Invoice Entity",
-    "Exchange Rate",
-    "SPP Discount",
-    "SPP Discount %",
+    BillingReportHeader.AUTHORIZATION_ID,
+    BillingReportHeader.PMA,
+    BillingReportHeader.AGREEMENT_ID,
+    BillingReportHeader.MPA,
+    BillingReportHeader.LINKED_ACCOUNT,
+    BillingReportHeader.SERVICE_NAME,
+    BillingReportHeader.PP,
+    BillingReportHeader.SP,
+    BillingReportHeader.CURRENCY,
+    BillingReportHeader.INVOICE_ID,
+    BillingReportHeader.INVOICE_ENTITY,
+    BillingReportHeader.EXCHANGE_RATE,
+    BillingReportHeader.SPP_DISCOUNT,
+    BillingReportHeader.SPP_DISCOUNT_PCT,
+)
+
+SPP_SUMMARY_HEADERS = (
+    BillingReportHeader.AUTHORIZATION_ID,
+    BillingReportHeader.PMA,
+    BillingReportHeader.AGREEMENT_ID,
+    BillingReportHeader.MPA,
+    BillingReportHeader.PP,
+    BillingReportHeader.SP,
+    BillingReportHeader.CURRENCY,
+    BillingReportHeader.EXCHANGE_RATE,
+    BillingReportHeader.SPP_DISCOUNT,
+    BillingReportHeader.SPP_DISCOUNT_PCT,
+    BillingReportHeader.LIST_PRICE,
+    BillingReportHeader.MARKUP,
 )
 
 
@@ -69,6 +101,7 @@ class BillingReportCreator:
         billing_period_str: str,
         report_rows: list[BillingReportRow],
         rows_by_account: list[BillingReportRow] | None = None,
+        spp_summary_rows: list[OrganizationSppSummaryRow] | None = None,
     ) -> None:
         """Create the report, upload to Azure, and notify teams."""
         if not report_rows:
@@ -78,7 +111,9 @@ class BillingReportCreator:
         logger.info("Creating billing report Excel file...")
         rows_data = self._build_rows_data(report_rows)
         excel_bytes = self._generate_excel(
-            rows_data, self._build_rows_by_account_data(rows_by_account or [])
+            rows_data,
+            self._build_rows_by_account_data(rows_by_account or []),
+            self._build_spp_summary_rows_data(spp_summary_rows or []),
         )
         folder = self._config.report_billing_folder
         blob_name = f"{folder}{billing_period_str}.xlsx"
@@ -104,17 +139,21 @@ class BillingReportCreator:
         logger.info("Billing report uploaded and Teams notification sent.")
 
     def _generate_excel(
-        self, rows_data: list[list[str]], by_account_data: list[list[str]]
+        self,
+        rows_data: list[list[CellValue]],
+        by_account_data: list[list[CellValue]],
+        spp_summary_data: list[list[CellValue]],
     ) -> bytes:
         return self._excel_builder.build_multi_sheet([
             ("Billing Report", list(BILLING_REPORT_HEADERS), rows_data),
             ("By Linked Account", list(BILLING_REPORT_BY_ACCOUNT_HEADERS), by_account_data),
+            ("SPP Summary", list(SPP_SUMMARY_HEADERS), spp_summary_data),
         ])
 
     def _upload(self, excel_bytes: bytes, blob_name: str) -> str:
         return self._blob_uploader.upload_and_get_sas_url(excel_bytes, blob_name)
 
-    def _build_rows_data(self, report_rows: list[BillingReportRow]) -> list[list[str]]:
+    def _build_rows_data(self, report_rows: list[BillingReportRow]) -> list[list[CellValue]]:
         return [
             [
                 row.authorization_id,
@@ -122,19 +161,19 @@ class BillingReportCreator:
                 row.agreement_id,
                 row.mpa,
                 row.service_name,
-                str(row.pp),
-                str(row.sp),
+                float(row.pp),
+                float(row.sp),
                 row.currency,
                 row.invoice_id,
                 row.invoice_entity,
-                str(row.exchange_rate),
-                str(row.spp_discount),
-                _format_spp_discount_pct(row.spp_discount_pct),
+                float(row.exchange_rate),
+                float(row.spp_discount),
+                Percent(float(row.spp_discount_pct)),
             ]
             for row in report_rows
         ]
 
-    def _build_rows_by_account_data(self, rows: list[BillingReportRow]) -> list[list[str]]:
+    def _build_rows_by_account_data(self, rows: list[BillingReportRow]) -> list[list[CellValue]]:
         return [
             [
                 row.authorization_id,
@@ -143,14 +182,35 @@ class BillingReportCreator:
                 row.mpa,
                 row.linked_account,
                 row.service_name,
-                str(row.pp),
-                str(row.sp),
+                float(row.pp),
+                float(row.sp),
                 row.currency,
                 row.invoice_id,
                 row.invoice_entity,
-                str(row.exchange_rate),
-                str(row.spp_discount),
-                _format_spp_discount_pct(row.spp_discount_pct),
+                float(row.exchange_rate),
+                float(row.spp_discount),
+                Percent(float(row.spp_discount_pct)),
+            ]
+            for row in rows
+        ]
+
+    def _build_spp_summary_rows_data(
+        self, rows: list[OrganizationSppSummaryRow]
+    ) -> list[list[CellValue]]:
+        return [
+            [
+                row.authorization_id,
+                row.pma,
+                row.agreement_id,
+                row.mpa,
+                float(row.pp),
+                float(row.sp),
+                row.currency,
+                float(row.exchange_rate),
+                float(row.spp_discount),
+                Percent(float(row.spp_discount_pct)),
+                float(row.list_price),
+                Percent(float(row.markup)),
             ]
             for row in rows
         ]
