@@ -25,6 +25,7 @@ class OrganizationInvoice:
     base_total_amount_before_tax: Decimal = field(default_factory=lambda: Decimal(0))
     payment_currency_total_amount: Decimal = field(default_factory=lambda: Decimal(0))
     payment_currency_total_amount_before_tax: Decimal = field(default_factory=lambda: Decimal(0))
+    payment_currency_subtotal_amount: Decimal = field(default_factory=lambda: Decimal(0))
     principal_invoice_amount: Decimal | None = None
 
     @property
