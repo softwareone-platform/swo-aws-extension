@@ -1,5 +1,6 @@
 import datetime as dt
 
+import boto3
 import pytest
 from botocore.exceptions import ClientError
 
@@ -724,6 +725,34 @@ def test_list_invoice_summaries_success(config, aws_client_factory, mock_get_pag
     assert len(result) == 1
     assert result[0]["InvoiceId"] == "INV-001"
     mock_get_paged_response.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "client_getter",
+    [
+        "_get_organization_client",
+        "_get_sts_client",
+        "_get_cost_explorer_client",
+        "_get_billing_client",
+        "_get_billing_conductor_client",
+        "_get_partner_central_client",
+        "_get_invoicing_client",
+    ],
+)
+def test_boto3_clients_use_standard_retry_mode(config, aws_client_factory, client_getter):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+
+    getattr(mock_aws_client, client_getter)()  # act
+
+    client_config = boto3.client.call_args.kwargs["config"]
+    assert client_config.retries == {"mode": "standard"}
+
+
+def test_assume_role_uses_standard_retry_mode(config, aws_client_factory):
+    aws_client_factory(config, "test_account_id", "test_role_name")  # act
+
+    assume_role_call = boto3.client.call_args_list[0]
+    assert assume_role_call.kwargs["config"].retries == {"mode": "standard"}
 
 
 def test_get_linked_accounts_with_usage(mocker):
