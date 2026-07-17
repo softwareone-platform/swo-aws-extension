@@ -1,10 +1,15 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from decimal import Decimal
 from itertools import starmap
 from typing import TYPE_CHECKING, TypedDict
 
 from swo_aws_extension.billing.models.invoice import OrganizationInvoice
-from swo_aws_extension.billing.models.journal_result import BillingReportRow
+from swo_aws_extension.billing.models.journal_result import (
+    BillingReportRow,
+    OrganizationSppSummaryRow,
+)
 from swo_aws_extension.billing.models.usage import (
     OrganizationUsageResult,
     ServiceMetric,
@@ -16,7 +21,7 @@ if TYPE_CHECKING:
     from swo_aws_extension.billing.models.context import (
         AuthorizationContext,
     )
-    from swo_aws_extension.billing.models.journal_line import JournalDetails
+    from swo_aws_extension.billing.models.journal_line import JournalDetails, JournalLine
 
 logger = get_logger(__name__)
 
@@ -41,9 +46,9 @@ class ReportContext:
     @classmethod
     def from_contexts(
         cls,
-        auth_context: "AuthorizationContext",
-        journal_details: "JournalDetails",
-    ) -> "ReportContext":
+        auth_context: AuthorizationContext,
+        journal_details: JournalDetails,
+    ) -> ReportContext:
         """Build a ReportContext from existing auth and journal contexts."""
         return cls(
             authorization_id=auth_context.id,
@@ -146,3 +151,43 @@ class BillingReportRowsBuilder:
             rate = self._invoice.entities[inv_entity].exchange_rate
             return rate if rate > DEC_ZERO else Decimal("1.0")
         return Decimal("1.0")
+
+
+def build_spp_summary_row(
+    context: ReportContext,
+    all_lines: list[JournalLine],
+    billing_report_rows: list[BillingReportRow],
+    organization_invoice: OrganizationInvoice,
+) -> OrganizationSppSummaryRow:
+    """Build one organization-level row reconciling the journal total (SP) against PP."""
+    sp = sum((line.price.pp_x1 for line in all_lines if line.is_valid()), DEC_ZERO)
+    pp = (
+        organization_invoice.base_total_amount_before_tax
+        if context.currency == "USD"
+        else organization_invoice.payment_currency_total_amount_before_tax
+    )
+    spp_discount = sum((row.spp_discount for row in billing_report_rows), DEC_ZERO)
+    exchange_rate = _resolve_org_exchange_rate(organization_invoice)
+
+    return OrganizationSppSummaryRow(
+        authorization_id=context.authorization_id,
+        pma=context.pma,
+        agreement_id=context.agreement_id,
+        mpa=context.mpa,
+        pp=pp,
+        sp=sp,
+        currency=context.currency,
+        exchange_rate=exchange_rate,
+        spp_discount=spp_discount,
+        spp_discount_pct=abs(spp_discount) / pp if pp else DEC_ZERO,
+        markup=(sp - pp) / pp if pp else DEC_ZERO,
+    )
+
+
+def _resolve_org_exchange_rate(organization_invoice: OrganizationInvoice) -> Decimal:
+    rates = [
+        entity.exchange_rate
+        for entity in organization_invoice.entities.values()
+        if entity.exchange_rate > DEC_ZERO
+    ]
+    return max(rates) if rates else Decimal("1.0")

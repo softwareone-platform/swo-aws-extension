@@ -16,6 +16,7 @@ from swo_aws_extension.billing.models.journal_line import (
 from swo_aws_extension.billing.models.journal_result import (
     AuthorizationJournalResult,
     BillingReportRow,
+    OrganizationSppSummaryRow,
     PlsMismatch,
 )
 from swo_aws_extension.billing.models.usage import OrganizationReport
@@ -146,7 +147,47 @@ def test_processes_authorizations_creates_billing_report(
     service.run()  # act
 
     mock_report_creator.create_and_notify_teams.assert_called_once_with(
-        str(mock_context.billing_period), [mock_row], []
+        str(mock_context.billing_period), [mock_row], [], []
+    )
+
+
+def test_processes_authorizations_passes_spp_summary_rows(
+    mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
+):
+    mock_context.dry_run = False
+    authorization = {"id": "AUTH-1"}
+    mock_get_authorizations.return_value = [authorization]
+    mock_line = mocker.MagicMock(spec=JournalLine)
+    mock_row = mocker.MagicMock(spec=BillingReportRow)
+    spp_summary_row = OrganizationSppSummaryRow(
+        authorization_id="AUTH-1",
+        pma="PMA-1",
+        agreement_id="AGR-1",
+        mpa="MPA-1",
+        pp=Decimal("90.0"),
+        sp=Decimal("100.0"),
+        currency="USD",
+        exchange_rate=Decimal("1.0"),
+        spp_discount=Decimal("-10.0"),
+        spp_discount_pct=Decimal("0.1111"),
+        markup=Decimal("0.1111"),
+    )
+    mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
+    mock_auth_gen.run.return_value = AuthorizationJournalResult(
+        lines=[mock_line],
+        billing_report_rows=[mock_row],
+        spp_summary_rows=[spp_summary_row],
+    )
+    mock_auth_generator_cls.return_value = mock_auth_gen
+    mocker.patch(f"{MODULE}.JournalManager", autospec=True)
+    mock_report_creator_cls = mocker.patch(f"{MODULE}.BillingReportCreator", autospec=True)
+    mock_report_creator = mock_report_creator_cls.return_value
+    service = BillingJournalService(mock_context)
+
+    service.run()  # act
+
+    mock_report_creator.create_and_notify_teams.assert_called_once_with(
+        str(mock_context.billing_period), [mock_row], [], [spp_summary_row]
     )
 
 

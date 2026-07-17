@@ -136,17 +136,16 @@ class AuthorizationJournalGenerator:
             return
 
         result.lines.extend(agreement_result.lines)
+        result.billing_report_rows.extend(agreement_result.billing_report_rows)
+        result.billing_report_rows_by_account.extend(
+            agreement_result.billing_report_rows_by_account
+        )
+        result.pls_mismatches.extend(agreement_result.pls_mismatches)
+        result.invoice_ids.update(agreement_result.invoice_ids)
         if agreement_result.report:
             result.reports_by_agreement[agreement_id] = agreement_result.report
-        if agreement_result.billing_report_rows:
-            result.billing_report_rows.extend(agreement_result.billing_report_rows)
-        if agreement_result.billing_report_rows_by_account:
-            result.billing_report_rows_by_account.extend(
-                agreement_result.billing_report_rows_by_account
-            )
-        if agreement_result.pls_mismatches:
-            result.pls_mismatches.extend(agreement_result.pls_mismatches)
-        result.invoice_ids.update(agreement_result.invoice_ids)
+        if agreement_result.spp_summary_row:
+            result.spp_summary_rows.append(agreement_result.spp_summary_row)
 
     def _apply_pma_usage_to_report(
         self,

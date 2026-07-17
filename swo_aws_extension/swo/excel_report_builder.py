@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 
@@ -5,9 +6,22 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 from openpyxl.worksheet.worksheet import Worksheet
 
-type SheetDefinition = tuple[str, list[str], list[list[str]]]
+type CellValue = str | float | Percent
+type SheetDefinition = tuple[str, list[str], list[list[CellValue]]]
 
 _HEADER_FONT = Font(bold=True)
+_PERCENT_NUMBER_FORMAT = "0.###################%"
+
+
+@dataclass(frozen=True, slots=True)
+class Percent:
+    """A ratio (e.g. 0.1234) rendered with Excel's native percent number format."""
+
+    ratio: float
+
+
+def _resolve_cell_value(entry: CellValue) -> str | float:
+    return entry.ratio if isinstance(entry, Percent) else entry
 
 
 class ExcelReportBuilder:
@@ -17,7 +31,7 @@ class ExcelReportBuilder:
         self.headers = headers
         self.sheet_name = sheet_name
 
-    def build_from_rows(self, rows: list[list[str]]) -> bytes:
+    def build_from_rows(self, rows: list[list[CellValue]]) -> bytes:
         """Build an Excel workbook in memory and return its raw bytes."""
         wb = Workbook()
         ws = wb.active
@@ -43,13 +57,17 @@ class ExcelReportBuilder:
         self,
         ws: Worksheet,
         headers: list[str],
-        rows: list[list[str]],
+        rows: list[list[CellValue]],
     ) -> None:
         ws.append(headers)
         for cell in ws[1]:
             cell.font = _HEADER_FONT
         for row_data in rows:
-            ws.append(row_data)
+            ws.append([_resolve_cell_value(entry) for entry in row_data])
+            row_idx = ws.max_row
+            for col_idx, entry in enumerate(row_data, start=1):
+                if isinstance(entry, Percent):
+                    ws.cell(row=row_idx, column=col_idx).number_format = _PERCENT_NUMBER_FORMAT
         ws.auto_filter.ref = ws.dimensions
 
     def _save_to_bytes(self, wb: Workbook) -> bytes:
