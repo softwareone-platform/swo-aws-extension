@@ -25,7 +25,7 @@ def test_get_auth_token_success(requests_mocker):
     result = get_auth_token(
         endpoint=OAUTH_URL,
         client_id="test_client_id",
-        client_secret="test_secret",  # noqa: S106
+        client_secret="test_secret",  # ruff:ignore[hardcoded-password-func-arg]
         scope="test_scope",
     )
 
@@ -45,7 +45,7 @@ def test_get_auth_token_with_audience(requests_mocker):
     result = get_auth_token(
         endpoint=OAUTH_URL,
         client_id="test_client_id",
-        client_secret="test_secret",  # noqa: S106
+        client_secret="test_secret",  # ruff:ignore[hardcoded-password-func-arg]
         scope="test_scope",
         audience="test_audience",
     )
@@ -65,7 +65,7 @@ def test_get_auth_token_http_error(requests_mocker):
         get_auth_token(
             endpoint=OAUTH_URL,
             client_id="invalid_client",
-            client_secret="invalid_secret",  # noqa: S106
+            client_secret="invalid_secret",  # ruff:ignore[hardcoded-password-func-arg]
             scope="test_scope",
         )
 
@@ -82,6 +82,6 @@ def test_get_auth_token_server_error(requests_mocker):
         get_auth_token(
             endpoint=OAUTH_URL,
             client_id="test_client_id",
-            client_secret="test_secret",  # noqa: S106
+            client_secret="test_secret",  # ruff:ignore[hardcoded-password-func-arg]
             scope="test_scope",
         )

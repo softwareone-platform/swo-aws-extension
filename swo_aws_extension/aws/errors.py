@@ -54,7 +54,7 @@ class InvalidDateInTerminateResponsibilityError(AWSError):
         super().__init__(message)
 
 
-def wrap_http_error(func: Callable[FuncParams, RetType]) -> Callable[FuncParams, RetType]:  # noqa: UP047
+def wrap_http_error(func: Callable[FuncParams, RetType]) -> Callable[FuncParams, RetType]:  # ruff:ignore[non-pep695-generic-function]
     """Wraps http error to internal."""
 
     @wraps(func)
@@ -78,7 +78,7 @@ def wrap_http_error(func: Callable[FuncParams, RetType]) -> Callable[FuncParams,
     return _wrapper
 
 
-def wrap_boto3_error(func: Callable[FuncParams, RetType]) -> Callable[FuncParams, RetType]:  # noqa: UP047
+def wrap_boto3_error(func: Callable[FuncParams, RetType]) -> Callable[FuncParams, RetType]:  # ruff:ignore[non-pep695-generic-function]
     """Wraps boto3 error to internal extension errors."""
 
     @wraps(func)

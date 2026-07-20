@@ -1,5 +1,5 @@
 from mpt_extension_sdk.mpt_http.base import MPTClient
-from mpt_extension_sdk.mpt_http.mpt import _paginated  # noqa: PLC2701
+from mpt_extension_sdk.mpt_http.mpt import _paginated  # ruff:ignore[import-private-name]
 
 
 # TODO: SDK candidate and should use dependency injection for mpt_client

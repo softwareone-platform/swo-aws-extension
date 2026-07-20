@@ -57,7 +57,7 @@ def make_mock_settings(app_config_name, logging_handler="console", *, use_app_in
 
 def test_initializer_sets_env(monkeypatch):
     monkeypatch.delenv("MPT_INITIALIZER", raising=False)
-    from swo_aws_extension import initializer  # noqa: PLC0415
+    from swo_aws_extension import initializer  # ruff:ignore[import-outside-top-level]
 
     importlib.reload(initializer)  # act
 
@@ -80,7 +80,7 @@ def test_initialize_basic(monkeypatch, mocker):
     )
     monkeypatch.setattr("rich.reconfigure", lambda **kwargs: None)
     options = {"color": True, "debug": True}
-    from swo_aws_extension import initializer  # noqa: PLC0415
+    from swo_aws_extension import initializer  # ruff:ignore[import-outside-top-level]
 
     initializer.initialize(options)  # act
 
@@ -140,7 +140,7 @@ def test_initialize_with_app_insights(monkeypatch, mocker, mock_app_insights_ins
     )
     mock_botocore = mocker.patch("swo_aws_extension.initializer.BotocoreInstrumentor")
     options = {"color": False, "debug": False}
-    from swo_aws_extension import initializer  # noqa: PLC0415
+    from swo_aws_extension import initializer  # ruff:ignore[import-outside-top-level]
 
     initializer.initialize(options)  # act
 

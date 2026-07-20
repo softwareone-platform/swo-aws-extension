@@ -255,8 +255,8 @@ def test_and_merge():
 @pytest.mark.parametrize("op", ["eq", "ne", "gt", "ge", "le", "lt"])
 def test_dotted_path_comp(op):
     assert str(getattr(RQLQuery().asset.id, op)("value")) == f"{op}(asset.id,'value')"
-    assert str(getattr(RQLQuery().asset.id, op)(True)) == f"{op}(asset.id,'true')"  # noqa: FBT003
-    assert str(getattr(RQLQuery().asset.id, op)(False)) == f"{op}(asset.id,'false')"  # noqa: FBT003
+    assert str(getattr(RQLQuery().asset.id, op)(True)) == f"{op}(asset.id,'true')"  # ruff:ignore[boolean-positional-value-in-call]
+    assert str(getattr(RQLQuery().asset.id, op)(False)) == f"{op}(asset.id,'false')"  # ruff:ignore[boolean-positional-value-in-call]
     assert str(getattr(RQLQuery().asset.id, op)(10)) == f"{op}(asset.id,'10')"
     assert str(getattr(RQLQuery().asset.id, op)(10.678937)) == f"{op}(asset.id,'10.678937')"
 

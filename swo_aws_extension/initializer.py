@@ -19,8 +19,8 @@ def initialize(options, group=DEFAULT_APP_CONFIG_GROUP, name=DEFAULT_APP_CONFIG_
         name=name,
     )
 
-    import django  # noqa: PLC0415
-    from django.conf import settings  # noqa: PLC0415
+    import django  # ruff:ignore[import-outside-top-level]
+    from django.conf import settings  # ruff:ignore[import-outside-top-level]
 
     if settings.USE_APPLICATIONINSIGHTS:
         BotocoreInstrumentor().instrument()

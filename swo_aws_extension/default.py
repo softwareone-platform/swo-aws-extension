@@ -15,9 +15,11 @@ import os
 from pathlib import Path
 
 from azure.monitor.opentelemetry.exporter import AzureMonitorLogExporter
-from opentelemetry._logs import set_logger_provider  # noqa: PLC2701
-from opentelemetry.sdk._logs import LoggerProvider  # noqa: PLC2701
-from opentelemetry.sdk._logs.export import BatchLogRecordProcessor  # noqa: PLC2701
+from opentelemetry._logs import set_logger_provider  # ruff:ignore[import-private-name]
+from opentelemetry.sdk._logs import LoggerProvider  # ruff:ignore[import-private-name]
+from opentelemetry.sdk._logs.export import (  # ruff:ignore[import-private-name]
+    BatchLogRecordProcessor,
+)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

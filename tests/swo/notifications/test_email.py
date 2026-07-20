@@ -14,7 +14,7 @@ def test_email_notification_manager_init(mocker, config):
     mock_boto3_client.assert_called_once_with(
         "ses",
         aws_access_key_id="access_key",
-        aws_secret_access_key="secret_key",  # noqa: S106
+        aws_secret_access_key="secret_key",  # ruff:ignore[hardcoded-password-func-arg]
         region_name="us-east-1",
     )
     assert manager.sender == "sender@example.com"

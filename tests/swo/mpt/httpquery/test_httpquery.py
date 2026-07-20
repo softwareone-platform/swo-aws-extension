@@ -17,16 +17,16 @@ def test_init():
 
     result = HttpQuery(mock_client, url, query)
 
-    assert result._client == mock_client  # noqa: SLF001
-    assert result._url == url  # noqa: SLF001
-    assert result._query == query  # noqa: SLF001
+    assert result._client == mock_client  # ruff:ignore[private-member-access]
+    assert result._url == url  # ruff:ignore[private-member-access]
+    assert result._query == query  # ruff:ignore[private-member-access]
 
 
 def test_has_more_pages_no_page():
     mock_client = MagicMock()
     hq = HttpQuery(mock_client, "https://fake-url")
 
-    result = hq._has_more_pages(None)  # noqa: SLF001
+    result = hq._has_more_pages(None)  # ruff:ignore[private-member-access]
 
     assert result is True
 
@@ -36,7 +36,7 @@ def test_has_more_pages_with_more():
     hq = HttpQuery(mock_client, "https://fake-url")
     page = {"$meta": {"pagination": {"total": 20, "limit": 10, "offset": 0}}}
 
-    result = hq._has_more_pages(page)  # noqa: SLF001
+    result = hq._has_more_pages(page)  # ruff:ignore[private-member-access]
 
     assert result is True
 
@@ -46,7 +46,7 @@ def test_has_more_pages_with_no_more():
     hq = HttpQuery(mock_client, "https://fake-url")
     page = {"$meta": {"pagination": {"total": 20, "limit": 10, "offset": 10}}}
 
-    result = hq._has_more_pages(page)  # noqa: SLF001
+    result = hq._has_more_pages(page)  # ruff:ignore[private-member-access]
 
     assert result is False
 
@@ -98,9 +98,9 @@ def test_query_combines_existing_and_new_rql():
     result = hq.query(new_rql)
 
     assert isinstance(result, HttpQuery)
-    assert result._query == f"{base_query}&{new_rql}"  # noqa: SLF001
-    assert result._url == "https://fake-url"  # noqa: SLF001
-    assert result._client == mock_client  # noqa: SLF001
+    assert result._query == f"{base_query}&{new_rql}"  # ruff:ignore[private-member-access]
+    assert result._url == "https://fake-url"  # ruff:ignore[private-member-access]
+    assert result._client == mock_client  # ruff:ignore[private-member-access]
 
 
 def test_query_uses_new_rql_if_none_exists():
@@ -111,7 +111,7 @@ def test_query_uses_new_rql_if_none_exists():
     result = hq.query(new_rql)
 
     assert isinstance(result, HttpQuery)
-    assert result._query == new_rql  # noqa: SLF001
+    assert result._query == new_rql  # ruff:ignore[private-member-access]
 
 
 def test_query_ignores_none_rql():
@@ -122,7 +122,7 @@ def test_query_ignores_none_rql():
     result = hq.query(None)
 
     assert isinstance(result, HttpQuery)
-    assert result._query == base_query  # noqa: SLF001
+    assert result._query == base_query  # ruff:ignore[private-member-access]
 
 
 def test_query_none_on_none():
@@ -132,7 +132,7 @@ def test_query_none_on_none():
     result = hq.query(None)
 
     assert isinstance(result, HttpQuery)
-    assert result._query is None  # noqa: SLF001
+    assert result._query is None  # ruff:ignore[private-member-access]
 
 
 def test_call_no_query():
@@ -143,7 +143,7 @@ def test_call_no_query():
     mock_client.get.return_value = mock_response
     hq = HttpQuery(mock_client, "https://fake-url")
 
-    result = hq._call()  # noqa: SLF001
+    result = hq._call()  # ruff:ignore[private-member-access]
 
     mock_client.get.assert_called_once_with("https://fake-url")
     mock_response.raise_for_status.assert_called_once()
@@ -158,7 +158,7 @@ def test_call_with_self_query():
     mock_client.get.return_value = mock_response
     hq = HttpQuery(mock_client, "https://fake-url", "a=1")
 
-    result = hq._call()  # noqa: SLF001
+    result = hq._call()  # ruff:ignore[private-member-access]
 
     mock_client.get.assert_called_once_with("https://fake-url?a=1")
     assert result == {"data": [2]}
@@ -172,7 +172,7 @@ def test_call_with_query_arg():
     mock_client.get.return_value = mock_response
     hq = HttpQuery(mock_client, "https://fake-url")
 
-    result = hq._call("b=2")  # noqa: SLF001
+    result = hq._call("b=2")  # ruff:ignore[private-member-access]
 
     mock_client.get.assert_called_once_with("https://fake-url?b=2")
     assert result == {"data": [3]}
@@ -186,7 +186,7 @@ def test_call_with_both_queries():
     mock_client.get.return_value = mock_response
     hq = HttpQuery(mock_client, "https://fake-url", "a=1")
 
-    result = hq._call("b=2")  # noqa: SLF001
+    result = hq._call("b=2")  # ruff:ignore[private-member-access]
 
     mock_client.get.assert_called_once_with("https://fake-url?a=1&b=2")
     assert result == {"data": [4]}

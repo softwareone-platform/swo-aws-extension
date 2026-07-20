@@ -45,7 +45,7 @@ def test_with_log_context_clears_context_on_exception(
     service = _FailingService()
 
     with pytest.raises(ValueError, match="fail"):
-        result = service.run({"id": "ENT-456"})  # noqa: F841
+        result = service.run({"id": "ENT-456"})  # ruff:ignore[unused-variable]
 
     mock_set_log_context.assert_called_once_with("ENT-456")
     mock_clear_log_context.assert_called_once_with("ENT-456")
