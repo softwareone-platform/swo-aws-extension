@@ -1,5 +1,6 @@
 import datetime as dt
 import logging
+import time
 from collections.abc import Callable
 
 import boto3
@@ -16,6 +17,7 @@ from swo_aws_extension.swo.openid.client import OpenIDClient
 
 MINIMUM_DAYS_MONTH = 28
 MAX_RESULTS_PER_PAGE = 20
+INVOICE_PDF_MAX_ATTEMPTS = 3
 # Standard mode retries throttling, server (5xx) and connection errors with
 # exponential backoff and jitter, keeping the default total max attempts.
 BOTO3_CLIENT_CONFIG = BotoConfig(retries={"mode": "standard"})
@@ -374,6 +376,27 @@ class AWSClient:
                 "Filter": {"BillingPeriod": {"Month": month, "Year": year}},
             },
         )
+
+    @wrap_boto3_error
+    def get_invoice_pdf(self, invoice_id: str) -> dict:
+        """Return AWS invoice PDF metadata for an invoice.
+
+        ResourceNotFoundException (PDF not yet generated) is retried with
+        exponential backoff before giving up; other errors rely on boto3's
+        built-in retries.
+        """
+        invoicing_client = self._get_invoicing_client()
+        attempt = 1
+        while True:
+            try:
+                return invoicing_client.get_invoice_pdf(InvoiceId=invoice_id)
+            except invoicing_client.exceptions.ResourceNotFoundException:
+                # Raised while the PDF is not yet generated; boto3 never retries it,
+                # unlike throttling and 5xx errors, which boto3 retries itself.
+                if attempt >= INVOICE_PDF_MAX_ATTEMPTS:
+                    raise
+                time.sleep(2 ** (attempt - 1))
+                attempt += 1
 
     def _build_cost_and_usage_params(
         self,
