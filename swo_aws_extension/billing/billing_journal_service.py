@@ -52,6 +52,12 @@ def _log_dry_run_results(
     ]
     if attachments:
         logger.info("%s - [DRY-RUN] Attachments: %s", authorization_id, attachments)
+    if generator_result.invoice_ids:
+        logger.info(
+            "%s - [DRY-RUN] Invoice IDs: %s",
+            authorization_id,
+            sorted(generator_result.invoice_ids),
+        )
 
 
 class BillingJournalService:

@@ -101,7 +101,10 @@ def test_processes_agreements(
     mock_get_agreements.return_value = [{"id": "AGR-1"}, {"id": "AGR-2"}]
     mock_journal_line = mocker.MagicMock(spec=JournalLine)
     mock_agr_gen = mocker.MagicMock(spec=AgreementJournalGenerator)
-    mock_agr_gen.run.return_value = AgreementJournalResult(lines=[mock_journal_line])
+    mock_agr_gen.run.side_effect = [
+        AgreementJournalResult(lines=[mock_journal_line], invoice_ids={"INV-001"}),
+        AgreementJournalResult(lines=[mock_journal_line], invoice_ids={"INV-001", "INV-002"}),
+    ]
     mock_agreement_generator_cls.return_value = mock_agr_gen
     generator = AuthorizationJournalGenerator(mock_context)
 
@@ -109,6 +112,7 @@ def test_processes_agreements(
 
     assert mock_agr_gen.run.call_count == 2
     assert result.lines == [mock_journal_line, mock_journal_line]
+    assert result.invoice_ids == {"INV-001", "INV-002"}
 
 
 def test_exception_sends_error(

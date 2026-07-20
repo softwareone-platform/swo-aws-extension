@@ -53,6 +53,7 @@ class AgreementJournalResult:
     billing_report_rows: list[BillingReportRow] = field(default_factory=list)
     billing_report_rows_by_account: list[BillingReportRow] = field(default_factory=list)
     pls_mismatches: list[PlsMismatch] = field(default_factory=list)
+    invoice_ids: set[str] = field(default_factory=set)
 
 
 @dataclass
@@ -64,3 +65,4 @@ class AuthorizationJournalResult:
     billing_report_rows: list[BillingReportRow] = field(default_factory=list)
     billing_report_rows_by_account: list[BillingReportRow] = field(default_factory=list)
     pls_mismatches: list[PlsMismatch] = field(default_factory=list)
+    invoice_ids: set[str] = field(default_factory=set)

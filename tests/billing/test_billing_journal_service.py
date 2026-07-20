@@ -223,6 +223,7 @@ def test_dry_run_skips_upload(
     mock_auth_gen.run.return_value = AuthorizationJournalResult(
         lines=[mock_line],
         reports_by_agreement={"AGR-1": report},
+        invoice_ids={"INV-001"},
     )
     mock_auth_generator_cls.return_value = mock_auth_gen
     mock_journal_manager_cls = mocker.patch(f"{MODULE}.JournalManager", autospec=True)
