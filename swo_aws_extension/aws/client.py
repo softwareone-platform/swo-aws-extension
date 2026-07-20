@@ -3,6 +3,7 @@ import logging
 from collections.abc import Callable
 
 import boto3
+from botocore.config import Config as BotoConfig
 
 from swo_aws_extension.aws.errors import (
     AWSError,
@@ -15,6 +16,9 @@ from swo_aws_extension.swo.openid.client import OpenIDClient
 
 MINIMUM_DAYS_MONTH = 28
 MAX_RESULTS_PER_PAGE = 20
+# Standard mode retries throttling, server (5xx) and connection errors with
+# exponential backoff and jitter, keeping the default total max attempts.
+BOTO3_CLIENT_CONFIG = BotoConfig(retries={"mode": "standard"})
 
 logger = logging.getLogger(__name__)
 
@@ -399,7 +403,7 @@ class AWSClient:
             raise AWSError("Parameter 'account_id' must be provided to assume the role.")
 
         role_arn = f"arn:aws:iam::{self.account_id}:role/{self.role_name}"
-        response = boto3.client("sts").assume_role_with_web_identity(
+        response = boto3.client("sts", config=BOTO3_CLIENT_CONFIG).assume_role_with_web_identity(
             RoleArn=role_arn,
             RoleSessionName="SWOExtensionOnboardingSession",
             WebIdentityToken=self._openid_client.fetch_access_token(self.config.aws_openid_scope),
@@ -421,6 +425,7 @@ class AWSClient:
             aws_access_key_id=self.credentials["AccessKeyId"],
             aws_secret_access_key=self.credentials["SecretAccessKey"],
             aws_session_token=self.credentials["SessionToken"],
+            config=BOTO3_CLIENT_CONFIG,
         )
 
     def _get_sts_client(self):
@@ -429,6 +434,7 @@ class AWSClient:
             aws_access_key_id=self.credentials["AccessKeyId"],
             aws_secret_access_key=self.credentials["SecretAccessKey"],
             aws_session_token=self.credentials["SessionToken"],
+            config=BOTO3_CLIENT_CONFIG,
         )
 
     def _get_cost_explorer_client(self):
@@ -443,6 +449,7 @@ class AWSClient:
             aws_access_key_id=self.credentials["AccessKeyId"],
             aws_secret_access_key=self.credentials["SecretAccessKey"],
             aws_session_token=self.credentials["SessionToken"],
+            config=BOTO3_CLIENT_CONFIG,
             region_name="us-east-1",
         )
 
@@ -458,6 +465,7 @@ class AWSClient:
             aws_access_key_id=self.credentials["AccessKeyId"],
             aws_secret_access_key=self.credentials["SecretAccessKey"],
             aws_session_token=self.credentials["SessionToken"],
+            config=BOTO3_CLIENT_CONFIG,
             region_name="us-east-1",
         )
 
@@ -473,6 +481,7 @@ class AWSClient:
             aws_access_key_id=self.credentials["AccessKeyId"],
             aws_secret_access_key=self.credentials["SecretAccessKey"],
             aws_session_token=self.credentials["SessionToken"],
+            config=BOTO3_CLIENT_CONFIG,
         )
 
     def _get_partner_central_client(self):
@@ -487,6 +496,7 @@ class AWSClient:
             aws_access_key_id=self.credentials["AccessKeyId"],
             aws_secret_access_key=self.credentials["SecretAccessKey"],
             aws_session_token=self.credentials["SessionToken"],
+            config=BOTO3_CLIENT_CONFIG,
             region_name="us-east-1",
         )
 
@@ -502,6 +512,7 @@ class AWSClient:
             aws_access_key_id=self.credentials["AccessKeyId"],
             aws_secret_access_key=self.credentials["SecretAccessKey"],
             aws_session_token=self.credentials["SessionToken"],
+            config=BOTO3_CLIENT_CONFIG,
             region_name="us-east-1",
         )
 
