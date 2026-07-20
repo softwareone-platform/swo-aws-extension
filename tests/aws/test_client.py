@@ -1,7 +1,9 @@
 import datetime as dt
+from http import HTTPStatus
 
 import boto3
 import pytest
+import responses
 from botocore.exceptions import ClientError
 
 from swo_aws_extension.aws.client import (
@@ -831,6 +833,42 @@ def test_get_invoice_pdf_stops_after_three_tries(
 
     assert mock_client.get_invoice_pdf.call_count == 3
     assert mock_sleep.call_args_list == [mocker.call(1), mocker.call(2)]
+
+
+def test_download_invoice_pdf_returns_content(config, aws_client_factory, requests_mocker):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    document_url = "https://example.test/invoice.pdf"
+    mock_client.get_invoice_pdf.return_value = {"InvoicePDF": {"DocumentUrl": document_url}}
+    requests_mocker.add(responses.GET, document_url, body=b"invoice-pdf", status=HTTPStatus.OK)
+
+    result = mock_aws_client.download_invoice_pdf("INV-001")
+
+    assert result == b"invoice-pdf"
+    mock_client.get_invoice_pdf.assert_called_once_with(InvoiceId="INV-001")
+
+
+def test_download_invoice_pdf_missing_url_raises(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.get_invoice_pdf.return_value = {"InvoicePDF": {}}
+
+    with pytest.raises(AWSError, match="Invoice PDF URL is missing"):
+        mock_aws_client.download_invoice_pdf("INV-001")
+
+
+def test_download_invoice_pdf_error_redacts_url(config, aws_client_factory, requests_mocker):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    document_url = "https://example.test/invoice.pdf?X-Amz-Signature=super-secret-signature"
+    mock_client.get_invoice_pdf.return_value = {"InvoicePDF": {"DocumentUrl": document_url}}
+    requests_mocker.add(responses.GET, document_url, status=HTTPStatus.FORBIDDEN)
+
+    with pytest.raises(AWSError) as exc_info:
+        mock_aws_client.download_invoice_pdf("INV-001")
+
+    assert "super-secret-signature" not in str(exc_info.value)
+    assert "X-Amz-Signature" not in str(exc_info.value)
+    assert "403 Forbidden" in str(exc_info.value)
+    assert exc_info.value.__cause__ is None
+    assert exc_info.value.__suppress_context__ is True
 
 
 def test_get_linked_accounts_with_usage(mocker):

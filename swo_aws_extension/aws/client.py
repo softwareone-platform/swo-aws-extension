@@ -4,6 +4,7 @@ import time
 from collections.abc import Callable
 
 import boto3
+import requests
 from botocore.config import Config as BotoConfig
 
 from swo_aws_extension.aws.errors import (
@@ -18,6 +19,7 @@ from swo_aws_extension.swo.openid.client import OpenIDClient
 MINIMUM_DAYS_MONTH = 28
 MAX_RESULTS_PER_PAGE = 20
 INVOICE_PDF_MAX_ATTEMPTS = 3
+INVOICE_PDF_DOWNLOAD_TIMEOUT_SECONDS = 60
 # Standard mode retries throttling, server (5xx) and connection errors with
 # exponential backoff and jitter, keeping the default total max attempts.
 BOTO3_CLIENT_CONFIG = BotoConfig(retries={"mode": "standard"})
@@ -397,6 +399,39 @@ class AWSClient:
                     raise
                 time.sleep(2 ** (attempt - 1))
                 attempt += 1
+
+    @wrap_boto3_error
+    def download_invoice_pdf(self, invoice_id: str) -> bytes:
+        """Return the AWS invoice PDF document content for an invoice.
+
+        Resolves the pre-signed URL via GetInvoicePDF and downloads its content.
+        The URL is used immediately and never stored.
+        """
+        invoice_pdf = self.get_invoice_pdf(invoice_id).get("InvoicePDF", {})
+        document_url = invoice_pdf.get("DocumentUrl")
+        if not isinstance(document_url, str) or not document_url:
+            raise AWSError(f"Invoice PDF URL is missing for invoice {invoice_id}")
+
+        try:
+            return self._download_document(document_url)
+        except requests.RequestException as error:
+            # The pre-signed URL carries a temporary access signature; keep only the HTTP
+            # status (never the URL) and drop the original exception so the signature
+            # cannot reach the logs or the caller.
+            if error.response is None:
+                status = "unknown"
+            else:
+                code = error.response.status_code
+                reason = error.response.reason
+                status = f"{code} {reason}".strip()
+            raise AWSError(
+                f"Failed to download invoice PDF for {invoice_id} (HTTP status: {status})"
+            ) from None
+
+    def _download_document(self, document_url: str) -> bytes:
+        response = requests.get(document_url, timeout=INVOICE_PDF_DOWNLOAD_TIMEOUT_SECONDS)
+        response.raise_for_status()
+        return response.content
 
     def _build_cost_and_usage_params(
         self,

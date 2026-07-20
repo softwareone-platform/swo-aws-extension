@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 from mpt_extension_sdk.mpt_http.mpt import get_agreements_by_query
 from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
 
@@ -40,15 +42,20 @@ class AuthorizationJournalGenerator:
         self._billing_period = context.billing_period
         self._notifier = context.notifier
 
-    @with_log_context(lambda _, authorization, **kwargs: authorization.get("id"))
+    @with_log_context(lambda _, authorization, *args, **kwargs: authorization.get("id"))
     @dynamic_trace_span(
-        lambda _, authorization, **kwargs: f"Authorization {authorization.get('id')}",
+        lambda _, authorization, *args, **kwargs: f"Authorization {authorization.get('id')}",
     )
-    def run(self, authorization: dict) -> AuthorizationJournalResult:
+    def run(
+        self,
+        authorization: dict,
+        billing_aws_client_provider: Callable[[], AWSClient],
+    ) -> AuthorizationJournalResult:
         """Generate billing journal for the given authorization.
 
         Args:
             authorization: The authorization data to process.
+            billing_aws_client_provider: Provider for the billing AWS client.
 
         Returns:
             AuthorizationJournalResult containing lines and generated reports.
@@ -76,7 +83,7 @@ class AuthorizationJournalGenerator:
             aws_client=AWSClient(self._config, pma_account, self._config.management_role_name),
         )
 
-        aws_client = AWSClient(self._config, pma_account, self._config.billing_role_name)
+        aws_client = billing_aws_client_provider()
 
         return self._process_agreements(
             auth_context,
