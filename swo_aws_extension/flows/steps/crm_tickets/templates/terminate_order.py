@@ -24,7 +24,7 @@ TRANSFER_END_SCHEDULED_TEMPLATE = CRMTicketTemplate(
 )
 
 ORDER_TERMINATION_TEMPLATE = CRMTicketTemplate(
-    title="Action Required : Agreement Termination",
+    title="AWS - Action Required : Agreement Termination",
     additional_info="Customer wants to terminate their current active AWS agreement",
     summary=(
         "Dear MCoE Team,<br><br>"
