@@ -2,7 +2,10 @@ import logging
 from typing import override
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
-from mpt_extension_sdk.mpt_http.mpt import _paginated, update_order  # noqa: PLC2701
+from mpt_extension_sdk.mpt_http.mpt import (
+    _paginated,  # ruff:ignore[import-private-name]
+    update_order,
+)
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError

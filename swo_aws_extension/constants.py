@@ -3,10 +3,10 @@ from enum import IntEnum, StrEnum
 
 MPT_DATE_TIME_FORMAT = "%Y-%m-%dT%H:%M:00Z"
 
-ACCESS_TOKEN_NOT_FOUND_IN_RESPONSE = "Access token not found in the response"  # noqa: S105
-CCP_SECRET_NOT_FOUND_IN_KEY_VAULT = "CCP secret not found in key vault"  # noqa: S105
-FAILED_TO_GET_SECRET = "Failed to get secret"  # noqa: S105
-FAILED_TO_SAVE_SECRET_TO_KEY_VAULT = "Failed to save secret to key vault"  # noqa: S105
+ACCESS_TOKEN_NOT_FOUND_IN_RESPONSE = "Access token not found in the response"  # ruff:ignore[hardcoded-password-string]
+CCP_SECRET_NOT_FOUND_IN_KEY_VAULT = "CCP secret not found in key vault"  # ruff:ignore[hardcoded-password-string]
+FAILED_TO_GET_SECRET = "Failed to get secret"  # ruff:ignore[hardcoded-password-string]
+FAILED_TO_SAVE_SECRET_TO_KEY_VAULT = "Failed to save secret to key vault"  # ruff:ignore[hardcoded-password-string]
 
 CRM_EXTERNAL_EMAIL = "marketplace@softwareone.com"
 CRM_EXTERNAL_USERNAME = "mpt@marketplace.com"

@@ -878,7 +878,7 @@ def mock_token():
 @pytest.fixture
 def mpt_client(settings):
     settings.MPT_API_BASE_URL = "https://localhost"
-    from mpt_extension_sdk.core.utils import setup_client  # noqa: PLC0415
+    from mpt_extension_sdk.core.utils import setup_client  # ruff:ignore[import-outside-top-level]
 
     return setup_client()
 

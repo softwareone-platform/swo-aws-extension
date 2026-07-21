@@ -58,7 +58,7 @@ def rql_encode(op: str, value: str | list) -> str:
     raise TypeError(f"the `{op}` operator doesn't support the {type(value)} type.")
 
 
-def _encode_scalar(value: str | bool | int | float | Decimal | dt.date | dt.datetime) -> str:  # noqa: FBT001
+def _encode_scalar(value: str | bool | int | float | Decimal | dt.date | dt.datetime) -> str:  # ruff:ignore[boolean-type-hint-positional-argument]
     if isinstance(value, str):
         return value
     if isinstance(value, bool):
@@ -350,7 +350,7 @@ class RQLQuery:
         self.expr = f"eq({self._field},{expr}())"
         return self
 
-    def _to_string(self, query):  # noqa: C901
+    def _to_string(self, query):  # ruff:ignore[complex-structure]
         tokens = []
         if query.expr:
             if query.negated:

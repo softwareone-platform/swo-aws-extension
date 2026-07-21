@@ -7,7 +7,7 @@ import responses
 
 from swo_aws_extension.swo.cco.client import (
     CcoClient,
-    _CcoClientFactory,  # noqa: PLC2701
+    _CcoClientFactory,  # ruff:ignore[import-private-name]
     get_cco_client,
 )
 from swo_aws_extension.swo.cco.errors import CcoError, CcoHttpError, CcoNotFoundError
@@ -27,7 +27,7 @@ class _LockThatSetsInstance:
         self._instance = instance
 
     def __enter__(self):
-        _CcoClientFactory._instance = self._instance  # noqa: SLF001
+        _CcoClientFactory._instance = self._instance  # ruff:ignore[private-member-access]
         return self
 
     def __exit__(self, *args):

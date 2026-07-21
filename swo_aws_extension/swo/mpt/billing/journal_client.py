@@ -217,12 +217,12 @@ class JournalClient:
         response.raise_for_status()
         return response.json()
 
-    @lru_cache(maxsize=10)  # noqa: B019
+    @lru_cache(maxsize=10)  # ruff:ignore[cached-instance-method]
     def attachments(self, journal_id: str) -> AttachmentsClient:
         """Get attachments client."""
         return AttachmentsClient(self._client, journal_id)
 
-    @lru_cache(maxsize=10)  # noqa: B019
+    @lru_cache(maxsize=10)  # ruff:ignore[cached-instance-method]
     def charges(self, journal_id: str) -> ChargesClient:
         """Get charges client."""
         return ChargesClient(self._client, journal_id)

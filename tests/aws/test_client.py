@@ -20,11 +20,11 @@ from swo_aws_extension.models import BillingPeriod
 
 # InvalidInputException is the name given by AWS boto3 to the error we are testing:
 # see more: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/organizations/client/terminate_responsibility_transfer.html#
-class InvalidInputException(ClientError):  # noqa: N818
+class InvalidInputException(ClientError):  # ruff:ignore[error-suffix-on-exception-name]
     """Dummy exception for testing purposes."""
 
 
-class ResourceNotFoundException(ClientError):  # noqa: N818
+class ResourceNotFoundException(ClientError):  # ruff:ignore[error-suffix-on-exception-name]
     """Dummy exception for testing purposes."""
 
 
