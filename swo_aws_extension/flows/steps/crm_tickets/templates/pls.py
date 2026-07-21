@@ -3,7 +3,7 @@
 from swo_aws_extension.flows.steps.crm_tickets.templates.models import CRMTicketTemplate
 
 PLS_TEMPLATE = CRMTicketTemplate(
-    title="Action Required: PLS Support Ticket",
+    title="AWS - Action Required: PLS Support Ticket",
     additional_info="New customers for PLES need to be enabled manually for PLES",
     summary=(
         "Dear MCoE Team,<br><br>"
