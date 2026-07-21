@@ -1,4 +1,5 @@
 from collections import defaultdict
+from collections.abc import Callable
 from decimal import Decimal
 
 from swo_aws_extension.billing.billing_report_creator import (
@@ -12,6 +13,8 @@ from swo_aws_extension.billing.models.context import BillingJournalContext
 from swo_aws_extension.billing.models.journal_result import (
     AuthorizationJournalResult,
 )
+from swo_aws_extension.billing.providers import BillingAWSClientProvider
+from swo_aws_extension.config import Config
 from swo_aws_extension.constants import BILLING_JOURNAL_ERROR_TITLE
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.swo.mpt.authorization import get_authorizations
@@ -63,13 +66,20 @@ def _log_dry_run_results(
 class BillingJournalService:
     """Generate billing journals for authorizations."""
 
-    def __init__(self, job_context: BillingJournalContext) -> None:
+    def __init__(
+        self,
+        job_context: BillingJournalContext,
+        billing_aws_client_provider_factory: Callable[
+            [Config, str], BillingAWSClientProvider
+        ] = BillingAWSClientProvider,
+    ) -> None:
         self._context = job_context
         self._mpt_client = job_context.mpt_client
         self._product_ids = job_context.product_ids
         self._authorizations = job_context.authorizations
         self._notifier = job_context.notifier
         self._generator = AuthorizationJournalGenerator(job_context)
+        self._billing_aws_client_provider_factory = billing_aws_client_provider_factory
 
     def run(self) -> None:
         """Entry point for generating billing journals for all selected authorizations."""
@@ -120,8 +130,16 @@ class BillingJournalService:
 
     def _process_authorization(self, authorization: dict) -> AuthorizationJournalResult | None:
         authorization_id = authorization.get("id", "")
+        billing_aws_client_provider = self._billing_aws_client_provider_factory(
+            self._context.config,
+            authorization.get("externalIds", {}).get("operations", ""),
+        )
 
-        generator_result = self._generate_journal_lines(authorization, authorization_id)
+        generator_result = self._generate_journal_lines(
+            authorization,
+            authorization_id,
+            billing_aws_client_provider,
+        )
         if not generator_result or not generator_result.lines:
             logger.info(
                 "No journal lines generated for authorization %s",
@@ -157,10 +175,13 @@ class BillingJournalService:
         return generator_result
 
     def _generate_journal_lines(
-        self, authorization: dict, authorization_id: str
+        self,
+        authorization: dict,
+        authorization_id: str,
+        billing_aws_client_provider: BillingAWSClientProvider,
     ) -> AuthorizationJournalResult | None:
         try:
-            return self._generator.run(authorization)
+            return self._generator.run(authorization, billing_aws_client_provider)
         except Exception:  # TODO: Catch specific exceptions and handle them accordingly
             logger.exception(
                 "Failed to generate billing journals for authorization %s",

@@ -66,7 +66,7 @@ The runtime is organised as a pipeline-driven fulfilment flow:
 | `swo_aws_extension/flows/jobs/` | Background jobs: reports, FinOps entitlement sync, MPT subscription sync for linked AWS accounts |
 | `swo_aws_extension/billing/` | Billing journal generation, line processors, generators, and models |
 | `swo_aws_extension/processor/` | Chain-of-responsibility processors for querying AWS roles, handshakes, transfers |
-| `swo_aws_extension/aws/` | `AWSClient` (boto3 AssumeRole, account/billing/CUR operations, Cost Explorer with dimension attributes) |
+| `swo_aws_extension/aws/` | `AWSClient` (boto3 AssumeRole, account/billing/CUR operations, Cost Explorer with dimension attributes, Invoicing summaries and invoice document retrieval) |
 | `swo_aws_extension/swo/` | External-service clients (CCP, CRM, FinOps, CCO, Cloud Orchestrator, MPT, Key Vault, Blob, notifications, OpenID) |
 | `swo_aws_extension/airtable/` | FinOps entitlements Airtable sync |
 | `swo_aws_extension/management/` | Django management commands run by the worker |

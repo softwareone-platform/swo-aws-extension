@@ -19,6 +19,7 @@ from swo_aws_extension.billing.models.journal_result import (
     PlsMismatch,
 )
 from swo_aws_extension.billing.models.usage import OrganizationReport
+from swo_aws_extension.billing.providers import BillingAWSClientProvider
 from swo_aws_extension.constants import BILLING_JOURNAL_ERROR_TITLE
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
@@ -52,16 +53,21 @@ def test_processes_authorizations(
     mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
 ):
     mock_context.dry_run = False
-    authorization = {"id": "AUTH-1"}
+    authorization = {
+        "id": "AUTH-1",
+        "externalIds": {"operations": "MPA-123"},
+    }
     mock_get_authorizations.return_value = [authorization]
     mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
     mock_auth_gen.run.return_value = AuthorizationJournalResult()
     mock_auth_generator_cls.return_value = mock_auth_gen
-    service = BillingJournalService(mock_context)
+    provider_factory = mocker.create_autospec(BillingAWSClientProvider)
+    service = BillingJournalService(mock_context, provider_factory)
 
     service.run()  # act
 
-    mock_auth_gen.run.assert_called_once_with(authorization)
+    provider_factory.assert_called_once_with(mock_context.config, "MPA-123")
+    mock_auth_gen.run.assert_called_once_with(authorization, provider_factory.return_value)
 
 
 def test_exception_sends_error(
