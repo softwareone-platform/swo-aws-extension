@@ -7,6 +7,7 @@ from swo_aws_extension.billing.generators.invoice import (
     MAX_INVOICE_ID_LENGTH,
     ExchangeRateResolver,
     InvoiceGenerator,
+    get_invoice_rate,
     merge_invoice_ids,
 )
 from swo_aws_extension.billing.models.invoice import (
@@ -164,6 +165,22 @@ def test_run_handles_principal_invoice_amount_without_spp_discount(
     result = generator.run("PMA-456", "MPA-123", billing_period, "EUR")
 
     assert result.invoice.principal_invoice_amount is None
+
+
+def test_get_invoice_rate_reads_payment_currency_exchange_details():
+    invoice = build_invoice(exchange_rate="0.87")
+
+    result = get_invoice_rate(invoice)
+
+    assert result == Decimal("0.87")
+
+
+def test_get_invoice_rate_defaults_to_zero_when_missing():
+    invoice = {"PaymentCurrencyAmount": {"CurrencyCode": "EUR"}}
+
+    result = get_invoice_rate(invoice)
+
+    assert result == Decimal(0)
 
 
 def test_run_handles_empty_invoices(generator, mock_aws_client, billing_period):

@@ -59,6 +59,13 @@ def _is_primary_invoice(invoice: dict) -> bool:
     return any(breakdown.get("Description") == SPP_DISCOUNT_DESCRIPTION for breakdown in breakdowns)
 
 
+def get_invoice_rate(invoice: dict) -> Decimal:
+    """Extract the payment-currency exchange rate from a raw invoice."""
+    return Decimal(
+        invoice.get("PaymentCurrencyAmount", {}).get("CurrencyExchangeDetails", {}).get("Rate", 0)
+    )
+
+
 class ExchangeRateResolver:
     """Resolves exchange rates and payment currencies from invoices."""
 
@@ -75,7 +82,7 @@ class ExchangeRateResolver:
     def get_payment_currency(self, exchange_rate: Decimal) -> str:
         """Get the payment currency code for the given exchange rate."""
         for inv in self._raw_invoices:
-            rate = self._get_invoice_rate(inv)
+            rate = get_invoice_rate(inv)
             if rate == exchange_rate:
                 return inv.get("PaymentCurrencyAmount", {}).get("CurrencyCode", "USD")
         return "USD"
@@ -87,16 +94,8 @@ class ExchangeRateResolver:
                 continue
             if entity_name and inv.get("Entity", {}).get("InvoicingEntity") != entity_name:
                 continue
-            rates.append(self._get_invoice_rate(inv))
+            rates.append(get_invoice_rate(inv))
         return rates
-
-    def _get_invoice_rate(self, invoice: dict) -> Decimal:
-        return Decimal(
-            invoice
-            .get("PaymentCurrencyAmount", {})
-            .get("CurrencyExchangeDetails", {})
-            .get("Rate", 0)
-        )
 
 
 class InvoiceGenerator:

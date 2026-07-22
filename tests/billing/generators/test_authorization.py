@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 
 from swo_aws_extension.aws.client import AWSClient
@@ -17,6 +19,7 @@ from swo_aws_extension.billing.models.journal_result import (
     AgreementJournalResult,
     AuthorizationJournalResult,
     BillingReportRow,
+    OrganizationSppSummaryRow,
     PlsMismatch,
 )
 from swo_aws_extension.billing.models.usage import OrganizationReport
@@ -183,6 +186,43 @@ def test_includes_report_in_result(
     assert result.reports_by_agreement == {"AGR-1": report}
     assert result.billing_report_rows == [mock_row]
     assert result.billing_report_rows_by_account == [mock_row_by_account]
+
+
+def test_includes_spp_summary_row_in_result(
+    mocker,
+    mock_context,
+    mock_get_agreements,
+    mock_agreement_generator_cls,
+    mock_usage_generator_cls,
+    mock_invoice_generator_cls,
+    mock_aws_client_cls,
+    billing_aws_client_provider,
+    authorization,
+):
+    spp_summary_row = OrganizationSppSummaryRow(
+        authorization_id="AUTH-1",
+        pma="PMA-123",
+        agreement_id="AGR-1",
+        mpa="MPA-1",
+        pp=Decimal("90.00"),
+        sp=Decimal("100.00"),
+        currency="USD",
+        exchange_rate=Decimal("1.0"),
+        spp_discount=Decimal("-10.00"),
+        spp_discount_pct=Decimal("0.10"),
+        markup=Decimal("10.00") / Decimal("90.00"),
+    )
+    mock_get_agreements.return_value = [{"id": "AGR-1"}]
+    mock_agr_gen = mocker.MagicMock(spec=AgreementJournalGenerator)
+    mock_agr_gen.run.return_value = AgreementJournalResult(
+        lines=[], spp_summary_row=spp_summary_row
+    )
+    mock_agreement_generator_cls.return_value = mock_agr_gen
+    generator = AuthorizationJournalGenerator(mock_context)
+
+    result = generator.run(authorization, billing_aws_client_provider)
+
+    assert result.spp_summary_rows == [spp_summary_row]
 
 
 def test_includes_pls_mismatches_in_result(

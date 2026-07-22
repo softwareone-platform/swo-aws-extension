@@ -93,6 +93,11 @@ def mock_pls_charge_manager_cls(mocker):
     return cls_mock
 
 
+@pytest.fixture(autouse=True)
+def mock_build_spp_summary_row(mocker):
+    return mocker.patch(f"{MODULE}.build_spp_summary_row")
+
+
 def _build_agreement(support_type="ResoldSupport"):
     return {
         "id": "AGR-1",
@@ -123,6 +128,7 @@ def test_run(
     mock_line_generator_cls,
     mock_extra_discounts_manager_cls,
     mock_pls_charge_manager_cls,
+    mock_build_spp_summary_row,
 ):
     mock_builder = mocker.MagicMock()
     mock_builder.build.return_value = []
@@ -168,12 +174,21 @@ def test_run(
     assert result.lines == [mock_journal_line, mock_discount_line, mock_pls_line]
     assert result.invoice_ids == {"INV-001", "INV-002"}
     mock_invoice_generator.run.assert_called_once()
-    mock_generator_instance.generate.assert_called_once()
     mock_pls_instance.process.assert_called_once()
-    call_args = mock_generator_instance.generate.call_args
-    assert call_args[0][0] == "ACC-1"
-    assert call_args[0][1] == mock_account_usage
-    assert isinstance(call_args[0][2], JournalDetails)
+    mock_generator_instance.generate.assert_called_once_with(
+        "ACC-1",
+        mock_account_usage,
+        mocker.ANY,
+        mocker.ANY,
+    )
+    assert isinstance(mock_generator_instance.generate.call_args[0][2], JournalDetails)
+    assert result.spp_summary_row is mock_build_spp_summary_row.return_value
+    mock_build_spp_summary_row.assert_called_once_with(
+        mocker.ANY,
+        result.lines,
+        result.billing_report_rows,
+        mock_invoice_generator.run.return_value.invoice,
+    )
 
 
 def test_run_without_pls(

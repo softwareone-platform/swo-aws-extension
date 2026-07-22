@@ -1,8 +1,11 @@
 from io import BytesIO
 
+import pytest
 from openpyxl import load_workbook
 
-from swo_aws_extension.swo.excel_report_builder import ExcelReportBuilder
+from swo_aws_extension.swo.excel_report_builder import ExcelReportBuilder, Percent
+
+MARKUP_RATIO = 0.012354234234
 
 
 def test_build_from_rows_creates_valid_excel():
@@ -54,6 +57,24 @@ def test_build_multi_sheet_creates_multiple_sheets():
     returns_ws = wb["Returns"]
     assert returns_ws.cell(row=1, column=1).value == "Item"
     assert returns_ws.cell(row=2, column=1).value == "Widget"
+
+
+def test_build_multi_sheet_applies_percent_format_to_percent_values():
+    builder = ExcelReportBuilder([], "Unused")
+    sheets = [
+        ("Summary", ["Name", "Markup"], [["Acme", Percent(MARKUP_RATIO)]]),
+    ]
+
+    result = builder.build_multi_sheet(sheets)
+
+    wb = load_workbook(filename=BytesIO(result))
+    ws = wb["Summary"]
+    markup_cell = ws.cell(row=2, column=2)
+    assert markup_cell.value == pytest.approx(MARKUP_RATIO)
+    assert isinstance(markup_cell.value, float)
+    assert markup_cell.number_format == "0.###################%"
+    name_cell = ws.cell(row=2, column=1)
+    assert name_cell.number_format == "General"
 
 
 def test_build_from_rows_keeps_existing_sheet_title(mocker):
