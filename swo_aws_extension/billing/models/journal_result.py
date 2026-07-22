@@ -57,6 +57,14 @@ class AgreementJournalResult:
 
 
 @dataclass
+class InvoiceAttachmentResult:
+    """Result of attaching AWS invoice documents to a journal."""
+
+    uploaded_invoice_ids: set[str] = field(default_factory=set)
+    failed_invoice_ids: set[str] = field(default_factory=set)
+
+
+@dataclass
 class AuthorizationJournalResult:
     """Result of generating an authorization journal."""
 

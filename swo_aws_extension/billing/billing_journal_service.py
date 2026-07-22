@@ -2,6 +2,9 @@ from collections import defaultdict
 from collections.abc import Callable
 from decimal import Decimal
 
+from swo_aws_extension.billing.billing_invoice_attachment_creator import (
+    BillingInvoiceAttachmentCreator,
+)
 from swo_aws_extension.billing.billing_report_creator import (
     BillingReportCreator,
 )
@@ -15,7 +18,10 @@ from swo_aws_extension.billing.models.journal_result import (
 )
 from swo_aws_extension.billing.providers import BillingAWSClientProvider
 from swo_aws_extension.config import Config
-from swo_aws_extension.constants import BILLING_JOURNAL_ERROR_TITLE
+from swo_aws_extension.constants import (
+    BILLING_INVOICE_ATTACHMENT_WARNING_TITLE,
+    BILLING_JOURNAL_ERROR_TITLE,
+)
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.swo.mpt.authorization import get_authorizations
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
@@ -170,6 +176,11 @@ class BillingJournalService:
                 journal.id,
                 generator_result.reports_by_agreement,
             )
+        self._create_invoice_attachments(
+            journal.id,
+            generator_result.invoice_ids,
+            billing_aws_client_provider,
+        )
         journal_manager.notify_success(journal.id, len(generator_result.lines))
 
         return generator_result
@@ -192,6 +203,29 @@ class BillingJournalService:
                 f"Failed to generate billing journals for authorization {authorization_id}",
             )
             return None
+
+    def _create_invoice_attachments(
+        self,
+        journal_id: str,
+        invoice_ids: set[str],
+        billing_aws_client_provider: BillingAWSClientProvider,
+    ) -> None:
+        if not invoice_ids:
+            return
+
+        creator = BillingInvoiceAttachmentCreator(
+            billing_aws_client_provider(),
+            self._context.billing_api_client,
+        )
+        result = creator.create_for_journal(journal_id, invoice_ids)
+        if result.failed_invoice_ids:
+            failed_invoice_ids = ", ".join(sorted(result.failed_invoice_ids))
+            self._notifier.send_warning(
+                title=BILLING_INVOICE_ATTACHMENT_WARNING_TITLE,
+                text=(
+                    f"Failed to attach AWS invoices to journal {journal_id}: {failed_invoice_ids}"
+                ),
+            )
 
     def _build_rql_query(self) -> RQLQuery:
         rql_query = RQLQuery(product__id__in=self._product_ids)
