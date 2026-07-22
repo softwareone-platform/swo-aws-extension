@@ -1,6 +1,9 @@
 import datetime as dt
+from http import HTTPStatus
 
+import boto3
 import pytest
+import responses
 from botocore.exceptions import ClientError
 
 from swo_aws_extension.aws.client import MAX_RESULTS_PER_PAGE, get_paged_response
@@ -15,6 +18,18 @@ from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import B
 # see more: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/organizations/client/terminate_responsibility_transfer.html#
 class InvalidInputException(ClientError):  # noqa: N818
     """Dummy exception for testing purposes."""
+
+
+class ResourceNotFoundException(ClientError):  # noqa: N818
+    """Dummy exception for testing purposes."""
+
+
+@pytest.fixture
+def resource_not_found_error():
+    return ResourceNotFoundException(
+        {"Error": {"Code": "ResourceNotFoundException"}},
+        "GetInvoicePDF",
+    )
 
 
 @pytest.fixture
@@ -720,3 +735,133 @@ def test_list_invoice_summaries_success(config, aws_client_factory, mock_get_pag
     assert len(result) == 1
     assert result[0]["InvoiceId"] == "INV-001"
     mock_get_paged_response.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "client_getter",
+    [
+        "_get_organization_client",
+        "_get_sts_client",
+        "_get_cost_explorer_client",
+        "_get_billing_client",
+        "_get_billing_conductor_client",
+        "_get_partner_central_client",
+        "_get_invoicing_client",
+    ],
+)
+def test_boto3_clients_use_standard_retry_mode(config, aws_client_factory, client_getter):
+    mock_aws_client, _ = aws_client_factory(config, "test_account_id", "test_role_name")
+
+    getattr(mock_aws_client, client_getter)()  # act
+
+    client_config = boto3.client.call_args.kwargs["config"]
+    assert client_config.retries == {"mode": "standard"}
+
+
+def test_assume_role_uses_standard_retry_mode(config, aws_client_factory):
+    aws_client_factory(config, "test_account_id", "test_role_name")  # act
+
+    assume_role_call = boto3.client.call_args_list[0]
+    assert assume_role_call.kwargs["config"].retries == {"mode": "standard"}
+
+
+def test_get_invoice_pdf_success(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    response = {"InvoicePDF": {"DocumentUrl": "https://example.test/invoice.pdf"}}
+    mock_client.get_invoice_pdf.return_value = response
+
+    result = mock_aws_client.get_invoice_pdf("INV-001")
+
+    assert result == response
+    mock_client.get_invoice_pdf.assert_called_once_with(InvoiceId="INV-001")
+
+
+def test_get_invoice_pdf_retries_not_found(
+    mocker, config, aws_client_factory, resource_not_found_error
+):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.exceptions.ResourceNotFoundException = ResourceNotFoundException
+    response = {"InvoicePDF": {"DocumentUrl": "https://example.test/invoice.pdf"}}
+    mock_client.get_invoice_pdf.side_effect = [
+        resource_not_found_error,
+        resource_not_found_error,
+        response,
+    ]
+    mock_sleep = mocker.patch("swo_aws_extension.aws.client.time.sleep", autospec=True)
+
+    result = mock_aws_client.get_invoice_pdf("INV-001")
+
+    assert result == response
+    assert mock_client.get_invoice_pdf.call_count == 3
+    assert mock_sleep.call_args_list == [mocker.call(1), mocker.call(2)]
+
+
+@pytest.mark.parametrize(
+    "error_code",
+    ["AccessDeniedException", "ThrottlingException", "InternalServerException"],
+)
+def test_get_invoice_pdf_skips_other_errors(mocker, config, aws_client_factory, error_code):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.exceptions.ResourceNotFoundException = ResourceNotFoundException
+    mock_client.get_invoice_pdf.side_effect = ClientError(
+        {"Error": {"Code": error_code}},
+        "GetInvoicePDF",
+    )
+    mock_sleep = mocker.patch("swo_aws_extension.aws.client.time.sleep", autospec=True)
+
+    with pytest.raises(AWSError, match=error_code):
+        mock_aws_client.get_invoice_pdf("INV-001")
+
+    mock_client.get_invoice_pdf.assert_called_once_with(InvoiceId="INV-001")
+    mock_sleep.assert_not_called()
+
+
+def test_get_invoice_pdf_stops_after_three_tries(
+    mocker, config, aws_client_factory, resource_not_found_error
+):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.exceptions.ResourceNotFoundException = ResourceNotFoundException
+    mock_client.get_invoice_pdf.side_effect = resource_not_found_error
+    mock_sleep = mocker.patch("swo_aws_extension.aws.client.time.sleep", autospec=True)
+
+    with pytest.raises(AWSError, match="ResourceNotFoundException"):
+        mock_aws_client.get_invoice_pdf("INV-001")
+
+    assert mock_client.get_invoice_pdf.call_count == 3
+    assert mock_sleep.call_args_list == [mocker.call(1), mocker.call(2)]
+
+
+def test_download_invoice_pdf_returns_content(config, aws_client_factory, requests_mocker):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    document_url = "https://example.test/invoice.pdf"
+    mock_client.get_invoice_pdf.return_value = {"InvoicePDF": {"DocumentUrl": document_url}}
+    requests_mocker.add(responses.GET, document_url, body=b"invoice-pdf", status=HTTPStatus.OK)
+
+    result = mock_aws_client.download_invoice_pdf("INV-001")
+
+    assert result == b"invoice-pdf"
+    mock_client.get_invoice_pdf.assert_called_once_with(InvoiceId="INV-001")
+
+
+def test_download_invoice_pdf_missing_url_raises(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.get_invoice_pdf.return_value = {"InvoicePDF": {}}
+
+    with pytest.raises(AWSError, match="Invoice PDF URL is missing"):
+        mock_aws_client.download_invoice_pdf("INV-001")
+
+
+def test_download_invoice_pdf_error_redacts_url(config, aws_client_factory, requests_mocker):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    document_url = "https://example.test/invoice.pdf?X-Amz-Signature=super-secret-signature"
+    mock_client.get_invoice_pdf.return_value = {"InvoicePDF": {"DocumentUrl": document_url}}
+    requests_mocker.add(responses.GET, document_url, status=HTTPStatus.FORBIDDEN)
+
+    with pytest.raises(AWSError) as exc_info:
+        mock_aws_client.download_invoice_pdf("INV-001")
+
+    assert "super-secret-signature" not in str(exc_info.value)
+    assert "X-Amz-Signature" not in str(exc_info.value)
+    assert "403 Forbidden" in str(exc_info.value)
+    assert exc_info.value.__cause__ is None
+    assert exc_info.value.__suppress_context__ is True

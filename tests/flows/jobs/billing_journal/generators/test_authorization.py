@@ -62,6 +62,11 @@ def mock_aws_client_cls(mocker):
 
 
 @pytest.fixture
+def billing_aws_client_provider(mocker):
+    return mocker.Mock(return_value=mocker.create_autospec(AWSClient, instance=True))
+
+
+@pytest.fixture
 def mock_generate_billing_report_rows(mocker):
     mock_builder = mocker.MagicMock()
     mock_builder.build.return_value = []
@@ -77,12 +82,13 @@ def test_no_agreements_returns_empty_list(
     mock_usage_generator_cls,
     mock_invoice_generator_cls,
     mock_aws_client_cls,
+    billing_aws_client_provider,
     authorization,
 ):
     mock_get_agreements.return_value = []
     generator = AuthorizationJournalGenerator(mock_context)
 
-    result = generator.run(authorization)
+    result = generator.run(authorization, billing_aws_client_provider)
 
     assert result == AuthorizationJournalResult()
     mock_agreement_generator_cls.assert_not_called()
@@ -96,19 +102,28 @@ def test_processes_agreements(
     mock_usage_generator_cls,
     mock_invoice_generator_cls,
     mock_aws_client_cls,
+    billing_aws_client_provider,
     authorization,
 ):
     mock_get_agreements.return_value = [{"id": "AGR-1"}, {"id": "AGR-2"}]
     mock_journal_line = mocker.MagicMock(spec=JournalLine)
     mock_agr_gen = mocker.MagicMock(spec=AgreementJournalGenerator)
-    mock_agr_gen.run.return_value = AgreementJournalResult(lines=[mock_journal_line])
+    mock_agr_gen.run.side_effect = [
+        AgreementJournalResult(lines=[mock_journal_line], invoice_ids={"INV-001"}),
+        AgreementJournalResult(lines=[mock_journal_line], invoice_ids={"INV-001", "INV-002"}),
+    ]
     mock_agreement_generator_cls.return_value = mock_agr_gen
+    billing_aws_client = billing_aws_client_provider.return_value
     generator = AuthorizationJournalGenerator(mock_context)
 
-    result = generator.run(authorization)
+    result = generator.run(authorization, billing_aws_client_provider)
 
     assert mock_agr_gen.run.call_count == 2
     assert result.lines == [mock_journal_line, mock_journal_line]
+    assert result.invoice_ids == {"INV-001", "INV-002"}
+    billing_aws_client_provider.assert_called_once_with()
+    mock_usage_generator_cls.assert_called_once_with(billing_aws_client)
+    mock_invoice_generator_cls.assert_called_once_with(billing_aws_client)
 
 
 def test_exception_sends_error(
@@ -119,6 +134,7 @@ def test_exception_sends_error(
     mock_usage_generator_cls,
     mock_invoice_generator_cls,
     mock_aws_client_cls,
+    billing_aws_client_provider,
     authorization,
 ):
     mock_get_agreements.return_value = [{"id": "AGR-1"}]
@@ -127,7 +143,7 @@ def test_exception_sends_error(
     mock_agreement_generator_cls.return_value = mock_agr_gen
     generator = AuthorizationJournalGenerator(mock_context)
 
-    result = generator.run(authorization)
+    result = generator.run(authorization, billing_aws_client_provider)
 
     assert result == AuthorizationJournalResult()
     expected_message = "Failed to generate billing journal for AGR-1: Test Error"
@@ -144,6 +160,7 @@ def test_includes_report_in_result(
     mock_usage_generator_cls,
     mock_invoice_generator_cls,
     mock_aws_client_cls,
+    billing_aws_client_provider,
     authorization,
 ):
     report = OrganizationReport(organization_data={"usage": [{"key": "val"}]})
@@ -161,7 +178,7 @@ def test_includes_report_in_result(
     mock_agreement_generator_cls.return_value = mock_agr_gen
     generator = AuthorizationJournalGenerator(mock_context)
 
-    result = generator.run(authorization)
+    result = generator.run(authorization, billing_aws_client_provider)
 
     assert result.reports_by_agreement == {"AGR-1": report}
     assert result.billing_report_rows == [mock_row]
@@ -176,6 +193,7 @@ def test_includes_pls_mismatches_in_result(
     mock_usage_generator_cls,
     mock_invoice_generator_cls,
     mock_aws_client_cls,
+    billing_aws_client_provider,
     authorization,
 ):
     mismatch = PlsMismatch(agreement_id="AGR-1", pls_in_order=True, report_has_enterprise=False)
@@ -188,7 +206,7 @@ def test_includes_pls_mismatches_in_result(
     mock_agreement_generator_cls.return_value = mock_agr_gen
     generator = AuthorizationJournalGenerator(mock_context)
 
-    result = generator.run(authorization)
+    result = generator.run(authorization, billing_aws_client_provider)
 
     assert result.pls_mismatches == [mismatch]
 
@@ -201,6 +219,7 @@ def test_pma_usage_included_in_report_rows(
     mock_usage_generator_cls,
     mock_invoice_generator_cls,
     mock_aws_client_cls,
+    billing_aws_client_provider,
     mock_generate_billing_report_rows,
     authorization,
 ):
@@ -220,7 +239,7 @@ def test_pma_usage_included_in_report_rows(
     mock_generate_billing_report_rows.build.return_value = [mock_row]
     generator = AuthorizationJournalGenerator(mock_context)
 
-    result = generator.run(authorization)
+    result = generator.run(authorization, billing_aws_client_provider)
 
     mock_invoice_gen.run.assert_any_call("MPA-123", "MPA-123", mock_context.billing_period, "USD")
     mock_usage_gen.run_for_pma.assert_called_once_with(
@@ -241,6 +260,7 @@ def test_pma_usage_error_does_not_crash(
     mock_usage_generator_cls,
     mock_invoice_generator_cls,
     mock_aws_client_cls,
+    billing_aws_client_provider,
     mock_generate_billing_report_rows,
     authorization,
 ):
@@ -256,7 +276,7 @@ def test_pma_usage_error_does_not_crash(
     mock_invoice_gen.run.side_effect = AWSError("PMA invoice fetch failed")
     generator = AuthorizationJournalGenerator(mock_context)
 
-    result = generator.run(authorization)
+    result = generator.run(authorization, billing_aws_client_provider)
 
     assert result.billing_report_rows == []
     mock_generate_billing_report_rows.assert_not_called()

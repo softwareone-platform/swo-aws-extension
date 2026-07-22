@@ -2,7 +2,13 @@ from decimal import Decimal
 
 import pytest
 
-from swo_aws_extension.constants import BILLING_JOURNAL_ERROR_TITLE
+from swo_aws_extension.constants import (
+    BILLING_INVOICE_ATTACHMENT_WARNING_TITLE,
+    BILLING_JOURNAL_ERROR_TITLE,
+)
+from swo_aws_extension.flows.jobs.billing_journal.billing_invoice_attachment_creator import (
+    BillingInvoiceAttachmentCreator,
+)
 from swo_aws_extension.flows.jobs.billing_journal.billing_journal_service import (
     BillingJournalService,
 )
@@ -17,6 +23,7 @@ from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import (
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     AuthorizationJournalResult,
     BillingReportRow,
+    InvoiceAttachmentResult,
     PlsMismatch,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.usage import OrganizationReport
@@ -61,7 +68,7 @@ def test_processes_authorizations(
 
     service.run()  # act
 
-    mock_auth_gen.run.assert_called_once_with(authorization)
+    mock_auth_gen.run.assert_called_once_with(authorization, mocker.ANY)
 
 
 def test_exception_sends_error(
@@ -208,6 +215,56 @@ def test_uploads_attachments_when_reports_present(
     mock_journal_manager.notify_success.assert_called_once_with("JRN-1", 1)
 
 
+def test_uploads_invoice_attachments_and_sends_warning_for_failures(
+    mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
+):
+    mock_context.dry_run = False
+    authorization = {"id": "AUTH-1", "externalIds": {"operations": "PMA-123"}}
+    mock_get_authorizations.return_value = [authorization]
+    mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
+    mock_line = mocker.MagicMock(spec=JournalLine)
+    invoice_ids = {"INV-001", "INV-002"}
+    mock_auth_gen.run.return_value = AuthorizationJournalResult(
+        lines=[mock_line],
+        invoice_ids=invoice_ids,
+    )
+    mock_auth_generator_cls.return_value = mock_auth_gen
+    mock_journal_manager_cls = mocker.patch(f"{MODULE}.JournalManager", autospec=True)
+    mock_journal_manager = mock_journal_manager_cls.return_value
+    mock_journal_manager.get_pending_journal.return_value = mocker.MagicMock(id="JRN-1")
+    mock_aws_client_cls = mocker.patch(
+        "swo_aws_extension.flows.jobs.billing_journal.providers.AWSClient", autospec=True
+    )
+    mock_invoice_creator_cls = mocker.patch(
+        f"{MODULE}.BillingInvoiceAttachmentCreator", autospec=True
+    )
+    mock_invoice_creator = mocker.MagicMock(spec=BillingInvoiceAttachmentCreator)
+    mock_invoice_creator.create_for_journal.return_value = InvoiceAttachmentResult(
+        uploaded_invoice_ids={"INV-001"},
+        failed_invoice_ids={"INV-002"},
+    )
+    mock_invoice_creator_cls.return_value = mock_invoice_creator
+    service = BillingJournalService(mock_context)
+
+    service.run()  # act
+
+    mock_aws_client_cls.assert_called_once_with(
+        mock_context.config,
+        "PMA-123",
+        mock_context.config.billing_role_name,
+    )
+    mock_invoice_creator_cls.assert_called_once_with(
+        mock_aws_client_cls.return_value,
+        mock_context.billing_api_client,
+    )
+    mock_invoice_creator.create_for_journal.assert_called_once_with("JRN-1", invoice_ids)
+    mock_context.notifier.send_warning.assert_called_once_with(
+        title=BILLING_INVOICE_ATTACHMENT_WARNING_TITLE,
+        text="Failed to attach AWS invoices to journal JRN-1: INV-002",
+    )
+    mock_journal_manager.notify_success.assert_called_once_with("JRN-1", 1)
+
+
 def test_dry_run_skips_upload(
     mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
 ):
@@ -226,11 +283,15 @@ def test_dry_run_skips_upload(
     )
     mock_auth_generator_cls.return_value = mock_auth_gen
     mock_journal_manager_cls = mocker.patch(f"{MODULE}.JournalManager", autospec=True)
+    mock_invoice_creator_cls = mocker.patch(
+        f"{MODULE}.BillingInvoiceAttachmentCreator", autospec=True
+    )
     service = BillingJournalService(mock_context)
 
     service.run()  # act
 
     mock_journal_manager_cls.assert_not_called()
+    mock_invoice_creator_cls.assert_not_called()
 
 
 def test_dry_run_skips_upload_with_empty_reports(
