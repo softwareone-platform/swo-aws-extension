@@ -50,3 +50,8 @@ class OrganizationInvoiceResult:
 
     raw_data: list[dict] = field(default_factory=list)
     invoice: OrganizationInvoice = field(default_factory=OrganizationInvoice)
+
+    @property
+    def invoice_ids(self) -> set[str]:
+        """The complete AWS invoice IDs present in the raw invoice summaries."""
+        return {summary["InvoiceId"] for summary in self.raw_data if summary.get("InvoiceId")}

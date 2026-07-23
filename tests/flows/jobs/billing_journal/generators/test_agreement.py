@@ -141,6 +141,12 @@ def test_run(
     mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
     mock_invoice_generator.run.return_value = OrganizationInvoiceResult(
         invoice=OrganizationInvoice(),
+        raw_data=[
+            {"InvoiceId": "INV-001"},
+            {"InvoiceId": "INV-001"},
+            {"InvoiceId": "INV-002"},
+            {"InvoicingEntity": "AWS Inc."},
+        ],
     )
     generator = AgreementJournalGenerator(
         _build_auth_context(mock_aws_client),
@@ -152,6 +158,7 @@ def test_run(
     result = generator.run(agreement)
 
     assert result.lines == [mock_journal_line, mock_discount_line, mock_pls_line]
+    assert result.invoice_ids == {"INV-001", "INV-002"}
     mock_invoice_generator.run.assert_called_once()
     mock_generator_instance.generate.assert_called_once()
     mock_discounts_instance.process.assert_called_once()
