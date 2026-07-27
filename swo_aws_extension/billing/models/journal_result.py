@@ -26,6 +26,24 @@ class BillingReportRow:
 
 
 @dataclass
+class OrganizationSppSummaryRow:
+    """One row per agreement reconciling the journal total (SP) against the AWS invoice (PP)."""
+
+    authorization_id: str
+    pma: str
+    agreement_id: str
+    mpa: str
+    pp: Decimal
+    sp: Decimal
+    currency: str
+    exchange_rate: Decimal
+    spp_discount: Decimal
+    spp_discount_pct: Decimal
+    list_price: Decimal
+    markup: Decimal
+
+
+@dataclass
 class PlsMismatch:
     """Records a PLS mismatch between order parameter and usage report."""
 
@@ -54,6 +72,7 @@ class AgreementJournalResult:
     billing_report_rows_by_account: list[BillingReportRow] = field(default_factory=list)
     pls_mismatches: list[PlsMismatch] = field(default_factory=list)
     invoice_ids: set[str] = field(default_factory=set)
+    spp_summary_row: OrganizationSppSummaryRow | None = None
 
 
 @dataclass
@@ -74,3 +93,4 @@ class AuthorizationJournalResult:
     billing_report_rows_by_account: list[BillingReportRow] = field(default_factory=list)
     pls_mismatches: list[PlsMismatch] = field(default_factory=list)
     invoice_ids: set[str] = field(default_factory=set)
+    spp_summary_rows: list[OrganizationSppSummaryRow] = field(default_factory=list)

@@ -1,6 +1,13 @@
 from decimal import Decimal
 
 from swo_aws_extension.aws.client import AWSClient
+from swo_aws_extension.billing.generators.invoice_utils import (
+    belongs_to_mpa,
+    get_invoice_rate,
+    invoice_amount,
+    is_primary_invoice,
+    merge_invoice_ids,
+)
 from swo_aws_extension.billing.models.invoice import (
     InvoiceEntity,
     OrganizationInvoice,
@@ -11,52 +18,6 @@ from swo_aws_extension.logger import get_logger
 from swo_aws_extension.models import BillingPeriod
 
 logger = get_logger(__name__)
-SPP_DISCOUNT_DESCRIPTION = "Discount (AWS SPP Discount)"
-MAX_INVOICE_ID_LENGTH = 20
-_INVOICE_ID_SUFFIX_LENGTH = 4
-_OVERFLOW_MARKER = ".."
-_SUFFIX_PREFIX = "-"
-
-_SEPARATOR = ","
-
-
-def merge_invoice_ids(existing_id: str, new_id: str) -> str:
-    """Merge invoice IDs keeping only the unique suffix (last 4 chars) of each.
-
-    Each suffix is prefixed with ``-`` to signal truncation.
-    The result must fit within MAX_INVOICE_ID_LENGTH characters.
-    When it overflows, an ellipsis marker replaces the newest suffix.
-    """
-    if not new_id:
-        return existing_id
-    new_suffix = _SUFFIX_PREFIX + new_id[-_INVOICE_ID_SUFFIX_LENGTH:]
-    if _SEPARATOR not in existing_id:
-        existing_id = _SUFFIX_PREFIX + existing_id[-_INVOICE_ID_SUFFIX_LENGTH:]
-    candidate = _SEPARATOR.join((existing_id, new_suffix))
-    if len(candidate) <= MAX_INVOICE_ID_LENGTH:
-        return candidate
-    truncated = _SEPARATOR.join((existing_id, _OVERFLOW_MARKER))
-    if len(truncated) <= MAX_INVOICE_ID_LENGTH:
-        return truncated
-    return existing_id
-
-
-def _belongs_to_mpa(invoice: dict, mpa_account: str) -> bool:
-    bill_source_accounts = invoice.get("BillSourceAccounts")
-    if bill_source_accounts is not None:
-        return mpa_account in bill_source_accounts
-    return invoice.get("AccountId") == mpa_account
-
-
-def _is_primary_invoice(invoice: dict) -> bool:
-    breakdowns = (
-        invoice
-        .get("BaseCurrencyAmount", {})
-        .get("AmountBreakdown", {})
-        .get("Discounts", {})
-        .get("Breakdown", [])
-    )
-    return any(breakdown.get("Description") == SPP_DISCOUNT_DESCRIPTION for breakdown in breakdowns)
 
 
 class ExchangeRateResolver:
@@ -75,7 +36,7 @@ class ExchangeRateResolver:
     def get_payment_currency(self, exchange_rate: Decimal) -> str:
         """Get the payment currency code for the given exchange rate."""
         for inv in self._raw_invoices:
-            rate = self._get_invoice_rate(inv)
+            rate = get_invoice_rate(inv)
             if rate == exchange_rate:
                 return inv.get("PaymentCurrencyAmount", {}).get("CurrencyCode", "USD")
         return "USD"
@@ -87,16 +48,93 @@ class ExchangeRateResolver:
                 continue
             if entity_name and inv.get("Entity", {}).get("InvoicingEntity") != entity_name:
                 continue
-            rates.append(self._get_invoice_rate(inv))
+            rates.append(get_invoice_rate(inv))
         return rates
 
-    def _get_invoice_rate(self, invoice: dict) -> Decimal:
-        return Decimal(
-            invoice
-            .get("PaymentCurrencyAmount", {})
-            .get("CurrencyExchangeDetails", {})
-            .get("Rate", 0)
+
+class OrganizationInvoiceBuilder:
+    """Builds an OrganizationInvoice from a list of raw invoice dicts."""
+
+    def __init__(self, raw_invoices: list[dict], currency: str) -> None:
+        self._raw_invoices = raw_invoices
+        self._currency = currency
+        self._resolver = ExchangeRateResolver(raw_invoices)
+
+    def build(self) -> OrganizationInvoice:
+        """Aggregate the raw invoices into a single OrganizationInvoice."""
+        return OrganizationInvoice(
+            entities=self._build_entities(),
+            base_total_amount=self._sum_amounts("BaseCurrencyAmount", "TotalAmount"),
+            base_total_amount_before_tax=self._sum_amounts(
+                "BaseCurrencyAmount", "TotalAmountBeforeTax"
+            ),
+            payment_currency_total_amount=self._sum_amounts("PaymentCurrencyAmount", "TotalAmount"),
+            payment_currency_total_amount_before_tax=self._sum_amounts(
+                "PaymentCurrencyAmount", "TotalAmountBeforeTax"
+            ),
+            payment_currency_subtotal_amount=self._sum_breakdown_amounts(
+                "PaymentCurrencyAmount", "SubTotalAmount"
+            ),
+            principal_invoice_amount=self._get_principal_amount(),
         )
+
+    def _build_entities(self) -> dict[str, InvoiceEntity]:
+        entities: dict[str, InvoiceEntity] = {}
+        for invoice in self._raw_invoices:
+            entity = invoice.get("Entity", {})
+            entity_key = f"{entity.get('InvoicingEntity', '')}:{entity.get('BillingEntity', 'AWS')}"
+            entities[entity_key] = self._build_invoice_entity(
+                invoice, entity, entities.get(entity_key)
+            )
+        return entities
+
+    def _build_invoice_entity(
+        self,
+        invoice: dict,
+        entity: dict,
+        existing: InvoiceEntity | None,
+    ) -> InvoiceEntity:
+        billing_entity = entity.get("BillingEntity", "AWS")
+        if existing:
+            merged_id = merge_invoice_ids(existing.invoice_id, invoice.get("InvoiceId", ""))
+            return InvoiceEntity(
+                invoice_id=merged_id,
+                base_currency_code=existing.base_currency_code,
+                payment_currency_code=existing.payment_currency_code,
+                exchange_rate=existing.exchange_rate,
+                billing_entity=billing_entity,
+                primary=is_primary_invoice(invoice) or existing.primary,
+            )
+        exchange_rate = self._resolver.get_rate(entity.get("InvoicingEntity", ""), self._currency)
+        return InvoiceEntity(
+            invoice_id=invoice.get("InvoiceId", ""),
+            base_currency_code=invoice.get("BaseCurrencyAmount", {}).get("CurrencyCode", ""),
+            payment_currency_code=self._resolver.get_payment_currency(exchange_rate),
+            exchange_rate=exchange_rate,
+            billing_entity=billing_entity,
+            primary=is_primary_invoice(invoice),
+        )
+
+    def _sum_amounts(self, currency_key: str, amount_key: str) -> Decimal:
+        return sum(
+            (invoice_amount(inv, currency_key, amount_key) for inv in self._raw_invoices),
+            DEC_ZERO,
+        )
+
+    def _sum_breakdown_amounts(self, currency_key: str, amount_key: str) -> Decimal:
+        return sum(
+            (
+                invoice_amount(inv.get(currency_key, {}), "AmountBreakdown", amount_key)
+                for inv in self._raw_invoices
+            ),
+            DEC_ZERO,
+        )
+
+    def _get_principal_amount(self) -> Decimal | None:
+        for invoice in self._raw_invoices:
+            if is_primary_invoice(invoice):
+                return Decimal(invoice.get("BaseCurrencyAmount", {}).get("TotalAmount", 0))
+        return None
 
 
 class InvoiceGenerator:
@@ -126,8 +164,8 @@ class InvoiceGenerator:
         invoice_summaries = self._aws_client.list_invoice_summaries_by_account_id(
             pma_account, billing_period.year, billing_period.month
         )
-        raw_invoices = [inv for inv in invoice_summaries if _belongs_to_mpa(inv, mpa_account)]
-        invoice = self._build_organization_invoice(raw_invoices, authorization_currency)
+        raw_invoices = [inv for inv in invoice_summaries if belongs_to_mpa(inv, mpa_account)]
+        invoice = OrganizationInvoiceBuilder(raw_invoices, authorization_currency).build()
 
         for entity_name, entity in invoice.entities.items():
             logger.info(
@@ -140,78 +178,3 @@ class InvoiceGenerator:
             )
 
         return OrganizationInvoiceResult(raw_data=raw_invoices, invoice=invoice)
-
-    def _build_organization_invoice(
-        self, raw_invoices: list[dict], currency: str
-    ) -> OrganizationInvoice:
-        resolver = ExchangeRateResolver(raw_invoices)
-        entities = self._build_entities(raw_invoices, currency, resolver)
-
-        return OrganizationInvoice(
-            entities=entities,
-            base_total_amount=self._sum_amounts(raw_invoices, "BaseCurrencyAmount", "TotalAmount"),
-            base_total_amount_before_tax=self._sum_amounts(
-                raw_invoices, "BaseCurrencyAmount", "TotalAmountBeforeTax"
-            ),
-            payment_currency_total_amount=self._sum_amounts(
-                raw_invoices, "PaymentCurrencyAmount", "TotalAmount"
-            ),
-            payment_currency_total_amount_before_tax=self._sum_amounts(
-                raw_invoices, "PaymentCurrencyAmount", "TotalAmountBeforeTax"
-            ),
-            principal_invoice_amount=self._get_principal_amount(raw_invoices),
-        )
-
-    def _build_entities(
-        self, raw_invoices: list[dict], currency: str, resolver: ExchangeRateResolver
-    ) -> dict[str, InvoiceEntity]:
-        entities: dict[str, InvoiceEntity] = {}
-        for invoice in raw_invoices:
-            entity = invoice.get("Entity", {})
-            entity_key = f"{entity.get('InvoicingEntity', '')}:{entity.get('BillingEntity', 'AWS')}"
-            entities[entity_key] = self._build_invoice_entity(
-                invoice, entity, entities.get(entity_key), currency, resolver
-            )
-        return entities
-
-    def _build_invoice_entity(
-        self,
-        invoice: dict,
-        entity: dict,
-        existing: InvoiceEntity | None,
-        currency: str,
-        resolver: ExchangeRateResolver,
-    ) -> InvoiceEntity:
-        billing_entity = entity.get("BillingEntity", "AWS")
-        if existing:
-            new_id = invoice.get("InvoiceId", "")
-            merged_id = merge_invoice_ids(existing.invoice_id, new_id)
-            return InvoiceEntity(
-                invoice_id=merged_id,
-                base_currency_code=existing.base_currency_code,
-                payment_currency_code=existing.payment_currency_code,
-                exchange_rate=existing.exchange_rate,
-                billing_entity=billing_entity,
-                primary=_is_primary_invoice(invoice) or existing.primary,
-            )
-        exchange_rate = resolver.get_rate(entity.get("InvoicingEntity", ""), currency)
-        return InvoiceEntity(
-            invoice_id=invoice.get("InvoiceId", ""),
-            base_currency_code=invoice.get("BaseCurrencyAmount", {}).get("CurrencyCode", ""),
-            payment_currency_code=resolver.get_payment_currency(exchange_rate),
-            exchange_rate=exchange_rate,
-            billing_entity=billing_entity,
-            primary=_is_primary_invoice(invoice),
-        )
-
-    def _get_principal_amount(self, raw_invoices: list[dict]) -> Decimal | None:
-        for invoice in raw_invoices:
-            if _is_primary_invoice(invoice):
-                return Decimal(invoice.get("BaseCurrencyAmount", {}).get("TotalAmount", 0))
-        return None
-
-    def _sum_amounts(self, invoices: list[dict], currency_key: str, amount_key: str) -> Decimal:
-        return sum(
-            (Decimal(inv.get(currency_key, {}).get(amount_key, 0)) for inv in invoices),
-            DEC_ZERO,
-        )
