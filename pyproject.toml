@@ -46,10 +46,10 @@ dev = [
   "pytest-xdist==3.8.*",
   "requests-mock==1.12.*",
   "responses==0.26.*",
-  "ruff==0.15.*", # force ruff version to have same formatting everywhere
+  "ruff==0.16.*", # force ruff version to have same formatting everywhere
   "types-openpyxl==3.1.*",
   "types-requests==2.33.*",
-  "wemake-python-styleguide==1.6.*",
+  "wemake-python-styleguide==1.7.*",
 ]
 
 [tool.hatch.build.targets.sdist]
