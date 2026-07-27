@@ -26,6 +26,7 @@ from swo_aws_extension.billing.models.journal_line import JournalDetails, Journa
 from swo_aws_extension.billing.models.journal_result import AgreementJournalResult, PlsMismatch
 from swo_aws_extension.billing.models.usage import OrganizationUsageResult
 from swo_aws_extension.constants import (
+    DEC_ZERO,
     ResponsibilityTransferStatus,
     SplitBillingPolicyEnum,
     SupportTypesEnum,
@@ -39,6 +40,47 @@ from swo_aws_extension.parameters import (
 from swo_aws_extension.utils.decorators import with_log_context
 
 logger = get_logger(__name__)
+
+
+def calculate_markup(
+    all_lines: list[JournalLine],
+    organization_invoice,
+    context: ReportContext,
+):
+    """Compute the dynamic markup reconciling the journal total (sp) against the invoice (pp).
+
+    This must run once the journal lines for the agreement exist and before they are
+    rewritten by ``apply_markup_to_lines``, since it reads their current (usage-based)
+    price. The resulting value feeds both the report row and the journal rewrite.
+    """
+    sp = sum((line.price.pp_x1 for line in all_lines if line.is_valid()), DEC_ZERO)
+    pp = (
+        organization_invoice.base_total_amount_before_tax
+        if context.currency == "USD"
+        else organization_invoice.payment_currency_total_amount_before_tax
+    )
+    return (sp - pp) / pp if pp else DEC_ZERO
+
+
+def apply_markup_to_lines(lines: list[JournalLine], markup) -> None:
+    """Rewrite each valid line's price as the invoice-derived purchase price.
+
+    Lines are priced up front as the usage-based sales amount (sp). The
+    billing platform doesn't support per-service dynamic markups, so instead
+    we upload the purchase price (pp) per line and set this same agreement-
+    level markup on the platform; it then recomputes sp = pp * (1 + markup)
+    itself. Dividing every line by (1 + markup) rewrites the total from sp
+    down to pp while preserving each line's relative share, so the platform's
+    own calculation reconstructs the original sp exactly.
+    """
+    divisor = 1 + markup
+    if divisor <= DEC_ZERO:
+        return
+    for line in lines:
+        if not line.is_valid():
+            continue
+        line.price.pp_x1 = round(line.price.pp_x1 / divisor, 6)
+        line.price.unit_pp = round(line.price.unit_pp / divisor, 6)
 
 
 class AgreementJournalGenerator:
@@ -152,25 +194,39 @@ class AgreementJournalGenerator:
                 )
             )
 
-        report_builder = BillingReportRowsBuilder(
-            ReportContext.from_contexts(self._auth_context, journal_details),
-            usage_result,
+        result = self._build_agreement_journal_result(
+            all_lines,
+            journal_details,
             organization_invoice,
+            usage_result,
         )
+        result.invoice_ids = invoice_ids
+        result.pls_mismatches = pls_mismatches
+        return result
+
+    def _build_agreement_journal_result(
+        self,
+        all_lines: list[JournalLine],
+        journal_details: JournalDetails,
+        organization_invoice,
+        usage_result: OrganizationUsageResult,
+    ) -> AgreementJournalResult:
+        context = ReportContext.from_contexts(self._auth_context, journal_details)
+        report_builder = BillingReportRowsBuilder(context, usage_result, organization_invoice)
+        billing_report_rows = report_builder.build()
+
+        markup = calculate_markup(all_lines, organization_invoice, context)
+        spp_summary_row = build_spp_summary_row(
+            context, all_lines, billing_report_rows, organization_invoice, markup
+        )
+        apply_markup_to_lines(all_lines, markup)
 
         return AgreementJournalResult(
             lines=all_lines,
             report=usage_result.reports,
-            billing_report_rows=report_builder.build(),
+            billing_report_rows=billing_report_rows,
             billing_report_rows_by_account=report_builder.build_by_account(),
-            pls_mismatches=pls_mismatches,
-            invoice_ids=invoice_ids,
-            spp_summary_row=build_spp_summary_row(
-                ReportContext.from_contexts(self._auth_context, journal_details),
-                all_lines,
-                report_builder.build(),
-                organization_invoice,
-            ),
+            spp_summary_row=spp_summary_row,
         )
 
     def _generate_usage_lines(

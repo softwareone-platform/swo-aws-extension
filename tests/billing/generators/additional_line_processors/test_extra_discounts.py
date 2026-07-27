@@ -361,6 +361,7 @@ def test_pls_discount_processor(
     usage_result.usage_by_account["ACC-1"].metrics.extend([
         create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00"),
         create_metric("RDS", AWSRecordTypeEnum.USAGE, "50.00"),
+        create_metric("AWS Support (Enterprise)", AWSRecordTypeEnum.SUPPORT, "0.00"),
     ])
     processor = PlSDiscountProcessor(Decimal("5.0"))
 
@@ -370,6 +371,29 @@ def test_pls_discount_processor(
     assert result[0].price.unit_pp == Decimal("-30.000000")
     assert result[0].description.value1 == "SWO additional PLS Support discount"
     assert result[0].external_ids.vendor == "MPA-1"
+
+
+def test_pls_discount_processor_skips_when_no_enterprise_support_in_usage(
+    agreement,
+    usage_result,
+    journal_details,
+    organization_invoice,
+):
+    agreement["parameters"]["ordering"].append(
+        {"externalId": "supportType", "value": SupportTypesEnum.PARTNER_LED_SUPPORT},
+    )
+    agreement["parameters"]["fulfillment"].append(
+        {"externalId": "plsDiscount", "value": "20.0"},
+    )
+    usage_result.usage_by_account["ACC-1"].metrics.extend([
+        create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00"),
+        create_metric("RDS", AWSRecordTypeEnum.USAGE, "50.00"),
+    ])
+    processor = PlSDiscountProcessor(Decimal("5.0"))
+
+    result = processor.process(agreement, usage_result, journal_details, organization_invoice)
+
+    assert not result
 
 
 @pytest.mark.parametrize(
