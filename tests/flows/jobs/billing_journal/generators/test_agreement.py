@@ -1,4 +1,5 @@
 import datetime as dt
+from decimal import Decimal
 
 import pytest
 
@@ -6,6 +7,12 @@ from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.constants import ResponsibilityTransferStatus
 from swo_aws_extension.flows.jobs.billing_journal.generators.agreement import (
     AgreementJournalGenerator,
+    apply_markup_to_lines,
+    calculate_markup,
+)
+from swo_aws_extension.flows.jobs.billing_journal.generators.billing_report_rows import (
+    ReportContext,
+    build_spp_summary_row,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.discount.extra_discounts import (
     ExtraDiscountsManager,
@@ -26,8 +33,10 @@ from swo_aws_extension.flows.jobs.billing_journal.models.invoice import (
     OrganizationInvoiceResult,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_line import (
+    InvoiceDetails,
     JournalDetails,
     JournalLine,
+    Price,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.usage import (
     AccountUsage,
@@ -85,7 +94,16 @@ def mock_pls_charge_manager_cls(mocker):
 
 @pytest.fixture(autouse=True)
 def mock_build_spp_summary_row(mocker):
-    return mocker.patch(f"{MODULE}.build_spp_summary_row")
+    mock = mocker.patch(f"{MODULE}.build_spp_summary_row")
+    mock.return_value.markup = Decimal(0)
+    return mock
+
+
+def _mock_journal_line(mocker):
+    line = mocker.MagicMock(spec=JournalLine)
+    line.price = Price(Decimal("10.0"), Decimal("10.0"))
+    line.is_valid.return_value = True
+    return line
 
 
 def _build_agreement(support_type="ResoldSupport"):
@@ -125,9 +143,9 @@ def test_run(
     mock_builder.build_by_account.return_value = []
     mocker.patch(f"{MODULE}.BillingReportRowsBuilder", return_value=mock_builder)
     agreement = _build_agreement(support_type="PartnerLedSupport")
-    mock_journal_line = mocker.MagicMock(spec=JournalLine)
-    mock_discount_line = mocker.MagicMock(spec=JournalLine)
-    mock_pls_line = mocker.MagicMock(spec=JournalLine)
+    mock_journal_line = _mock_journal_line(mocker)
+    mock_discount_line = _mock_journal_line(mocker)
+    mock_pls_line = _mock_journal_line(mocker)
     mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
     mock_generator_instance.generate.return_value = [mock_journal_line]
     mock_line_generator_cls.return_value = mock_generator_instance
@@ -181,6 +199,7 @@ def test_run(
         result.lines,
         result.billing_report_rows,
         mock_invoice_generator.run.return_value.invoice,
+        mocker.ANY,
     )
 
 
@@ -198,7 +217,7 @@ def test_run_without_pls(
     mock_builder.build_by_account.return_value = []
     mocker.patch(f"{MODULE}.BillingReportRowsBuilder", return_value=mock_builder)
     agreement = _build_agreement(support_type="DeveloperSupport")
-    mock_journal_line = mocker.MagicMock(spec=JournalLine)
+    mock_journal_line = _mock_journal_line(mocker)
     mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
     mock_generator_instance.generate.return_value = [mock_journal_line]
     mock_line_generator_cls.return_value = mock_generator_instance
@@ -449,7 +468,7 @@ def test_pls_mismatch_param_resold_but_enterprise_in_report(
     mock_builder.build_by_account.return_value = []
     mocker.patch(f"{MODULE}.BillingReportRowsBuilder", return_value=mock_builder)
     agreement = _build_agreement(support_type="ResoldSupport")
-    mock_journal_line = mocker.MagicMock(spec=JournalLine)
+    mock_journal_line = _mock_journal_line(mocker)
     mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
     mock_generator_instance.generate.return_value = [mock_journal_line]
     mock_line_generator_cls.return_value = mock_generator_instance
@@ -481,3 +500,227 @@ def test_pls_mismatch_param_resold_but_enterprise_in_report(
     mock_pls_charge_manager_cls.assert_not_called()
     assert result.lines == [mock_journal_line]
     mock_line_generator_cls.assert_called_once_with(is_pls=False)
+
+
+def _build_real_line(amount, *, error=None):
+    journal_details = JournalDetails("AGR-1", "MPA", "2025-10-01", "2025-10-31")
+    invoice_details = InvoiceDetails(
+        item_sku="AWS Usage",
+        service_name="EC2",
+        amount=amount,
+        account_id="ACC-1",
+        invoice_entity="ENT-1",
+        start_date="2025-10-01",
+        end_date="2025-10-31",
+        error=error,
+    )
+    return JournalLine.build(
+        item_external_id="ITEM-1", journal_details=journal_details, invoice_details=invoice_details
+    )
+
+
+def test_run_applies_markup_to_valid_line_prices(
+    mocker,
+    mock_context,
+    mock_aws_client,
+    mock_get_responsibility_transfer_id,
+    mock_line_generator_cls,
+    mock_extra_discounts_manager_cls,
+    mock_pls_charge_manager_cls,
+    mock_build_spp_summary_row,
+):
+    mock_build_spp_summary_row.side_effect = build_spp_summary_row
+    mock_builder = mocker.MagicMock()
+    mock_builder.build.return_value = []
+    mock_builder.build_by_account.return_value = []
+    mocker.patch(f"{MODULE}.BillingReportRowsBuilder", return_value=mock_builder)
+    agreement = _build_agreement(support_type="DeveloperSupport")
+    real_line = _build_real_line(Decimal("100.00"))
+    mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
+    mock_generator_instance.generate.return_value = [real_line]
+    mock_line_generator_cls.return_value = mock_generator_instance
+    mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
+    mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
+    mock_usage_result.reports = OrganizationReport()
+    mock_usage_result.usage_by_account = {"ACC-1": mocker.MagicMock(spec=AccountUsage)}
+    mock_usage_result.has_enterprise_support.return_value = False
+    mock_usage_generator.run.return_value = mock_usage_result
+    mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
+    mock_invoice_generator.run.return_value = OrganizationInvoiceResult(
+        invoice=OrganizationInvoice(base_total_amount_before_tax=Decimal("50.00")),
+    )
+    generator = AgreementJournalGenerator(
+        _build_auth_context(mock_aws_client),
+        mock_context,
+        mock_usage_generator,
+        mock_invoice_generator,
+    )
+
+    result = generator.run(agreement)  # act
+
+    # sp = 100.00 (the only valid line), pp = 50.00 -> markup = 1.0 -> divisor = 2.0
+    assert result.spp_summary_row.markup == Decimal("1.0")
+    assert result.lines[0].price.pp_x1 == Decimal("50.00")
+    assert result.lines[0].price.unit_pp == Decimal("50.00")
+
+
+def test_run_skips_rescale_when_markup_divisor_not_positive(
+    mocker,
+    mock_context,
+    mock_aws_client,
+    mock_get_responsibility_transfer_id,
+    mock_line_generator_cls,
+    mock_extra_discounts_manager_cls,
+    mock_pls_charge_manager_cls,
+    mock_build_spp_summary_row,
+):
+    mock_build_spp_summary_row.side_effect = build_spp_summary_row
+    mock_builder = mocker.MagicMock()
+    mock_builder.build.return_value = []
+    mock_builder.build_by_account.return_value = []
+    mocker.patch(f"{MODULE}.BillingReportRowsBuilder", return_value=mock_builder)
+    agreement = _build_agreement(support_type="DeveloperSupport")
+    real_line = _build_real_line(Decimal("0.00"))
+    mock_generator_instance = mocker.MagicMock(spec=JournalLineGenerator)
+    mock_generator_instance.generate.return_value = [real_line]
+    mock_line_generator_cls.return_value = mock_generator_instance
+    mock_usage_generator = mocker.MagicMock(spec=CostExplorerUsageGenerator)
+    mock_usage_result = mocker.MagicMock(spec=OrganizationUsageResult)
+    mock_usage_result.reports = OrganizationReport()
+    mock_usage_result.usage_by_account = {"ACC-1": mocker.MagicMock(spec=AccountUsage)}
+    mock_usage_result.has_enterprise_support.return_value = False
+    mock_usage_generator.run.return_value = mock_usage_result
+    mock_invoice_generator = mocker.MagicMock(spec=InvoiceGenerator)
+    mock_invoice_generator.run.return_value = OrganizationInvoiceResult(
+        invoice=OrganizationInvoice(base_total_amount_before_tax=Decimal("50.00")),
+    )
+    generator = AgreementJournalGenerator(
+        _build_auth_context(mock_aws_client),
+        mock_context,
+        mock_usage_generator,
+        mock_invoice_generator,
+    )
+
+    result = generator.run(agreement)  # act
+
+    # sp = 0.00, pp = 50.00 -> markup = -1.0 -> divisor = 0 -> rescale is skipped
+    assert result.spp_summary_row.markup == Decimal("-1.0")
+    assert result.lines[0].price.pp_x1 == Decimal("0.00")
+
+
+def _markup_context(currency="USD"):
+    return ReportContext("AUTH-1", "PMA-1", "AGR-1", "MPA-1", currency)
+
+
+def _markup_organization_invoice(base_before_tax="0", payment_before_tax="0"):
+    return OrganizationInvoice(
+        base_total_amount_before_tax=Decimal(base_before_tax),
+        payment_currency_total_amount_before_tax=Decimal(payment_before_tax),
+    )
+
+
+def _markup_line(mocker, amount, *, is_valid=True):
+    line = mocker.MagicMock()
+    line.price.pp_x1 = Decimal(amount)
+    line.is_valid.return_value = is_valid
+    return line
+
+
+def _markup_journal_line(amount, *, error=None):
+    journal_details = JournalDetails("AGR-1", "MPA-1", "2025-10-01", "2025-10-31")
+    invoice_details = InvoiceDetails(
+        item_sku="AWS Usage",
+        service_name="EC2",
+        amount=amount,
+        account_id="ACC-1",
+        invoice_entity="ENT-1",
+        start_date="2025-10-01",
+        end_date="2025-10-31",
+        error=error,
+    )
+    return JournalLine.build(
+        item_external_id="ITEM-1", journal_details=journal_details, invoice_details=invoice_details
+    )
+
+
+def test_calculate_markup_uses_full_precision(mocker):
+    all_lines = [_markup_line(mocker, "100.00")]
+    organization_invoice = _markup_organization_invoice(base_before_tax="90.00")
+
+    result = calculate_markup(all_lines, organization_invoice, _markup_context())  # act
+
+    expected_markup = (Decimal("100.00") - Decimal("90.00")) / Decimal("90.00")
+    assert result == expected_markup
+
+
+def test_calculate_markup_uses_payment_currency_before_tax_for_non_usd(mocker):
+    all_lines = [_markup_line(mocker, "100.00")]
+    organization_invoice = _markup_organization_invoice(
+        base_before_tax="999.00", payment_before_tax="50.00"
+    )
+
+    result = calculate_markup(all_lines, organization_invoice, _markup_context("EUR"))  # act
+
+    expected_markup = (Decimal("100.00") - Decimal("50.00")) / Decimal("50.00")
+    assert result == expected_markup
+
+
+def test_calculate_markup_defaults_to_zero_when_pp_is_zero(mocker):
+    all_lines = [_markup_line(mocker, "100.00")]
+
+    result = calculate_markup(all_lines, _markup_organization_invoice(), _markup_context())  # act
+
+    assert result == Decimal(0)
+
+
+def test_calculate_markup_only_sums_valid_lines(mocker):
+    all_lines = [
+        _markup_line(mocker, "100.00"),
+        _markup_line(mocker, "999.00", is_valid=False),
+    ]
+    organization_invoice = _markup_organization_invoice(base_before_tax="90.00")
+
+    result = calculate_markup(all_lines, organization_invoice, _markup_context())  # act
+
+    expected_markup = (Decimal("100.00") - Decimal("90.00")) / Decimal("90.00")
+    assert result == expected_markup
+
+
+def test_apply_markup_to_lines_rescales_valid_lines():
+    line = _markup_journal_line(Decimal("100.00"))
+
+    apply_markup_to_lines([line], Decimal("1.0"))  # act
+
+    assert line.price.pp_x1 == Decimal("50.00")
+    assert line.price.unit_pp == Decimal("50.00")
+
+
+def test_apply_markup_to_lines_skips_invalid_lines():
+    line = _markup_journal_line(Decimal("100.00"), error="Some error")
+
+    apply_markup_to_lines([line], Decimal("1.0"))  # act
+
+    assert line.price.pp_x1 == Decimal("100.00")
+    assert line.price.unit_pp == Decimal("100.00")
+
+
+def test_apply_markup_to_lines_skips_rescale_when_divisor_not_positive():
+    line = _markup_journal_line(Decimal("100.00"))
+
+    apply_markup_to_lines([line], Decimal(-1))  # act
+
+    assert line.price.pp_x1 == Decimal("100.00")
+    assert line.price.unit_pp == Decimal("100.00")
+
+
+def test_apply_markup_to_lines_rounds_to_six_decimal_places():
+    original_amount = Decimal("0.097533806")
+    divisor = Decimal("1.0107594")
+    line = _markup_journal_line(original_amount)
+
+    apply_markup_to_lines([line], Decimal("0.0107594"))  # act
+
+    expected = round(original_amount / divisor, 6)
+    assert line.price.pp_x1 == expected
+    assert line.price.pp_x1.as_tuple().exponent >= -6
+    assert line.price.unit_pp.as_tuple().exponent >= -6

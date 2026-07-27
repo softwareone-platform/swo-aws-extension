@@ -62,7 +62,7 @@ class BaseExtraDiscountProcessor(ABC):
         Returns:
             List of journal lines containing the discount refund.
         """
-        if not self._is_applicable(agreement):
+        if not self._is_applicable(agreement, usage_result):
             return []
 
         discount_percentage = self._get_discount_percentage(agreement)
@@ -88,7 +88,7 @@ class BaseExtraDiscountProcessor(ABC):
         return [JournalLine.build(ITEM_SKU, journal_details, invoice_details)]
 
     @abstractmethod
-    def _is_applicable(self, agreement: dict) -> bool:
+    def _is_applicable(self, agreement: dict, usage_result: OrganizationUsageResult) -> bool:
         """Check if this specific discount is applicable based on agreement parameters."""
 
     @abstractmethod
@@ -116,7 +116,7 @@ class ServiceDiscountProcessor(BaseExtraDiscountProcessor):
         super().__init__(service_name="SWO additional Usage discount")
 
     @override
-    def _is_applicable(self, agreement: dict) -> bool:
+    def _is_applicable(self, agreement: dict, usage_result: OrganizationUsageResult) -> bool:
         return get_channel_handshake_approval_status(agreement) == ChannelHandshakeDeployed.YES
 
     @override
@@ -193,7 +193,7 @@ class SupportDiscountProcessor(BaseExtraDiscountProcessor):
         super().__init__(service_name="SWO additional Support discount")
 
     @override
-    def _is_applicable(self, agreement: dict) -> bool:
+    def _is_applicable(self, agreement: dict, usage_result: OrganizationUsageResult) -> bool:
         if get_channel_handshake_approval_status(agreement) != ChannelHandshakeDeployed.YES:
             return False
         return get_support_type(agreement) == SupportTypesEnum.AWS_RESOLD_SUPPORT
@@ -241,10 +241,12 @@ class PlSDiscountProcessor(BaseExtraDiscountProcessor):
         self._charge_percentage = charge_percentage
 
     @override
-    def _is_applicable(self, agreement: dict) -> bool:
+    def _is_applicable(self, agreement: dict, usage_result: OrganizationUsageResult) -> bool:
         if get_channel_handshake_approval_status(agreement) != ChannelHandshakeDeployed.YES:
             return False
-        return get_support_type(agreement) == SupportTypesEnum.PARTNER_LED_SUPPORT
+        if get_support_type(agreement) != SupportTypesEnum.PARTNER_LED_SUPPORT:
+            return False
+        return usage_result.has_enterprise_support()
 
     @override
     def _get_discount_percentage(self, agreement: dict) -> Decimal:
