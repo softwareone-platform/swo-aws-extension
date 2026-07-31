@@ -10,6 +10,8 @@ from swo_aws_extension.flows.jobs.billing_journal.models.invoice import (
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import BillingReportRow
 
+DEFAULT_MARKUP = Decimal(0)
+
 
 def _line(mocker, amount, *, is_valid=True):
     line = mocker.MagicMock()
@@ -62,7 +64,9 @@ def test_build_spp_summary_row_sp_only_sums_valid_lines(mocker):
         _line(mocker, "999.00", is_valid=False),
     ]
 
-    result = build_spp_summary_row(_context(), all_lines, [], _organization_invoice())
+    result = build_spp_summary_row(
+        _context(), all_lines, [], _organization_invoice(), DEFAULT_MARKUP
+    )
 
     assert result.sp == Decimal("150.00")
 
@@ -72,7 +76,7 @@ def test_build_spp_summary_row_pp_uses_base_currency_before_tax_for_usd(mocker):
         base_before_tax="97.024883950", payment_before_tax="999.00"
     )
 
-    result = build_spp_summary_row(_context("USD"), [], [], organization_invoice)
+    result = build_spp_summary_row(_context("USD"), [], [], organization_invoice, DEFAULT_MARKUP)
 
     assert result.pp == Decimal("97.024883950")
 
@@ -82,7 +86,7 @@ def test_build_spp_summary_row_pp_uses_payment_currency_before_tax_for_non_usd(m
         base_before_tax="999.00", payment_before_tax="90.532488395"
     )
 
-    result = build_spp_summary_row(_context("EUR"), [], [], organization_invoice)
+    result = build_spp_summary_row(_context("EUR"), [], [], organization_invoice, DEFAULT_MARKUP)
 
     assert result.pp == Decimal("90.532488395")
 
@@ -93,7 +97,9 @@ def test_build_spp_summary_row_discount_sums_per_service_report_rows(mocker):
         _report_row("-0.00491806710"),
     ]
 
-    result = build_spp_summary_row(_context(), [], billing_report_rows, _organization_invoice())
+    result = build_spp_summary_row(
+        _context(), [], billing_report_rows, _organization_invoice(), DEFAULT_MARKUP
+    )
 
     assert result.spp_discount == Decimal("-0.07933332540") + Decimal("-0.00491806710")
 
@@ -103,7 +109,7 @@ def test_build_spp_summary_row_exchange_rate_taken_from_invoice_entity(mocker):
         entities={"ENT-1": _invoice_entity("0.8664846127")}
     )
 
-    result = build_spp_summary_row(_context(), [], [], organization_invoice)
+    result = build_spp_summary_row(_context(), [], [], organization_invoice, DEFAULT_MARKUP)
 
     assert result.exchange_rate == Decimal("0.8664846127")
 
@@ -116,13 +122,13 @@ def test_build_spp_summary_row_exchange_rate_falls_back_to_another_entity(mocker
         }
     )
 
-    result = build_spp_summary_row(_context(), [], [], organization_invoice)
+    result = build_spp_summary_row(_context(), [], [], organization_invoice, DEFAULT_MARKUP)
 
     assert result.exchange_rate == Decimal("0.8664846127")
 
 
 def test_build_spp_summary_row_defaults_exchange_rate_when_no_entities(mocker):
-    result = build_spp_summary_row(_context(), [], [], _organization_invoice())
+    result = build_spp_summary_row(_context(), [], [], _organization_invoice(), DEFAULT_MARKUP)
 
     assert result.exchange_rate == Decimal("1.0")
 
@@ -130,7 +136,7 @@ def test_build_spp_summary_row_defaults_exchange_rate_when_no_entities(mocker):
 def test_build_spp_summary_row_list_price_taken_from_payment_currency_subtotal(mocker):
     organization_invoice = _organization_invoice(payment_subtotal="123.456789")
 
-    result = build_spp_summary_row(_context(), [], [], organization_invoice)
+    result = build_spp_summary_row(_context(), [], [], organization_invoice, DEFAULT_MARKUP)
 
     assert result.list_price == Decimal("123.456789")
 
@@ -139,7 +145,9 @@ def test_build_spp_summary_row_discount_pct_uses_full_precision(mocker):
     organization_invoice = _organization_invoice(base_before_tax="90.00")
     billing_report_rows = [_report_row("-10.00")]
 
-    result = build_spp_summary_row(_context(), [], billing_report_rows, organization_invoice)
+    result = build_spp_summary_row(
+        _context(), [], billing_report_rows, organization_invoice, DEFAULT_MARKUP
+    )
 
     assert result.spp_discount_pct == Decimal("10.00") / Decimal("90.00")
 
@@ -147,18 +155,17 @@ def test_build_spp_summary_row_discount_pct_uses_full_precision(mocker):
 def test_build_spp_summary_row_zero_pp_guards_percentage(mocker):
     billing_report_rows = [_report_row("-10.00")]
 
-    result = build_spp_summary_row(_context(), [], billing_report_rows, _organization_invoice())
+    result = build_spp_summary_row(
+        _context(), [], billing_report_rows, _organization_invoice(), DEFAULT_MARKUP
+    )
 
     assert result.pp == Decimal(0)
     assert result.spp_discount_pct == Decimal(0)
-    assert result.markup == Decimal(0)
 
 
-def test_build_spp_summary_row_markup_uses_full_precision(mocker):
-    all_lines = [_line(mocker, "100.00")]
-    organization_invoice = _organization_invoice(base_before_tax="90.00")
+def test_build_spp_summary_row_uses_the_markup_it_is_given(mocker):
+    given_markup = Decimal("0.123456789")
 
-    result = build_spp_summary_row(_context(), all_lines, [], organization_invoice)
+    result = build_spp_summary_row(_context(), [], [], _organization_invoice(), given_markup)
 
-    expected_markup = (Decimal("100.00") - Decimal("90.00")) / Decimal("90.00")
-    assert result.markup == expected_markup
+    assert result.markup == given_markup

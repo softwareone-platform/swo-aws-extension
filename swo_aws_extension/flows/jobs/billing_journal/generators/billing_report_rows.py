@@ -161,6 +161,7 @@ def build_spp_summary_row(
     all_lines: list[JournalLine],
     billing_report_rows: list[BillingReportRow],
     organization_invoice: OrganizationInvoice,
+    markup: Decimal,
 ) -> OrganizationSppSummaryRow:
     """Build one organization-level row reconciling the journal total (SP) against PP."""
     sp = sum((line.price.pp_x1 for line in all_lines if line.is_valid()), DEC_ZERO)
@@ -184,7 +185,7 @@ def build_spp_summary_row(
         spp_discount=spp_discount,
         spp_discount_pct=abs(spp_discount) / pp if pp else DEC_ZERO,
         list_price=organization_invoice.payment_currency_subtotal_amount,
-        markup=(sp - pp) / pp if pp else DEC_ZERO,
+        markup=markup,
     )
 
 
