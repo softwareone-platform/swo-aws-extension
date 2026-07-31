@@ -6,6 +6,7 @@ from swo_aws_extension.constants import ResponsibilityTransferStatus, SupportTyp
 from swo_aws_extension.flows.jobs.billing_journal.generators.billing_report_rows import (
     BillingReportRowsBuilder,
     ReportContext,
+    build_spp_summary_row,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.discount.extra_discounts import (
     ExtraDiscountsManager,
@@ -169,6 +170,12 @@ class AgreementJournalGenerator:
             billing_report_rows_by_account=report_builder.build_by_account(),
             pls_mismatches=pls_mismatches,
             invoice_ids=invoice_ids,
+            spp_summary_row=build_spp_summary_row(
+                ReportContext.from_contexts(self._auth_context, journal_details),
+                all_lines,
+                report_builder.build(),
+                organization_invoice,
+            ),
         )
 
     def _generate_usage_lines(
