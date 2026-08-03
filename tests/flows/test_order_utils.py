@@ -1,9 +1,15 @@
+import pytest
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.wrap_http_error import MPTError
 
-from swo_aws_extension.constants import OrderCompletedTemplate, OrderQueryingTemplateEnum
+from swo_aws_extension.constants import (
+    MptOrderStatus,
+    OrderCompletedTemplate,
+    OrderQueryingTemplateEnum,
+)
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.order_utils import (
+    OrderStatusChangeError,
     has_previous_order,
     set_order_template,
     strip_whitespace_from_mpa_account,
@@ -191,6 +197,18 @@ def test_switch_order_status_to_complete(
         parameters=context.order["parameters"],
         template=new_template,
     )
+
+
+def test_switch_order_status_to_complete_already_completed(mocker, order_factory):
+    client = mocker.MagicMock(spec=MPTClient)
+    order = order_factory(status=MptOrderStatus.COMPLETED.value)
+    context = PurchaseContext.from_order_data(order)
+    complete_order_mock = mocker.patch("swo_aws_extension.flows.order_utils.complete_order")
+
+    with pytest.raises(OrderStatusChangeError, match="already in"):
+        switch_order_status_to_complete(client, context, "TemplateName")
+
+    complete_order_mock.assert_not_called()
 
 
 def test_update_processing_template(

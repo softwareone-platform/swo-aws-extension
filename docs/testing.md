@@ -17,7 +17,7 @@ The repository currently has stable coverage in these areas:
 - AWS client and configuration behavior in [`tests/aws/`](../tests/aws)
 - fulfillment, jobs, steps, and validation flows in [`tests/flows/`](../tests/flows)
 - management commands and helpers in [`tests/management/`](../tests/management) and [`tests/commands/`](../tests/commands)
-- Marketplace, CCP, CRM, FinOps, notification, and query-builder integrations under [`tests/swo/`](../tests/swo), [`tests/swo_mpt_api/`](../tests/swo_mpt_api), [`tests/swo_ccp_client/`](../tests/swo_ccp_client), [`tests/swo_crm_service_client/`](../tests/swo_crm_service_client), [`tests/swo_finops_client/`](../tests/swo_finops_client), and [`tests/swo_rql/`](../tests/swo_rql)
+- Marketplace, CCP, CRM, FinOps, notification, and query-builder integrations under [`tests/swo/`](../tests/swo), [`tests/swo_mpt_api/`](../tests/swo_mpt_api), [`tests/swo_ccp_client/`](../tests/swo_ccp_client), [`tests/swo_crm_service_client/`](../tests/swo_crm_service_client), [`tests/swo_finops_client/`](../tests/swo_finops_client), and [`tests/swo_rql/`](../tests/swo_rql); agreement sync behavior lives in [`tests/swo/mpt/sync/`](../tests/swo/mpt/sync): `test_syncer.py` covers the agreement syncer and `test_responsibility_transfers.py` covers the responsibility-transfer lookup helpers
 - Airtable, file-builder, processor, and utility behavior in [`tests/airtable/`](../tests/airtable), [`tests/file_builder/`](../tests/file_builder), [`tests/processor/`](../tests/processor), and [`tests/utils/`](../tests/utils)
 
 ## Commands

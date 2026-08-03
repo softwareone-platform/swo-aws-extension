@@ -9,6 +9,7 @@ from swo_aws_extension.flows.steps.errors import (
     ConfigurationStepError,
     FailStepError,
     QueryStepError,
+    ScheduleStepError,
     SkipStepError,
     UnexpectedStopError,
 )
@@ -99,6 +100,16 @@ def test_unexpected_stop_notifies_and_stops(mocker, initial_context):
 
     notify_mock.assert_called_once_with(error.title, error.message)
     next_step.assert_not_called()
+
+
+def test_schedule_step_error_stops_pipeline(mocker, initial_context, caplog):
+    step = DummyStep()
+    step.proc_exc = ScheduleStepError("waiting for the end date")
+
+    _, next_step = _run_step(mocker, step, initial_context)  # act
+
+    next_step.assert_not_called()
+    assert "waiting for the end date" in caplog.text
 
 
 def test_query_step_error(mocker, initial_context):

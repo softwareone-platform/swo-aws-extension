@@ -1,5 +1,4 @@
 import logging
-from functools import cache
 from typing import Any, override
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
@@ -11,19 +10,24 @@ from mpt_extension_sdk.mpt_http.mpt import (
 )
 from mpt_extension_sdk.mpt_http.wrap_http_error import wrap_mpt_http_error
 
-from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.aws.errors import AWSError
-from swo_aws_extension.config import get_config
 from swo_aws_extension.constants import (
     FulfillmentParametersEnum,
     ParamPhasesEnum,
-    ResponsibilityTransferStatus,
     SubscriptionStatus,
 )
+from swo_aws_extension.flows.steps.crm_tickets.templates.terminate_order import (
+    TRANSFER_END_SCHEDULED_TEMPLATE,
+)
 from swo_aws_extension.parameters import (
-    get_billing_group_arn,
-    get_relationship_id,
+    get_crm_terminate_order_ticket_id,
+    get_relationship_end_date,
     get_responsibility_transfer_id,
+)
+from swo_aws_extension.swo.crm_service.client import ServiceRequest, get_service_client
+from swo_aws_extension.swo.crm_service.errors import CRMError
+from swo_aws_extension.swo.mpt.sync.responsibility_transfers import (
+    get_available_transfer_for_account,
+    transfer_has_ended,
 )
 from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
@@ -82,60 +86,43 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
         self._operation_description = "Synchronize AWS agreement subscriptions"
         self.dry_run = dry_run
 
-    def terminate(self, agreement: AgreementType, pma_account_id):
-        """Terminate an agreement."""
+    def terminate(self, agreement: AgreementType):
+        """Terminate an agreement, leaving AWS offboarding to be handled manually."""
         msg = f"{agreement.get('id')} - agreement with an inactive transfer - terminating"
         logger.warning(msg)
         TeamsNotificationManager().send_warning(self._operation_description, msg)
         self.terminate_agreement(agreement)
-        self.delete_billing_group(agreement, pma_account_id)
-        self.remove_apn(agreement, pma_account_id)
 
-    def remove_apn(self, agreement: AgreementType, pma_account_id: str):
-        """Remove the APN from the PMA account."""
-        config = get_config()
-        relationship_id = get_relationship_id(agreement)
-        if not relationship_id:
+    def notify_scheduled_transfer_end(self, agreement: AgreementType, end_date) -> None:
+        """Create the MCoE termination ticket once when the transfer end is scheduled."""
+        ticket_id = get_crm_terminate_order_ticket_id(agreement)
+        if ticket_id:
             logger.info(
-                "%s - Skipping - Agreement apn relationship id not set", agreement.get("id")
+                "%s - Transfer end already notified with ticket %s",
+                agreement.get("id"),
+                ticket_id,
             )
             return
-        aws_apn_client = AWSClient(config, config.apn_account_id, config.apn_role_name)
-        try:
-            pm_identifier = aws_apn_client.get_program_management_id_by_account(pma_account_id)
-        except AWSError:
-            logger.info("%s - Skipping - PM id not found", agreement.get("id"))
-            return
-        if not pm_identifier:
-            logger.info("%s - Skipping - PMA identifier not found", agreement.get("id"))
-            return
+        logger.warning(
+            "%s - Customer has scheduled the end of the responsibility transfer for %s",
+            agreement.get("id"),
+            end_date,
+        )
         if self.dry_run:
             logger.info(
-                "%s - dry run mode - skipping APN relationship deletion:"
-                " relationship_id=%s pm_identifier=%s",
-                agreement.get("id"),
-                relationship_id,
-                pm_identifier,
+                "%s - dry run mode - skipping termination ticket creation", agreement.get("id")
             )
             return
-        try:
-            aws_apn_client.delete_pc_relationship(pm_identifier, relationship_id)
-        except AWSError:
-            logger.info(
-                "%s - Failed to delete APN relationship. relationship_id=%s pm_identifier=%s",
-                agreement.get("id"),
-                relationship_id,
-                pm_identifier,
-            )
-            return
-        logger.info("%s - APN relationship %s deleted", agreement.get("id"), relationship_id)
+        ticket_id = self._create_transfer_end_ticket(agreement, end_date)
+        if ticket_id:
+            self._save_terminate_ticket_id(agreement, ticket_id)
 
-    def get_accepted_transfer(
+    def get_available_transfer(
         self, agreement: AgreementType, mpa_account_id, pma_account_id
     ) -> dict | None:
-        """Retrieve the accepted transfer for the given agreement and accounts."""
+        """Retrieve the available transfer for the given agreement and accounts."""
         try:
-            return get_accepted_transfer_for_account(pma_account_id, mpa_account_id)
+            return get_available_transfer_for_account(pma_account_id, mpa_account_id)
         except Exception as exception:
             msg = f"{agreement.get('id')} - Error occurred while fetching responsibility transfers"
             logger.exception(msg)
@@ -159,40 +146,33 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
             raise AgreementProcessorError(msg, self._operation_description)
         return str(mpa_account_id)
 
-    def delete_billing_group(self, agreement: AgreementType, pma_account_id: str) -> None:
-        """Deletes the billing group associated with the agreement."""
-        billing_group_arn = get_billing_group_arn(agreement)
-        if not billing_group_arn:
+    def sync_relationship_end_date(self, agreement: AgreementType, end_date) -> None:
+        """Store the scheduled end of the responsibility transfer on the agreement."""
+        end_date_value = end_date.isoformat()
+        if get_relationship_end_date(agreement) == end_date_value:
             return
-
-        if self.dry_run:
-            logger.info(
-                "%s - dry run mode - skipping billing group deletion: %s",
-                agreement["id"],
-                billing_group_arn,
-            )
-            return
-
-        config = get_config()
-        aws_client = AWSClient(config, pma_account_id, config.management_role_name)
-        try:
-            aws_client.delete_billing_group(billing_group_arn)
-        except AWSError:
-            logger.exception(
-                "%s - Failed to delete billing group %s",
-                agreement["id"],
-                billing_group_arn,
-            )
-        else:
-            logger.info("%s - Billing group %s deleted", agreement["id"], billing_group_arn)
+        logger.info(
+            "%s - synchronizing relationship end date: %s",
+            agreement["id"],
+            end_date_value,
+        )
+        self._update_fulfillment_parameter(
+            agreement,
+            FulfillmentParametersEnum.RELATIONSHIP_END_DATE.value,
+            end_date_value,
+            error_message=(
+                f"{agreement['id']} - failed to update agreement with "
+                f"relationship end date {end_date_value}"
+            ),
+            notification_title="Synchronize relationship end date",
+        )
 
     def sync_responsibility_transfer_id(
         self,
-        mpt_client: MPTClient,
         agreement: AgreementType,
         responsibility_transfer_id: str,
     ) -> None:
-        """Synchronizes the PMA account ID for a given agreement."""
+        """Synchronizes the responsibility transfer ID for a given agreement."""
         if get_responsibility_transfer_id(agreement) == responsibility_transfer_id:
             return
         logger.info(
@@ -200,30 +180,16 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
             agreement["id"],
             responsibility_transfer_id,
         )
-        agreement_parameters = {
-            ParamPhasesEnum.FULFILLMENT.value: [
-                {
-                    "externalId": FulfillmentParametersEnum.RESPONSIBILITY_TRANSFER_ID.value,
-                    "value": responsibility_transfer_id,
-                }
-            ]
-        }
-        if self.dry_run:
-            logger.info(
-                "%s - dry run mode - skipping update with parameters: %s",
-                agreement["id"],
-                agreement_parameters,
-            )
-        else:
-            try:
-                update_agreement(mpt_client, agreement["id"], parameters=agreement_parameters)
-            except Exception:
-                msg = (
-                    f"{agreement['id']} - failed to update agreement with "
-                    f"responsibility transfer ID {responsibility_transfer_id}"
-                )
-                logger.exception(msg)
-                TeamsNotificationManager().send_exception("Synchronize PMA account id", msg)
+        self._update_fulfillment_parameter(
+            agreement,
+            FulfillmentParametersEnum.RESPONSIBILITY_TRANSFER_ID.value,
+            responsibility_transfer_id,
+            error_message=(
+                f"{agreement['id']} - failed to update agreement with "
+                f"responsibility transfer ID {responsibility_transfer_id}"
+            ),
+            notification_title="Synchronize responsibility transfer ID",
+        )
 
     def terminate_agreement(self, agreement: AgreementType) -> None:
         """Terminates agreement by terminating all its active subscriptions."""
@@ -267,14 +233,86 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
         mpa_account_id = self.get_mpa(agreement)
         pma_account_id = self.get_pma(agreement)
 
-        accepted_transfer = self.get_accepted_transfer(agreement, mpa_account_id, pma_account_id)
+        available_transfer = self.get_available_transfer(agreement, mpa_account_id, pma_account_id)
 
-        if not accepted_transfer:
-            self.terminate(agreement, pma_account_id)
+        end_date = available_transfer.get("EndTimestamp") if available_transfer else None
+        if end_date:
+            self.sync_relationship_end_date(agreement, end_date)
+
+        if not available_transfer or transfer_has_ended(available_transfer):
+            self.terminate(agreement)
             return
 
-        self.sync_responsibility_transfer_id(self.mpt_client, agreement, accepted_transfer["Id"])
+        if end_date:
+            self.notify_scheduled_transfer_end(agreement, end_date)
+
+        self.sync_responsibility_transfer_id(agreement, available_transfer["Id"])
         logger.info("%s - End - Sync completed", agreement.get("id"))
+
+    def _create_transfer_end_ticket(self, agreement: AgreementType, end_date) -> str | None:
+        agreement_id = agreement["id"]
+        service_request = ServiceRequest(
+            additional_info=TRANSFER_END_SCHEDULED_TEMPLATE.additional_info,
+            summary=TRANSFER_END_SCHEDULED_TEMPLATE.summary.format(
+                end_date=end_date.strftime("%Y-%m-%d %H:%M:%S"),
+                agreement_id=agreement_id,
+                master_payer_id=self.get_mpa(agreement),
+                pma_account_id=self.get_pma(agreement),
+            ),
+            title=TRANSFER_END_SCHEDULED_TEMPLATE.title,
+        )
+        try:
+            response = get_service_client().create_service_request(agreement_id, service_request)
+        except CRMError:
+            msg = f"{agreement_id} - failed to create the transfer end termination ticket"
+            logger.exception(msg)
+            TeamsNotificationManager().send_exception("Transfer end notification", msg)
+            return None
+        ticket_id = response.get("id")
+        logger.info("%s - termination ticket created with ID %s", agreement_id, ticket_id)
+        return ticket_id
+
+    def _save_terminate_ticket_id(self, agreement: AgreementType, ticket_id: str) -> None:
+        self._update_fulfillment_parameter(
+            agreement,
+            FulfillmentParametersEnum.CRM_TERMINATE_ORDER_TICKET_ID.value,
+            ticket_id,
+            error_message=(
+                f"{agreement['id']} - failed to update agreement with "
+                f"termination ticket ID {ticket_id}"
+            ),
+            notification_title="Transfer end notification",
+        )
+
+    def _update_fulfillment_parameter(
+        self,
+        agreement: AgreementType,
+        external_id: str,
+        parameter_value: str,
+        *,
+        error_message: str,
+        notification_title: str,
+    ) -> None:
+        agreement_parameters = {
+            ParamPhasesEnum.FULFILLMENT.value: [
+                {
+                    "externalId": external_id,
+                    "value": parameter_value,
+                }
+            ]
+        }
+        if self.dry_run:
+            logger.info(
+                "%s - dry run mode - skipping update with parameters: %s",
+                agreement["id"],
+                agreement_parameters,
+            )
+            return
+        try:
+            update_agreement(self.mpt_client, agreement["id"], parameters=agreement_parameters)
+        except Exception:
+            logger.exception(error_message)
+            TeamsNotificationManager().send_exception(notification_title, error_message)
 
 
 # TODO: SDK candidate
@@ -301,30 +339,6 @@ def get_subscription_by_external_id(mpt_client, subscription_external_id):  # pr
     response.raise_for_status()
     subscriptions = response.json()
     return subscriptions["data"][0] if subscriptions["data"] else None
-
-
-@cache
-def get_accepted_inbound_responsibility_transfers(pma_account_id: str) -> dict:
-    """Fetches ACCEPTED inbound responsibility transfers from the specified AWS client.
-
-    Args:
-        pma_account_id: The PMA account ID to query transfers from.
-
-    Returns:
-        A dict mapping source ManagementAccountId to the ACCEPTED transfer info.
-    """
-    config = get_config()
-    aws_client = AWSClient(config, pma_account_id, config.management_role_name)
-    result = {}
-    for rt in aws_client.get_inbound_responsibility_transfers():
-        if rt.get("Status") != ResponsibilityTransferStatus.ACCEPTED.value:
-            continue
-        source_account_id = rt.get("Source", {}).get("ManagementAccountId")
-        if not source_account_id:
-            continue
-        result[source_account_id] = {"Id": rt["Id"], "Status": rt["Status"]}
-
-    return result
 
 
 def synchronize_agreements(
@@ -363,20 +377,3 @@ def synchronize_agreements(
     )
     for agreement in get_agreements_by_query(mpt_client, rql_query):
         syncer.process(agreement)
-
-
-def get_accepted_transfer_for_account(
-    pma_account_id: str, source_management_account_id: str
-) -> dict | None:
-    """
-    Get the ACCEPTED inbound responsibility transfer for a specific source account.
-
-    Args:
-        pma_account_id: The PMA account ID to query transfers from.
-        source_management_account_id: The source ManagementAccountId to filter by.
-
-    Returns:
-        The transfer dict if found with ACCEPTED status, None otherwise.
-    """
-    accepted_transfers = get_accepted_inbound_responsibility_transfers(pma_account_id)
-    return accepted_transfers.get(source_management_account_id)

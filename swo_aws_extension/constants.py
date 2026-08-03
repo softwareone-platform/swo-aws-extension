@@ -131,6 +131,7 @@ class FulfillmentParametersEnum(StrEnum):
     FEATURE_VERSION_DEPLOYMENT_ERROR_NOTIFIED = "featureVersionDeploymentErrorNotified"
     CCO_CONTRACT_NUMBER = "ccoContractNumber"
     ERP_PROJECT_NO = "erpProjectNo"
+    RELATIONSHIP_END_DATE = "relationshipEndDate"
     SERVICE_DISCOUNT_TYPE = "serviceDiscountType"
 
 
@@ -210,13 +211,6 @@ CUSTOMER_ROLES_NOT_DEPLOYED_MESSAGE = (
     "It seems there is an error with the configured SWO access. SWO roles have not "
     "been created yet. The SWO support team will contact you. Please move the order to "
     "'processing' status once the roles are created."
-)
-
-COMMITMENT_ENABLED_ERROR_MESSAGE = (
-    "Order failed due to invalid date in terminate responsibility agreement"
-    " with reason: The selected withdrawal date doesn't meet the terms of your"
-    " partner agreement. Visit AWS Partner Central to view your "
-    "partner agreements or contact your AWS Partner for help."
 )
 
 

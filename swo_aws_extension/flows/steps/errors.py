@@ -18,6 +18,10 @@ class SkipStepError(Exception):
     """The step should be skipped."""
 
 
+class ScheduleStepError(Exception):
+    """The step stops the pipeline, keeping the order processing until a later run."""
+
+
 class ConfigurationStepError(Exception):
     """The step cannot proceed due to configuration issues."""
 
@@ -55,15 +59,3 @@ ERR_MISSING_MPA_ID = ValidationError(
     "AWS002",
     "Account id is empty. Please provide an account id.",
 )
-
-
-class OrderStatusChangeError(RuntimeError):
-    """Exception raised when the order status cannot be changed."""
-
-    def __init__(self, target_status, current_status):
-        message = (
-            f"Order is already in `{current_status}` status. "
-            f"Unable to switch and order to `{target_status}` "
-            f"when it is in `{current_status}` status."
-        )
-        super().__init__(message)

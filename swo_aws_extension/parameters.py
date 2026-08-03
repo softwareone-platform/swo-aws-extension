@@ -582,6 +582,26 @@ def set_erp_project_no(order: dict, erp_project_no: str) -> dict[str, Any]:
     return updated_order
 
 
+def get_relationship_end_date(source: dict[str, Any]) -> str | None:
+    """Get the relationship end date from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.RELATIONSHIP_END_DATE.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def set_relationship_end_date(order: dict, end_date: str) -> dict[str, Any]:
+    """Set the relationship end date on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.RELATIONSHIP_END_DATE.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = end_date
+    return updated_order
+
+
 def get_service_discount_type(source: dict[str, Any]) -> str | None:
     """Get the service discount type from the fulfillment parameter or None if it is not set."""
     fulfillment_param = get_fulfillment_parameter(
