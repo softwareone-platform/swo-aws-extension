@@ -14,7 +14,6 @@ from mpt_extension_sdk.mpt_http.wrap_http_error import MPTError, wrap_mpt_http_e
 
 from swo_aws_extension.constants import AgreementStatusEnum, MptOrderStatus
 from swo_aws_extension.flows.order import InitialAWSContext
-from swo_aws_extension.flows.steps.errors import OrderStatusChangeError
 from swo_aws_extension.parameters import get_mpa_account_id, set_mpa_account_id
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
@@ -22,6 +21,18 @@ logger = logging.getLogger(__name__)
 MPT_ORDER_STATUS_QUERYING = "Querying"
 MPT_ORDER_STATUS_PROCESSING = "Processing"
 MPT_ORDER_STATUS_COMPLETED = "Completed"
+
+
+class OrderStatusChangeError(RuntimeError):
+    """Exception raised when the order status cannot be changed."""
+
+    def __init__(self, target_status, current_status):
+        message = (
+            f"Order is already in `{current_status}` status. "
+            f"Unable to switch the order to `{target_status}` "
+            f"when it is in `{current_status}` status."
+        )
+        super().__init__(message)
 
 
 def set_template(order, template):

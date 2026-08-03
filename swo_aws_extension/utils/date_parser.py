@@ -1,5 +1,23 @@
 import datetime as dt
 
+MINIMUM_DAYS_MONTH = 28
+
+
+def end_of_month(reference: dt.datetime) -> dt.datetime:
+    """Return the last instant of the month of the given datetime (23:59:59.999).
+
+    Args:
+        reference: A datetime object within the target month.
+
+    Returns:
+        A datetime object at the end of the last day of the month.
+    """
+    first_day_next_month = (
+        reference.replace(day=MINIMUM_DAYS_MONTH, hour=0, minute=0, second=0, microsecond=0)
+        + dt.timedelta(days=4)
+    ).replace(day=1)
+    return first_day_next_month - dt.timedelta(milliseconds=1)
+
 
 def to_utc(parsed: dt.datetime) -> dt.datetime:
     """Convert a datetime object to UTC timezone.

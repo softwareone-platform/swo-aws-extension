@@ -375,6 +375,7 @@ def fulfillment_parameters_factory():
         cco_contract_number="",
         erp_project_no="",
         termination_date="",
+        relationship_end_date="",
     ):
         return [
             {
@@ -453,6 +454,10 @@ def fulfillment_parameters_factory():
             {
                 "externalId": FulfillmentParametersEnum.TERMINATION_DATE.value,
                 "value": termination_date,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.RELATIONSHIP_END_DATE.value,
+                "value": relationship_end_date,
             },
         ]
 
