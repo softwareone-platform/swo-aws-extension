@@ -1,13 +1,11 @@
-import datetime as dt
 import logging
 from typing import override
 
-from dateutil.relativedelta import relativedelta
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.aws.errors import AWSError
-from swo_aws_extension.constants import PhasesEnum
+from swo_aws_extension.constants import CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS, PhasesEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import (
@@ -49,7 +47,9 @@ class CreateChannelHandshake(BasePhaseStep):
     @override
     def process(self, client: MPTClient, context: PurchaseContext):
         logger.info(
-            "%s - Action - Creating new channel handshake for 1 year period", context.order_id
+            "%s - Action - Creating new channel handshake with %s days minimum notice period",
+            context.order_id,
+            CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS,
         )
         pm_identifier = context.aws_apn_client.get_program_management_id_by_account(
             context.pm_account_id
@@ -59,7 +59,7 @@ class CreateChannelHandshake(BasePhaseStep):
             handshake = context.aws_apn_client.create_channel_handshake(
                 pma_identifier=pm_identifier,
                 relationship_identifier=get_relationship_id(context.order),
-                end_date=dt.datetime.now(dt.UTC) + relativedelta(years=1),
+                minimum_notice_days=CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS,
                 note="Please accept your Service Terms contract with SoftwareOne",
             )
         except AWSError as error:

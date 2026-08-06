@@ -20,6 +20,8 @@ BASIC_PRICING_PLAN_ARN = "arn:aws:billingconductor::aws:pricingplan/BasicPricing
 CRM_TICKET_RESOLVED_STATE = "Resolved"
 MONTHS_PER_YEAR = 12
 
+CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS = 60
+
 AWS_MARKETPLACE = "AWS Marketplace"
 
 
