@@ -7,14 +7,17 @@ background jobs.
 
 ## Authentication
 
-Airtable Personal Access Token (PAT). The `FinOpsEntitlementsTable` builds a
+Workspace-scoped Airtable personal access token issued from the shared Airtable
+service account. DevOps provisions and rotates the token, and it reaches the
+extension through the `AirTableApiToken` Helm secret; a rotation is a secret
+swap only, with no manifest changes. The `FinOpsEntitlementsTable` builds a
 `pyairtable` `Api` client with the token and opens the configured base/table.
 
 ## Configuration
 
 | Environment Variable | Description |
 | --- | --- |
-| `EXT_AIRTABLE_API_TOKEN` | Airtable Personal Access Token used by repository-specific flows |
+| `EXT_AIRTABLE_API_TOKEN` | Shared service-account Airtable token used by repository-specific flows |
 | `EXT_AIRTABLE_BASES` | Per-product Airtable base mapping (`{"PRD-...":"app..."}`); the base is resolved per AWS product id |
 
 The table name is `FinOps Entitlements`.

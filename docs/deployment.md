@@ -28,7 +28,7 @@ Deployed workloads receive configuration through Helm config maps and secrets. T
 | `MPT_ORDERS_API_POLLING_INTERVAL_SECS` | `120` | `60` | Order polling interval |
 | `MPT_KEY_VAULT_NAME` | - | `https://mpt-key-vault-name.vault.azure.net/` | Azure Key Vault URL used to resolve secrets |
 | `MPT_TOOL_STORAGE_TYPE` | `local` | `airtable` | `mpt-tool` storage backend |
-| `MPT_TOOL_STORAGE_AIRTABLE_API_KEY` | - | `patXXXXXXXX` | Airtable API key for `mpt-tool` storage |
+| `MPT_TOOL_STORAGE_AIRTABLE_API_KEY` | - | `patXXXXXXXX` | Airtable API key for `mpt-tool` storage; fed by the `AirTableApiToken` Helm secret (shared service-account token) |
 | `MPT_TOOL_STORAGE_AIRTABLE_BASE_ID` | - | `appXXXXXXXX` | Airtable base id for `mpt-tool` storage |
 | `MPT_TOOL_STORAGE_AIRTABLE_TABLE_NAME` | - | `MigrationTracking` | Airtable table for `mpt-tool` storage |
 
@@ -69,7 +69,7 @@ Deployed workloads receive configuration through Helm config maps and secrets. T
 | `EXT_FFC_OPERATIONS_API_BASE_URL` | - | `https://api.finops.s1.show/ops/v1/` | FinOps operations API base URL |
 | `EXT_FFC_OPERATIONS_SECRET` | - | `supersecret` | FinOps operations secret |
 | `EXT_AIRTABLE_BASES` | - | `{"PRD-1111-1111":"app..."}` | Per-product Airtable base mapping |
-| `EXT_AIRTABLE_API_TOKEN` | - | `patXXXXXXXX` | Airtable API token used by repository-specific flows |
+| `EXT_AIRTABLE_API_TOKEN` | - | `patXXXXXXXX` | Airtable token used by repository-specific flows; fed by the `AirTableApiToken` Helm secret (shared service-account token, see [external/airtable.md](external/airtable.md)) |
 
 ## Reporting, Notifications, And Storage
 
