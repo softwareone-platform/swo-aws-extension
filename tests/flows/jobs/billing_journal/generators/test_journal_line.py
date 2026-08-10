@@ -8,6 +8,8 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.journal_line import
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.credit import (
     CREDIT_PREFIX,
+)
+from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.spp_recovery import (
     SPP_PREFIX,
     SPP_SUFFIX,
 )

@@ -11,6 +11,9 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.cre
 from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.marketplace import (
     MarketplaceJournalLineProcessor,
 )
+from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.spp_recovery import (
+    SppRecoveryJournalLineProcessor,
+)
 from swo_aws_extension.flows.jobs.billing_journal.generators.line_processors.support import (
     SupportJournalLineProcessor,
 )
@@ -39,6 +42,7 @@ def _build_processor_registry() -> dict[str, JournalLineProcessor]:
         AWSRecordTypeEnum.RECURRING: default,
         AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE: default,
         AWSRecordTypeEnum.CREDIT: credit,
+        AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT: SppRecoveryJournalLineProcessor(),
         "MARKETPLACE": marketplace,
         AWSRecordTypeEnum.BUNDLE_DISCOUNT: bundle_discount,
         AWSRecordTypeEnum.OTHER: default,
