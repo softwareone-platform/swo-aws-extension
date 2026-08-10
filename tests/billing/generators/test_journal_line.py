@@ -7,6 +7,8 @@ from swo_aws_extension.billing.generators.journal_line import (
 )
 from swo_aws_extension.billing.generators.line_processors.credit import (
     CREDIT_PREFIX,
+)
+from swo_aws_extension.billing.generators.line_processors.spp_recovery import (
     SPP_PREFIX,
     SPP_SUFFIX,
 )
