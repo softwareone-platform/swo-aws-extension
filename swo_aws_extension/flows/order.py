@@ -1,3 +1,4 @@
+import datetime as dt
 import logging
 from dataclasses import dataclass
 
@@ -25,6 +26,7 @@ class InitialAWSContext(BaseContext):
     subscriptions: list[dict] | None = None
     order_authorization: dict | None = None
     bootstrap_roles_status: dict | None = None
+    termination_effective_date: dt.datetime | None = None
 
     @property
     def pm_account_id(self):

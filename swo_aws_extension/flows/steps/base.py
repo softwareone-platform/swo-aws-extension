@@ -17,6 +17,7 @@ from swo_aws_extension.flows.steps.errors import (
     ConfigurationStepError,
     FailStepError,
     QueryStepError,
+    ScheduleStepError,
     SkipStepError,
     UnexpectedStopError,
 )
@@ -89,8 +90,11 @@ class BasePhaseStep(Step, ABC):
         return True
 
     def _run_process(self, context: InitialAWSContext) -> bool:
-        try:
+        try:  # noqa: WPS225
             self.process(self._client, context)
+        except ScheduleStepError as error:
+            logger.info(str(error))
+            return False
         except UnexpectedStopError as error:
             logger.info("%s - Unexpected Stop: %s", context.order_id, error)
             notify_one_time_error(error.title, error.message)

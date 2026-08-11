@@ -2,8 +2,7 @@ import datetime as dt
 import logging
 from typing import override
 
-from dateutil.relativedelta import relativedelta
-
+from swo_aws_extension.constants import CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.crm_tickets.base import BaseCRMTicketStep
 from swo_aws_extension.flows.steps.crm_tickets.templates.terminate_order import (
@@ -20,6 +19,7 @@ from swo_aws_extension.parameters import (
     get_support_type,
     set_crm_terminate_order_ticket_id,
 )
+from swo_aws_extension.utils import date_parser
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,11 @@ class CRMTicketTerminateOrder(BaseCRMTicketStep):
     @override
     def _build_summary(self, context: PurchaseContext) -> str:
         contact = get_formatted_technical_contact(context.order)
-        end_date = dt.datetime.now(dt.UTC) + relativedelta(years=1)
+        end_date = context.termination_effective_date
+        if end_date is None:
+            end_date = date_parser.end_of_month(
+                dt.datetime.now(dt.UTC) + dt.timedelta(days=CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS)
+            )
 
         return self.template.summary.format(
             end_date=end_date.strftime("%Y-%m-%d %H:%M:%S"),

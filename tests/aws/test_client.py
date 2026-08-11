@@ -3,6 +3,7 @@ from http import HTTPStatus
 
 import boto3
 import pytest
+import requests
 import responses
 from botocore.exceptions import ClientError
 
@@ -448,33 +449,6 @@ def test_create_billing_group_error(config, aws_client_factory):
     mock_client.create_billing_group.assert_called_once()
 
 
-def test_delete_billing_group_success(config, aws_client_factory):
-    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    expected_response = {"Arn": "arn:aws:billingconductor::123:billinggroup/test-billing-group"}
-    mock_client.delete_billing_group.return_value = expected_response
-
-    result = mock_aws_client.delete_billing_group(
-        billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-billing-group",
-    )
-
-    assert result == expected_response
-    mock_client.delete_billing_group.assert_called_once_with(
-        Arn="arn:aws:billingconductor::123:billinggroup/test-billing-group",
-    )
-
-
-def test_delete_billing_group_error(config, aws_client_factory):
-    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    mock_client.delete_billing_group.side_effect = AWSError("Billing group deletion failed")
-
-    with pytest.raises(AWSError, match="Billing group deletion failed"):
-        mock_aws_client.delete_billing_group(
-            billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-billing-group",
-        )
-
-    mock_client.delete_billing_group.assert_called_once()
-
-
 def test_get_program_management_id_success(config, aws_client_factory):
     mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.list_program_management_accounts.return_value = {"items": [{"id": "pma-123456"}]}
@@ -550,12 +524,11 @@ def test_create_channel_handshake_success(config, aws_client_factory):
     mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     expected_response = {"handshakeIdentifier": "hs-123456"}
     mock_client.create_channel_handshake.return_value = expected_response
-    end_date = dt.datetime(2026, 12, 31, tzinfo=dt.UTC)
 
     result = mock_aws_client.create_channel_handshake(
         pma_identifier="pma-123456",
         relationship_identifier="rel-123456",
-        end_date=end_date,
+        minimum_notice_days=60,
         note="Please accept your Service Terms contract with SoftwareOne",
     )
 
@@ -567,8 +540,8 @@ def test_create_channel_handshake_success(config, aws_client_factory):
         payload={
             "startServicePeriodPayload": {
                 "programManagementAccountIdentifier": "pma-123456",
-                "servicePeriodType": "FIXED_COMMITMENT_PERIOD",
-                "endDate": end_date,
+                "servicePeriodType": "MINIMUM_NOTICE_PERIOD",
+                "minimumNoticeDays": "60",
                 "note": "Please accept your Service Terms contract with SoftwareOne",
             }
         },
@@ -578,13 +551,12 @@ def test_create_channel_handshake_success(config, aws_client_factory):
 def test_create_channel_handshake_error(config, aws_client_factory):
     mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.create_channel_handshake.side_effect = AWSError("Handshake creation failed")
-    end_date = dt.datetime(2026, 12, 31, tzinfo=dt.UTC)
 
     with pytest.raises(AWSError, match="Handshake creation failed"):
         mock_aws_client.create_channel_handshake(
             pma_identifier="pma-123456",
             relationship_identifier="rel-123456",
-            end_date=end_date,
+            minimum_notice_days=60,
             note="Please accept your Service Terms contract with SoftwareOne",
         )
 
@@ -647,33 +619,6 @@ def test_get_channel_handshakes_error(config, aws_client_factory, mock_get_paged
         mock_aws_client.get_channel_handshakes_by_resource(resource_identifier="rel-123456")
 
     mock_get_paged_response.assert_called_once()
-
-
-def test_delete_pc_relationship_success(config, aws_client_factory):
-    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    mock_delete_relationship = mock_client.delete_relationship
-
-    mock_aws_client.delete_pc_relationship(pm_identifier="pm-1", relationship_id="rel-1")  # act
-
-    mock_delete_relationship.assert_called_once_with(
-        catalog="AWS",
-        identifier="rel-1",
-        programManagementAccountIdentifier="pm-1",
-    )
-
-
-def test_delete_pc_relationship_error(config, aws_client_factory):
-    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    mock_client.delete_relationship.side_effect = AWSError("API error")
-
-    with pytest.raises(AWSError, match="API error"):
-        mock_aws_client.delete_pc_relationship(pm_identifier="pm-1", relationship_id="rel-1")
-
-    mock_client.delete_relationship.assert_called_once_with(
-        catalog="AWS",
-        identifier="rel-1",
-        programManagementAccountIdentifier="pm-1",
-    )
 
 
 def test_get_channel_handshake_by_id_found(config, aws_client_factory, mock_get_paged_response):
@@ -848,6 +793,16 @@ def test_download_invoice_pdf_missing_url_raises(config, aws_client_factory):
     mock_client.get_invoice_pdf.return_value = {"InvoicePDF": {}}
 
     with pytest.raises(AWSError, match="Invoice PDF URL is missing"):
+        mock_aws_client.download_invoice_pdf("INV-001")
+
+
+def test_download_invoice_pdf_unknown_status(config, aws_client_factory, requests_mocker):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    document_url = "https://example.test/invoice.pdf"
+    mock_client.get_invoice_pdf.return_value = {"InvoicePDF": {"DocumentUrl": document_url}}
+    requests_mocker.add(responses.GET, document_url, body=requests.ConnectionError("boom"))
+
+    with pytest.raises(AWSError, match="HTTP status: unknown"):
         mock_aws_client.download_invoice_pdf("INV-001")
 
 
