@@ -258,14 +258,6 @@ class AWSClient:
         )
 
     @wrap_boto3_error
-    def delete_billing_group(self, billing_group_arn: str) -> dict:
-        """Delete a billing group."""
-        billing_conductor_client = self._get_billing_conductor_client()
-        return billing_conductor_client.delete_billing_group(
-            Arn=billing_group_arn,
-        )
-
-    @wrap_boto3_error
     def get_program_management_id_by_account(self, account_id) -> str:
         """Get Program Management Account Identifier by account ID."""
         partner_central_client = self._get_partner_central_client()
@@ -316,16 +308,6 @@ class AWSClient:
                     "minimumNoticeDays": str(minimum_notice_days),
                 }
             },
-        )
-
-    @wrap_boto3_error
-    def delete_pc_relationship(self, pm_identifier: str, relationship_id: str):
-        """Delete relationship in Partner Central."""
-        partner_central_client = self._get_partner_central_client()
-        return partner_central_client.delete_relationship(
-            catalog="AWS",
-            identifier=relationship_id,
-            programManagementAccountIdentifier=pm_identifier,
         )
 
     @wrap_boto3_error

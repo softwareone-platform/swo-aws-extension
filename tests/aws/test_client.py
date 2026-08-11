@@ -453,33 +453,6 @@ def test_create_billing_group_error(config, aws_client_factory):
     mock_client.create_billing_group.assert_called_once()
 
 
-def test_delete_billing_group_success(config, aws_client_factory):
-    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    expected_response = {"Arn": "arn:aws:billingconductor::123:billinggroup/test-billing-group"}
-    mock_client.delete_billing_group.return_value = expected_response
-
-    result = mock_aws_client.delete_billing_group(
-        billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-billing-group",
-    )
-
-    assert result == expected_response
-    mock_client.delete_billing_group.assert_called_once_with(
-        Arn="arn:aws:billingconductor::123:billinggroup/test-billing-group",
-    )
-
-
-def test_delete_billing_group_error(config, aws_client_factory):
-    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    mock_client.delete_billing_group.side_effect = AWSError("Billing group deletion failed")
-
-    with pytest.raises(AWSError, match="Billing group deletion failed"):
-        mock_aws_client.delete_billing_group(
-            billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-billing-group",
-        )
-
-    mock_client.delete_billing_group.assert_called_once()
-
-
 def test_get_program_management_id_success(config, aws_client_factory):
     mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.list_program_management_accounts.return_value = {"items": [{"id": "pma-123456"}]}
@@ -650,33 +623,6 @@ def test_get_channel_handshakes_error(config, aws_client_factory, mock_get_paged
         mock_aws_client.get_channel_handshakes_by_resource(resource_identifier="rel-123456")
 
     mock_get_paged_response.assert_called_once()
-
-
-def test_delete_pc_relationship_success(config, aws_client_factory):
-    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    mock_delete_relationship = mock_client.delete_relationship
-
-    mock_aws_client.delete_pc_relationship(pm_identifier="pm-1", relationship_id="rel-1")  # act
-
-    mock_delete_relationship.assert_called_once_with(
-        catalog="AWS",
-        identifier="rel-1",
-        programManagementAccountIdentifier="pm-1",
-    )
-
-
-def test_delete_pc_relationship_error(config, aws_client_factory):
-    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
-    mock_client.delete_relationship.side_effect = AWSError("API error")
-
-    with pytest.raises(AWSError, match="API error"):
-        mock_aws_client.delete_pc_relationship(pm_identifier="pm-1", relationship_id="rel-1")
-
-    mock_client.delete_relationship.assert_called_once_with(
-        catalog="AWS",
-        identifier="rel-1",
-        programManagementAccountIdentifier="pm-1",
-    )
 
 
 def test_get_channel_handshake_by_id_found(config, aws_client_factory, mock_get_paged_response):

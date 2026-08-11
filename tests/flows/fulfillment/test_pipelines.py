@@ -64,8 +64,9 @@ def test_terminate_steps():
         "SetupContext",
         "ValidateTerminationOrder",
         "TerminateResponsibilityTransferStep",
-        "TerminateFinOpsEntitlementStep",
         "CRMTicketTerminateOrder",
+        "WaitTerminateResponsibilityTransferStep",
+        "TerminateFinOpsEntitlementStep",
         "CompleteTerminationOrder",
     ]
 

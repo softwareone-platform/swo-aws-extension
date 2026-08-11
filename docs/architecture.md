@@ -47,10 +47,12 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    wrap each external system behind a single boundary.
 6. **Background jobs** (`flows/jobs/`, `billing/`) — reporting and sync work invoked by
    management commands, including billing journal generation (`billing/`). The agreement sync
-   pipeline lives in `swo_aws_extension/swo/mpt/sync/` and is split across three
+   pipeline lives in `swo_aws_extension/swo/mpt/sync/` and is split across four
    modules: `base.py` (shared `AgreementProcessor` base and error types),
    `agreement_syncer.py` (`AgreementSyncer` — validates the AWS responsibility
-   transfer and delegates subscription lifecycle), and
+   transfer and delegates subscription lifecycle),
+   `responsibility_transfers.py` (helpers that fetch and select the ongoing
+   inbound responsibility transfers from AWS), and
    `agreement_subscription_syncer.py` (`AgreementSubscriptionsSyncer` — queries
    Cost Explorer for linked AWS accounts with active usage, creates a subscription
    per active account that does not yet have one, sets an inactivity countdown of

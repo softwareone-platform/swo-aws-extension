@@ -4,21 +4,47 @@ import pytest
 from freezegun import freeze_time
 
 from swo_aws_extension.aws.errors import AWSError, InvalidDateInTerminateResponsibilityError
-from swo_aws_extension.constants import (
-    ChannelHandshakeStatusEnum,
-    ResponsibilityTransferStatus,
-)
+from swo_aws_extension.constants import ResponsibilityTransferStatus
 from swo_aws_extension.flows.order import InitialAWSContext
-from swo_aws_extension.flows.steps.errors import FailStepError, SkipStepError, UnexpectedStopError
+from swo_aws_extension.flows.steps.errors import (
+    FailStepError,
+    SkipStepError,
+    UnexpectedStopError,
+)
 from swo_aws_extension.flows.steps.terminate import TerminateResponsibilityTransferStep
+from swo_aws_extension.parameters import get_relationship_end_date
 
 JUNE_YEAR = 2025
-DECEMBER_YEAR = 2026
 
 
 def _get_end_of_month(year, month):
     first_day = dt.datetime(year, month, 1, 0, 0, 0, tzinfo=dt.UTC)
     return first_day - dt.timedelta(milliseconds=1)
+
+
+def _build_context(
+    order_factory,
+    fulfillment_parameters_factory,
+    mock_aws_client,
+    transfer_status=ResponsibilityTransferStatus.ACCEPTED,
+    scheduled_end=None,
+    relationship_end_date="",
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            responsibility_transfer_id="rt-8lr3q6sn",
+            relationship_end_date=relationship_end_date,
+        )
+    )
+    context = InitialAWSContext.from_order_data(order)
+    context.aws_client = mock_aws_client
+    responsibility_transfer = {"Status": transfer_status}
+    if scheduled_end:
+        responsibility_transfer["EndTimestamp"] = scheduled_end
+    mock_aws_client.get_responsibility_transfer_details.return_value = {
+        "ResponsibilityTransfer": responsibility_transfer
+    }
+    return context
 
 
 def test_pre_step_skips_when_no_transfer_id(
@@ -63,565 +89,166 @@ def test_pre_step_proceeds_with_transfer_id(
 
 
 @freeze_time("2025-06-15")
-def test_process_terminates_when_end_date_past(
+def test_process_schedules_withdrawal_with_notice_period(
     order_factory,
     fulfillment_parameters_factory,
     config,
     mock_aws_client,
     mpt_client,
-    aws_client_factory,
 ):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            responsibility_transfer_id="rt-8lr3q6sn",
-            billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-group",
-            channel_handshake_id="hs-123456",
-            relationship_id="rel-123456",
-        )
+    context = _build_context(
+        order_factory,
+        fulfillment_parameters_factory,
+        mock_aws_client,
     )
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = mock_aws_client
-    _, mock_apn_client = aws_client_factory(config, "pma-id", "role-name")
-    context.aws_apn_client = mock_apn_client
-    mock_aws_client.get_responsibility_transfer_details.return_value = {
-        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
-    }
-    mock_apn_client.get_channel_handshake_by_id.return_value = {
-        "id": "hs-123456",
-        "status": ChannelHandshakeStatusEnum.ACCEPTED.value,
-        "detail": {
-            "startServicePeriodHandshakeDetail": {
-                "endDate": dt.datetime.fromisoformat("2025-06-01T00:00:00+00:00"),
-            }
-        },
-    }
     step = TerminateResponsibilityTransferStep(config)
 
     step.process(mpt_client, context)  # act
 
-    expected_end = _get_end_of_month(JUNE_YEAR, 7)
+    expected_end = _get_end_of_month(JUNE_YEAR, 9)
     mock_aws_client.terminate_responsibility_transfer.assert_called_once_with(
         "rt-8lr3q6sn",
         end_timestamp=expected_end,
     )
-    mock_aws_client.delete_billing_group.assert_called_once_with(
-        "arn:aws:billingconductor::123:billinggroup/test-group"
-    )
+    assert context.termination_effective_date == expected_end
+    assert get_relationship_end_date(context.order) == expected_end.isoformat()
 
 
-@freeze_time("2025-12-15")
-def test_process_success_december(
+def test_process_uses_end_date_already_configured(
     order_factory,
     fulfillment_parameters_factory,
     config,
     mock_aws_client,
     mpt_client,
-    aws_client_factory,
 ):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            responsibility_transfer_id="rt-8lr3q6sn",
-            billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-group",
-            channel_handshake_id="hs-123456",
-            relationship_id="rel-123456",
-        )
+    scheduled_end = _get_end_of_month(JUNE_YEAR, 10)
+    context = _build_context(
+        order_factory,
+        fulfillment_parameters_factory,
+        mock_aws_client,
+        scheduled_end=scheduled_end,
     )
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = mock_aws_client
-    _, mock_apn_client = aws_client_factory(config, "pma-id", "role-name")
-    context.aws_apn_client = mock_apn_client
-    mock_aws_client.get_responsibility_transfer_details.return_value = {
-        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
-    }
-    mock_apn_client.get_channel_handshake_by_id.return_value = {
-        "id": "hs-123456",
-        "status": ChannelHandshakeStatusEnum.ACCEPTED.value,
-        "detail": {
-            "startServicePeriodHandshakeDetail": {
-                "endDate": dt.datetime.fromisoformat("2025-12-01T00:00:00+00:00"),
-            }
-        },
-    }
-    step = TerminateResponsibilityTransferStep(config)
-
-    step.process(mpt_client, context)  # act
-
-    expected_end = _get_end_of_month(DECEMBER_YEAR, 1)
-    mock_aws_client.terminate_responsibility_transfer.assert_called_once_with(
-        "rt-8lr3q6sn",
-        end_timestamp=expected_end,
-    )
-    mock_aws_client.delete_billing_group.assert_called_once_with(
-        "arn:aws:billingconductor::123:billinggroup/test-group"
-    )
-
-
-@freeze_time("2025-06-15")
-def test_process_skips_non_accepted_transfer(
-    order_factory,
-    fulfillment_parameters_factory,
-    config,
-    mock_aws_client,
-    agreement_factory,
-    mpt_client,
-    caplog,
-):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            responsibility_transfer_id="rt-8lr3q6sn",
-        )
-    )
-    agreement = agreement_factory()
-    context = InitialAWSContext(aws_client=mock_aws_client, order=order, agreement=agreement)
-    mock_aws_client.get_responsibility_transfer_details.return_value = {
-        "ResponsibilityTransfer": {"Status": "Pending"}
-    }
     step = TerminateResponsibilityTransferStep(config)
 
     step.process(mpt_client, context)  # act
 
     mock_aws_client.terminate_responsibility_transfer.assert_not_called()
-    mock_aws_client.delete_billing_group.assert_not_called()
-    assert "Skipping termination as transfer status is Pending" in caplog.text
+    assert context.termination_effective_date == scheduled_end
+    assert get_relationship_end_date(context.order) == scheduled_end.isoformat()
 
 
-@freeze_time("2025-06-15")
-def test_process_delete_billing_group_error(
+def test_pre_step_already_processed_with_saved_end_date(
+    order_factory,
+    fulfillment_parameters_factory,
+    config,
+    mock_aws_client,
+):
+    saved_end = _get_end_of_month(JUNE_YEAR, 10)
+    context = _build_context(
+        order_factory,
+        fulfillment_parameters_factory,
+        mock_aws_client,
+        relationship_end_date=saved_end.isoformat(),
+    )
+    step = TerminateResponsibilityTransferStep(config)
+
+    with pytest.raises(SkipStepError) as exc_info:
+        step.pre_step(context)
+
+    assert "end date already known" in str(exc_info.value)
+    assert context.termination_effective_date == saved_end
+
+
+def test_process_skips_non_accepted_transfer(
     order_factory,
     fulfillment_parameters_factory,
     config,
     mock_aws_client,
     mpt_client,
-    caplog,
-    aws_client_factory,
 ):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            responsibility_transfer_id="rt-8lr3q6sn",
-            billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-group",
-            channel_handshake_id="hs-123456",
-            relationship_id="rel-123456",
-        )
+    context = _build_context(
+        order_factory,
+        fulfillment_parameters_factory,
+        mock_aws_client,
+        transfer_status=ResponsibilityTransferStatus.REQUESTED,
     )
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = mock_aws_client
-    _, mock_apn_client = aws_client_factory(config, "pma-id", "role-name")
-    context.aws_apn_client = mock_apn_client
-    mock_aws_client.get_responsibility_transfer_details.return_value = {
-        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
-    }
-    mock_apn_client.get_channel_handshake_by_id.return_value = {
-        "id": "hs-123456",
-        "status": ChannelHandshakeStatusEnum.ACCEPTED.value,
-        "detail": {
-            "startServicePeriodHandshakeDetail": {
-                "endDate": dt.datetime.fromisoformat("2025-06-01T00:00:00+00:00"),
-            }
-        },
-    }
-    mock_aws_client.delete_billing_group.side_effect = AWSError("Billing group deletion failed")
     step = TerminateResponsibilityTransferStep(config)
 
     step.process(mpt_client, context)  # act
 
-    mock_aws_client.terminate_responsibility_transfer.assert_called_once()
-    mock_aws_client.delete_billing_group.assert_called_once_with(
-        "arn:aws:billingconductor::123:billinggroup/test-group"
-    )
-    assert "Failed to delete billing group with error" in caplog.text
+    mock_aws_client.terminate_responsibility_transfer.assert_not_called()
+    assert context.termination_effective_date is None
 
 
 @freeze_time("2025-06-15")
-def test_process_exception_handling(
+def test_process_fails_on_invalid_termination_date(
     order_factory,
     fulfillment_parameters_factory,
     config,
     mock_aws_client,
     mpt_client,
-    aws_client_factory,
 ):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            responsibility_transfer_id="rt-8lr3q6sn",
-            channel_handshake_id="hs-123456",
-            relationship_id="rel-123456",
-        )
+    context = _build_context(
+        order_factory,
+        fulfillment_parameters_factory,
+        mock_aws_client,
     )
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = mock_aws_client
-    _, mock_apn_client = aws_client_factory(config, "pma-id", "role-name")
-    context.aws_apn_client = mock_apn_client
-    mock_aws_client.get_responsibility_transfer_details.return_value = {
-        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
-    }
-    mock_apn_client.get_channel_handshake_by_id.return_value = {
-        "id": "hs-123456",
-        "status": ChannelHandshakeStatusEnum.ACCEPTED.value,
-        "detail": {
-            "startServicePeriodHandshakeDetail": {
-                "endDate": dt.datetime.fromisoformat("2025-06-01T00:00:00+00:00"),
-            }
-        },
-    }
+    mock_aws_client.terminate_responsibility_transfer.side_effect = (
+        InvalidDateInTerminateResponsibilityError("Invalid date", _get_end_of_month(JUNE_YEAR, 9))
+    )
+    step = TerminateResponsibilityTransferStep(config)
+
+    with pytest.raises(FailStepError) as exc_info:
+        step.process(mpt_client, context)
+
+    assert "invalid date in terminate responsibility agreement" in str(exc_info.value)
+
+
+@freeze_time("2025-06-15")
+def test_process_stops_on_aws_error(
+    order_factory,
+    fulfillment_parameters_factory,
+    config,
+    mock_aws_client,
+    mpt_client,
+):
+    context = _build_context(
+        order_factory,
+        fulfillment_parameters_factory,
+        mock_aws_client,
+    )
     mock_aws_client.terminate_responsibility_transfer.side_effect = AWSError("AWS API error")
     step = TerminateResponsibilityTransferStep(config)
 
     with pytest.raises(UnexpectedStopError) as exc_info:
         step.process(mpt_client, context)
 
-    assert "Terminate responsibility transfer" in exc_info.value.title
+    assert "unhandled exception while terminating responsibility transfer" in str(exc_info.value)
 
 
-@freeze_time("2025-06-15")
-def test_process_wrong_date(
+def test_post_step_persists_parameters(
+    mocker,
     order_factory,
     fulfillment_parameters_factory,
     config,
     mock_aws_client,
-    mpt_client,
-    aws_client_factory,
-):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            responsibility_transfer_id="rt-8lr3q6sn",
-            channel_handshake_id="hs-123456",
-            relationship_id="rel-123456",
-        )
-    )
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = mock_aws_client
-    _, mock_apn_client = aws_client_factory(config, "pma-id", "role-name")
-    context.aws_apn_client = mock_apn_client
-    mock_aws_client.get_responsibility_transfer_details.return_value = {
-        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
-    }
-    mock_apn_client.get_channel_handshake_by_id.return_value = {
-        "id": "hs-123456",
-        "status": ChannelHandshakeStatusEnum.ACCEPTED.value,
-        "detail": {
-            "startServicePeriodHandshakeDetail": {
-                "endDate": dt.datetime.fromisoformat("2025-06-01T00:00:00+00:00"),
-            }
-        },
-    }
-    mock_aws_client.terminate_responsibility_transfer.side_effect = (
-        InvalidDateInTerminateResponsibilityError(
-            "Invalid date provided for termination",
-            dt.datetime.now(tz=dt.UTC),
-        )
-    )
-    step = TerminateResponsibilityTransferStep(config)
-
-    with pytest.raises(FailStepError):
-        step.process(mpt_client, context)  # act
-
-
-@freeze_time("2025-06-15")
-def test_post_step_logs_success(
-    order_factory,
-    fulfillment_parameters_factory,
-    config,
-    mock_aws_client,
-    agreement_factory,
     mpt_client,
     caplog,
 ):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            responsibility_transfer_id="rt-8lr3q6sn",
-        )
+    context = _build_context(
+        order_factory,
+        fulfillment_parameters_factory,
+        mock_aws_client,
     )
-    agreement = agreement_factory()
-    context = InitialAWSContext(aws_client=mock_aws_client, order=order, agreement=agreement)
+    mock_update_order = mocker.patch(
+        "swo_aws_extension.flows.steps.terminate.update_order",
+        return_value=context.order,
+    )
     step = TerminateResponsibilityTransferStep(config)
 
     step.post_step(mpt_client, context)  # act
 
+    mock_update_order.assert_called_once_with(
+        mpt_client, context.order_id, parameters=context.order["parameters"]
+    )
     assert "responsibility transfer termination step completed" in caplog.text
-
-
-@freeze_time("2025-06-15")
-def test_process_fails_when_future_date_accepted(
-    order_factory,
-    fulfillment_parameters_factory,
-    config,
-    mock_aws_client,
-    mpt_client,
-    aws_client_factory,
-):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            responsibility_transfer_id="rt-8lr3q6sn",
-            channel_handshake_id="hs-123456",
-            relationship_id="rel-123456",
-        )
-    )
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = mock_aws_client
-    _, mock_apn_client = aws_client_factory(config, "pma-id", "role-name")
-    context.aws_apn_client = mock_apn_client
-    mock_aws_client.get_responsibility_transfer_details.return_value = {
-        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
-    }
-    mock_apn_client.get_channel_handshake_by_id.return_value = {
-        "id": "hs-123456",
-        "status": ChannelHandshakeStatusEnum.ACCEPTED.value,
-        "detail": {
-            "startServicePeriodHandshakeDetail": {
-                "endDate": dt.datetime.fromisoformat("2025-07-01T00:00:00+00:00"),
-            }
-        },
-    }
-    step = TerminateResponsibilityTransferStep(config)
-
-    with pytest.raises(FailStepError) as exc_info:
-        step.process(mpt_client, context)  # act
-
-    assert exc_info.value.id == "INVALID_END_DATE"
-    mock_aws_client.terminate_responsibility_transfer.assert_not_called()
-
-
-@freeze_time("2025-06-15")
-def test_process_warns_future_date_pending(
-    order_factory,
-    fulfillment_parameters_factory,
-    config,
-    mock_aws_client,
-    mpt_client,
-    aws_client_factory,
-    caplog,
-):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            responsibility_transfer_id="rt-8lr3q6sn",
-            channel_handshake_id="hs-123456",
-            relationship_id="rel-123456",
-        )
-    )
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = mock_aws_client
-    _, mock_apn_client = aws_client_factory(config, "pma-id", "role-name")
-    context.aws_apn_client = mock_apn_client
-    mock_aws_client.get_responsibility_transfer_details.return_value = {
-        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
-    }
-    mock_apn_client.get_channel_handshake_by_id.return_value = {
-        "id": "hs-123456",
-        "status": ChannelHandshakeStatusEnum.PENDING.value,
-        "detail": {
-            "startServicePeriodHandshakeDetail": {
-                "endDate": dt.datetime.fromisoformat("2025-07-01T00:00:00+00:00"),
-            }
-        },
-    }
-    step = TerminateResponsibilityTransferStep(config)
-
-    step.process(mpt_client, context)  # act
-
-    assert "Warning - Channel handshake is in status PENDING" in caplog.text
-    mock_aws_client.terminate_responsibility_transfer.assert_not_called()
-
-
-@freeze_time("2025-06-15")
-def test_process_fails_handshake_not_found(
-    order_factory,
-    fulfillment_parameters_factory,
-    config,
-    mock_aws_client,
-    mpt_client,
-    aws_client_factory,
-):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            responsibility_transfer_id="rt-8lr3q6sn",
-            channel_handshake_id="hs-123456",
-            relationship_id="rel-123456",
-        )
-    )
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = mock_aws_client
-    _, mock_apn_client = aws_client_factory(config, "pma-id", "role-name")
-    context.aws_apn_client = mock_apn_client
-    mock_aws_client.get_responsibility_transfer_details.return_value = {
-        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
-    }
-    mock_apn_client.get_channel_handshake_by_id.return_value = None
-    step = TerminateResponsibilityTransferStep(config)
-
-    with pytest.raises(UnexpectedStopError) as exc_info:
-        step.process(mpt_client, context)  # act
-
-    assert "Channel handshake not found" in exc_info.value.title
-
-
-@freeze_time("2025-06-15")
-def test_process_skips_removal_when_no_id(
-    order_factory,
-    fulfillment_parameters_factory,
-    config,
-    mock_aws_client,
-    mpt_client,
-    aws_client_factory,
-    caplog,
-):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            responsibility_transfer_id="rt-8lr3q6sn",
-            billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-group",
-            channel_handshake_id="hs-123456",
-            relationship_id="",
-        )
-    )
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = mock_aws_client
-    _, mock_apn_client = aws_client_factory(config, "pma-id", "role-name")
-    context.aws_apn_client = mock_apn_client
-    mock_aws_client.get_responsibility_transfer_details.return_value = {
-        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
-    }
-    mock_apn_client.get_channel_handshake_by_id.return_value = {
-        "id": "hs-123456",
-        "status": ChannelHandshakeStatusEnum.ACCEPTED.value,
-        "detail": {
-            "startServicePeriodHandshakeDetail": {
-                "endDate": dt.datetime.fromisoformat("2025-06-01T00:00:00+00:00"),
-            }
-        },
-    }
-    step = TerminateResponsibilityTransferStep(config)
-
-    step.process(mpt_client, context)  # act
-
-    assert "No APN relationship ID found in the order" in caplog.text
-    mock_apn_client.get_program_management_id_by_account.assert_not_called()
-
-
-@freeze_time("2025-06-15")
-def test_process_logs_error_when_get_pma_id_fails(
-    order_factory,
-    fulfillment_parameters_factory,
-    config,
-    mock_aws_client,
-    mpt_client,
-    aws_client_factory,
-    caplog,
-):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            responsibility_transfer_id="rt-8lr3q6sn",
-            billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-group",
-            channel_handshake_id="hs-123456",
-            relationship_id="rel-123456",
-        )
-    )
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = mock_aws_client
-    _, mock_apn_client = aws_client_factory(config, "pma-id", "role-name")
-    context.aws_apn_client = mock_apn_client
-    mock_aws_client.get_responsibility_transfer_details.return_value = {
-        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
-    }
-    mock_apn_client.get_channel_handshake_by_id.return_value = {
-        "id": "hs-123456",
-        "status": ChannelHandshakeStatusEnum.ACCEPTED.value,
-        "detail": {
-            "startServicePeriodHandshakeDetail": {
-                "endDate": dt.datetime.fromisoformat("2025-06-01T00:00:00+00:00"),
-            }
-        },
-    }
-    mock_apn_client.get_program_management_id_by_account.side_effect = AWSError(
-        "Failed to get PMA ID"
-    )
-    step = TerminateResponsibilityTransferStep(config)
-
-    step.process(mpt_client, context)  # act
-
-    assert "Failed to get PMA identifier with error" in caplog.text
-    mock_apn_client.delete_pc_relationship.assert_not_called()
-
-
-@freeze_time("2025-06-15")
-def test_process_logs_error_when_delete_fails(
-    order_factory,
-    fulfillment_parameters_factory,
-    config,
-    mock_aws_client,
-    mpt_client,
-    aws_client_factory,
-    caplog,
-):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            responsibility_transfer_id="rt-8lr3q6sn",
-            billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-group",
-            channel_handshake_id="hs-123456",
-            relationship_id="rel-123456",
-        )
-    )
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = mock_aws_client
-    _, mock_apn_client = aws_client_factory(config, "pma-id", "role-name")
-    context.aws_apn_client = mock_apn_client
-    mock_aws_client.get_responsibility_transfer_details.return_value = {
-        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
-    }
-    mock_apn_client.get_channel_handshake_by_id.return_value = {
-        "id": "hs-123456",
-        "status": ChannelHandshakeStatusEnum.ACCEPTED.value,
-        "detail": {
-            "startServicePeriodHandshakeDetail": {
-                "endDate": dt.datetime.fromisoformat("2025-06-01T00:00:00+00:00"),
-            }
-        },
-    }
-    mock_apn_client.get_program_management_id_by_account.return_value = "pm-123456"
-    mock_apn_client.delete_pc_relationship.side_effect = AWSError("Failed to delete relationship")
-    step = TerminateResponsibilityTransferStep(config)
-
-    step.process(mpt_client, context)  # act
-
-    assert "Failed to delete APN relationship with error" in caplog.text
-
-
-@freeze_time("2025-06-15")
-def test_process_logs_success_when_deleted(
-    order_factory,
-    fulfillment_parameters_factory,
-    config,
-    mock_aws_client,
-    mpt_client,
-    aws_client_factory,
-    caplog,
-):
-    order = order_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            responsibility_transfer_id="rt-8lr3q6sn",
-            billing_group_arn="arn:aws:billingconductor::123:billinggroup/test-group",
-            channel_handshake_id="hs-123456",
-            relationship_id="rel-123456",
-        )
-    )
-    context = InitialAWSContext.from_order_data(order)
-    context.aws_client = mock_aws_client
-    _, mock_apn_client = aws_client_factory(config, "pma-id", "role-name")
-    context.aws_apn_client = mock_apn_client
-    mock_aws_client.get_responsibility_transfer_details.return_value = {
-        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
-    }
-    mock_apn_client.get_channel_handshake_by_id.return_value = {
-        "id": "hs-123456",
-        "status": ChannelHandshakeStatusEnum.ACCEPTED.value,
-        "detail": {
-            "startServicePeriodHandshakeDetail": {
-                "endDate": dt.datetime.fromisoformat("2025-06-01T00:00:00+00:00"),
-            }
-        },
-    }
-    mock_apn_client.get_program_management_id_by_account.return_value = "pm-123456"
-    step = TerminateResponsibilityTransferStep(config)
-
-    step.process(mpt_client, context)  # act
-
-    mock_apn_client.delete_pc_relationship.assert_called_once_with("pm-123456", "rel-123456")
-    assert "APN relationship rel-123456 deleted" in caplog.text

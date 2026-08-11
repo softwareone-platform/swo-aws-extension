@@ -33,6 +33,9 @@ from swo_aws_extension.flows.steps.swo_job import SWOJobStep
 from swo_aws_extension.flows.steps.terminate import TerminateResponsibilityTransferStep
 from swo_aws_extension.flows.steps.validate_order import ValidateOrder
 from swo_aws_extension.flows.steps.validate_termination_order import ValidateTerminationOrder
+from swo_aws_extension.flows.steps.wait_terminate_responsibility_transfer import (
+    WaitTerminateResponsibilityTransferStep,
+)
 from swo_aws_extension.swo.notifications.teams import (
     notify_one_time_error,
 )
@@ -108,7 +111,8 @@ terminate = Pipeline(
     SetupContext(config),
     ValidateTerminationOrder(),
     TerminateResponsibilityTransferStep(config),
-    TerminateFinOpsEntitlementStep(config),
     CRMTicketTerminateOrder(config),
+    WaitTerminateResponsibilityTransferStep(config),
+    TerminateFinOpsEntitlementStep(config),
     CompleteTerminationOrder(config),
 )
