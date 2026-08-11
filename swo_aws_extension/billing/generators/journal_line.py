@@ -4,12 +4,17 @@ from swo_aws_extension.billing.generators.line_processors.base import JournalLin
 from swo_aws_extension.billing.generators.line_processors.bundle_discount import (
     BundleDiscountJournalLineProcessor,
 )
-from swo_aws_extension.billing.generators.line_processors.credit import CreditJournalLineProcessor
+from swo_aws_extension.billing.generators.line_processors.credit import (
+    CreditJournalLineProcessor,
+)
 from swo_aws_extension.billing.generators.line_processors.marketplace import (
     MarketplaceJournalLineProcessor,
 )
 from swo_aws_extension.billing.generators.line_processors.saving_plans import (
     SavingsPlanJournalLineProcessor,
+)
+from swo_aws_extension.billing.generators.line_processors.spp_recovery import (
+    SppRecoveryJournalLineProcessor,
 )
 from swo_aws_extension.billing.generators.line_processors.support import SupportJournalLineProcessor
 from swo_aws_extension.billing.models.context import LineProcessorContext
@@ -23,7 +28,6 @@ logger = get_logger(__name__)
 
 _IGNORED_RECORD_TYPES = frozenset((
     AWSRecordTypeEnum.TAX,
-    AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT,
     AWSRecordTypeEnum.SAVING_PLAN_COVERED_USAGE,
     AWSRecordTypeEnum.SAVING_PLAN_NEGATION,
 ))
@@ -41,6 +45,7 @@ def _build_processor_registry() -> dict[str, JournalLineProcessor]:
         {
             AWSRecordTypeEnum.SUPPORT: support,
             AWSRecordTypeEnum.CREDIT: credit,
+            AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT: SppRecoveryJournalLineProcessor(),
             "MARKETPLACE": marketplace,
             AWSRecordTypeEnum.BUNDLE_DISCOUNT: bundle_discount,
             AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE: SavingsPlanJournalLineProcessor(),

@@ -12,6 +12,7 @@ from swo_aws_extension.billing.generators.invoice_utils import (
 )
 from swo_aws_extension.billing.models.invoice import (
     OrganizationInvoiceResult,
+    RawInvoice,
 )
 from swo_aws_extension.models import BillingPeriod
 
@@ -155,6 +156,68 @@ def test_run_sums_payment_currency_subtotal_amount_across_invoices(
     assert result.invoice.payment_currency_subtotal_amount == Decimal("150.00")
 
 
+def test_run_converts_base_amounts_when_invoice_has_no_exchange_rate(
+    generator, mock_aws_client, billing_period
+):
+    with_rate = build_invoice(
+        invoice_id="INV-1",
+        base_total="100.00",
+        base_total_before_tax="90.00",
+        payment_total="95.00",
+        payment_total_before_tax="85.50",
+        payment_subtotal="105.00",
+        exchange_rate="0.95",
+    )
+    without_rate = build_invoice(
+        invoice_id="INV-2",
+        base_total="200.00",
+        base_total_before_tax="180.00",
+    )
+    without_rate.pop("PaymentCurrencyAmount")
+    without_rate["BaseCurrencyAmount"]["AmountBreakdown"] = {"SubTotalAmount": "210.00"}
+    mock_aws_client.list_invoice_summaries_by_account_id.return_value = [with_rate, without_rate]
+
+    result = generator.run("PMA-456", "MPA-123", billing_period, "EUR")
+
+    assert result.invoice.payment_currency_total_amount == Decimal("285.00")
+    assert result.invoice.payment_currency_total_amount_before_tax == Decimal("256.50")
+    assert result.invoice.payment_currency_subtotal_amount == Decimal("304.50")
+
+
+def test_run_converts_base_amounts_with_highest_rate_when_entity_has_no_rate(
+    generator, mock_aws_client, billing_period
+):
+    with_rate = build_invoice(
+        invoice_id="INV-1",
+        invoicing_entity="AWS Inc.",
+        payment_total_before_tax="85.50",
+        exchange_rate="0.95",
+    )
+    without_rate = build_invoice(
+        invoice_id="INV-2",
+        invoicing_entity="AWS EMEA",
+        base_total_before_tax="180.00",
+    )
+    without_rate.pop("PaymentCurrencyAmount")
+    mock_aws_client.list_invoice_summaries_by_account_id.return_value = [with_rate, without_rate]
+
+    result = generator.run("PMA-456", "MPA-123", billing_period, "EUR")
+
+    assert result.invoice.payment_currency_total_amount_before_tax == Decimal("256.50")
+
+
+def test_run_keeps_base_amounts_when_no_invoice_has_exchange_rate(
+    generator, mock_aws_client, billing_period
+):
+    invoice = build_invoice(invoice_id="INV-1", base_total_before_tax="90.00")
+    invoice.pop("PaymentCurrencyAmount")
+    mock_aws_client.list_invoice_summaries_by_account_id.return_value = [invoice]
+
+    result = generator.run("PMA-456", "MPA-123", billing_period, "EUR")
+
+    assert result.invoice.payment_currency_total_amount_before_tax == Decimal("90.00")
+
+
 def test_run_handles_principal_invoice_amount_with_spp_discount(
     generator, mock_aws_client, billing_period
 ):
@@ -288,9 +351,9 @@ def test_merge_invoice_ids_result_never_exceeds_navision_limit(
 )
 def test_exchange_rate_resolver_get_rate(entity, currency, expected):
     invoices = [
-        build_invoice(invoicing_entity="AWS Inc.", exchange_rate="0.90"),
-        build_invoice(invoicing_entity="AWS Inc.", exchange_rate="0.95"),
-        build_invoice(invoicing_entity="AWS EMEA", exchange_rate="0.92"),
+        RawInvoice(build_invoice(invoicing_entity="AWS Inc.", exchange_rate="0.90")),
+        RawInvoice(build_invoice(invoicing_entity="AWS Inc.", exchange_rate="0.95")),
+        RawInvoice(build_invoice(invoicing_entity="AWS EMEA", exchange_rate="0.92")),
     ]
     resolver = ExchangeRateResolver(invoices)
 
@@ -308,9 +371,9 @@ def test_exchange_rate_resolver_get_rate(entity, currency, expected):
 )
 def test_exchange_rate_resolver_get_payment_currency(rate, expected_currency):
     invoices = [
-        build_invoice(invoicing_entity="AWS Inc.", exchange_rate="0.90"),
-        build_invoice(invoicing_entity="AWS Inc.", exchange_rate="0.95"),
-        build_invoice(invoicing_entity="AWS EMEA", exchange_rate="0.92"),
+        RawInvoice(build_invoice(invoicing_entity="AWS Inc.", exchange_rate="0.90")),
+        RawInvoice(build_invoice(invoicing_entity="AWS Inc.", exchange_rate="0.95")),
+        RawInvoice(build_invoice(invoicing_entity="AWS EMEA", exchange_rate="0.92")),
     ]
     resolver = ExchangeRateResolver(invoices)
 

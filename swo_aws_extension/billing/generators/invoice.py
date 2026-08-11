@@ -1,17 +1,13 @@
 from decimal import Decimal
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.billing.generators.invoice_utils import (
-    belongs_to_mpa,
-    get_invoice_rate,
-    invoice_amount,
-    is_primary_invoice,
-    merge_invoice_ids,
-)
+from swo_aws_extension.billing.generators.currency import resolve_service_amount
+from swo_aws_extension.billing.generators.invoice_utils import merge_invoice_ids
 from swo_aws_extension.billing.models.invoice import (
     InvoiceEntity,
     OrganizationInvoice,
     OrganizationInvoiceResult,
+    RawInvoice,
 )
 from swo_aws_extension.constants import DEC_ZERO
 from swo_aws_extension.logger import get_logger
@@ -23,8 +19,8 @@ logger = get_logger(__name__)
 class ExchangeRateResolver:
     """Resolves exchange rates and payment currencies from invoices."""
 
-    def __init__(self, raw_invoices: list[dict]) -> None:
-        self._raw_invoices = raw_invoices
+    def __init__(self, invoices: list[RawInvoice]) -> None:
+        self._invoices = invoices
 
     def get_rate(self, entity_name: str, currency: str) -> Decimal:
         """Get the exchange rate for the given entity and currency."""
@@ -35,106 +31,126 @@ class ExchangeRateResolver:
 
     def get_payment_currency(self, exchange_rate: Decimal) -> str:
         """Get the payment currency code for the given exchange rate."""
-        for inv in self._raw_invoices:
-            rate = get_invoice_rate(inv)
-            if rate == exchange_rate:
-                return inv.get("PaymentCurrencyAmount", {}).get("CurrencyCode", "USD")
+        for invoice in self._invoices:
+            if invoice.exchange_rate == exchange_rate:
+                return invoice.payment_currency_code or "USD"
         return "USD"
 
     def _extract_rates(self, currency: str, entity_name: str | None = None) -> list[Decimal]:
-        rates = []
-        for inv in self._raw_invoices:
-            if inv.get("PaymentCurrencyAmount", {}).get("CurrencyCode") != currency:
-                continue
-            if entity_name and inv.get("Entity", {}).get("InvoicingEntity") != entity_name:
-                continue
-            rates.append(get_invoice_rate(inv))
-        return rates
+        return [
+            invoice.exchange_rate
+            for invoice in self._invoices
+            if invoice.payment_currency_code == currency
+            and (not entity_name or invoice.invoicing_entity == entity_name)
+        ]
 
 
 class OrganizationInvoiceBuilder:
-    """Builds an OrganizationInvoice from a list of raw invoice dicts."""
+    """Builds an OrganizationInvoice from a list of raw invoices."""
 
-    def __init__(self, raw_invoices: list[dict], currency: str) -> None:
-        self._raw_invoices = raw_invoices
+    def __init__(self, invoices: list[RawInvoice], currency: str) -> None:
+        self._invoices = invoices
         self._currency = currency
-        self._resolver = ExchangeRateResolver(raw_invoices)
+        self._resolver = ExchangeRateResolver(invoices)
 
     def build(self) -> OrganizationInvoice:
         """Aggregate the raw invoices into a single OrganizationInvoice."""
+        entities = self._build_entities()
         return OrganizationInvoice(
-            entities=self._build_entities(),
+            entities=entities,
             base_total_amount=self._sum_amounts("BaseCurrencyAmount", "TotalAmount"),
             base_total_amount_before_tax=self._sum_amounts(
                 "BaseCurrencyAmount", "TotalAmountBeforeTax"
             ),
-            payment_currency_total_amount=self._sum_amounts("PaymentCurrencyAmount", "TotalAmount"),
-            payment_currency_total_amount_before_tax=self._sum_amounts(
-                "PaymentCurrencyAmount", "TotalAmountBeforeTax"
+            payment_currency_total_amount=self._sum_payment_amounts(entities, "TotalAmount"),
+            payment_currency_total_amount_before_tax=self._sum_payment_amounts(
+                entities, "TotalAmountBeforeTax"
             ),
-            payment_currency_subtotal_amount=self._sum_breakdown_amounts(
-                "PaymentCurrencyAmount", "SubTotalAmount"
+            payment_currency_subtotal_amount=self._sum_payment_amounts(
+                entities, "SubTotalAmount", breakdown=True
             ),
-            principal_invoice_amount=self._get_principal_amount(),
+            principal_invoice_amount=next(
+                (
+                    invoice.amount("BaseCurrencyAmount", "TotalAmount")
+                    for invoice in self._invoices
+                    if invoice.is_primary
+                ),
+                None,
+            ),
         )
 
     def _build_entities(self) -> dict[str, InvoiceEntity]:
         entities: dict[str, InvoiceEntity] = {}
-        for invoice in self._raw_invoices:
-            entity = invoice.get("Entity", {})
-            entity_key = f"{entity.get('InvoicingEntity', '')}:{entity.get('BillingEntity', 'AWS')}"
-            entities[entity_key] = self._build_invoice_entity(
-                invoice, entity, entities.get(entity_key)
+        for invoice in self._invoices:
+            entities[invoice.entity_key] = self._build_invoice_entity(
+                invoice, entities.get(invoice.entity_key)
             )
         return entities
 
     def _build_invoice_entity(
         self,
-        invoice: dict,
-        entity: dict,
+        invoice: RawInvoice,
         existing: InvoiceEntity | None,
     ) -> InvoiceEntity:
-        billing_entity = entity.get("BillingEntity", "AWS")
         if existing:
-            merged_id = merge_invoice_ids(existing.invoice_id, invoice.get("InvoiceId", ""))
+            merged_id = merge_invoice_ids(existing.invoice_id, invoice.invoice_id)
             return InvoiceEntity(
                 invoice_id=merged_id,
                 base_currency_code=existing.base_currency_code,
                 payment_currency_code=existing.payment_currency_code,
                 exchange_rate=existing.exchange_rate,
-                billing_entity=billing_entity,
-                primary=is_primary_invoice(invoice) or existing.primary,
+                billing_entity=invoice.billing_entity,
+                primary=invoice.is_primary or existing.primary,
             )
-        exchange_rate = self._resolver.get_rate(entity.get("InvoicingEntity", ""), self._currency)
+        exchange_rate = self._resolver.get_rate(invoice.invoicing_entity, self._currency)
         return InvoiceEntity(
-            invoice_id=invoice.get("InvoiceId", ""),
-            base_currency_code=invoice.get("BaseCurrencyAmount", {}).get("CurrencyCode", ""),
+            invoice_id=invoice.invoice_id,
+            base_currency_code=invoice.base_currency_code,
             payment_currency_code=self._resolver.get_payment_currency(exchange_rate),
             exchange_rate=exchange_rate,
-            billing_entity=billing_entity,
-            primary=is_primary_invoice(invoice),
+            billing_entity=invoice.billing_entity,
+            primary=invoice.is_primary,
         )
 
     def _sum_amounts(self, currency_key: str, amount_key: str) -> Decimal:
         return sum(
-            (invoice_amount(inv, currency_key, amount_key) for inv in self._raw_invoices),
+            (invoice.amount(currency_key, amount_key) for invoice in self._invoices),
             DEC_ZERO,
         )
 
-    def _sum_breakdown_amounts(self, currency_key: str, amount_key: str) -> Decimal:
+    def _sum_payment_amounts(
+        self,
+        entities: dict[str, InvoiceEntity],
+        amount_key: str,
+        *,
+        breakdown: bool = False,
+    ) -> Decimal:
         return sum(
             (
-                invoice_amount(inv.get(currency_key, {}), "AmountBreakdown", amount_key)
-                for inv in self._raw_invoices
+                self._payment_amount(invoice, entities, amount_key, breakdown=breakdown)
+                for invoice in self._invoices
             ),
             DEC_ZERO,
         )
 
-    def _get_principal_amount(self) -> Decimal | None:
-        for invoice in self._raw_invoices:
-            if is_primary_invoice(invoice):
-                return Decimal(invoice.get("BaseCurrencyAmount", {}).get("TotalAmount", 0))
-        return None
+    def _payment_amount(
+        self,
+        invoice: RawInvoice,
+        entities: dict[str, InvoiceEntity],
+        amount_key: str,
+        *,
+        breakdown: bool = False,
+    ) -> Decimal:
+        """Payment-currency amount, converting from base with the resolved rate if missing."""
+        has_rate = invoice.has_payment_rate(self._currency)
+        currency_key = "PaymentCurrencyAmount" if has_rate else "BaseCurrencyAmount"
+        if breakdown:
+            amount = invoice.breakdown_amount(currency_key, amount_key)
+        else:
+            amount = invoice.amount(currency_key, amount_key)
+        if has_rate:
+            return amount
+        return resolve_service_amount(amount, entities.get(invoice.entity_key))
 
 
 class InvoiceGenerator:
@@ -164,7 +180,11 @@ class InvoiceGenerator:
         invoice_summaries = self._aws_client.list_invoice_summaries_by_account_id(
             pma_account, billing_period.year, billing_period.month
         )
-        raw_invoices = [inv for inv in invoice_summaries if belongs_to_mpa(inv, mpa_account)]
+        raw_invoices = [
+            invoice
+            for invoice in map(RawInvoice, invoice_summaries)
+            if invoice.belongs_to_mpa(mpa_account)
+        ]
         invoice = OrganizationInvoiceBuilder(raw_invoices, authorization_currency).build()
 
         for entity_name, entity in invoice.entities.items():
@@ -177,4 +197,7 @@ class InvoiceGenerator:
                 entity.exchange_rate,
             )
 
-        return OrganizationInvoiceResult(raw_data=raw_invoices, invoice=invoice)
+        return OrganizationInvoiceResult(
+            raw_data=[raw_invoice.summary for raw_invoice in raw_invoices],
+            invoice=invoice,
+        )
