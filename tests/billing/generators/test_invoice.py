@@ -362,21 +362,54 @@ def test_exchange_rate_resolver_get_rate(entity, currency, expected):
     assert result == expected
 
 
-@pytest.mark.parametrize(
-    ("rate", "expected_currency"),
-    [
-        (Decimal("0.92"), "EUR"),
-        (Decimal("0.99"), "USD"),
-    ],
-)
-def test_exchange_rate_resolver_get_payment_currency(rate, expected_currency):
+def test_exchange_rate_resolver_get_rate_ignores_zero_entity_rates():
     invoices = [
-        RawInvoice(build_invoice(invoicing_entity="AWS Inc.", exchange_rate="0.90")),
+        RawInvoice(build_invoice(invoicing_entity="AWS EMEA", exchange_rate="0")),
         RawInvoice(build_invoice(invoicing_entity="AWS Inc.", exchange_rate="0.95")),
-        RawInvoice(build_invoice(invoicing_entity="AWS EMEA", exchange_rate="0.92")),
     ]
     resolver = ExchangeRateResolver(invoices)
 
-    result = resolver.get_payment_currency(rate)
+    result = resolver.get_rate("AWS EMEA", "EUR")
+
+    assert result == Decimal("0.95")
+
+
+def test_exchange_rate_resolver_get_payment_currency_uses_requested_currency_on_rate_ties():
+    invoices = [
+        RawInvoice(build_invoice(invoicing_entity="AWS UK", payment_currency="GBP")),
+        RawInvoice(build_invoice(invoicing_entity="AWS EMEA", payment_currency="EUR")),
+    ]
+    resolver = ExchangeRateResolver(invoices)
+
+    result = resolver.get_payment_currency(Decimal("0.95"), "EUR")
+
+    assert result == "EUR"
+
+
+@pytest.mark.parametrize(
+    ("payment_currency", "expected_currency"),
+    [
+        ("EUR", "EUR"),
+        (None, "USD"),
+    ],
+)
+def test_exchange_rate_resolver_get_payment_currency_falls_back_on_zero_rate(
+    payment_currency, expected_currency
+):
+    invoice = build_invoice(exchange_rate="0", payment_currency=payment_currency)
+    if payment_currency is None:
+        invoice.pop("PaymentCurrencyAmount")
+    resolver = ExchangeRateResolver([RawInvoice(invoice)])
+
+    result = resolver.get_payment_currency(Decimal(0), "GBP")
 
     assert result == expected_currency
+
+
+def test_exchange_rate_resolver_get_payment_currency_defaults_to_usd_without_matching_rate():
+    invoices = [RawInvoice(build_invoice(exchange_rate="0.95"))]
+    resolver = ExchangeRateResolver(invoices)
+
+    result = resolver.get_payment_currency(Decimal(0), "GBP")
+
+    assert result == "USD"

@@ -29,8 +29,10 @@ class ExchangeRateResolver:
             return max(entity_rates)
         return max(self._extract_rates(currency), default=DEC_ZERO)
 
-    def get_payment_currency(self, exchange_rate: Decimal) -> str:
-        """Get the payment currency code for the given exchange rate."""
+    def get_payment_currency(self, exchange_rate: Decimal, currency: str) -> str:
+        """Get the payment currency code for the given resolved exchange rate and currency."""
+        if exchange_rate > DEC_ZERO:
+            return currency
         for invoice in self._invoices:
             if invoice.exchange_rate == exchange_rate:
                 return invoice.payment_currency_code or "USD"
@@ -40,7 +42,7 @@ class ExchangeRateResolver:
         return [
             invoice.exchange_rate
             for invoice in self._invoices
-            if invoice.payment_currency_code == currency
+            if invoice.has_payment_rate(currency)
             and (not entity_name or invoice.invoicing_entity == entity_name)
         ]
 
@@ -106,7 +108,9 @@ class OrganizationInvoiceBuilder:
         return InvoiceEntity(
             invoice_id=invoice.invoice_id,
             base_currency_code=invoice.base_currency_code,
-            payment_currency_code=self._resolver.get_payment_currency(exchange_rate),
+            payment_currency_code=self._resolver.get_payment_currency(
+                exchange_rate, self._currency
+            ),
             exchange_rate=exchange_rate,
             billing_entity=invoice.billing_entity,
             primary=invoice.is_primary,
