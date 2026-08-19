@@ -105,7 +105,7 @@ def test_process_schedules_withdrawal_with_notice_period(
 
     step.process(mpt_client, context)  # act
 
-    expected_end = _get_end_of_month(JUNE_YEAR, 9)
+    expected_end = _get_end_of_month(JUNE_YEAR, 10)
     mock_aws_client.terminate_responsibility_transfer.assert_called_once_with(
         "rt-8lr3q6sn",
         end_timestamp=expected_end,
