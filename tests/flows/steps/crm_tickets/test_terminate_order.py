@@ -85,7 +85,7 @@ def test_process_summary_uses_termination_effective_date_from_context(
     )
 
 
-@freeze_time("2026-07-31 10:00:00")
+@freeze_time("2026-05-31 10:00:00")
 def test_process_summary_uses_minimum_notice_period_end_date(
     order_factory,
     fulfillment_parameters_factory,
@@ -106,7 +106,7 @@ def test_process_summary_uses_minimum_notice_period_end_date(
 
     service_request = create_request_mock.call_args.args[1]
     assert (
-        "Termination date (end of minimum notice period): <b>2026-09-30 23:59:59</b>"
+        "Termination date (end of minimum notice period): <b>2026-08-31 23:59:59</b>"
         in service_request.summary
     )
 
