@@ -44,9 +44,6 @@ global:
   AirTableBases: default
   CcpKeyVaultSecretName: default
   ExtMinimumMpaThreshold: 1
-  FfcOperationsSecret: ZGVmYXVsdA==
-  FfcOperationsApiBase: default
-  FfcOperationsSub: default
   MpNotifyCategories: "{}"
   MpInitializer: swo_aws_extension.initializer.initialize
   ManagementRole: default
@@ -90,9 +87,6 @@ global:
     generate-billing:
       schedule: ""
       command: generate_billing_journals
-    sync-finops:
-      schedule: ""
-      command: synchronize_finops_accounts
     invitations-report:
       schedule: ""
       command: create_invitations_report
