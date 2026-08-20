@@ -17,7 +17,7 @@ The repository currently has stable coverage in these areas:
 - AWS client and configuration behavior in [`tests/aws/`](../tests/aws)
 - fulfillment, jobs, steps, and validation flows in [`tests/flows/`](../tests/flows); the AWS migration sync job and its helpers are covered under [`tests/flows/jobs/`](../tests/flows/jobs)
 - management commands and helpers in [`tests/management/`](../tests/management)
-- Marketplace, CCP, CRM, FinOps, notification, and query-builder integrations under [`tests/swo/`](../tests/swo), one subdirectory per service; the agreement and subscription sync is covered under [`tests/swo/mpt/sync/`](../tests/swo/mpt/sync)
+- Marketplace, CCP, CRM, notification, and query-builder integrations under [`tests/swo/`](../tests/swo), one subdirectory per service; the agreement and subscription sync is covered under [`tests/swo/mpt/sync/`](../tests/swo/mpt/sync)
 - Airtable, file-builder, processor, and utility behavior in [`tests/airtable/`](../tests/airtable), [`tests/file_builder/`](../tests/file_builder), [`tests/processor/`](../tests/processor), and [`tests/utils/`](../tests/utils)
 
 ## Commands
@@ -55,7 +55,7 @@ Repository-specific guidance:
 
 - prefer existing fixtures from [`tests/conftest.py`](../tests/conftest.py) and domain-specific `conftest.py` files under `tests/`
 - add or update tests next to the affected domain area instead of creating catch-all test files
-- keep external service calls mocked; do not make live AWS, Marketplace, CCP, CRM, FinOps, Airtable, Confluence, or notification calls in tests
+- keep external service calls mocked; do not make live AWS, Marketplace, CCP, CRM, Airtable, Confluence, or notification calls in tests
 - cover management command behavior in [`tests/management/commands/`](../tests/management/commands) when changing operational command entry points
 - cover billing journal behavior in [`tests/billing/`](../tests/billing) when changing billing exports, discounts, or line processing
 
@@ -69,6 +69,6 @@ Add or update tests when a change modifies:
 - querying or background job behavior
 - billing journal generation
 - management command behavior
-- AWS, CCP, CRM, FinOps, Airtable, storage, or notification integration logic
+- AWS, CCP, CRM, Airtable, storage, or notification integration logic
 
 If a change only affects documentation, tests are not required.
