@@ -9,8 +9,10 @@ from swo_aws_extension.aws.errors import (
     AWSError,
     InvalidDateInTerminateResponsibilityError,
 )
+from swo_aws_extension.aws.models import ChannelHandshakeServicePeriod
 from swo_aws_extension.constants import (
     CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS,
+    COMMITMENT_ENABLED_ERROR_MESSAGE,
     ResponsibilityTransferStatus,
 )
 from swo_aws_extension.flows.order import InitialAWSContext
@@ -21,7 +23,9 @@ from swo_aws_extension.flows.steps.errors import (
     UnexpectedStopError,
 )
 from swo_aws_extension.parameters import (
+    get_channel_handshake_id,
     get_relationship_end_date,
+    get_relationship_id,
     get_responsibility_transfer_id,
     set_relationship_end_date,
 )
@@ -84,16 +88,33 @@ class TerminateResponsibilityTransferStep(BasePhaseStep):
             )
             return
 
-        scheduled_end = date_parser.end_of_month(
-            dt.datetime.now(dt.UTC) + dt.timedelta(days=CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS)
-        )
+        handshake = self._get_channel_handshake(context)
+        if not handshake:
+            logger.info(
+                "%s - No channel handshake in the order. Completing the termination "
+                "order without scheduling the responsibility transfer withdrawal.",
+                context.order_id,
+            )
+            return
+
+        now = dt.datetime.now(dt.UTC)
+        service_period = ChannelHandshakeServicePeriod.from_handshake(handshake)
+        if service_period.is_fixed_commitment():
+            if service_period.commitment_ends_after(date_parser.end_of_month(now)):
+                raise FailStepError("INVALID_END_DATE", COMMITMENT_ENABLED_ERROR_MESSAGE)
+            scheduled_end = date_parser.end_of_month(now)
+        else:
+            scheduled_end = date_parser.end_of_month(
+                now + dt.timedelta(days=CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS)
+            )
+
         logger.info(
             "%s - Terminating responsibility transfer %s with end date %s to honor the "
-            "%s days notice period",
+            "%s channel handshake service term",
             context.order_id,
             responsibility_transfer_id,
             scheduled_end,
-            CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS,
+            service_period.period_type,
         )
         self._terminate_relationship_transfer(context, responsibility_transfer_id, scheduled_end)
         self._set_relationship_end_date(context, scheduled_end)
@@ -108,6 +129,22 @@ class TerminateResponsibilityTransferStep(BasePhaseStep):
             "%s - Completed - responsibility transfer termination step completed",
             context.order_id,
         )
+
+    def _get_channel_handshake(self, context: InitialAWSContext) -> dict | None:
+        relationship_id = get_relationship_id(context.order)
+        handshake_id = get_channel_handshake_id(context.order)
+        if not relationship_id or not handshake_id:
+            return None
+        handshake = context.aws_apn_client.get_channel_handshake_by_id(
+            relationship_id, handshake_id
+        )
+        if not handshake:
+            raise UnexpectedStopError(
+                "Channel handshake not found",
+                f"Channel handshake {handshake_id} does not exist for relationship"
+                f" {relationship_id}.",
+            )
+        return handshake
 
     def _set_relationship_end_date(self, context: InitialAWSContext, end_date: dt.datetime) -> None:
         end_date = date_parser.to_utc(end_date)
