@@ -26,7 +26,6 @@ This file documents repository-specific documentation rules only.
 - [`external/cloud-orchestrator.md`](external/cloud-orchestrator.md): Cloud Orchestrator API
 - [`external/ccp.md`](external/ccp.md): CCP Platform (OpenID secret rotation)
 - [`external/service-now.md`](external/service-now.md): Service-Now CRM ticketing
-- [`external/finops.md`](external/finops.md): FinOps FFC Operations API
 - [`external/cco.md`](external/cco.md): CCO API (Contract Creation Online)
 - [`external/service-provisioning.md`](external/service-provisioning.md): Services Provisioning API
 - [`external/azure-blob-storage.md`](external/azure-blob-storage.md): Azure Blob Storage

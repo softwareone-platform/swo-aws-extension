@@ -6,7 +6,7 @@ The repository contains:
 
 - a Django-based extension runtime
 - Marketplace order validation and fulfillment flows
-- AWS, CCP, CRM, FinOps, and Marketplace integration clients
+- AWS, CCP, CRM, and Marketplace integration clients
 - operational commands for querying, synchronization, reporting, and billing journals
 - Helm deployment charts for API and worker workloads
 
