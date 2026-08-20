@@ -45,7 +45,6 @@ global:
   AirTableAccountMigrationBase: default
   CcpKeyVaultSecretName: default
   ExtMinimumMpaThreshold: 1
-  FfcOperationsApiBase: default
   MpNotifyCategories: "{}"
   MpInitializer: swo_aws_extension.initializer.initialize
   ManagementRole: default
@@ -89,9 +88,6 @@ global:
     generate-billing:
       schedule: ""
       command: generate_billing_journals
-    sync-finops:
-      schedule: ""
-      command: synchronize_finops_accounts
     sync-migration:
       schedule: ""
       command: synchronize_migration_orders
