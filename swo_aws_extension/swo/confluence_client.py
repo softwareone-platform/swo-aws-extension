@@ -8,6 +8,15 @@ from swo_aws_extension.constants import EXCEL_MIME_TYPE
 
 logger = logging.getLogger(__name__)
 
+# atlassian-python-api 5.x dropped the high-level ``Confluence.attach_content`` helper and
+# offers no replacement for uploading a file to Confluence Cloud, so the v1 REST attachment
+# endpoint is called directly through the client's transport layer.
+ATTACHMENT_PATH_TEMPLATE = "rest/api/content/{page_id}/child/attachment"
+
+
+def _attachment_headers() -> dict[str, str]:
+    return {"X-Atlassian-Token": "no-check", "Accept": "application/json"}
+
 
 class ConfluenceClient:
     """Client for interacting with Confluence."""
@@ -34,13 +43,7 @@ class ConfluenceClient:
             True if the upload was successful, False otherwise.
         """
         try:
-            self._client.attach_content(
-                content=file_content,
-                name=filename,
-                content_type=EXCEL_MIME_TYPE,
-                page_id=page_id,
-                comment=comment,
-            )
+            self._upload_attachment(page_id, filename, file_content, comment)
         except requests.exceptions.HTTPError:
             logger.exception("Confluence HTTP error")
             return False
@@ -50,6 +53,41 @@ class ConfluenceClient:
         else:
             logger.info("File %s attached to Confluence page %s", filename, page_id)
             return True
+
+    def _upload_attachment(
+        self,
+        page_id: str,
+        filename: str,
+        file_content: bytes,
+        comment: str,
+    ) -> None:
+        client = self._client
+        client.post(
+            path=self._resolve_upload_path(client, page_id, filename),
+            data={
+                "type": "attachment",
+                "fileName": filename,
+                "contentType": EXCEL_MIME_TYPE,
+                "comment": comment or f"Uploaded {filename}.",
+                "minorEdit": "true",
+            },
+            headers=_attachment_headers(),
+            files={"file": (filename, file_content, EXCEL_MIME_TYPE)},
+        )
+
+    def _resolve_upload_path(self, client: Confluence, page_id: str, filename: str) -> str:
+        """Point the upload at the existing attachment so a rerun adds a version, not a copy."""
+        base_path = ATTACHMENT_PATH_TEMPLATE.format(page_id=page_id)
+        attachments = client.get(
+            path=base_path,
+            headers=_attachment_headers(),
+            params={"filename": filename},
+        )
+        matches = (attachments or {}).get("results") or []
+        if not matches:
+            return base_path
+        attachment_id = matches[0]["id"]
+        return f"{base_path}/{attachment_id}/data"
 
     @property
     def _client(self) -> Confluence:
