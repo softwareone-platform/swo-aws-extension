@@ -21,7 +21,7 @@ def confluence_client(config):
 
 @pytest.fixture
 def mock_confluence(mocker):
-    return mocker.patch(f"{MODULE}.Confluence", autospec=True)
+    return mocker.patch(f"{MODULE}.ConfluenceServer", autospec=True)
 
 
 def test_attach_content_success(confluence_client, mock_confluence, caplog):

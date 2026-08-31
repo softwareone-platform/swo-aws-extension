@@ -2049,7 +2049,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlassian-python-api", specifier = ">=4.0,<5.1" },
+    { name = "atlassian-python-api", specifier = "==5.0.*" },
     { name = "azure-storage-blob", specifier = "==12.30.*" },
     { name = "boto3", specifier = "==1.43.*" },
     { name = "django", specifier = "==4.2.*" },

@@ -1,7 +1,7 @@
 import logging
 
 import requests
-from atlassian import Confluence
+from atlassian.confluence import ConfluenceServer
 
 from swo_aws_extension.config import Config
 from swo_aws_extension.constants import EXCEL_MIME_TYPE
@@ -52,8 +52,8 @@ class ConfluenceClient:
             return True
 
     @property
-    def _client(self) -> Confluence:
-        return Confluence(
+    def _client(self) -> ConfluenceServer:
+        return ConfluenceServer(
             url=self.config.confluence_base_url,
             username=self.config.confluence_user,
             password=self.config.confluence_token,
