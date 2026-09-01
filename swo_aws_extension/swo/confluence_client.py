@@ -1,7 +1,8 @@
 import logging
+from http import HTTPStatus
 
 import requests
-from atlassian.confluence import ConfluenceServer
+from atlassian import ConfluenceServer
 
 from swo_aws_extension.config import Config
 from swo_aws_extension.constants import EXCEL_MIME_TYPE
@@ -41,8 +42,10 @@ class ConfluenceClient:
                 page_id=page_id,
                 comment=comment,
             )
-        except requests.exceptions.HTTPError:
+        except requests.exceptions.HTTPError as error:
             logger.exception("Confluence HTTP error")
+            if getattr(error.response, "status_code", None) == HTTPStatus.UNSUPPORTED_MEDIA_TYPE:
+                logger.warning("File %s may already exist on Confluence page %s", filename, page_id)
             return False
         except requests.exceptions.RequestException:
             logger.exception("Confluence request error")

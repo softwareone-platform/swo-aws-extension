@@ -62,6 +62,28 @@ def test_attach_content_http_error_returns_false(
 
     assert result is False
     assert expected_message in caplog.text
+    assert "may already exist" not in caplog.text
+
+
+def test_attach_content_unsupported_media_type_logs_already_exists(
+    confluence_client, mock_confluence, mocker, caplog
+):
+    mock_response = mocker.MagicMock(spec=requests.Response)
+    mock_response.status_code = HTTPStatus.UNSUPPORTED_MEDIA_TYPE
+    mock_confluence.return_value.attach_content.side_effect = requests.HTTPError(
+        response=mock_response
+    )
+
+    result = confluence_client.attach_content(
+        page_id=PAGE_ID,
+        filename=FILENAME,
+        file_content=FILE_CONTENT,
+        comment=COMMENT,
+    )
+
+    assert result is False
+    assert "Confluence HTTP error" in caplog.text
+    assert f"File {FILENAME} may already exist on Confluence page {PAGE_ID}" in caplog.text
 
 
 def test_attach_content_request_exception_returns_false(confluence_client, mock_confluence, caplog):
