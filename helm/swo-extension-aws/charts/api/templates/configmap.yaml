@@ -40,8 +40,6 @@ data:
   EXT_CCP_OAUTH_CREDENTIALS_SCOPE: {{ .Values.global.CcpOauthCredentialsScope | quote }}
   EXT_AIRTABLE_BASES: {{ .Values.global.AirTableBases | quote }}
   EXT_MINIMUM_MPA_THRESHOLD: {{ .Values.global.ExtMinimumMpaThreshold | quote }}
-  EXT_FFC_SUB: {{ .Values.global.FfcOperationsSub | quote }}
-  EXT_FFC_OPERATIONS_API_BASE_URL: {{ .Values.global.FfcOperationsApiBase | quote }}
   MPT_NOTIFY_CATEGORIES: {{ .Values.global.MpNotifyCategories | quote }}
   MPT_INITIALIZER: {{ .Values.global.MpInitializer | quote }}
   EXT_MANAGEMENT_ROLE: {{ .Values.global.ManagementRole | quote }}
