@@ -65,9 +65,6 @@ Deployed workloads receive configuration through Helm config maps and secrets. T
 | `EXT_CRM_OAUTH_URL` | - | `https://crm.example/oauth/token` | CRM OAuth endpoint |
 | `EXT_CCO_MANUFACTURER_CODE` | - | `SWOTS` | Manufacturer code used when creating CCO contracts |
 | `EXT_CLOUD_ORCHESTRATOR_API_BASE_URL` | - | `https://cloud-orchestrator.example` | Cloud orchestrator API base URL |
-| `EXT_FFC_SUB` | - | `FTKN-1111-1111` | FinOps subject |
-| `EXT_FFC_OPERATIONS_API_BASE_URL` | - | `https://api.finops.s1.show/ops/v1/` | FinOps operations API base URL |
-| `EXT_FFC_OPERATIONS_SECRET` | - | `supersecret` | FinOps operations secret |
 | `EXT_AIRTABLE_BASES` | - | `{"PRD-1111-1111":"app..."}` | Per-product Airtable base mapping |
 | `EXT_AIRTABLE_API_TOKEN` | - | `patXXXXXXXX` | Airtable token used by repository-specific flows; fed by the `AirTableApiToken` Helm secret (shared service-account token, see [external/airtable.md](external/airtable.md)) |
 

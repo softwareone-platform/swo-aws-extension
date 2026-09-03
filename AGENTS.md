@@ -27,8 +27,8 @@ Then inspect the code paths relevant to the task:
 - [`swo_aws_extension/flows/jobs/`](swo_aws_extension/flows/jobs): background jobs and reporting flows
 - [`swo_aws_extension/billing/`](swo_aws_extension/billing): billing journal generation, line processors, generators, and models
 - [`swo_aws_extension/processor/querying/`](swo_aws_extension/processor/querying): querying processors and AWS-related order processing logic
-- [`swo_aws_extension/swo/`](swo_aws_extension/swo): Marketplace, CCP, CRM, FinOps, notification, and auth integrations
-- [`swo_aws_extension/aws/`](swo_aws_extension/aws) and [`swo_aws_extension/airtable/`](swo_aws_extension/airtable): AWS and Airtable integration helpers
+- [`swo_aws_extension/swo/`](swo_aws_extension/swo): Marketplace, CCP, CRM, notification, and auth integrations
+- [`swo_aws_extension/aws/`](swo_aws_extension/aws): AWS integration helpers
 - [`swo_aws_extension/management/commands/`](swo_aws_extension/management/commands): operational and scheduled command entry points
 - [`tests/`](tests): pytest coverage by domain area
 - [`make/`](make): canonical local commands

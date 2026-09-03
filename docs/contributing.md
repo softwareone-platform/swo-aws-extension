@@ -33,7 +33,7 @@ Repository-specific expectations:
 - keep runtime configuration changes close to [`swo_aws_extension/config.py`](../swo_aws_extension/config.py), [`swo_aws_extension/default.py`](../swo_aws_extension/default.py), and [`swo_aws_extension/parameters.py`](../swo_aws_extension/parameters.py)
 - keep business behavior under the relevant domain directory in [`swo_aws_extension/flows/`](../swo_aws_extension/flows)
 - keep operational command logic in [`swo_aws_extension/management/commands/`](../swo_aws_extension/management/commands)
-- keep integration-specific behavior under [`swo_aws_extension/swo/`](../swo_aws_extension/swo), [`swo_aws_extension/aws/`](../swo_aws_extension/aws), and [`swo_aws_extension/airtable/`](../swo_aws_extension/airtable)
+- keep integration-specific behavior under [`swo_aws_extension/swo/`](../swo_aws_extension/swo) and [`swo_aws_extension/aws/`](../swo_aws_extension/aws)
 - keep tests under [`tests/`](../tests), mirroring production structure where practical
 - update documentation in the matching file under [`docs/`](.) when runtime, testing, or setup behavior changes
 
