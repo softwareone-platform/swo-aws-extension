@@ -1,4 +1,3 @@
-import copy
 import datetime as dt
 
 import jwt
@@ -1163,22 +1162,6 @@ def webhook(settings):
 @pytest.fixture
 def mock_get_webhook(mocker, webhook):
     return mocker.patch("swo_aws_extension.extension.get_webhook", return_value=webhook, spec=True)
-
-
-@pytest.fixture
-def extension_settings(settings):
-    current_extension_config = copy.copy(settings.EXTENSION_CONFIG)
-    yield settings
-    settings.EXTENSION_CONFIG = current_extension_config
-
-
-@pytest.fixture
-def ffc_client_settings(extension_settings):
-    extension_settings.EXTENSION_CONFIG["FFC_OPERATIONS_API_BASE_URL"] = "https://local.local"
-    extension_settings.EXTENSION_CONFIG["FFC_SUB"] = "FKT-1234"
-    extension_settings.EXTENSION_CONFIG["FFC_OPERATIONS_SECRET"] = "1234"
-
-    return extension_settings
 
 
 @pytest.fixture
