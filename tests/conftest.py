@@ -12,6 +12,7 @@ from swo_aws_extension.config import get_config
 from swo_aws_extension.constants import (
     AccountTypesEnum,
     FulfillmentParametersEnum,
+    MigrationOrderEnum,
     OrderParametersEnum,
     SupportTypesEnum,
 )
@@ -376,6 +377,7 @@ def fulfillment_parameters_factory():
         erp_project_no="",
         termination_date="",
         relationship_end_date="",
+        crm_migration_ticket_id="",
     ):
         return [
             {
@@ -458,6 +460,10 @@ def fulfillment_parameters_factory():
             {
                 "externalId": FulfillmentParametersEnum.RELATIONSHIP_END_DATE.value,
                 "value": relationship_end_date,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.CRM_MIGRATION_TICKET_ID.value,
+                "value": crm_migration_ticket_id,
             },
         ]
 
@@ -918,6 +924,7 @@ def order_parameters_factory(dummy_constraints):
         mpa_id="651706759263",
         constraints=None,
         support_type=SupportTypesEnum.PARTNER_LED_SUPPORT.value,
+        migration=MigrationOrderEnum.NO_MIGRATION.value,
     ):
         return [
             {
@@ -965,6 +972,14 @@ def order_parameters_factory(dummy_constraints):
                 "externalId": OrderParametersEnum.NEW_ACCOUNT_INSTRUCTIONS.value,
                 "type": "heading",
                 "value": "Instructions",
+                "constraints": constraints.copy() if constraints else dummy_constraints.copy(),
+            },
+            {
+                "id": "PAR-1234-5683",
+                "name": "Migration",
+                "externalId": OrderParametersEnum.IS_MIGRATION.value,
+                "type": "choice",
+                "value": migration,
                 "constraints": constraints.copy() if constraints else dummy_constraints.copy(),
             },
         ]

@@ -106,6 +106,7 @@ class OrderParametersEnum(StrEnum):
     NEW_ACCOUNT_INSTRUCTIONS = "newAccountInstructions"
     TECHNICAL_CONTACT_INFO = "technicalContactInfo"
     CONNECT_AWS_BILLING_ACCOUNT = "connectAWSBillingAccount"
+    IS_MIGRATION = "is_migration"
 
 
 class FulfillmentParametersEnum(StrEnum):
@@ -135,6 +136,7 @@ class FulfillmentParametersEnum(StrEnum):
     SPLIT_BILLING_POLICY = "splitBillingPolicy"
     RELATIONSHIP_END_DATE = "relationshipEndDate"
     SERVICE_DISCOUNT_TYPE = "serviceDiscountType"
+    CRM_MIGRATION_TICKET_ID = "crmMigrationTicketId"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
@@ -207,6 +209,13 @@ class ChannelHandshakeDeployed(StrEnum):
 
     YES = "yes"
     NO_DEPLOYED = "no"
+
+
+class MigrationOrderEnum(StrEnum):
+    """Values of the vendor-only migration ordering parameter."""
+
+    YES = "yes"
+    NO_MIGRATION = "no"
 
 
 class ServicePeriodTypeEnum(StrEnum):
