@@ -10,13 +10,12 @@ from swo_aws_extension.swo.finops.errors import (
 )
 
 BASE_URL = "https://finops.test.com/"
-SUB = "test-sub"
-SECRET = "test-secret"
+API_TOKEN = "test-api-token"
 
 
 @pytest.fixture
 def finops_client():
-    return FinOpsClient(BASE_URL, SUB, SECRET)
+    return FinOpsClient(BASE_URL, API_TOKEN)
 
 
 @pytest.fixture
@@ -25,13 +24,13 @@ def mock_finops_api(requests_mocker):
 
 
 def test_init_with_trailing_slash():
-    result = FinOpsClient("https://finops.test.com/", SUB, SECRET)
+    result = FinOpsClient("https://finops.test.com/", API_TOKEN)
 
     assert result.base_url == "https://finops.test.com/"
 
 
 def test_init_without_trailing_slash():
-    result = FinOpsClient("https://finops.test.com", SUB, SECRET)
+    result = FinOpsClient("https://finops.test.com", API_TOKEN)
 
     assert result.base_url == "https://finops.test.com/"
 
@@ -69,6 +68,32 @@ def test_create_entitlement_http_error(finops_client, mock_finops_api):
         )
 
     assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
+
+
+def test_get_entitlement_success(finops_client, mock_finops_api):
+    expected_response = {"id": "FENT-2289-7693-2555", "status": "active"}
+    mock_finops_api.add(
+        responses.GET,
+        f"{BASE_URL}entitlements/FENT-2289-7693-2555",
+        json=expected_response,
+        status=HTTPStatus.OK,
+    )
+
+    result = finops_client.get_entitlement("FENT-2289-7693-2555")
+
+    assert result == expected_response
+
+
+def test_get_entitlement_not_found(finops_client, mock_finops_api):
+    mock_finops_api.add(
+        responses.GET,
+        f"{BASE_URL}entitlements/FENT-0000-0000-0000",
+        json={"error": "Not Found"},
+        status=HTTPStatus.NOT_FOUND,
+    )
+
+    with pytest.raises(FinOpsNotFoundError):
+        finops_client.get_entitlement("FENT-0000-0000-0000")
 
 
 def test_delete_entitlement_success(finops_client, mock_finops_api):
@@ -162,7 +187,7 @@ def test_get_entitlement_by_datasource_http_error(finops_client, mock_finops_api
     assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
 
 
-def test_token_is_refreshed_on_first_request(finops_client, mock_finops_api):
+def test_authorization_header_uses_api_token(finops_client, mock_finops_api):
     mock_finops_api.add(
         responses.GET,
         f"{BASE_URL}entitlements?datasource_id=DS-001&limit=1",
@@ -172,24 +197,14 @@ def test_token_is_refreshed_on_first_request(finops_client, mock_finops_api):
 
     finops_client.get_entitlement_by_datasource("DS-001")  # act
 
-    assert "Authorization" in finops_client.headers
+    sent_request = mock_finops_api.calls[0].request
+    request_headers = sent_request.headers
+    assert request_headers["Authorization"] == f"Bearer {API_TOKEN}"
+    assert request_headers["Accept"] == "application/json"
+    assert request_headers["Content-Type"] == "application/json"
 
 
-def test_authorization_header_is_set(finops_client, mock_finops_api):
-    mock_finops_api.add(
-        responses.GET,
-        f"{BASE_URL}entitlements?datasource_id=DS-001&limit=1",
-        json={"items": [], "total": 0},
-        status=HTTPStatus.OK,
-    )
-
-    finops_client.get_entitlement_by_datasource("DS-001")  # act
-
-    assert "Authorization" in finops_client.headers
-    assert finops_client.headers["Authorization"].startswith("Bearer ")
-
-
-def test_token_not_refreshed_when_valid(finops_client, mock_finops_api):
+def test_request_id_header_is_unique_per_request(finops_client, mock_finops_api):
     mock_finops_api.add(
         responses.GET,
         f"{BASE_URL}entitlements?datasource_id=DS-001&limit=1",
@@ -203,12 +218,14 @@ def test_token_not_refreshed_when_valid(finops_client, mock_finops_api):
         status=HTTPStatus.OK,
     )
     finops_client.get_entitlement_by_datasource("DS-001")
-    first_token = finops_client.headers["Authorization"]
 
     finops_client.get_entitlement_by_datasource("DS-002")  # act
 
-    second_token = finops_client.headers["Authorization"]
-    assert first_token == second_token
+    first_request, second_request = (call.request for call in mock_finops_api.calls)
+    first_request_id = first_request.headers["X-Request-Id"]
+    second_request_id = second_request.headers["X-Request-Id"]
+    assert first_request_id
+    assert first_request_id != second_request_id
 
 
 def test_get_ffc_client_returns_singleton(ffc_client_settings, mocker):
@@ -232,4 +249,5 @@ def test_get_ffc_client_creates_from_settings(ffc_client_settings, mocker):
     result = get_ffc_client()  # act
 
     assert result is not None
-    assert result.base_url == "https://local.local/"
+    assert result.base_url == "https://local.local/ops/v1/"
+    assert result.headers["Authorization"] == f"Bearer {ffc_client_settings.MPT_API_TOKEN}"
