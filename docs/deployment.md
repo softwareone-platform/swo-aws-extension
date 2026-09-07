@@ -69,6 +69,7 @@ Deployed workloads receive configuration through Helm config maps and secrets. T
 | `EXT_FFC_OPERATIONS_API_BASE_URL` | - | `https://api.finops.s1.show/ops/v1/` | FinOps operations API base URL |
 | `EXT_FFC_OPERATIONS_SECRET` | - | `supersecret` | FinOps operations secret |
 | `EXT_AIRTABLE_BASES` | - | `{"PRD-1111-1111":"app..."}` | Per-product Airtable base mapping |
+| `EXT_AIRTABLE_ACCOUNT_MIGRATION_BASE_ID` | `default` | `appXXXXXXXX` | Airtable base holding the `AWS Account Migration` table (separate from the per-product bases); fed by the `AirTableAccountMigrationBase` Helm value, whose chart default is the placeholder `default` and must be overridden per deployment |
 | `EXT_AIRTABLE_API_TOKEN` | - | `patXXXXXXXX` | Airtable token used by repository-specific flows; fed by the `AirTableApiToken` Helm secret (shared service-account token, see [external/airtable.md](external/airtable.md)) |
 
 ## Reporting, Notifications, And Storage

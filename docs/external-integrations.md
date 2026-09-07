@@ -18,8 +18,8 @@ Each integration document covers: purpose, authentication mechanism, required en
 | [Confluence](external/confluence.md) | Billing report attachment to Confluence pages | Basic Auth (username + API token) | [confluence.md](external/confluence.md) |
 | [MS Teams](external/ms-teams.md) | Internal operational notifications | Workflow Webhook (no auth) | [ms-teams.md](external/ms-teams.md) |
 | [AWS SES](external/aws-ses.md) | Customer-facing email delivery | AWS Access Key + Secret Key | [aws-ses.md](external/aws-ses.md) |
-| [Airtable](external/airtable.md) | FinOps entitlements table (per-agreement records) | Shared service-account token (workspace-scoped Airtable PAT, provisioned and rotated by DevOps) | [airtable.md](external/airtable.md) |
+| [Airtable](external/airtable.md) | FinOps entitlements table (per-agreement records) and AWS Account Migration table (accounts to migrate, own base) | Shared service-account token (workspace-scoped Airtable PAT, provisioned and rotated by DevOps) | [airtable.md](external/airtable.md) |
 
 ## Code Location
 
-All integration clients live under [`swo_aws_extension/swo/`](../swo_aws_extension/swo), grouped by service name. The [`swo_aws_extension/swo/base_client.py`](../swo_aws_extension/swo/base_client.py) `OAuthSessionClient` is the shared base for OAuth 2.0 integrations.
+Integration clients live under [`swo_aws_extension/swo/`](../swo_aws_extension/swo), grouped by service name, except the Airtable table clients, which live under [`swo_aws_extension/airtable/`](../swo_aws_extension/airtable). The [`swo_aws_extension/swo/base_client.py`](../swo_aws_extension/swo/base_client.py) `OAuthSessionClient` is the shared base for OAuth 2.0 integrations.
