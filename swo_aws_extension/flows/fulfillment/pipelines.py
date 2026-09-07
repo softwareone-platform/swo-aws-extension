@@ -6,6 +6,7 @@ from mpt_extension_sdk.flows.context import Context
 from mpt_extension_sdk.flows.pipeline import Pipeline
 
 from swo_aws_extension.config import Config
+from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.steps.check_billing_transfer_invitation import (
     CheckBillingTransferInvitation,
 )
@@ -107,6 +108,25 @@ purchase_existing_aws_environment = Pipeline(
     CRMTicketOnboardServices(config),
     CompleteOrder(config),
 )
+
+# Migration orders come from customers already under SWO-managed master payers, so the
+# pipeline skips customer roles, services deployment, contract card and ERP job steps.
+# Those skipped steps normally advance the order phase, so the handshake check and the
+# subscription step are told to jump straight to the next phase this pipeline handles.
+# The migration-specific validation, CRM ticket and CCO steps are added by MPT-24646
+# and MPT-24647.
+purchase_migration = Pipeline(
+    SetupContext(config),
+    ValidateOrder(),
+    CreateBillingTransferInvitation(config),
+    CheckBillingTransferInvitation(config),
+    ConfigureAPNProgram(config),
+    CreateChannelHandshake(config),
+    CheckChannelHandshakeStatus(config, next_phase=PhasesEnum.CREATE_SUBSCRIPTION),
+    CreateSubscription(config, next_phase=PhasesEnum.COMPLETED),
+    CompleteOrder(config),
+)
+
 terminate = Pipeline(
     SetupContext(config),
     ValidateTerminationOrder(),

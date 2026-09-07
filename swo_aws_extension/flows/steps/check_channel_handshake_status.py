@@ -32,8 +32,9 @@ logger = logging.getLogger(__name__)
 class CheckChannelHandshakeStatus(BasePhaseStep):
     """Check Channel Handshake Status step."""
 
-    def __init__(self, config):
+    def __init__(self, config, next_phase: PhasesEnum = PhasesEnum.CHECK_CUSTOMER_ROLES):
         self._config = config
+        self._next_phase = next_phase
 
     @override
     def pre_step(self, context: PurchaseContext) -> None:
@@ -103,7 +104,7 @@ class CheckChannelHandshakeStatus(BasePhaseStep):
 
     @override
     def post_step(self, client: MPTClient, context: PurchaseContext) -> None:
-        context.order = set_phase(context.order, PhasesEnum.CHECK_CUSTOMER_ROLES)
+        context.order = set_phase(context.order, self._next_phase)
         context.order = update_order(
             client, context.order_id, parameters=context.order["parameters"]
         )

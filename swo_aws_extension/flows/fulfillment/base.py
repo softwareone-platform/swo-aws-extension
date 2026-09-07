@@ -7,6 +7,7 @@ from mpt_extension_sdk.mpt_http.wrap_http_error import ValidationError
 from swo_aws_extension.flows.fulfillment.pipelines import (
     pipeline_error_handler,
     purchase_existing_aws_environment,
+    purchase_migration,
     purchase_new_aws_environment,
     terminate,
 )
@@ -18,7 +19,13 @@ logger = logging.getLogger(__name__)
 
 def _handle_purchase_order(client: MPTClient, context: InitialAWSContext) -> None:
     purchase_context = PurchaseContext.from_context(context)
-    if purchase_context.is_type_new_aws_environment():
+    if purchase_context.is_migration_order():
+        logger.info(
+            "%s - Pipeline - Starting: purchase migration",
+            purchase_context.order_id,
+        )
+        purchase_migration.run(client, purchase_context, error_handler=pipeline_error_handler)
+    elif purchase_context.is_type_new_aws_environment():
         logger.info(
             "%s - Pipeline - Starting: purchase new AWS environment",
             purchase_context.order_id,
