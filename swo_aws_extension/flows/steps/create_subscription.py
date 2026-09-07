@@ -27,8 +27,9 @@ logger = logging.getLogger(__name__)
 class CreateSubscription(BasePhaseStep):
     """Handles the creation of a subscription."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, next_phase: PhasesEnum = PhasesEnum.PROJECT_CREATION):
         self._config = config
+        self._next_phase = next_phase
 
     @override
     def pre_step(self, context: PurchaseContext) -> None:
@@ -82,7 +83,7 @@ class CreateSubscription(BasePhaseStep):
 
     @override
     def post_step(self, client: MPTClient, context: PurchaseContext) -> None:
-        context.order = set_phase(context.order, PhasesEnum.PROJECT_CREATION)
+        context.order = set_phase(context.order, self._next_phase)
         context.order = update_order(
             client, context.order_id, parameters=context.order["parameters"]
         )

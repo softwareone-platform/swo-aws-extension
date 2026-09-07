@@ -35,7 +35,9 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    validation requests from the platform.
 2. **Orchestration** (`flows/fulfillment/base.py`) — `fulfill_order()` selects a
    pipeline by order type: purchase a new AWS environment, purchase an existing
-   one, or terminate.
+   one, or terminate. Purchase orders carrying the vendor-only migration
+   parameter are routed first to the dedicated migration pipeline, regardless
+   of account type; regular purchase orders are unaffected.
 3. **Pipelines and steps** (`flows/fulfillment/pipelines.py`, `flows/steps/`) —
    each pipeline is an ordered sequence of `BasePhaseStep` steps that create
    resources, poll status, raise tickets, and advance the order phase. Order

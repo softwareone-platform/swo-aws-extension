@@ -159,6 +159,27 @@ def test_post_step_sets_complete_phase(
     assert get_phase(context.order) == PhasesEnum.PROJECT_CREATION.value
 
 
+def test_post_step_sets_custom_next_phase(
+    mocker, order_factory, fulfillment_parameters_factory, mpt_client, purchase_context, config
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_SUBSCRIPTION.value,
+        )
+    )
+    context = purchase_context(order)
+    mock_update_order = mocker.patch(
+        "swo_aws_extension.flows.steps.create_subscription.update_order",
+        side_effect=lambda _client, _order_id, **kwargs: {**order, **kwargs},
+    )
+    step = CreateSubscription(config, next_phase=PhasesEnum.COMPLETED)
+
+    step.post_step(mpt_client, context)  # act
+
+    assert get_phase(mock_update_order.call_args.kwargs) == PhasesEnum.COMPLETED.value
+    assert get_phase(context.order) == PhasesEnum.COMPLETED.value
+
+
 def test_post_step_calls_update_order(
     mocker, order_factory, fulfillment_parameters_factory, mpt_client, purchase_context, config
 ):
