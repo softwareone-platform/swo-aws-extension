@@ -6,6 +6,7 @@ from mpt_extension_sdk.mpt_http.utils import find_first
 
 from swo_aws_extension.constants import (
     FulfillmentParametersEnum,
+    MigrationOrderEnum,
     OrderParametersEnum,
     ParamPhasesEnum,
 )
@@ -638,3 +639,52 @@ def get_service_discount_type(source: dict[str, Any]) -> str | None:
         source,
     )
     return fulfillment_param.get("value", None)
+
+
+def get_migration(source: dict[str, Any]) -> str | list[str] | None:
+    """Get the raw value of the migration ordering parameter or None if it is not set."""
+    ordering_param = get_ordering_parameter(
+        OrderParametersEnum.IS_MIGRATION.value,
+        source,
+    )
+    return ordering_param.get("value", None)
+
+
+def is_migration_order(source: dict[str, Any]) -> bool:
+    """
+    Check whether the vendor-only migration ordering parameter marks the order as a migration.
+
+    The parameter is set by the Migration Orders extension. The product defines it as a
+    choice with a single value, defaulting to no; a checkbox list of checked option values
+    is accepted as well.
+
+    Args:
+        source: The order or agreement that contains the ordering parameters.
+
+    Returns:
+        True when the migration parameter is set to yes, False otherwise.
+    """
+    migration_value = get_migration(source)
+    if isinstance(migration_value, list):
+        return MigrationOrderEnum.YES.value in migration_value
+    return migration_value == MigrationOrderEnum.YES.value
+
+
+def get_crm_migration_ticket_id(source: dict[str, Any]) -> str | None:
+    """Get the CRM migration ticket ID from the fulfillment parameter or None if it is not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CRM_MIGRATION_TICKET_ID.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def set_crm_migration_ticket_id(order: dict[str, Any], ticket_id: str) -> dict[str, Any]:
+    """Set the CRM migration ticket ID on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.CRM_MIGRATION_TICKET_ID.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = ticket_id
+    return updated_order
