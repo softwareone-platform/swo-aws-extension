@@ -42,6 +42,7 @@ global:
   AwsOpenIdScope: default
   AwsRegion: us-east-1
   AirTableBases: default
+  AirTableAccountMigrationBase: default
   CcpKeyVaultSecretName: default
   ExtMinimumMpaThreshold: 1
   FfcOperationsSecret: ZGVmYXVsdA==
