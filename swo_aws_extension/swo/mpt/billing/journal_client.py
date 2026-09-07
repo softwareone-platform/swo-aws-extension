@@ -178,7 +178,7 @@ class JournalClient:
             HTTPError: If the upload request fails
         """
         filename = filename or file.name
-        file_type = "application/jsonl"
+        file_type = "application/x-ndjson"
         journals_file = {
             "file": (filename, file, file_type),
         }
