@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 
 SPP_DISCOUNT_DESCRIPTION = "Discount (AWS SPP Discount)"
+AWS_BILLING_ENTITY = "AWS"
 
 
 @dataclass
@@ -25,7 +26,7 @@ class RawInvoice:  # noqa: WPS214
     @property
     def billing_entity(self) -> str:
         """The billing entity name, AWS by default."""
-        return self.summary.get("Entity", {}).get("BillingEntity", "AWS")
+        return self.summary.get("Entity", {}).get("BillingEntity", AWS_BILLING_ENTITY)
 
     @property
     def entity_key(self) -> str:
@@ -51,6 +52,11 @@ class RawInvoice:  # noqa: WPS214
             .get("CurrencyExchangeDetails", {})
             .get("Rate", 0)
         )
+
+    @property
+    def is_aws_billing(self) -> bool:
+        """Whether the invoice is billed by AWS itself rather than AWS Marketplace."""
+        return self.billing_entity == AWS_BILLING_ENTITY
 
     @property
     def is_primary(self) -> bool:
@@ -96,7 +102,7 @@ class InvoiceEntity:
     base_currency_code: str = ""
     payment_currency_code: str = ""
     exchange_rate: Decimal = field(default_factory=lambda: Decimal(0))
-    billing_entity: str = "AWS"
+    billing_entity: str = AWS_BILLING_ENTITY
     primary: bool = field(default=False)
 
 
