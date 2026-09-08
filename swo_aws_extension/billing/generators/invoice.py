@@ -47,6 +47,19 @@ class ExchangeRateResolver:
         ]
 
 
+def resolve_principal_invoice(invoices: list[RawInvoice]) -> RawInvoice | None:
+    """Select the principal invoice used for zero-invoice and primary-entity decisions.
+
+    The invoice carrying the AWS SPP discount breakdown takes precedence. When no
+    invoice carries it (for example usage fully covered by credits), fall back to
+    the first invoice billed by AWS itself, excluding AWS Marketplace invoices.
+    """
+    spp_invoice = next((invoice for invoice in invoices if invoice.is_primary), None)
+    if spp_invoice:
+        return spp_invoice
+    return next((invoice for invoice in invoices if invoice.is_aws_billing), None)
+
+
 class OrganizationInvoiceBuilder:
     """Builds an OrganizationInvoice from a list of raw invoices."""
 
@@ -57,7 +70,8 @@ class OrganizationInvoiceBuilder:
 
     def build(self) -> OrganizationInvoice:
         """Aggregate the raw invoices into a single OrganizationInvoice."""
-        entities = self._build_entities()
+        principal = resolve_principal_invoice(self._invoices)
+        entities = self._build_entities(principal)
         return OrganizationInvoice(
             entities=entities,
             base_total_amount=self._sum_amounts("BaseCurrencyAmount", "TotalAmount"),
@@ -71,21 +85,19 @@ class OrganizationInvoiceBuilder:
             payment_currency_subtotal_amount=self._sum_payment_amounts(
                 entities, "SubTotalAmount", breakdown=True
             ),
-            principal_invoice_amount=next(
-                (
-                    invoice.amount("BaseCurrencyAmount", "TotalAmount")
-                    for invoice in self._invoices
-                    if invoice.is_primary
-                ),
-                None,
+            principal_invoice_amount=(
+                principal.amount("BaseCurrencyAmount", "TotalAmount") if principal else None
             ),
         )
 
-    def _build_entities(self) -> dict[str, InvoiceEntity]:
+    def _build_entities(self, principal: RawInvoice | None) -> dict[str, InvoiceEntity]:
+        principal_entity_key = principal.entity_key if principal else None
         entities: dict[str, InvoiceEntity] = {}
         for invoice in self._invoices:
             entities[invoice.entity_key] = self._build_invoice_entity(
-                invoice, entities.get(invoice.entity_key)
+                invoice,
+                entities.get(invoice.entity_key),
+                primary=invoice.is_primary or invoice.entity_key == principal_entity_key,
             )
         return entities
 
@@ -93,6 +105,8 @@ class OrganizationInvoiceBuilder:
         self,
         invoice: RawInvoice,
         existing: InvoiceEntity | None,
+        *,
+        primary: bool,
     ) -> InvoiceEntity:
         if existing:
             merged_id = merge_invoice_ids(existing.invoice_id, invoice.invoice_id)
@@ -102,7 +116,7 @@ class OrganizationInvoiceBuilder:
                 payment_currency_code=existing.payment_currency_code,
                 exchange_rate=existing.exchange_rate,
                 billing_entity=invoice.billing_entity,
-                primary=invoice.is_primary or existing.primary,
+                primary=primary or existing.primary,
             )
         exchange_rate = self._resolver.get_rate(invoice.invoicing_entity, self._currency)
         return InvoiceEntity(
@@ -113,7 +127,7 @@ class OrganizationInvoiceBuilder:
             ),
             exchange_rate=exchange_rate,
             billing_entity=invoice.billing_entity,
-            primary=invoice.is_primary,
+            primary=primary,
         )
 
     def _sum_amounts(self, currency_key: str, amount_key: str) -> Decimal:
