@@ -67,6 +67,7 @@ def test_purchase_migration_steps():
     expected_step_classes = [
         "SetupContext",
         "ValidateOrder",
+        "ValidateMigrationOrder",
         "CreateBillingTransferInvitation",
         "CheckBillingTransferInvitation",
         "ConfigureAPNProgram",
