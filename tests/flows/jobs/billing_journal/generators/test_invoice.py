@@ -21,6 +21,7 @@ def build_invoice(
     account_id="MPA-123",
     invoice_id="INV-001",
     invoicing_entity="AWS Inc.",
+    billing_entity=None,
     base_currency="USD",
     base_total="100.00",
     base_total_before_tax="90.00",
@@ -50,6 +51,8 @@ def build_invoice(
             "AmountBreakdown": {"SubTotalAmount": payment_subtotal},
         },
     }
+    if billing_entity is not None:
+        invoice["Entity"]["BillingEntity"] = billing_entity
     if discounts:
         invoice["BaseCurrencyAmount"]["AmountBreakdown"] = {"Discounts": {"Breakdown": discounts}}
     if bill_source_accounts is not None:
@@ -235,15 +238,79 @@ def test_run_handles_principal_invoice_amount_with_spp_discount(
     assert result.invoice.principal_invoice_amount == Decimal("-50.00")
 
 
-def test_run_handles_principal_invoice_amount_without_spp_discount(
+def test_run_falls_back_to_aws_invoice_as_principal_without_spp_discount(
     generator, mock_aws_client, billing_period
 ):
-    invoice = build_invoice()
+    invoice = build_invoice(base_total="100.00")
+    mock_aws_client.list_invoice_summaries_by_account_id.return_value = [invoice]
+
+    result = generator.run("PMA-456", "MPA-123", billing_period, "EUR")
+
+    assert result.invoice.principal_invoice_amount == Decimal("100.00")
+    assert result.invoice.entities["AWS Inc.:AWS"].primary is True
+
+
+def test_run_zero_aws_invoice_with_credits_is_principal_over_marketplace(
+    generator, mock_aws_client, billing_period
+):
+    invoices = [
+        build_invoice(
+            invoice_id="2790046149",
+            invoicing_entity="Amazon Web Services India Private Limited",
+            billing_entity="AWS",
+            base_total="0.00",
+            base_total_before_tax="0.00",
+            discounts=[{"Description": "Credits", "Amount": "2902.08"}],
+        ),
+        build_invoice(
+            invoice_id="2797937901",
+            invoicing_entity="Amazon Web Services, Inc.",
+            billing_entity="AWS_MARKETPLACE",
+            base_total="495.94",
+            base_total_before_tax="495.94",
+        ),
+    ]
+    mock_aws_client.list_invoice_summaries_by_account_id.return_value = invoices
+
+    result = generator.run("PMA-456", "MPA-123", billing_period, "EUR")
+
+    assert result.invoice.principal_invoice_amount == Decimal("0.00")
+    assert result.invoice.primary_entity_name == "Amazon Web Services India Private Limited:AWS"
+    assert result.invoice.primary_invoice_id == "2790046149"
+    assert result.invoice.entities["Amazon Web Services, Inc.:AWS_MARKETPLACE"].primary is False
+
+
+def test_run_prefers_spp_invoice_as_principal_over_aws_fallback(
+    generator, mock_aws_client, billing_period
+):
+    invoices = [
+        build_invoice(invoice_id="INV-AWS", invoicing_entity="AWS Inc.", base_total="100.00"),
+        build_invoice(
+            invoice_id="INV-SPP",
+            invoicing_entity="AWS EMEA",
+            base_total="-50.00",
+            discounts=[{"Description": "Discount (AWS SPP Discount)"}],
+        ),
+    ]
+    mock_aws_client.list_invoice_summaries_by_account_id.return_value = invoices
+
+    result = generator.run("PMA-456", "MPA-123", billing_period, "EUR")
+
+    assert result.invoice.principal_invoice_amount == Decimal("-50.00")
+    assert result.invoice.primary_entity_name == "AWS EMEA:AWS"
+    assert result.invoice.entities["AWS Inc.:AWS"].primary is False
+
+
+def test_run_principal_invoice_amount_is_none_with_only_marketplace_invoices(
+    generator, mock_aws_client, billing_period
+):
+    invoice = build_invoice(billing_entity="AWS_MARKETPLACE", base_total="495.94")
     mock_aws_client.list_invoice_summaries_by_account_id.return_value = [invoice]
 
     result = generator.run("PMA-456", "MPA-123", billing_period, "EUR")
 
     assert result.invoice.principal_invoice_amount is None
+    assert result.invoice.entities["AWS Inc.:AWS_MARKETPLACE"].primary is False
 
 
 def test_run_handles_empty_invoices(generator, mock_aws_client, billing_period):

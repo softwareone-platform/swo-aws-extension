@@ -19,6 +19,7 @@ def build_raw_invoice(
     account_id="MPA-123",
     invoice_id="INV-001",
     invoicing_entity="AWS Inc.",
+    billing_entity=None,
     payment_currency="EUR",
     exchange_rate="0.95",
     discounts=None,
@@ -40,6 +41,8 @@ def build_raw_invoice(
             "AmountBreakdown": {"SubTotalAmount": "105.00"},
         },
     }
+    if billing_entity is not None:
+        summary["Entity"]["BillingEntity"] = billing_entity
     if discounts:
         summary["BaseCurrencyAmount"]["AmountBreakdown"] = {"Discounts": {"Breakdown": discounts}}
     if bill_source_accounts is not None:
@@ -130,6 +133,23 @@ def test_raw_invoice_is_primary(discounts, expected):
     invoice = build_raw_invoice(discounts=discounts)
 
     result = invoice.is_primary  # act
+
+    assert result is expected
+
+
+@pytest.mark.parametrize(
+    ("billing_entity", "expected"),
+    [
+        ("AWS", True),
+        ("AWS_MARKETPLACE", False),
+        (None, True),
+    ],
+    ids=["aws", "marketplace", "missing_defaults_to_aws"],
+)
+def test_raw_invoice_is_aws_billing(billing_entity, expected):
+    invoice = build_raw_invoice(billing_entity=billing_entity)
+
+    result = invoice.is_aws_billing  # act
 
     assert result is expected
 
