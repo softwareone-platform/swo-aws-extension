@@ -3,7 +3,7 @@
 from swo_aws_extension.flows.steps.crm_tickets.templates.models import CRMTicketTemplate
 
 DEPLOY_ROLES_TEMPLATE = CRMTicketTemplate(
-    title="Action Required: Roles not deployed yet",
+    title="AWS - Action Required: Roles not deployed yet",
     additional_info="New customer joining SWO but no service roles deployed",
     summary=(
         "Dear MCoE Team,<br><br>"
