@@ -9,13 +9,14 @@ from swo_aws_extension.constants import AccountTypesEnum
 from swo_aws_extension.parameters import (
     get_account_type,
     get_phase,
+    is_migration_order,
 )
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class InitialAWSContext(BaseContext):
+class InitialAWSContext(BaseContext):  # noqa: WPS214
     """AWS order processing context."""
 
     aws_client: AWSClient | None = None
@@ -55,6 +56,10 @@ class InitialAWSContext(BaseContext):
     def is_type_existing_aws_environment(self):
         """Is transfer without organization."""
         return get_account_type(self.order) == AccountTypesEnum.EXISTING_AWS_ENVIRONMENT
+
+    def is_migration_order(self):
+        """Is a migration order, marked by the vendor-only migration ordering parameter."""
+        return is_migration_order(self.order)
 
     @classmethod
     def from_order_data(cls, order: dict):

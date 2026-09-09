@@ -1,4 +1,6 @@
-from swo_aws_extension.constants import AccountTypesEnum, PhasesEnum
+import pytest
+
+from swo_aws_extension.constants import AccountTypesEnum, MigrationOrderEnum, PhasesEnum
 from swo_aws_extension.flows.order import InitialAWSContext, PurchaseContext
 
 
@@ -76,6 +78,22 @@ def test_is_type_existing_aws_environment(order_factory, order_parameters_factor
 
     assert result.is_type_existing_aws_environment() is True
     assert result.is_type_new_aws_environment() is False
+
+
+@pytest.mark.parametrize(
+    ("migration", "expected"),
+    [
+        (MigrationOrderEnum.YES.value, True),
+        (MigrationOrderEnum.NO_MIGRATION.value, False),
+        (None, False),
+    ],
+)
+def test_is_migration_order(order_factory, order_parameters_factory, migration, expected):
+    order = order_factory(order_parameters=order_parameters_factory(migration=migration))
+
+    result = InitialAWSContext.from_order_data(order)
+
+    assert result.is_migration_order() is expected
 
 
 def test_purchase_context_from_order_data(order_factory):
