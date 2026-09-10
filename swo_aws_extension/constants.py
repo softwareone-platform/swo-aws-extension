@@ -22,6 +22,13 @@ MONTHS_PER_YEAR = 12
 
 CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS = 90
 
+# Support plan requested in the Partner Central relationship of partner-led support (PLS)
+# migration orders. The SoftwareOne PLS partnership with AWS is built with the Technical
+# Account Manager located in Brazil and SoftwareOne acting as distributor.
+PLS_SUPPORT_PLAN_COVERAGE = "ENTIRE_ORGANIZATION"
+PLS_SUPPORT_PLAN_TAM_LOCATION = "Brazil"
+PLS_SUPPORT_PLAN_PROVIDER = "DISTRIBUTOR"
+
 AWS_MARKETPLACE = "AWS Marketplace"
 
 
