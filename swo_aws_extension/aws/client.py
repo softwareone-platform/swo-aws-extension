@@ -273,18 +273,32 @@ class AWSClient:
         pma_identifier: str,
         mpa_id: str,
         scu: str,
+        requested_support_plan: dict | None = None,
     ) -> dict:
-        """Create relationship in Partner Central."""
+        """
+        Create relationship in Partner Central.
+
+        Args:
+            pma_identifier: Program Management Account identifier.
+            mpa_id: Master Payer Account ID associated to the relationship.
+            scu: Customer SCU, used to build the relationship display name.
+            requested_support_plan: Optional ``requestedSupportPlan`` union (for example
+                ``{"partnerLedSupport": {...}}``) to configure the support plan of the
+                relationship. Omitted from the request when not provided.
+        """
         partner_central_client = self._get_partner_central_client()
-        return partner_central_client.create_relationship(
-            catalog="AWS",
-            associationType="END_CUSTOMER",
-            programManagementAccountIdentifier=pma_identifier,
-            associatedAccountId=mpa_id,
-            displayName=f"{scu}-{mpa_id}",
-            resaleAccountModel="END_CUSTOMER",
-            sector="COMMERCIAL",
-        )
+        request = {
+            "catalog": "AWS",
+            "associationType": "END_CUSTOMER",
+            "programManagementAccountIdentifier": pma_identifier,
+            "associatedAccountId": mpa_id,
+            "displayName": f"{scu}-{mpa_id}",
+            "resaleAccountModel": "END_CUSTOMER",
+            "sector": "COMMERCIAL",
+        }
+        if requested_support_plan:
+            request["requestedSupportPlan"] = requested_support_plan
+        return partner_central_client.create_relationship(**request)
 
     @wrap_boto3_error
     def create_channel_handshake(

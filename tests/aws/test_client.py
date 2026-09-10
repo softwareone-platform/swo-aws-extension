@@ -510,6 +510,37 @@ def test_create_relationship_success(config, aws_client_factory):
     )
 
 
+def test_create_relationship_with_support_plan(config, aws_client_factory):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.create_relationship.return_value = {"relationshipDetail": {"id": "rel-123456"}}
+    support_plan = {
+        "partnerLedSupport": {
+            "coverage": "ENTIRE_ORGANIZATION",
+            "tamLocation": "Brazil",
+            "provider": "DISTRIBUTOR",
+        }
+    }
+
+    result = mock_aws_client.create_relationship_in_partner_central(
+        pma_identifier="pma-123456",
+        mpa_id="123456789",
+        scu="SCU-001",
+        requested_support_plan=support_plan,
+    )
+
+    assert result == {"relationshipDetail": {"id": "rel-123456"}}
+    mock_client.create_relationship.assert_called_once_with(
+        catalog="AWS",
+        associationType="END_CUSTOMER",
+        programManagementAccountIdentifier="pma-123456",
+        associatedAccountId="123456789",
+        displayName="SCU-001-123456789",
+        resaleAccountModel="END_CUSTOMER",
+        sector="COMMERCIAL",
+        requestedSupportPlan=support_plan,
+    )
+
+
 def test_create_relationship_error(config, aws_client_factory):
     mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
     mock_client.create_relationship.side_effect = AWSError("Relationship creation failed")
