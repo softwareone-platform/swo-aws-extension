@@ -925,7 +925,15 @@ def order_parameters_factory(dummy_constraints):
         constraints=None,
         support_type=SupportTypesEnum.PARTNER_LED_SUPPORT.value,
         migration=MigrationOrderEnum.NO_MIGRATION.value,
+        contact=None,
     ):
+        if contact is None:
+            contact = {
+                "firstName": "John",
+                "lastName": "Doe",
+                "email": "john.doe@example.com",
+                "phone": {"prefix": "+34", "number": "600111222"},
+            }
         return [
             {
                 "id": "PAR-1234-5680",
@@ -980,6 +988,14 @@ def order_parameters_factory(dummy_constraints):
                 "externalId": OrderParametersEnum.IS_MIGRATION.value,
                 "type": "choice",
                 "value": migration,
+                "constraints": constraints.copy() if constraints else dummy_constraints.copy(),
+            },
+            {
+                "id": "PAR-1234-5690",
+                "name": "Technical contact",
+                "externalId": OrderParametersEnum.CONTACT.value,
+                "type": "Contact",
+                "value": contact,
                 "constraints": constraints.copy() if constraints else dummy_constraints.copy(),
             },
         ]

@@ -32,6 +32,7 @@ from swo_aws_extension.flows.steps.onboard_services import OnboardServices
 from swo_aws_extension.flows.steps.setup_context import SetupContext
 from swo_aws_extension.flows.steps.swo_job import SWOJobStep
 from swo_aws_extension.flows.steps.terminate import TerminateResponsibilityTransferStep
+from swo_aws_extension.flows.steps.validate_migration_order import ValidateMigrationOrder
 from swo_aws_extension.flows.steps.validate_order import ValidateOrder
 from swo_aws_extension.flows.steps.validate_termination_order import ValidateTerminationOrder
 from swo_aws_extension.flows.steps.wait_terminate_responsibility_transfer import (
@@ -113,11 +114,11 @@ purchase_existing_aws_environment = Pipeline(
 # pipeline skips customer roles, services deployment, contract card and ERP job steps.
 # Those skipped steps normally advance the order phase, so the handshake check and the
 # subscription step are told to jump straight to the next phase this pipeline handles.
-# The migration-specific validation, CRM ticket and CCO steps are added by MPT-24646
-# and MPT-24647.
+# The migration-specific CRM ticket and CCO steps are added by MPT-24647.
 purchase_migration = Pipeline(
     SetupContext(config),
     ValidateOrder(),
+    ValidateMigrationOrder(),
     CreateBillingTransferInvitation(config),
     CheckBillingTransferInvitation(config),
     ConfigureAPNProgram(config),
