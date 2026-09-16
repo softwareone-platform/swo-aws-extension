@@ -44,9 +44,7 @@ global:
   AirTableBases: default
   CcpKeyVaultSecretName: default
   ExtMinimumMpaThreshold: 1
-  FfcOperationsSecret: ZGVmYXVsdA==
   FfcOperationsApiBase: default
-  FfcOperationsSub: default
   MpNotifyCategories: "{}"
   MpInitializer: swo_aws_extension.initializer.initialize
   ManagementRole: default

@@ -1169,9 +1169,10 @@ def extension_settings(settings):
 
 @pytest.fixture
 def ffc_client_settings(extension_settings):
-    extension_settings.EXTENSION_CONFIG["FFC_OPERATIONS_API_BASE_URL"] = "https://local.local"
-    extension_settings.EXTENSION_CONFIG["FFC_SUB"] = "FKT-1234"
-    extension_settings.EXTENSION_CONFIG["FFC_OPERATIONS_SECRET"] = "1234"
+    extension_settings.EXTENSION_CONFIG["FFC_OPERATIONS_API_BASE_URL"] = (
+        "https://local.local/ops/v1"
+    )
+    extension_settings.MPT_API_TOKEN = "mpt-api-token"
 
     return extension_settings
 

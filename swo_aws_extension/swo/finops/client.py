@@ -1,10 +1,8 @@
-import datetime as dt
 import logging
 from functools import wraps
 from urllib.parse import urljoin
 from uuid import uuid4
 
-import jwt
 import requests
 from django.conf import settings
 from requests import HTTPError
@@ -35,24 +33,28 @@ def wrap_http_error(func):
 
 
 class FinOpsClient(requests.Session):
-    """Client to interact with FinOps API."""
+    """Client to interact with the FinOps extension operations API.
 
-    def __init__(self, base_url: str, sub: str, secret: str):
+    Requests are authenticated with the Marketplace API token shared by the extension.
+    """
+
+    def __init__(self, base_url: str, api_token: str):
         super().__init__()
-        self._sub = sub
-        self._secret = secret
-        self._jwt: str | None = None
         base_url = base_url if base_url[-1] == "/" else f"{base_url}/"
         self.base_url = base_url
+        self.headers.update({
+            "Authorization": f"Bearer {api_token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        })
 
     def request(self, method: str, url: str, *args, **kwargs):
-        """Makes HTTP request with authentication."""
-        self._refresh_token_if_needed()
-        self.headers.update(self._get_headers())
+        """Makes HTTP request against the FinOps extension operations API."""
         url = url[1:] if url[0] == "/" else url
         url = urljoin(self.base_url, url)
+        headers = {"X-Request-Id": str(uuid4()), **kwargs.pop("headers", {})}
         kwargs.setdefault("timeout", TIMEOUT)
-        return super().request(method, url, *args, **kwargs)
+        return super().request(method, url, *args, headers=headers, **kwargs)
 
     @wrap_http_error
     def create_entitlement(
@@ -67,6 +69,13 @@ class FinOpsClient(requests.Session):
                 "datasource_id": datasource_id,
             },
         )
+        response.raise_for_status()
+        return response.json()
+
+    @wrap_http_error
+    def get_entitlement(self, entitlement_id: str) -> dict:
+        """Get the FinOps entitlement details by ID."""
+        response = self.get(url=f"entitlements/{entitlement_id}")
         response.raise_for_status()
         return response.json()
 
@@ -93,38 +102,6 @@ class FinOpsClient(requests.Session):
         total = result.get("total", 0)
         return result_items[0] if total > 0 and result_items else None
 
-    def _get_headers(self) -> dict:
-        """Get request headers with authentication."""
-        return {
-            "Authorization": f"Bearer {self._jwt}",
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "X-Request-Id": str(uuid4()),
-        }
-
-    def _refresh_token_if_needed(self) -> None:
-        """Refresh JWT token if expired or not set."""
-        if not self._jwt or self._is_token_expired():
-            now = dt.datetime.now(tz=dt.UTC)
-            self._jwt = jwt.encode(
-                {
-                    "sub": self._sub,
-                    "exp": now + dt.timedelta(minutes=5),
-                    "nbf": now,
-                    "iat": now,
-                },
-                self._secret,
-                algorithm="HS256",
-            )
-
-    def _is_token_expired(self) -> bool:
-        """Check if the JWT token is expired."""
-        try:
-            jwt.decode(self._jwt, self._secret, algorithms=["HS256"])
-        except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
-            return True
-        return False
-
 
 class _FinOpsClientFactory:
     """Factory for FinOps client singleton."""
@@ -139,8 +116,7 @@ class _FinOpsClientFactory:
 
         cls._instance = FinOpsClient(
             settings.EXTENSION_CONFIG["FFC_OPERATIONS_API_BASE_URL"],
-            settings.EXTENSION_CONFIG["FFC_SUB"],
-            settings.EXTENSION_CONFIG["FFC_OPERATIONS_SECRET"],
+            settings.MPT_API_TOKEN,
         )
         return cls._instance
 
