@@ -223,6 +223,7 @@ def test_ensure_subscription_clears_countdown_dry_run(
     mock_update_agreement_subscription.assert_not_called()
 
 
+@freeze_time("2026-06-16")
 def test_ensure_subscription_clears_countdown_logs_exception_on_error(
     agreement_factory,
     subscription_syncer,
@@ -292,6 +293,7 @@ def test_handle_inactive_subscriptions_sets_countdown(
     )
 
 
+@freeze_time("2026-06-16")
 def test_handle_inactive_subscriptions_skips_if_countdown_already_set(
     agreement_factory,
     subscription_syncer,
