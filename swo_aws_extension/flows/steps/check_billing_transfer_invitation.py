@@ -31,6 +31,18 @@ from swo_aws_extension.parameters import (
 logger = logging.getLogger(__name__)
 
 
+def get_pending_invitation_template(context: PurchaseContext) -> OrderQueryingTemplateEnum:
+    """
+    Return the querying template for an order whose billing transfer invitation is pending.
+
+    Migration invitations are accepted manually by the MCoE team, so migration orders use
+    the dedicated migration template instead of the one addressed to the customer.
+    """
+    if context.is_migration_order():
+        return OrderQueryingTemplateEnum.MIGRATION_TRANSFER_AWAITING_INVITATIONS
+    return OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS
+
+
 class CheckBillingTransferInvitation(BasePhaseStep):
     """Check Billing Transfer Invitation step."""
 
@@ -98,7 +110,7 @@ class CheckBillingTransferInvitation(BasePhaseStep):
         else:
             raise QueryStepError(
                 f"Billing transfer invitation {transfer_id} is still pending",
-                OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS,
+                get_pending_invitation_template(context),
             )
 
     @override

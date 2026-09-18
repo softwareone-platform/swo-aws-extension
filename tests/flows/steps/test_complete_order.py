@@ -3,11 +3,16 @@ import pytest
 from swo_aws_extension.constants import (
     AccountTypesEnum,
     ChannelHandshakeDeployed,
+    MigrationOrderEnum,
     OrderCompletedTemplate,
     PhasesEnum,
 )
 from swo_aws_extension.flows.order import InitialAWSContext
-from swo_aws_extension.flows.steps.complete_order import CompleteOrder, CompleteTerminationOrder
+from swo_aws_extension.flows.steps.complete_order import (
+    CompleteOrder,
+    CompleteTerminationOrder,
+    get_completed_template,
+)
 from swo_aws_extension.flows.steps.errors import SkipStepError
 
 
@@ -64,6 +69,48 @@ def test_complete_order_process_completed(
     step.process(mpt_client, context)  # act
 
     mock_switch.assert_called_once_with(mpt_client, context, OrderCompletedTemplate.PURCHASE)
+
+
+def test_complete_order_process_migration_uses_migration_template(
+    mocker, order_factory, order_parameters_factory, mpt_client, initial_context, config
+):
+    order = order_factory(
+        order_parameters=order_parameters_factory(migration=MigrationOrderEnum.YES.value)
+    )
+    mock_switch = mocker.patch(
+        "swo_aws_extension.flows.steps.complete_order.switch_order_status_to_complete"
+    )
+    mock_update_agreement = mocker.patch(
+        "swo_aws_extension.flows.steps.complete_order.update_agreement"
+    )
+    context = initial_context(order)
+    agreement_id = context.agreement["id"]
+    step = CompleteOrder(config)
+
+    step.process(mpt_client, context)  # act
+
+    mock_switch.assert_called_once_with(mpt_client, context, OrderCompletedTemplate.MIGRATION)
+    mock_update_agreement.assert_called_once_with(
+        mpt_client, agreement_id, externalIds={"vendor": "651706759263"}
+    )
+
+
+@pytest.mark.parametrize(
+    ("migration", "expected"),
+    [
+        (MigrationOrderEnum.YES.value, OrderCompletedTemplate.MIGRATION),
+        (MigrationOrderEnum.NO_MIGRATION.value, OrderCompletedTemplate.PURCHASE),
+    ],
+)
+def test_get_completed_template(
+    order_factory, order_parameters_factory, initial_context, migration, expected
+):
+    order = order_factory(order_parameters=order_parameters_factory(migration=migration))
+    context = initial_context(order)
+
+    result = get_completed_template(context)
+
+    assert result == expected
 
 
 def test_complete_order_post_step_logs(order_factory, mpt_client, caplog, initial_context, config):
