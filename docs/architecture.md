@@ -24,8 +24,8 @@ extension (`pyproject.toml` `[project.entry-points."swo.mpt.ext"]` ->
   - order validation endpoint (`POST /v1/orders/validate`) ->
     `process_order_validation`
 - `swo_aws_extension/management/commands/` — Django management commands used by
-  the worker for background jobs (billing journals, reports, agreement and
-  FinOps sync).
+  the worker for background jobs (billing journals, reports, agreement,
+  FinOps and AWS migration order sync).
 
 ## Layers
 
@@ -66,8 +66,8 @@ The runtime is organised as a pipeline-driven fulfilment flow:
 |---|---|
 | `swo_aws_extension/` | Extension config, runtime `config.py`, order `parameters.py`, `constants.py` |
 | `swo_aws_extension/flows/` | Fulfilment orchestration, pipelines, steps, validation, order context |
-| `swo_aws_extension/flows/jobs/` | Background jobs: billing journal, reports, FinOps entitlement sync |
-| `swo_aws_extension/processors/` | Chain-of-responsibility processors for querying AWS roles, handshakes, transfers |
+| `swo_aws_extension/flows/jobs/` | Background jobs: billing journal, reports, FinOps entitlement sync, AWS migration order sync to Airtable (`migration_sync_processor.py`, run daily by `synchronize_migration_orders`: mirrors the order status of each row still waiting on its order and sets the acceptance date, the effective billing transfer start date once AWS reports the invitation accepted, the completion date or the error detail) |
+| `swo_aws_extension/processor/` | Chain-of-responsibility processors for querying AWS roles, handshakes, transfers |
 | `swo_aws_extension/aws/` | `AWSClient` (boto3 AssumeRole, account/billing/CUR operations) |
 | `swo_aws_extension/swo/` | External-service clients (CCP, CRM, FinOps, CCO, Cloud Orchestrator, MPT, Key Vault, Blob, notifications, OpenID) |
 | `swo_aws_extension/airtable/` | Airtable tables: FinOps entitlements sync and AWS Account Migration |

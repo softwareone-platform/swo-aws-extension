@@ -92,6 +92,9 @@ global:
     sync-finops:
       schedule: ""
       command: synchronize_finops_accounts
+    sync-migration-orders:
+      schedule: ""
+      command: synchronize_migration_orders
     invitations-report:
       schedule: ""
       command: create_invitations_report
