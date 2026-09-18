@@ -135,7 +135,6 @@ def test_terminate_steps():
         "TerminateResponsibilityTransferStep",
         "CRMTicketTerminateOrder",
         "WaitTerminateResponsibilityTransferStep",
-        "TerminateFinOpsEntitlementStep",
         "CompleteTerminationOrder",
     ]
 
