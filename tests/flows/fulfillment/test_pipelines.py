@@ -73,6 +73,7 @@ def test_purchase_migration_steps():
         "ConfigureAPNProgram",
         "CreateChannelHandshake",
         "CheckChannelHandshakeStatus",
+        "CRMTicketMigration",
         "CreateSubscription",
         "CompleteOrder",
     ]

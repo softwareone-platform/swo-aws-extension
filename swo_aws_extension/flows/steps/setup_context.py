@@ -93,7 +93,9 @@ class SetupContext(BasePhaseStep):
     def _init_processing_template(self, client: MPTClient, context: InitialAWSContext) -> None:
         template_name = ""
         if context.is_purchase_order():
-            if context.is_type_new_aws_environment():
+            if context.is_migration_order():
+                template_name = OrderProcessingTemplateEnum.MIGRATION
+            elif context.is_type_new_aws_environment():
                 template_name = OrderProcessingTemplateEnum.NEW_ACCOUNT
             else:
                 template_name = OrderProcessingTemplateEnum.EXISTING_ACCOUNT
