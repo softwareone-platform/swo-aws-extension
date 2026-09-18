@@ -10,7 +10,18 @@ from swo_aws_extension.processors.querying.helper import get_template_name, is_q
 
 @pytest.fixture
 def mock_context() -> MagicMock:
-    return MagicMock(spec=PurchaseContext)
+    context = MagicMock(spec=PurchaseContext)
+    context.is_migration_order.return_value = False
+    return context
+
+
+def test_get_template_name_migration(mock_context: MagicMock) -> None:
+    mock_context.is_migration_order.return_value = True
+
+    result = get_template_name(mock_context)
+
+    assert result == OrderProcessingTemplateEnum.MIGRATION
+    mock_context.is_type_new_aws_environment.assert_not_called()
 
 
 def test_get_template_name_new_aws_environment(mock_context: MagicMock) -> None:

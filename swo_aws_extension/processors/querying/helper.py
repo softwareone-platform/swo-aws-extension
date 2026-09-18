@@ -6,6 +6,8 @@ from swo_aws_extension.flows.order import PurchaseContext
 
 def get_template_name(context: PurchaseContext) -> str:
     """Get order processing template name based on context."""
+    if context.is_migration_order():
+        return OrderProcessingTemplateEnum.MIGRATION
     if context.is_type_new_aws_environment():
         return OrderProcessingTemplateEnum.NEW_ACCOUNT
     return OrderProcessingTemplateEnum.EXISTING_ACCOUNT

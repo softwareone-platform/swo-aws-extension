@@ -152,6 +152,7 @@ class OrderProcessingTemplateEnum(StrEnum):
         "AWS Billing Transfer Order Confirmation and next steps - Existing AWS account"
     )
     TERMINATE = "AWS Billing Transfer Termination order received"
+    MIGRATION = "AWS Migration - Order received"
 
 
 class OrderQueryingTemplateEnum(StrEnum):
@@ -162,6 +163,7 @@ class OrderQueryingTemplateEnum(StrEnum):
     NEW_ACCOUNT_CREATION = "AWS Billing Transfer New AWS account creation"
     WAITING_FOR_CUSTOMER_ROLES = "AWS Billing Transfer Waiting for roles deployment template"
     HANDSHAKE_AWAITING_ACCEPTANCE = "AWS Billing Transfer APN Channel Handshake pending acceptance"
+    MIGRATION_TRANSFER_AWAITING_INVITATIONS = "AWS Migration - Billing transfer invitation pending"
 
 
 class OrderCompletedTemplate(StrEnum):
@@ -170,6 +172,7 @@ class OrderCompletedTemplate(StrEnum):
     PURCHASE = "AWS Billing Transfer - Order Completed"
     TERMINATION = "AWS Billing Transfer Termination order approved"
     TERMINATION_WITHOUT_HANDSHAKE = "AWS Billing Transfer Termination order approved - wt handshake"
+    MIGRATION = "AWS Migration - Order completed"
 
 
 class MptOrderStatus(StrEnum):

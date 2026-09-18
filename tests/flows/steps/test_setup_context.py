@@ -6,6 +6,7 @@ from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import (
     AccountTypesEnum,
     FulfillmentParametersEnum,
+    MigrationOrderEnum,
     OrderParametersEnum,
     OrderProcessingTemplateEnum,
     PhasesEnum,
@@ -178,6 +179,39 @@ def test_init_template_new_account(
 
     update_template_mock.assert_called_once_with(
         mpt_client_mock, context, OrderProcessingTemplateEnum.NEW_ACCOUNT
+    )
+
+
+def test_init_template_migration(
+    mocker, config, order_factory, fulfillment_parameters_factory, order_parameters_factory
+):
+    mpt_client_mock = mocker.MagicMock(spec=MPTClient)
+    next_step_mock = mocker.MagicMock(spec=Step)
+    mocker.patch("swo_aws_extension.flows.steps.setup_context.AWSClient")
+    update_template_mock = mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.update_processing_template"
+    )
+    order = order_factory(
+        order_type="Purchase",
+        order_parameters=order_parameters_factory(
+            account_type=AccountTypesEnum.EXISTING_AWS_ENVIRONMENT,
+            migration=MigrationOrderEnum.YES.value,
+        ),
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION.value,
+        ),
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.steps.setup_context.update_order",
+        return_value=order,
+    )
+    context = PurchaseContext.from_order_data(order)
+    step = SetupContext(config)
+
+    step(mpt_client_mock, context, next_step_mock)  # act
+
+    update_template_mock.assert_called_once_with(
+        mpt_client_mock, context, OrderProcessingTemplateEnum.MIGRATION
     )
 
 
