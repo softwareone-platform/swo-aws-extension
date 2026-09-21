@@ -155,8 +155,9 @@ USE_APPLICATIONINSIGHTS = os.getenv("USE_APPLICATIONINSIGHTS", "False").lower() 
 APPLICATIONINSIGHTS_CONNECTION_STRING = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "")
 
 
-MPT_API_BASE_URL = os.getenv("MPT_API_BASE_URL", "http://localhost:8000")
-MPT_API_TOKEN = os.getenv("MPT_API_TOKEN", "change-me!")
+# Fixed values so the tests do not depend on the local .env (the SDK deprecates /public in the URL).
+MPT_API_BASE_URL = "http://localhost:8000"
+MPT_API_TOKEN = "change-me!"
 MPT_PRODUCTS_IDS = ["PRD-1111-1111"]
 MPT_ORDERS_API_POLLING_INTERVAL_SECS = 30
 MPT_PORTAL_BASE_URL = "https://portal.s1.local"
@@ -167,16 +168,17 @@ MPT_NOTIFY_CATEGORIES = json.loads(
 
 
 EXTENSION_CONFIG = {
+    # HS256 keys must be at least 32 bytes long, otherwise PyJWT warns on every signature.
     "WEBHOOKS_SECRETS": {
-        "PRD-1111-1111": "test secret 1",
-        "PRD-1234-1234": "test secret 2",
-        "PRD-1975-5250": "test secret 3",
-        "PRD-1234-5678": "test secret 4",
-        "PRD-1": "test secret 5",
-        "PRD-2": "test secret 6",
-        "123": "test secret 7",
-        "456": "test secret 8",
-        "PRD-123-123-002": "test secret 9",
+        "PRD-1111-1111": "test-secret-1-with-at-least-32-bytes!",
+        "PRD-1234-1234": "test-secret-2-with-at-least-32-bytes!",
+        "PRD-1975-5250": "test-secret-3-with-at-least-32-bytes!",
+        "PRD-1234-5678": "test-secret-4-with-at-least-32-bytes!",
+        "PRD-1": "test-secret-5-with-at-least-32-bytes!",
+        "PRD-2": "test-secret-6-with-at-least-32-bytes!",
+        "123": "test-secret-7-with-at-least-32-bytes!",
+        "456": "test-secret-8-with-at-least-32-bytes!",
+        "PRD-123-123-002": "test-secret-9-with-at-least-32-bytes!",
     },
     "MAX_RETRY_ATTEMPS": "10",
     "DUE_DATE_DAYS": "30",

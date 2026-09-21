@@ -15,7 +15,7 @@ The repository currently has stable coverage in these areas:
 
 - extension registration and startup checks in [`tests/test_extension.py`](../tests/test_extension.py), [`tests/test_initializer.py`](../tests/test_initializer.py), and Django settings under [`tests/django/`](../tests/django)
 - AWS client and configuration behavior in [`tests/aws/`](../tests/aws)
-- fulfillment, jobs, steps, and validation flows in [`tests/flows/`](../tests/flows)
+- fulfillment, jobs, steps, and validation flows in [`tests/flows/`](../tests/flows); the AWS migration sync job is covered by `tests/flows/jobs/test_migration_sync_processor.py` (order mirroring, acceptance and start dates, completion, failures, the billing transfer start ticket with its `crmMigrationTicketId` guard, dry run) and `tests/flows/jobs/test_migration_billing_transfer_ticket.py` (ticket building, creation and agreement storage)
 - management commands and helpers in [`tests/management/`](../tests/management)
 - Marketplace, CCP, CRM, FinOps, notification, and query-builder integrations under [`tests/swo/`](../tests/swo), with per-service subdirectories such as [`tests/swo/mpt/`](../tests/swo/mpt), [`tests/swo/ccp/`](../tests/swo/ccp), [`tests/swo/cco/`](../tests/swo/cco), [`tests/swo/crm_service/`](../tests/swo/crm_service), [`tests/swo/finops/`](../tests/swo/finops), [`tests/swo/rql/`](../tests/swo/rql), and [`tests/swo/notifications/`](../tests/swo/notifications); agreement and subscription sync behavior lives in [`tests/swo/mpt/sync/`](../tests/swo/mpt/sync): `test_agreement_syncer.py` covers `AgreementSyncer` (responsibility-transfer validation, termination, dry-run), `test_responsibility_transfers.py` covers the responsibility-transfer lookup helpers, and `test_agreement_subscription_syncer.py` covers `AgreementSubscriptionsSyncer` (subscription creation, idempotency, inactivity countdown set/clear, expiry-based termination, dry-run, and error handling)
 - Airtable, file-builder, processor, and utility behavior in [`tests/airtable/`](../tests/airtable), [`tests/file_builder/`](../tests/file_builder), [`tests/processor/`](../tests/processor), and [`tests/utils/`](../tests/utils)
@@ -46,6 +46,7 @@ Repository-specific test settings come from [`pyproject.toml`](../pyproject.toml
 - `pythonpath` includes the repository root
 - coverage is collected for the repository codebase and omits `tests/**`
 - `DJANGO_SETTINGS_MODULE` is `tests.django.settings`
+- `tests/django/settings.py` fixes `MPT_API_BASE_URL` and `MPT_API_TOKEN` to constant test values instead of reading them from the environment, so the suite does not depend on the local `.env` (the SDK deprecates a `/public` suffix in the URL), and uses webhook secrets of at least 32 bytes so PyJWT does not warn on HS256 signatures
 - tests run with `--import-mode=importlib`
 
 ## Writing Tests

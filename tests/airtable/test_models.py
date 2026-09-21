@@ -277,6 +277,7 @@ def test_account_migration_status_values(status, expected):
     ("status", "expected"),
     [
         (AccountMigrationOrderStatus.DRAFT, "Draft"),
+        (AccountMigrationOrderStatus.QUOTED, "Quoted"),
         (AccountMigrationOrderStatus.PROCESSING, "Processing"),
         (AccountMigrationOrderStatus.QUERYING, "Querying"),
         (AccountMigrationOrderStatus.COMPLETED, "Completed"),

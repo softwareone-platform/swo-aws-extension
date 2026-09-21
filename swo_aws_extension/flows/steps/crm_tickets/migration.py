@@ -8,11 +8,11 @@ from swo_aws_extension.flows.steps.errors import SkipStepError
 from swo_aws_extension.parameters import (
     get_cco_contract_number,
     get_channel_handshake_approval_status,
-    get_crm_migration_ticket_id,
+    get_crm_onboard_ticket_id,
     get_formatted_technical_contact,
     get_mpa_account_id,
     get_support_type,
-    set_crm_migration_ticket_id,
+    set_crm_onboard_ticket_id,
 )
 
 
@@ -22,7 +22,9 @@ class CRMTicketMigration(BaseCRMTicketStep):
 
     Runs once the billing transfer and the channel handshake are settled, in the
     createSubscription phase of the migration pipeline. The ticket id is stored in the
-    crmMigrationTicketId fulfillment parameter, so the ticket is created only once.
+    crmOnboardTicketId fulfillment parameter, so the ticket is created only once. The
+    crmMigrationTicketId parameter is reserved for the billing transfer start ticket that
+    the migration sync job creates once the transfer is effective.
     """
 
     ticket_name = "Migration"
@@ -35,7 +37,7 @@ class CRMTicketMigration(BaseCRMTicketStep):
                 f"{context.order_id} - Next - Current phase is '{context.phase}', skipping "
                 f"create migration ticket"
             )
-        if get_crm_migration_ticket_id(context.order):
+        if get_crm_onboard_ticket_id(context.order):
             raise SkipStepError(
                 f"{context.order_id} - Next - CRM Migration Ticket is already created,"
                 f" skipping step"
@@ -63,4 +65,4 @@ class CRMTicketMigration(BaseCRMTicketStep):
 
     @override
     def _set_ticket_id(self, order: dict, ticket_id: str) -> dict:
-        return set_crm_migration_ticket_id(order, ticket_id)
+        return set_crm_onboard_ticket_id(order, ticket_id)
