@@ -180,7 +180,12 @@ class OrderCompletedTemplate(StrEnum):
 class MptOrderStatus(StrEnum):
     """MPT order statuses."""
 
+    DRAFT = "Draft"
+    PROCESSING = "Processing"
+    QUERYING = "Querying"
     COMPLETED = "Completed"
+    FAILED = "Failed"
+    DELETED = "Deleted"
 
 
 class FinOpsStatusEnum(StrEnum):
