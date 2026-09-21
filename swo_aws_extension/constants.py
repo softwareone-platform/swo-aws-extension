@@ -179,6 +179,7 @@ class MptOrderStatus(StrEnum):
     """MPT order statuses."""
 
     DRAFT = "Draft"
+    QUOTED = "Quoted"
     PROCESSING = "Processing"
     QUERYING = "Querying"
     COMPLETED = "Completed"

@@ -1,3 +1,5 @@
+import datetime as dt
+
 from mpt_extension_sdk.core.utils import setup_client
 
 from swo_aws_extension.config import Config
@@ -10,7 +12,10 @@ config = Config()
 class Command(StyledPrintCommand):
     """Command to synchronize the AWS migration orders with the Airtable migration table."""
 
-    help = "Synchronize the AWS Account Migration Airtable rows with their Marketplace orders."
+    help = (
+        "Synchronize the AWS Account Migration Airtable rows with their Marketplace orders and "
+        "start the billing transfers already effective for the completed migrations."
+    )
     name = "synchronize_migration_orders"
 
     def add_arguments(self, parser):
@@ -26,5 +31,8 @@ class Command(StyledPrintCommand):
         """Run command."""
         self.info(f"Start processing {self.name}")
         mpt_client = setup_client()
-        MigrationOrdersSyncProcessor(mpt_client, config, dry_run=options["dry_run"]).sync()
+        run_date = dt.datetime.now(tz=dt.UTC).date()
+        MigrationOrdersSyncProcessor(
+            mpt_client, config, run_date, dry_run=options["dry_run"]
+        ).sync()
         self.success(f"Processing {self.name} completed.")

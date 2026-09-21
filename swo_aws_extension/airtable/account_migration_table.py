@@ -1,6 +1,8 @@
+from collections.abc import Iterable
+
 from django.conf import settings
 from pyairtable import Api
-from pyairtable.formulas import EQ, Field
+from pyairtable.formulas import EQ, OR, Field
 
 from swo_aws_extension.airtable.models import (
     AccountMigrationFields,
@@ -28,16 +30,19 @@ class AwsAccountMigrationTable:
         """Get the records with the given migration status, in table order."""
         return self._get_all_by_field(AccountMigrationFields.MIGRATION_STATUS, status)
 
+    def get_by_statuses(
+        self, statuses: Iterable[AccountMigrationStatus]
+    ) -> list[AccountMigrationRecord]:
+        """Get the records in any of the given migration statuses, in table order."""
+        status_field = Field(AccountMigrationFields.MIGRATION_STATUS.value)
+        formula = OR(*(EQ(status_field, str(status)) for status in statuses))
+        records = self._table.all(formula=formula)
+        return [AccountMigrationRecord.from_airtable_record(record) for record in records]
+
     def get_by_order_id(self, order_id: str) -> AccountMigrationRecord | None:
         """Get the record linked to a Marketplace order id, if any."""
         records = self._get_all_by_field(AccountMigrationFields.MPT_ORDER_ID, order_id)
         return records[0] if records else None
-
-    def get_by_billing_transfer_start_date(self, start_date: str) -> list[AccountMigrationRecord]:
-        """Get the records whose billing transfer starts on the given ISO date (YYYY-MM-DD)."""
-        return self._get_all_by_field(
-            AccountMigrationFields.BILLING_TRANSFER_START_DATE, start_date
-        )
 
     def save(self, record: AccountMigrationRecord) -> AccountMigrationRecord:
         """Save a record to Airtable (create or update)."""

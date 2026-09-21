@@ -2,6 +2,8 @@
 
 Automates the creation and lifecycle management of Customer Service Requests linked to AWS orders. The extension creates a ticket when an order enters a specific phase, adds comments as the order progresses, and reads the ticket status to decide the next step.
 
+The migration sync job also creates a ticket outside the order flow: once the billing transfer of a migrated account is effective, it notifies the MCoE team that the transfer is active (template `BILLING_TRANSFER_START_TEMPLATE`, correlated with the migration order id). The ticket id is stored in the `crmMigrationTicketId` fulfillment parameter of the agreement, which the job checks before creating the ticket so a retried row never gets a second one; the migrated-customer ticket created during fulfillment uses `crmOnboardTicketId` instead. A row whose ticket fails stays in `Completed` with the error detail and is retried on the next daily run.
+
 ## Authentication
 
 OAuth 2.0 Client Credentials. Every request carries a `Bearer` token, an `x-api-version` header, and an `x-correlation-id` header set to the MPT order ID.

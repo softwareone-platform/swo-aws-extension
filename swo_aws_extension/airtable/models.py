@@ -102,6 +102,7 @@ class AccountMigrationOrderStatus(StrEnum):
     """Status of the Marketplace order mirrored in the AWS Account Migration table."""
 
     DRAFT = "Draft"
+    QUOTED = "Quoted"
     PROCESSING = "Processing"
     QUERYING = "Querying"
     COMPLETED = "Completed"

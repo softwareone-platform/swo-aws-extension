@@ -5,7 +5,7 @@ from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.crm_tickets.migration import CRMTicketMigration
 from swo_aws_extension.flows.steps.crm_tickets.templates.migration import MIGRATION_TEMPLATE
 from swo_aws_extension.flows.steps.errors import SkipStepError, UnexpectedStopError
-from swo_aws_extension.parameters import get_crm_migration_ticket_id
+from swo_aws_extension.parameters import get_crm_onboard_ticket_id
 from swo_aws_extension.swo.crm_service.client import ServiceRequest
 from swo_aws_extension.swo.crm_service.errors import CRMError
 
@@ -21,7 +21,7 @@ def migration_context(order_factory, order_parameters_factory, fulfillment_param
                 phase=phase,
                 cco_contract_number="CCO-1",
                 channel_handshake_approved=ChannelHandshakeDeployed.YES.value,
-                crm_migration_ticket_id=ticket_id,
+                crm_onboard_ticket_id=ticket_id,
             ),
         )
         return PurchaseContext.from_order_data(order)
@@ -80,7 +80,7 @@ def test_process_creates_service_request(migration_context, mpt_client, mock_crm
     mock_crm_client.return_value.create_service_request.assert_called_once_with(
         context.order_id, expected_service_request
     )
-    assert get_crm_migration_ticket_id(context.order) == "TICKET-123"
+    assert get_crm_onboard_ticket_id(context.order) == "TICKET-123"
 
 
 def test_process_logs_ticket_creation(
