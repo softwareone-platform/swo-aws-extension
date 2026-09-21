@@ -22,6 +22,7 @@ from swo_aws_extension.flows.steps.create_billing_transfer_invitation import (
 from swo_aws_extension.flows.steps.create_channel_handshake import CreateChannelHandshake
 from swo_aws_extension.flows.steps.create_new_aws_environment import CreateNewAWSEnvironment
 from swo_aws_extension.flows.steps.create_subscription import CreateSubscription
+from swo_aws_extension.flows.steps.crm_tickets.migration import CRMTicketMigration
 from swo_aws_extension.flows.steps.crm_tickets.new_account import CRMTicketNewAccount
 from swo_aws_extension.flows.steps.crm_tickets.onboard_services import CRMTicketOnboardServices
 from swo_aws_extension.flows.steps.crm_tickets.order_fail import CRMTicketOrderFail
@@ -114,7 +115,14 @@ purchase_existing_aws_environment = Pipeline(
 # pipeline skips customer roles, services deployment, contract card and ERP job steps.
 # Those skipped steps normally advance the order phase, so the handshake check and the
 # subscription step are told to jump straight to the next phase this pipeline handles.
-# The migration-specific CRM ticket and CCO steps are added by MPT-24647.
+# The billing transfer invitation is accepted manually by the MCoE team: while it is pending
+# the order waits in querying with the migration template, and a declined, canceled or
+# expired invitation fails the order. The existing CCO is prefilled in the order by the
+# Migration Orders extension and only validated here, so no contract card or ERP job runs.
+# Once the channel handshake is accepted, the migration CRM ticket is created before the
+# master payer subscription is created and the order completes with the migration template.
+# The FinOps entitlement is created afterwards by the FinOps synchronization job, as in the
+# regular flows.
 purchase_migration = Pipeline(
     SetupContext(config),
     ValidateOrder(),
@@ -124,6 +132,7 @@ purchase_migration = Pipeline(
     ConfigureAPNProgram(config),
     CreateChannelHandshake(config),
     CheckChannelHandshakeStatus(config, next_phase=PhasesEnum.CREATE_SUBSCRIPTION),
+    CRMTicketMigration(config),
     CreateSubscription(config, next_phase=PhasesEnum.COMPLETED),
     CompleteOrder(config),
 )

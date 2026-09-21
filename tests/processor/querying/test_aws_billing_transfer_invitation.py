@@ -33,6 +33,7 @@ def mock_context() -> MagicMock:
     context.order_id = "ORD-123"
     context.pm_account_id = "123456789012"
     context.aws_client = MagicMock()
+    context.is_migration_order.return_value = False
     return context
 
 
