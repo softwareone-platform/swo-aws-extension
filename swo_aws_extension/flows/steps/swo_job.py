@@ -16,7 +16,7 @@ from swo_aws_extension.parameters import (
     set_erp_project_no,
     set_phase,
 )
-from swo_aws_extension.swo.cco.errors import SellerCountryNotFoundError
+from swo_aws_extension.swo.cco.errors import SellerExternalIdNotFoundError
 from swo_aws_extension.swo.cco.seller_mapper import SellerMapper
 from swo_aws_extension.swo.notifications.teams import notify_one_time_error
 from swo_aws_extension.swo.service_provisioning.client import get_service_provisioning_client
@@ -85,17 +85,18 @@ class SWOJobStep(BasePhaseStep):
 
         try:
             erp_project_no = self._create_swo_job(context, contract_number)
-        except SellerCountryNotFoundError:
-            seller_country = context.seller.get("address", {}).get("country", "")
+        except SellerExternalIdNotFoundError:
+            seller_external_id = context.seller.get("externalId", "")
             logger.exception(
-                "%s - SellerCountryNotFoundError - No legal entity mapping for seller country '%s'",
+                "%s - SellerExternalIdNotFoundError - No legal entity mapping for seller "
+                "external ID '%s'",
                 context.order_id,
-                seller_country,
+                seller_external_id,
             )
             notify_one_time_error(
                 f"SWOJobStep error for order {context.order_id}",
-                f"No SoftwareOne legal entity mapping found for seller country "
-                f"`{seller_country}` on order `{context.order_id}`. "
+                f"No SoftwareOne legal entity mapping found for seller external ID "
+                f"`{seller_external_id}` on order `{context.order_id}`. "
                 "Processing continues to the next step.",
             )
             return
@@ -136,8 +137,7 @@ class SWOJobStep(BasePhaseStep):
         email = contact_info.get("email", "")
         phone = contact_info.get("phone", "")
 
-        seller_country = context.seller.get("address", {}).get("country", "")
-        software_one_legal_entity = SellerMapper().map(seller_country)
+        software_one_legal_entity = SellerMapper().resolve(context.seller)
 
         request = ServiceOnboardingRequest(
             erp_client_id=software_one_legal_entity,

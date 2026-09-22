@@ -1,6 +1,6 @@
 import datetime as dt
 import logging
-from typing import override
+from typing import Any, override
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
@@ -17,7 +17,7 @@ from swo_aws_extension.parameters import (
     set_cco_contract_number,
 )
 from swo_aws_extension.swo.cco.client import get_cco_client
-from swo_aws_extension.swo.cco.errors import CcoError, SellerCountryNotFoundError
+from swo_aws_extension.swo.cco.errors import CcoError, SellerExternalIdNotFoundError
 from swo_aws_extension.swo.cco.models import CreateCcoRequest
 from swo_aws_extension.swo.cco.seller_mapper import SellerMapper
 from swo_aws_extension.swo.notifications.teams import notify_one_time_error
@@ -25,19 +25,23 @@ from swo_aws_extension.swo.notifications.teams import notify_one_time_error
 logger = logging.getLogger(__name__)
 
 
-def map_software_one_legal_entity(seller_country: str) -> str:
-    """Map a seller country code to the SoftwareOne legal entity identifier.
+def map_software_one_legal_entity(seller: dict[str, Any]) -> str:
+    """Resolve the SoftwareOne legal entity identifier of the order seller.
+
+    Prefers the Navision company code from ``seller.attributes.navision.companyCode``
+    and falls back to mapping the seller ``externalId``.
 
     Args:
-        seller_country: ISO country code from the seller address.
+        seller: Seller object embedded in the order.
 
     Returns:
-        The SoftwareOne legal entity string for the given country.
+        The SoftwareOne legal entity string for the given seller.
 
     Raises:
-        SellerCountryNotFoundError: If the country code is not present in the map.
+        SellerExternalIdNotFoundError: If no company code is set and the external ID is
+            not present in the map.
     """
-    return SellerMapper().map(seller_country)
+    return SellerMapper().resolve(seller)
 
 
 class ContractCardStep(BasePhaseStep):
@@ -131,17 +135,18 @@ class ContractCardStep(BasePhaseStep):
         )
         try:
             return self._create_contract(context, mpa_id)
-        except SellerCountryNotFoundError:
-            seller_country = context.seller.get("address", {}).get("country", "")
+        except SellerExternalIdNotFoundError:
+            seller_external_id = context.seller.get("externalId", "")
             logger.exception(
-                "%s - SellerCountryNotFoundError - No legal entity mapping for seller country '%s'",
+                "%s - SellerExternalIdNotFoundError - No legal entity mapping for seller "
+                "external ID '%s'",
                 context.order_id,
-                seller_country,
+                seller_external_id,
             )
             notify_one_time_error(
                 f"ContractCardStep error for order {context.order_id}",
-                f"No SoftwareOne legal entity mapping found for seller country "
-                f"`{seller_country}` on order `{context.order_id}`. "
+                f"No SoftwareOne legal entity mapping found for seller external ID "
+                f"`{seller_external_id}` on order `{context.order_id}`. "
                 "Processing continues to the next step.",
             )
         except CcoError:
@@ -165,8 +170,7 @@ class ContractCardStep(BasePhaseStep):
         customer_reference = context.agreement.get("externalIds", {}).get("client", "")
 
         currency = context.currency or "USD"
-        seller_country = context.seller.get("address", {}).get("country", "")
-        software_one_legal_entity = map_software_one_legal_entity(seller_country)
+        software_one_legal_entity = map_software_one_legal_entity(context.seller)
         manufacturer_code = get_config().cco_manufacturer_code
 
         request = CreateCcoRequest(
