@@ -10,7 +10,7 @@ from swo_aws_extension.flows.steps.contract_card import (
 )
 from swo_aws_extension.flows.steps.errors import SkipStepError
 from swo_aws_extension.parameters import get_cco_contract_number, get_phase
-from swo_aws_extension.swo.cco.errors import CcoError, SellerCountryNotFoundError
+from swo_aws_extension.swo.cco.errors import CcoError, SellerExternalIdNotFoundError
 from swo_aws_extension.swo.cco.models import CcoContract, CreateCcoRequest, CreateCcoResponse
 
 MODULE = "swo_aws_extension.flows.steps.contract_card"
@@ -88,6 +88,42 @@ def test_process_creates_contract_when_none_exist(mocker, purchase_context, mpt_
     assert not request.customer_reference
     assert request.manufacturer_code == "SWOTS"
     assert "Created CCO contract" in caplog.text
+
+
+def test_process_uses_seller_external_id_not_country_for_legal_entity(
+    mocker, purchase_context, mpt_client
+):
+    context = purchase_context()
+    context.seller["externalId"] = "ES_CPX"
+    context.seller["address"]["country"] = "ES"
+    mock_client = mocker.patch(f"{MODULE}.get_cco_client")
+    mock_client.return_value.get_all_contracts.return_value = []
+    mock_client.return_value.create_cco.return_value = CreateCcoResponse(
+        contract_number=SAMPLE_CONTRACT_NUMBER
+    )
+
+    ContractCardStep().process(mpt_client, context)  # act
+
+    create_cco = mock_client.return_value.create_cco
+    request: CreateCcoRequest = create_cco.call_args.args[0]
+    assert request.software_one_legal_entity == "CPX_ES"
+
+
+def test_process_uses_navision_company_code_over_external_id(mocker, purchase_context, mpt_client):
+    context = purchase_context()
+    context.seller["externalId"] = "XX"
+    context.seller["attributes"] = {"navision": {"companyCode": "CPX_ES"}}
+    mock_client = mocker.patch(f"{MODULE}.get_cco_client")
+    mock_client.return_value.get_all_contracts.return_value = []
+    mock_client.return_value.create_cco.return_value = CreateCcoResponse(
+        contract_number=SAMPLE_CONTRACT_NUMBER
+    )
+
+    ContractCardStep().process(mpt_client, context)  # act
+
+    create_cco = mock_client.return_value.create_cco
+    request: CreateCcoRequest = create_cco.call_args.args[0]
+    assert request.software_one_legal_entity == "CPX_ES"
 
 
 def test_process_sets_customer_reference_from_agreement_external_id(
@@ -191,23 +227,31 @@ def test_post_step_sets_phase_unchanged(mocker, purchase_context, mpt_client):
 
 
 def test_map_software_one_legal_entity_returns_mapped_value():
-    result = map_software_one_legal_entity("US")
+    result = map_software_one_legal_entity({"externalId": "US"})
 
     assert result == "SWO_US"
 
 
 def test_map_software_one_legal_entity_is_case_insensitive():
-    result = map_software_one_legal_entity("us")
+    result = map_software_one_legal_entity({"externalId": "us"})
 
     assert result == "SWO_US"
 
 
-def test_map_software_one_legal_entity_raises_for_unknown_country():
-    with pytest.raises(SellerCountryNotFoundError):
-        map_software_one_legal_entity("XX")
+def test_map_software_one_legal_entity_prefers_navision_company_code():
+    seller = {"externalId": "US", "attributes": {"navision": {"companyCode": "CPX_ES"}}}
+
+    result = map_software_one_legal_entity(seller)
+
+    assert result == "CPX_ES"
 
 
-def test_process_missing_seller_country_logs_and_notifies(
+def test_map_software_one_legal_entity_raises_for_unknown_external_id():
+    with pytest.raises(SellerExternalIdNotFoundError):
+        map_software_one_legal_entity({"externalId": "XX"})
+
+
+def test_process_missing_seller_external_id_logs_and_notifies(
     mocker, purchase_context, mpt_client, caplog
 ):
     context = purchase_context()
@@ -215,7 +259,7 @@ def test_process_missing_seller_country_logs_and_notifies(
     mock_client.return_value.get_all_contracts.return_value = []
     mocker.patch(
         f"{MODULE}.map_software_one_legal_entity",
-        side_effect=SellerCountryNotFoundError("XX"),
+        side_effect=SellerExternalIdNotFoundError("XX"),
     )
     mock_notify = mocker.patch(f"{MODULE}.notify_one_time_error")
 
@@ -225,4 +269,4 @@ def test_process_missing_seller_country_logs_and_notifies(
     assert result is None
     assert not get_cco_contract_number(context.order)
     mock_notify.assert_called_once()
-    assert "SellerCountryNotFoundError" in caplog.text
+    assert "SellerExternalIdNotFoundError" in caplog.text
