@@ -87,6 +87,7 @@ def agreement(buyer, licensee, listing, seller):
             "href": seller["href"],
             "name": seller["name"],
             "icon": seller["icon"],
+            "externalId": seller["externalId"],
             "address": {
                 "country": "US",
             },
@@ -181,6 +182,7 @@ def agreement_factory(buyer, order_parameters_factory, fulfillment_parameters_fa
                 "href": seller["href"],
                 "name": seller["name"],
                 "icon": seller["icon"],
+                "externalId": seller["externalId"],
                 "address": {
                     "country": "US",
                 },
@@ -1110,6 +1112,7 @@ def seller():
         "href": "/accounts/sellers/SEL-9121-8944",
         "name": "SWO US",
         "icon": "/static/SEL-9121-8944/icon.png",
+        "externalId": "US",
         "address": {
             "country": "US",
             "region": "CA",
