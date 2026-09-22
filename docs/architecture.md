@@ -43,7 +43,7 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    invitation and waits in querying until the MCoE team accepts it manually
    (a declined, canceled or expired invitation fails the order), configures
    the APN program and channel handshake, creates the migration CRM ticket
-   (`crmMigrationTicketId`), creates the master payer subscription and
+   (`crmOnboardTicketId`), creates the master payer subscription and
    completes the order. The existing CCO is prefilled in the order and only
    validated, so no contract card or ERP job is created. Customer roles and
    services deployment are not executed. The FinOps entitlement is created
@@ -77,7 +77,7 @@ The runtime is organised as a pipeline-driven fulfilment flow:
 |---|---|
 | `swo_aws_extension/` | Extension config, runtime `config.py`, order `parameters.py`, `constants.py` |
 | `swo_aws_extension/flows/` | Fulfilment orchestration, pipelines, steps, validation, order context |
-| `swo_aws_extension/flows/jobs/` | Background jobs: reports, FinOps entitlement sync, MPT subscription sync for linked AWS accounts, AWS migration order sync to Airtable (`migration_sync_processor.py`, run daily by `synchronize_migration_orders`: mirrors the order status of each row still waiting on its order and sets the acceptance date, the effective billing transfer start date once AWS reports the invitation accepted, the completion date or the error detail) |
+| `swo_aws_extension/flows/jobs/` | Background jobs: reports, FinOps entitlement sync, MPT subscription sync for linked AWS accounts, AWS migration order sync to Airtable (`migration_sync_processor.py`, run daily by `synchronize_migration_orders` over the rows in `Pending notify customer`, `Migration in progress` and `Completed`: mirrors the order status of each row and sets the acceptance date, the effective billing transfer start date once AWS reports the invitation accepted, the completion date or the error detail; when a completed row has a start date on or before the run date it also creates the ServiceNow ticket that tells the MCoE team the transfer is active, stores its id in the `crmMigrationTicketId` parameter of the agreement (checked first, so a retried row never gets a second ticket; the ticket helpers live in `migration_billing_transfer_ticket.py`) and moves the row to `Services onboarded`, all in a single Airtable write per row; migrated customers keep their existing CCO and ERP project, so no services onboarding call is made; a row whose ticket fails keeps `Completed` with the error detail and is retried on the next run) |
 | `swo_aws_extension/billing/` | Billing journal generation, line processors, generators, models, and AWS invoice document attachment |
 | `swo_aws_extension/processor/` | Chain-of-responsibility processors for querying AWS roles, handshakes, transfers |
 | `swo_aws_extension/aws/` | `AWSClient` (boto3 AssumeRole, account/billing/CUR operations, Cost Explorer with dimension attributes, Invoicing summaries and invoice document retrieval) |

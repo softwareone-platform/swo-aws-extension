@@ -79,6 +79,36 @@ def test_get_by_status_uses_status_formula(mock_table):
     assert str(mock_table.all.call_args.kwargs["formula"]) == "{Migration status}='Error'"
 
 
+def test_get_by_statuses_uses_or_formula(mock_table):
+    mock_table.all.return_value = []
+    account_migration_table = AwsAccountMigrationTable()
+
+    account_migration_table.get_by_statuses((
+        AccountMigrationStatus.COMPLETED,
+        AccountMigrationStatus.MIGRATION_IN_PROGRESS,
+    ))  # act
+
+    assert (
+        str(mock_table.all.call_args.kwargs["formula"])
+        == "OR({Migration status}='Completed', {Migration status}='Migration in progress')"
+    )
+
+
+def test_get_by_statuses_returns_records_in_table_order(mock_table):
+    mock_table.all.return_value = [
+        {"id": "rec1", "fields": {AccountMigrationFields.MASTERPAYER.value: "111111111111"}},
+        {"id": "rec2", "fields": {AccountMigrationFields.MASTERPAYER.value: "222222222222"}},
+    ]
+    account_migration_table = AwsAccountMigrationTable()
+
+    result = account_migration_table.get_by_statuses([AccountMigrationStatus.COMPLETED])
+
+    assert [(record.record_id, record.masterpayer) for record in result] == [
+        ("rec1", "111111111111"),
+        ("rec2", "222222222222"),
+    ]
+
+
 def test_get_by_order_id(mock_table):
     mock_table.all.return_value = [
         {
@@ -109,32 +139,6 @@ def test_get_by_order_id_not_found(mock_table):
     result = account_migration_table.get_by_order_id("ORD-2222-2222")
 
     assert result is None
-
-
-def test_get_by_billing_transfer_start_date(mock_table):
-    mock_table.all.return_value = [
-        {
-            "id": "rec123",
-            "fields": {AccountMigrationFields.BILLING_TRANSFER_START_DATE.value: "2026-10-01"},
-        }
-    ]
-    account_migration_table = AwsAccountMigrationTable()
-
-    result = account_migration_table.get_by_billing_transfer_start_date("2026-10-01")
-
-    assert [record.billing_transfer_start_date for record in result] == ["2026-10-01"]
-
-
-def test_get_by_billing_transfer_start_date_uses_date_formula(mock_table):
-    mock_table.all.return_value = []
-    account_migration_table = AwsAccountMigrationTable()
-
-    account_migration_table.get_by_billing_transfer_start_date("2026-10-01")  # act
-
-    assert (
-        str(mock_table.all.call_args.kwargs["formula"])
-        == "{Billing transfer start date}='2026-10-01'"
-    )
 
 
 def test_save_creates_new_record(mock_table, account_migration_record_factory):

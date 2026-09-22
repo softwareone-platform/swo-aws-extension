@@ -1,6 +1,6 @@
 import datetime as dt
 import logging
-from itertools import batched
+from dataclasses import dataclass, field
 from typing import Any
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
@@ -11,22 +11,31 @@ from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.config import Config
 from swo_aws_extension.constants import MptOrderStatus, ResponsibilityTransferStatus
+from swo_aws_extension.flows.jobs.migration_billing_transfer_ticket import (
+    create_ticket,
+    get_stored_ticket_id,
+    store_ticket_id,
+)
 from swo_aws_extension.parameters import get_responsibility_transfer_id
-from swo_aws_extension.swo.mpt.order import get_orders_by_query
+from swo_aws_extension.swo.crm_service.errors import CRMError
+from swo_aws_extension.swo.mpt.order import get_orders_by_ids
 from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
-from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 logger = logging.getLogger(__name__)
 
 NOTIFICATION_TITLE = "Synchronize AWS migration orders"
-ORDERS_QUERY_BATCH_SIZE = 50
-ORDERS_QUERY_SELECT = "select=audit,error,parameters,authorization.externalIds"
+ORDERS_QUERY_SELECT = (
+    "select=audit,error,parameters,authorization.externalIds,"
+    "agreement,agreement.parameters,buyer,seller"
+)
 
-# Airtable rows whose Marketplace order can still change. Rows without an order, or already
-# in a terminal migration status, are left untouched by the synchronization.
+# Airtable rows the daily job keeps revisiting: rows whose Marketplace order can still change,
+# and completed rows waiting for their billing transfer to become effective. Rows without an
+# order, or already in a terminal migration status, are left untouched.
 SYNCABLE_MIGRATION_STATUSES = (
     AccountMigrationStatus.PENDING_NOTIFY_CUSTOMER,
     AccountMigrationStatus.MIGRATION_IN_PROGRESS,
+    AccountMigrationStatus.COMPLETED,
 )
 
 # Order statuses that mean the customer has accepted the quoted order (moved it to processing).
@@ -76,31 +85,101 @@ def get_order_error(order: dict[str, Any]) -> str:
     return f"Order {order.get('id')} is {order.get('status')}"
 
 
+def is_billing_transfer_effective(
+    record: AccountMigrationRecord, changes: dict[str, Any], run_date: dt.date
+) -> bool:
+    """
+    Return whether the row, once the changes apply, is completed with an effective transfer.
+
+    The billing transfer is effective when its start date is on or before the run date. An
+    invalid start date is logged and treated as not effective, so it never stops the run.
+    """
+    status = changes.get("migration_status", record.migration_status)
+    start_date = changes.get("billing_transfer_start_date") or record.billing_transfer_start_date
+    if status != AccountMigrationStatus.COMPLETED or not start_date:
+        return False
+    try:
+        return dt.date.fromisoformat(start_date) <= run_date
+    except ValueError:
+        logger.warning(
+            "%s - Invalid billing transfer start date %s for MPA %s",
+            record.mpt_order_id,
+            start_date,
+            record.masterpayer,
+        )
+        return False
+
+
+@dataclass
+class SyncReport:
+    """Counters of a synchronization run, reported to Teams at the end."""
+
+    dry_run: bool
+    total_rows: int = 0
+    updated_rows: list[str] = field(default_factory=list)
+    failed_rows: list[str] = field(default_factory=list)
+    created_tickets: list[str] = field(default_factory=list)
+
+    def send(self) -> None:
+        """Log the run summary and send it to Teams, as a warning when a row failed."""
+        summary = (
+            f"Rows checked: {self.total_rows}. Rows updated: {len(self.updated_rows)}. "
+            f"Tickets created: {len(self.created_tickets)}. "
+            f"Rows with errors: {len(self.failed_rows)}."
+        )
+        if self.dry_run:
+            summary = f"Dry run. {summary}"
+        logger.info(summary)
+        if self.failed_rows:
+            failed_orders = ", ".join(self.failed_rows)
+            TeamsNotificationManager().send_warning(
+                NOTIFICATION_TITLE, f"{summary}\n\nOrders with errors: {failed_orders}"
+            )
+            return
+        TeamsNotificationManager().send_success(NOTIFICATION_TITLE, summary)
+
+
 class MigrationOrdersSyncProcessor:  # noqa: WPS214
     """
     Mirror the Marketplace migration orders into the AWS Account Migration Airtable table.
 
-    For every row still waiting on its order, the job copies the order status and, depending
-    on it, sets the customer acceptance date (migration in progress), the completion date
-    (completed) or the error detail (failed). Once the billing transfer invitation of the order
-    is accepted, the effective start date of the transfer is stored so the day-1 logic can
-    pick the row up. Rows in a terminal status are not touched.
+    The job runs daily over the rows still in progress. For every row it copies the order
+    status and, depending on it, sets the customer acceptance date (migration in progress),
+    the completion date (completed) or the error detail (failed). Once the billing transfer
+    invitation of the order is accepted, the effective start date of the transfer is stored.
+    When a completed row has a start date on or before the run date, the job creates the
+    ServiceNow ticket that tells the MCoE team the billing transfer is active, stores its id
+    in the crmMigrationTicketId parameter of the agreement and moves the row to Services
+    onboarded; migrated customers keep their existing CCO and ERP project, so no services
+    onboarding call is made. A row whose ticket fails keeps the Completed status with the
+    error detail and is retried on the next run, and a ticket already stored in the agreement
+    is never created again. Every row is saved at most once.
     """
 
-    def __init__(self, mpt_client: MPTClient, config: Config, *, dry_run: bool = False) -> None:
+    def __init__(
+        self,
+        mpt_client: MPTClient,
+        config: Config,
+        run_date: dt.date,
+        *,
+        dry_run: bool = False,
+    ) -> None:
         self.mpt_client = mpt_client
         self.config = config
+        self.run_date = run_date
         self.dry_run = dry_run
         self.migration_table = AwsAccountMigrationTable()
-        self.updated_rows: list[str] = []
-        self.failed_rows: list[str] = []
+        self.report = SyncReport(dry_run=dry_run)
         self._aws_clients: dict[str, AWSClient] = {}
 
     def sync(self) -> None:
         """Synchronize the Airtable rows with their Marketplace orders and report to Teams."""
         records = self._get_records_to_sync()
+        self.report.total_rows = len(records)
         logger.info("Synchronizing %s migration rows with their orders", len(records))
-        orders = self._get_orders_by_id([record.mpt_order_id for record in records])
+        orders = get_orders_by_ids(
+            self.mpt_client, [record.mpt_order_id for record in records], ORDERS_QUERY_SELECT
+        )
         for record in records:
             try:
                 self._sync_record(record, orders.get(record.mpt_order_id))
@@ -110,26 +189,16 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
                     record.mpt_order_id,
                     record.masterpayer,
                 )
-                self.failed_rows.append(record.mpt_order_id)
-        self._send_report(len(records))
+                self.report.failed_rows.append(record.mpt_order_id)
+        self.report.send()
 
     def _get_records_to_sync(self) -> list[AccountMigrationRecord]:
-        records = []
-        for status in SYNCABLE_MIGRATION_STATUSES:
-            records.extend(self.migration_table.get_by_status(status))
+        records = self.migration_table.get_by_statuses(SYNCABLE_MIGRATION_STATUSES)
         with_order = [record for record in records if record.mpt_order_id]
         skipped = len(records) - len(with_order)
         if skipped:
             logger.info("Skipping %s migration rows without a Marketplace order id", skipped)
         return with_order
-
-    def _get_orders_by_id(self, order_ids: list[str]) -> dict[str, dict[str, Any]]:
-        orders: dict[str, dict[str, Any]] = {}
-        for order_ids_batch in batched(order_ids, ORDERS_QUERY_BATCH_SIZE):
-            query = f"{RQLQuery(id__in=list(order_ids_batch))}&{ORDERS_QUERY_SELECT}"
-            for order in get_orders_by_query(self.mpt_client, query, limit=ORDERS_QUERY_BATCH_SIZE):
-                orders[order["id"]] = order
-        return orders
 
     def _sync_record(self, record: AccountMigrationRecord, order: dict[str, Any] | None) -> None:
         order_id = record.mpt_order_id
@@ -148,6 +217,8 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         changes = self._get_status_changes(order)
         if order.get("status") in ACCEPTED_ORDER_STATUSES:
             changes.update(self._get_acceptance_changes(record, order))
+        if is_billing_transfer_effective(record, changes, self.run_date):
+            self._start_billing_transfer(record, order, changes)
         self._save(record, **changes)
 
     def _get_status_changes(self, order: dict[str, Any]) -> dict[str, Any]:
@@ -194,7 +265,7 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
                 transfer_id,
                 error,
             )
-            self.failed_rows.append(str(order_id))
+            self.report.failed_rows.append(str(order_id))
             return None
         transfer_details = transfer.get("ResponsibilityTransfer", {})
         if transfer_details.get("Status") != ResponsibilityTransferStatus.ACCEPTED:
@@ -214,12 +285,63 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
             )
         return self._aws_clients[pma_account_id]
 
+    def _start_billing_transfer(
+        self,
+        record: AccountMigrationRecord,
+        order: dict[str, Any],
+        changes: dict[str, Any],
+    ) -> None:
+        """Create the MCoE ticket of the effective transfer and mark the row Services onboarded."""
+        order_id = record.mpt_order_id
+        ticket_id = get_stored_ticket_id(order)
+        if ticket_id:
+            logger.info(
+                "%s - Billing transfer start ticket %s already created, skipping creation",
+                order_id,
+                ticket_id,
+            )
+        elif not self._create_billing_transfer_start_ticket(record, order, changes):
+            return
+        changes["migration_status"] = AccountMigrationStatus.SERVICES_ONBOARDED
+        changes["error"] = ""
+
+    def _create_billing_transfer_start_ticket(
+        self,
+        record: AccountMigrationRecord,
+        order: dict[str, Any],
+        changes: dict[str, Any],
+    ) -> bool:
+        """Create the MCoE ticket and store its id; return whether the row can be onboarded."""
+        order_id = record.mpt_order_id
+        start_date = (
+            changes.get("billing_transfer_start_date") or record.billing_transfer_start_date
+        )
+        logger.info("%s - Creating the billing transfer start ticket for MCoE", order_id)
+        if self.dry_run:
+            logger.info("%s - Dry run mode - skipping ticket creation", order_id)
+            return True
+        try:
+            ticket_id = create_ticket(record, order, start_date)
+        except CRMError as error:
+            logger.warning(
+                "%s - Error - Failed to create the billing transfer start ticket: %s",
+                order_id,
+                error,
+            )
+            self.report.failed_rows.append(order_id)
+            changes["error"] = str(error)
+            return False
+        self.report.created_tickets.append(order_id)
+        if not store_ticket_id(self.mpt_client, order, ticket_id):
+            self.report.failed_rows.append(order_id)
+        return True
+
     def _save(self, record: AccountMigrationRecord, **changes: Any) -> None:
         order_id = record.mpt_order_id
         effective = {
             field_name: field_value
             for field_name, field_value in changes.items()
-            if field_value is not None and getattr(record, field_name) != field_value
+            if field_value is not None and (getattr(record, field_name) or "") != field_value
         }
         if not effective:
             logger.info("%s - Migration row already up to date", order_id)
@@ -231,20 +353,4 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         for field_name, field_value in effective.items():
             setattr(record, field_name, field_value)
         self.migration_table.save(record)
-        self.updated_rows.append(order_id)
-
-    def _send_report(self, total_rows: int) -> None:
-        summary = (
-            f"Rows checked: {total_rows}. Rows updated: {len(self.updated_rows)}. "
-            f"Rows with errors: {len(self.failed_rows)}."
-        )
-        if self.dry_run:
-            summary = f"Dry run. {summary}"
-        logger.info(summary)
-        if self.failed_rows:
-            failed_orders = ", ".join(self.failed_rows)
-            TeamsNotificationManager().send_warning(
-                NOTIFICATION_TITLE, f"{summary}\n\nOrders with errors: {failed_orders}"
-            )
-            return
-        TeamsNotificationManager().send_success(NOTIFICATION_TITLE, summary)
+        self.report.updated_rows.append(order_id)

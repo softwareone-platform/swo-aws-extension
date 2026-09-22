@@ -51,8 +51,8 @@ truth for the current layout.
 | Operation | Description |
 | --- | --- |
 | Get by status | `get_by_status(status)` — returns the rows with the given migration status, in table order (use `AccountMigrationStatus.READY` for the pending rows) |
+| Get by statuses | `get_by_statuses(statuses)` — returns the rows in any of the given migration statuses with one `OR` formula, in table order (used by the migration sync job to read the in-progress and completed rows in one query) |
 | Get by order | `get_by_order_id(order_id)` — returns the row linked to a Marketplace order, or `None` |
-| Get by billing transfer start date | `get_by_billing_transfer_start_date(date)` — returns the rows whose billing transfer starts on the given ISO date |
 | Save | `save(record)` — creates or updates a row (depending on whether it is new) |
 | Update status | `update_status(record, status, error=None)` — sets the migration status and, optionally, the error detail |
 
@@ -64,4 +64,4 @@ HTTP calls.
 - FinOps table client: [`swo_aws_extension/airtable/finops_table.py`](../../swo_aws_extension/airtable/finops_table.py)
 - AWS Account Migration table client: [`swo_aws_extension/airtable/account_migration_table.py`](../../swo_aws_extension/airtable/account_migration_table.py)
 - Records/fields: [`swo_aws_extension/airtable/models.py`](../../swo_aws_extension/airtable/models.py)
-- Used by: [`swo_aws_extension/flows/steps/finops_entitlement.py`](../../swo_aws_extension/flows/steps/finops_entitlement.py) and [`swo_aws_extension/flows/jobs/finops_entitlements_processor.py`](../../swo_aws_extension/flows/jobs/finops_entitlements_processor.py); the AWS Account Migration table is consumed by the migration sync job ([`swo_aws_extension/flows/jobs/migration_sync_processor.py`](../../swo_aws_extension/flows/jobs/migration_sync_processor.py), `synchronize_migration_orders` command) and the Migration Orders extension
+- Used by: [`swo_aws_extension/flows/steps/finops_entitlement.py`](../../swo_aws_extension/flows/steps/finops_entitlement.py) and [`swo_aws_extension/flows/jobs/finops_entitlements_processor.py`](../../swo_aws_extension/flows/jobs/finops_entitlements_processor.py); the AWS Account Migration table is consumed by the migration sync job ([`swo_aws_extension/flows/jobs/migration_sync_processor.py`](../../swo_aws_extension/flows/jobs/migration_sync_processor.py), run daily by the `synchronize_migration_orders` command; it also moves the `Completed` rows with an effective billing transfer start date to `Services onboarded`) and the Migration Orders extension
