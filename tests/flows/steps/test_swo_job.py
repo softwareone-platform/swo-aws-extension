@@ -7,7 +7,7 @@ from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.errors import AlreadyProcessedStepError, SkipStepError
 from swo_aws_extension.flows.steps.swo_job import SWOJobStep
 from swo_aws_extension.parameters import get_erp_project_no, get_phase
-from swo_aws_extension.swo.cco.errors import SellerCountryNotFoundError
+from swo_aws_extension.swo.cco.errors import SellerExternalIdNotFoundError
 from swo_aws_extension.swo.service_provisioning.errors import ServiceProvisioningError
 from swo_aws_extension.swo.service_provisioning.models import ServiceOnboardingResponse
 
@@ -78,6 +78,40 @@ def test_process_creates_swo_job_and_sets_erp_project_no(
     assert "SWO Job created with ERP project number" in caplog.text
 
 
+def test_process_uses_seller_external_id_not_country_for_erp_client_id(
+    mocker, purchase_context, mpt_client
+):
+    context = purchase_context()
+    context.seller["externalId"] = "ES_CPX"
+    context.seller["address"]["country"] = "ES"
+    mock_client = mocker.patch(f"{MODULE}.get_service_provisioning_client")
+    mock_client.return_value.onboard.return_value = ServiceOnboardingResponse(
+        erp_project_no=SAMPLE_ERP_PROJECT_NO
+    )
+
+    SWOJobStep().process(mpt_client, context)  # act
+
+    onboard = mock_client.return_value.onboard
+    request = onboard.call_args.args[0]
+    assert request.erp_client_id == "CPX_ES"
+
+
+def test_process_uses_navision_company_code_over_external_id(mocker, purchase_context, mpt_client):
+    context = purchase_context()
+    context.seller["externalId"] = "XX"
+    context.seller["attributes"] = {"navision": {"companyCode": "CPX_ES"}}
+    mock_client = mocker.patch(f"{MODULE}.get_service_provisioning_client")
+    mock_client.return_value.onboard.return_value = ServiceOnboardingResponse(
+        erp_project_no=SAMPLE_ERP_PROJECT_NO
+    )
+
+    SWOJobStep().process(mpt_client, context)  # act
+
+    onboard = mock_client.return_value.onboard
+    request = onboard.call_args.args[0]
+    assert request.erp_client_id == "CPX_ES"
+
+
 def test_process_missing_contract_number_logs_and_notifies(
     mocker, purchase_context, mpt_client, caplog
 ):
@@ -129,11 +163,11 @@ def test_process_service_provisioning_error_does_not_raise(mocker, purchase_cont
     assert result is None
 
 
-def test_process_seller_country_not_found_logs_and_notifies(
+def test_process_seller_external_id_not_found_logs_and_notifies(
     mocker, purchase_context, mpt_client, caplog
 ):
     context = purchase_context()
-    mocker.patch(f"{MODULE}.SellerMapper.map", side_effect=SellerCountryNotFoundError("XX"))
+    mocker.patch(f"{MODULE}.SellerMapper.resolve", side_effect=SellerExternalIdNotFoundError("XX"))
     mock_notify = mocker.patch(f"{MODULE}.notify_one_time_error")
 
     with caplog.at_level(logging.ERROR):
@@ -141,7 +175,7 @@ def test_process_seller_country_not_found_logs_and_notifies(
 
     assert result is None
     mock_notify.assert_called_once()
-    assert "SellerCountryNotFoundError" in caplog.text
+    assert "SellerExternalIdNotFoundError" in caplog.text
 
 
 def test_post_step_sets_completed_phase(
