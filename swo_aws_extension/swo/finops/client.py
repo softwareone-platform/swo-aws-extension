@@ -94,8 +94,10 @@ class FinOpsClient(requests.Session):
 
     @wrap_http_error
     def get_entitlement_by_datasource(self, datasource_id: str) -> dict | None:
-        """Get the FinOps entitlement details by datasource ID."""
-        response = self.get(url=f"entitlements?datasource_id={datasource_id}&limit=1")
+        """Get the new or active FinOps entitlement linked to a datasource ID."""
+        response = self.get(
+            url=f"entitlements?and(eq(datasource_id,{datasource_id}),in(status,(new,active)))&limit=1"
+        )
         response.raise_for_status()
         result = response.json()
         result_items = result.get("items", [])
