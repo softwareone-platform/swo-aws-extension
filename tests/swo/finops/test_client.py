@@ -150,7 +150,7 @@ def test_get_entitlement_by_datasource_found(finops_client, mock_finops_api):
     expected_entitlement = {"id": "ENT-001", "status": "active"}
     mock_finops_api.add(
         responses.GET,
-        f"{BASE_URL}entitlements?datasource_id=DS-001&limit=1",
+        f"{BASE_URL}entitlements?and(eq(datasource_id,DS-001),in(status,(new,active)))&limit=1",
         json={"items": [expected_entitlement], "total": 1},
         status=HTTPStatus.OK,
     )
@@ -163,7 +163,7 @@ def test_get_entitlement_by_datasource_found(finops_client, mock_finops_api):
 def test_get_entitlement_by_datasource_not_found(finops_client, mock_finops_api):
     mock_finops_api.add(
         responses.GET,
-        f"{BASE_URL}entitlements?datasource_id=DS-001&limit=1",
+        f"{BASE_URL}entitlements?and(eq(datasource_id,DS-001),in(status,(new,active)))&limit=1",
         json={"items": [], "total": 0},
         status=HTTPStatus.OK,
     )
@@ -176,7 +176,7 @@ def test_get_entitlement_by_datasource_not_found(finops_client, mock_finops_api)
 def test_get_entitlement_by_datasource_http_error(finops_client, mock_finops_api):
     mock_finops_api.add(
         responses.GET,
-        f"{BASE_URL}entitlements?datasource_id=DS-001&limit=1",
+        f"{BASE_URL}entitlements?and(eq(datasource_id,DS-001),in(status,(new,active)))&limit=1",
         json={"error": "Internal Server Error"},
         status=HTTPStatus.INTERNAL_SERVER_ERROR,
     )
@@ -190,7 +190,7 @@ def test_get_entitlement_by_datasource_http_error(finops_client, mock_finops_api
 def test_authorization_header_uses_api_token(finops_client, mock_finops_api):
     mock_finops_api.add(
         responses.GET,
-        f"{BASE_URL}entitlements?datasource_id=DS-001&limit=1",
+        f"{BASE_URL}entitlements?and(eq(datasource_id,DS-001),in(status,(new,active)))&limit=1",
         json={"items": [], "total": 0},
         status=HTTPStatus.OK,
     )
@@ -207,13 +207,13 @@ def test_authorization_header_uses_api_token(finops_client, mock_finops_api):
 def test_request_id_header_is_unique_per_request(finops_client, mock_finops_api):
     mock_finops_api.add(
         responses.GET,
-        f"{BASE_URL}entitlements?datasource_id=DS-001&limit=1",
+        f"{BASE_URL}entitlements?and(eq(datasource_id,DS-001),in(status,(new,active)))&limit=1",
         json={"items": [], "total": 0},
         status=HTTPStatus.OK,
     )
     mock_finops_api.add(
         responses.GET,
-        f"{BASE_URL}entitlements?datasource_id=DS-002&limit=1",
+        f"{BASE_URL}entitlements?and(eq(datasource_id,DS-002),in(status,(new,active)))&limit=1",
         json={"items": [], "total": 0},
         status=HTTPStatus.OK,
     )

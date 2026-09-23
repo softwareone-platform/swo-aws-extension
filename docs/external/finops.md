@@ -30,7 +30,7 @@ No token generation or refresh happens in the client. Rotating `MPT_API_TOKEN` r
 | --- | --- | --- | --- |
 | Create Entitlement | `POST` | `/entitlements` | Creates an entitlement for a datasource/affiliate pair |
 | Get Entitlement | `GET` | `/entitlements/{id}` | Returns the entitlement by its identifier (for example `FENT-2289-7693-2555`) |
-| Get Entitlement by Datasource | `GET` | `/entitlements?datasource_id={id}&limit=1` | Returns the entitlement linked to a datasource, or `null` |
+| Get Entitlement by Datasource | `GET` | `/entitlements?and(eq(datasource_id,{id}),in(status,(new,active)))&limit=1` | Returns the `new` or `active` entitlement linked to a datasource, or `null`. The API expects an RQL filter; a plain `datasource_id={id}` query parameter is ignored and returns the first entitlement of the collection |
 | Terminate Entitlement | `POST` | `/entitlements/{id}/terminate` | Marks the entitlement as terminated |
 | Delete Entitlement | `DELETE` | `/entitlements/{id}` | Permanently removes the entitlement (`204 No Content`) |
 
