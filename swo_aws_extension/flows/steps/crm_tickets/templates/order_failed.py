@@ -4,7 +4,9 @@ from swo_aws_extension.flows.steps.crm_tickets.templates.models import CRMTicket
 
 ORDER_FAILED_TEMPLATE = CRMTicketTemplate(
     title="AWS - Action Required: Order Failed Ticket",
-    additional_info="Customer order failed and we need removal of all invites and fail the order",
+    additional_info=(
+        "AWS - Customer order failed and we need removal of all invites and fail the order"
+    ),
     summary=(
         "Dear MCoE Team,<br><br>"
         "The following order has been flagged to fail on the marketplace.<br><br>"

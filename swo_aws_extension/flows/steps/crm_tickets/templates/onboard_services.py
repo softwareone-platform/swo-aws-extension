@@ -4,7 +4,7 @@ from swo_aws_extension.flows.steps.crm_tickets.templates.models import CRMTicket
 
 ONBOARD_SERVICES_TEMPLATE = CRMTicketTemplate(
     title="AWS - New AWS on-boarding in Marketplace existing AWS customer",
-    additional_info="New customer joining SWO through billing transfer",
+    additional_info="AWS - New customer joining SWO through billing transfer",
     summary=(
         "Dear MCoE Team,<br><br>"
         "Good News!! A new customer for AWS is being onboarded in the SWO Marketplace.<br>"

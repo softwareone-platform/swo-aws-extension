@@ -4,7 +4,7 @@ from swo_aws_extension.flows.steps.crm_tickets.templates.models import CRMTicket
 
 NEW_ACCOUNT_TEMPLATE = CRMTicketTemplate(
     title="AWS - New AWS Onboarding in Marketplace",
-    additional_info="AWS New AWS linked account created",
+    additional_info="AWS - AWS New AWS linked account created",
     summary=(
         "Dear MCoE Team,<br><br>"
         "Good News!! New customer for AWS is being onboarded in Marketplace.<br><br>"
