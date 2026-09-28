@@ -51,7 +51,7 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    (`crmOnboardTicketId`), creates the master payer subscription and
    completes the order. The existing CCO is reused, so no contract card or
    ERP job is created; a missing migration row or CCO keeps the order in
-   processing and notifies Teams. Customer roles and services deployment are
+   processing and notifies Teams when `ccoContractNumber` is unset. Customer roles and services deployment are
    not executed. The FinOps entitlement is created afterwards by the FinOps
    synchronization job, as for regular orders.
 3. **Pipelines and steps** (`flows/fulfillment/pipelines.py`, `flows/steps/`) —
