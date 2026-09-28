@@ -3,8 +3,8 @@
 from swo_aws_extension.flows.steps.crm_tickets.templates.models import CRMTicketTemplate
 
 DEPLOY_SERVICES_ERROR_TEMPLATE = CRMTicketTemplate(
-    title="Action Required: Deploy Services Error",
-    additional_info="An error occurred during the deploy services process",
+    title="AWS - Action Required: Deploy Services Error",
+    additional_info="AWS - An error occurred during the deploy services process",
     summary=(
         "Dear MCoE Team,<br><br>"
         "An error occurred during the deploy services process (feature version) "
