@@ -39,15 +39,21 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    parameter are routed first to the dedicated migration pipeline, regardless
    of account type; regular purchase orders are unaffected. The migration
    pipeline reuses the existing steps with the migration templates: it
-   validates the prefilled migration data, creates the billing transfer
-   invitation and waits in querying until the MCoE team accepts it manually
-   (a declined, canceled or expired invitation fails the order), configures
-   the APN program and channel handshake, creates the migration CRM ticket
+   validates the prefilled migration data, copies the fulfillment
+   parameters the Migration Orders extension cannot set at order creation
+   from the order's AWS Account Migration Airtable row (`ccoContractNumber`
+   from `MPT CCO`; the mapping in
+   `flows/steps/set_migration_fulfillment_parameters.py` is extended for new
+   parameters), creates the billing transfer invitation and waits in
+   querying until the MCoE team accepts it manually (a declined, canceled or
+   expired invitation fails the order), configures the APN program and
+   channel handshake, creates the migration CRM ticket
    (`crmOnboardTicketId`), creates the master payer subscription and
-   completes the order. The existing CCO is prefilled in the order and only
-   validated, so no contract card or ERP job is created. Customer roles and
-   services deployment are not executed. The FinOps entitlement is created
-   afterwards by the FinOps synchronization job, as for regular orders.
+   completes the order. The existing CCO is reused, so no contract card or
+   ERP job is created; a missing migration row or CCO keeps the order in
+   processing and notifies Teams when `ccoContractNumber` is unset. Customer roles and services deployment are
+   not executed. The FinOps entitlement is created afterwards by the FinOps
+   synchronization job, as for regular orders.
 3. **Pipelines and steps** (`flows/fulfillment/pipelines.py`, `flows/steps/`) —
    each pipeline is an ordered sequence of `BasePhaseStep` steps that create
    resources, poll status, raise tickets, and advance the order phase. Order

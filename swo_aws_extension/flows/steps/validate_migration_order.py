@@ -4,12 +4,7 @@ from typing import Any, override
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
-from swo_aws_extension.constants import (
-    FulfillmentParametersEnum,
-    OrderParametersEnum,
-    ParamPhasesEnum,
-    PhasesEnum,
-)
+from swo_aws_extension.constants import OrderParametersEnum, ParamPhasesEnum, PhasesEnum
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import SkipStepError, UnexpectedStopError
@@ -20,14 +15,14 @@ logger = logging.getLogger(__name__)
 # Parameters the Migration Orders extension prefills when it creates the quoted order,
 # grouped by the parameter phase they live in. The migration flow relies on the same
 # parameters as the regular flows, so all of them must carry a value before the
-# fulfillment starts.
+# fulfillment starts. Fulfillment parameters cannot be set at order creation, so they
+# are not validated here.
 REQUIRED_MIGRATION_PARAMETERS = MappingProxyType({
     ParamPhasesEnum.ORDERING.value: (
         OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID,
         OrderParametersEnum.SUPPORT_TYPE,
         OrderParametersEnum.CONTACT,
     ),
-    ParamPhasesEnum.FULFILLMENT.value: (FulfillmentParametersEnum.CCO_CONTRACT_NUMBER,),
 })
 
 

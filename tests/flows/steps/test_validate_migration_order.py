@@ -12,14 +12,14 @@ from swo_aws_extension.flows.steps.validate_migration_order import (
 
 @pytest.fixture
 def migration_order(order_factory, order_parameters_factory, fulfillment_parameters_factory):
-    def factory(mpa_id="651706759263", support_type="resoldSupport", contact=None, cco="CCO-1"):
+    def factory(mpa_id="651706759263", support_type="resoldSupport", contact=None):
         return order_factory(
             order_parameters=order_parameters_factory(
                 mpa_id=mpa_id, support_type=support_type, contact=contact
             ),
             fulfillment_parameters=fulfillment_parameters_factory(
                 phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION.value,
-                cco_contract_number=cco,
+                cco_contract_number="",
             ),
         )
 
@@ -40,8 +40,7 @@ def test_get_missing_migration_data_returns_empty_when_complete(migration_order)
         ({"mpa_id": ""}, ["masterPayerID"]),
         ({"support_type": ""}, ["supportType"]),
         ({"contact": {}}, ["contact"]),
-        ({"cco": ""}, ["ccoContractNumber"]),
-        ({"mpa_id": "", "cco": ""}, ["masterPayerID", "ccoContractNumber"]),
+        ({"mpa_id": "", "support_type": ""}, ["masterPayerID", "supportType"]),
     ],
 )
 def test_get_missing_migration_data_lists_empty_parameters(
@@ -59,7 +58,7 @@ def test_get_missing_migration_data_reports_absent_parameters(
 ):
     order = order_factory(
         order_parameters=[],
-        fulfillment_parameters=fulfillment_parameters_factory(cco_contract_number="CCO-1"),
+        fulfillment_parameters=fulfillment_parameters_factory(),
     )
 
     result = get_missing_migration_data(order)
@@ -84,7 +83,7 @@ def test_validate_migration_order_stops_and_notifies_when_data_is_missing(mocker
     mock_client = mocker.MagicMock(spec=MPTClient)
     next_step_mock = mocker.MagicMock(spec=Step)
     mock_notify = mocker.patch("swo_aws_extension.flows.steps.base.notify_one_time_error")
-    order = migration_order(support_type="", cco="")
+    order = migration_order(support_type="", contact={})
     context = PurchaseContext.from_order_data(order)
     step = ValidateMigrationOrder()
 
@@ -93,7 +92,7 @@ def test_validate_migration_order_stops_and_notifies_when_data_is_missing(mocker
     mock_notify.assert_called_once_with(
         f"Migration order {order['id']} is missing required data",
         f"The migration order {order['id']} cannot be processed because the following "
-        "parameters have no value: supportType, ccoContractNumber. Please complete the order "
+        "parameters have no value: supportType, contact. Please complete the order "
         "data in the marketplace so the fulfillment can continue.",
     )
     assert context.order.get("error") is None
