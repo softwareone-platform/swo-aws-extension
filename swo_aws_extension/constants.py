@@ -10,7 +10,7 @@ FAILED_TO_SAVE_SECRET_TO_KEY_VAULT = "Failed to save secret to key vault"  # ruf
 
 CRM_EXTERNAL_EMAIL = "marketplace@softwareone.com"
 CRM_EXTERNAL_USERNAME = "mpt@marketplace.com"
-CRM_SERVICE_TYPE = "MarketPlaceAutomation"
+CRM_SERVICE_TYPE = "MarketPlaceServiceActivation"
 CRM_GLOBAL_EXT_USER_ID = "globalacademicExtUserId"
 CRM_REQUESTER = "Supplier.Portal"
 CRM_SUB_SERVICE = "Pre-sales support"
