@@ -3,8 +3,8 @@
 from swo_aws_extension.flows.steps.crm_tickets.templates.models import CRMTicketTemplate
 
 TRANSFER_END_SCHEDULED_TEMPLATE = CRMTicketTemplate(
-    title="Action Required : Agreement Termination",
-    additional_info="Customer has scheduled the end of the AWS billing transfer",
+    title="AWS - Action Required : Agreement Termination",
+    additional_info="AWS - Customer has scheduled the end of the AWS billing transfer",
     summary=(
         "Dear MCoE Team,<br><br>"
         "The customer has scheduled the end of the AWS responsibility transfer.<br><br>"
@@ -24,8 +24,8 @@ TRANSFER_END_SCHEDULED_TEMPLATE = CRMTicketTemplate(
 )
 
 ORDER_TERMINATION_TEMPLATE = CRMTicketTemplate(
-    title="Action Required : Agreement Termination",
-    additional_info="Customer wants to terminate their current active AWS agreement",
+    title="AWS - Action Required : Agreement Termination",
+    additional_info="AWS - Customer wants to terminate their current active AWS agreement",
     summary=(
         "Dear MCoE Team,<br><br>"
         "A notification has been generated on the Marketplace Platform for termination of an AWS"

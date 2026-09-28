@@ -182,11 +182,17 @@ def test_service_request_default_values() -> None:
 
     result = service_request.to_api_dict()
 
-    assert "externalUserEmail" in result
-    assert "externalUsername" in result
-    assert "requester" in result
-    assert "subService" in result
-    assert "serviceType" in result
+    assert result == {
+        "externalUserEmail": "marketplace@softwareone.com",
+        "externalUsername": "mpt@marketplace.com",
+        "requester": "Supplier.Portal",
+        "subService": "Pre-sales support",
+        "globalacademicExtUserId": "globalacademicExtUserId",
+        "additionalInfo": "",
+        "summary": "",
+        "title": "",
+        "serviceType": "MarketPlaceServiceActivation",
+    }
 
 
 def test_add_comment_success(
