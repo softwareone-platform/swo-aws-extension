@@ -72,8 +72,6 @@ class AccountMigrationFields(StrEnum):
     TECHNICAL_CONTACT_NAME = "Technical contact name"
     TECHNICAL_CONTACT_EMAIL = "Technical contact email"
     TECHNICAL_PHONE = "Technical phone"
-    GROUP = "Group"
-    BATCH = "Batch"
     MIGRATION_STATUS = "Migration status"
     MPT_ORDER_ID = "MPT Order ID"
     MPT_ORDER_STATUS = "MPT Order status"
@@ -81,7 +79,6 @@ class AccountMigrationFields(StrEnum):
     CUSTOMER_ACCEPTED_DATE = "Customer accepted date"
     MIGRATION_COMPLETED_DATE = "Migration completed date"
     BILLING_TRANSFER_START_DATE = "Billing transfer start date"
-    BATCH_GROUP_NUMBER = "Batch group number"
     ERROR = "Error"
 
 
@@ -121,8 +118,6 @@ class AccountMigrationRecord:
     aws_support_type: str
     technical_contact_name: str
     technical_contact_email: str
-    group: str
-    batch: str
     swo_support_discount: float | None = None
     swo_usage_discount: float | None = None
     technical_phone: str | None = None
@@ -133,7 +128,6 @@ class AccountMigrationRecord:
     customer_accepted_date: str | None = None
     migration_completed_date: str | None = None
     billing_transfer_start_date: str | None = None
-    batch_group_number: int | None = None
     error: str | None = None
     record_id: str | None = field(default=None, repr=False)
 
@@ -154,8 +148,6 @@ class AccountMigrationRecord:
             technical_contact_name=fields.get(AccountMigrationFields.TECHNICAL_CONTACT_NAME),
             technical_contact_email=fields.get(AccountMigrationFields.TECHNICAL_CONTACT_EMAIL),
             technical_phone=fields.get(AccountMigrationFields.TECHNICAL_PHONE),
-            group=fields.get(AccountMigrationFields.GROUP),
-            batch=fields.get(AccountMigrationFields.BATCH),
             migration_status=fields.get(AccountMigrationFields.MIGRATION_STATUS),
             mpt_order_id=fields.get(AccountMigrationFields.MPT_ORDER_ID),
             mpt_order_status=fields.get(AccountMigrationFields.MPT_ORDER_STATUS),
@@ -165,7 +157,6 @@ class AccountMigrationRecord:
             billing_transfer_start_date=fields.get(
                 AccountMigrationFields.BILLING_TRANSFER_START_DATE
             ),
-            batch_group_number=fields.get(AccountMigrationFields.BATCH_GROUP_NUMBER),
             error=fields.get(AccountMigrationFields.ERROR),
         )
 
@@ -183,8 +174,6 @@ class AccountMigrationRecord:
             AccountMigrationFields.TECHNICAL_CONTACT_NAME: self.technical_contact_name,
             AccountMigrationFields.TECHNICAL_CONTACT_EMAIL: self.technical_contact_email,
             AccountMigrationFields.TECHNICAL_PHONE: self.technical_phone,
-            AccountMigrationFields.GROUP: self.group,
-            AccountMigrationFields.BATCH: self.batch,
             AccountMigrationFields.MIGRATION_STATUS: self.migration_status,
             AccountMigrationFields.MPT_ORDER_ID: self.mpt_order_id,
             AccountMigrationFields.MPT_ORDER_STATUS: self.mpt_order_status,
@@ -192,7 +181,6 @@ class AccountMigrationRecord:
             AccountMigrationFields.CUSTOMER_ACCEPTED_DATE: self.customer_accepted_date,
             AccountMigrationFields.MIGRATION_COMPLETED_DATE: self.migration_completed_date,
             AccountMigrationFields.BILLING_TRANSFER_START_DATE: self.billing_transfer_start_date,
-            AccountMigrationFields.BATCH_GROUP_NUMBER: self.batch_group_number,
             AccountMigrationFields.ERROR: self.error,
         }
         return {key: item_data for key, item_data in field_mapping.items() if item_data is not None}

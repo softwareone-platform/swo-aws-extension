@@ -380,6 +380,8 @@ def fulfillment_parameters_factory():
         termination_date="",
         relationship_end_date="",
         crm_migration_ticket_id="",
+        support_discount="",
+        service_discount="",
     ):
         return [
             {
@@ -466,6 +468,14 @@ def fulfillment_parameters_factory():
             {
                 "externalId": FulfillmentParametersEnum.CRM_MIGRATION_TICKET_ID.value,
                 "value": crm_migration_ticket_id,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.SUPPORT_DISCOUNT.value,
+                "value": support_discount,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.SERVICE_DISCOUNT.value,
+                "value": service_discount,
             },
         ]
 

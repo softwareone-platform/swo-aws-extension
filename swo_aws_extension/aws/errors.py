@@ -13,6 +13,11 @@ RetType = TypeVar("RetType")
 
 logger = logging.getLogger(__name__)
 
+# Keys of a boto3 ClientError response already covered by ``str(error)`` or only carrying
+# transport metadata. Any other key (for example ``reason`` or ``fieldList`` in Partner
+# Central validation errors) is appended to the error message as it explains the failure.
+CLIENT_ERROR_RESPONSE_STANDARD_KEYS = frozenset(("Error", "ResponseMetadata"))
+
 
 class AWSError(Exception):
     """AWS basic error."""
@@ -78,6 +83,24 @@ def wrap_http_error(func: Callable[FuncParams, RetType]) -> Callable[FuncParams,
     return _wrapper
 
 
+def format_client_error(error: boto_exceptions.ClientError) -> str:
+    """Build the AWSError message of a boto3 ClientError with the service error details."""
+    response = error.response or {}
+    message = f"AWS Client error. {error}"
+    request_id = response.get("ResponseMetadata", {}).get("RequestId")
+    if request_id:
+        message = f"{message} Request ID: {request_id}."
+    details = {
+        key: response[key]
+        for key in response
+        if key not in CLIENT_ERROR_RESPONSE_STANDARD_KEYS
+        and response[key] != response.get("Error", {}).get("Message")
+    }
+    if details:
+        message = f"{message} Details: {json.dumps(details, default=str)}"
+    return message
+
+
 def wrap_boto3_error(func: Callable[FuncParams, RetType]) -> Callable[FuncParams, RetType]:  # ruff:ignore[non-pep695-generic-function]
     """Wraps boto3 error to internal extension errors."""
 
@@ -88,7 +111,7 @@ def wrap_boto3_error(func: Callable[FuncParams, RetType]) -> Callable[FuncParams
         except AWSError:
             raise
         except boto_exceptions.ClientError as error:
-            raise AWSError(f"AWS Client error. {error}") from error
+            raise AWSError(format_client_error(error)) from error
         except boto_exceptions.BotoCoreError as error:
             logger.exception("Boto3 SDK error in %s.", func.__name__)
             raise AWSError(f"Boto3 SDK error: {error}") from error

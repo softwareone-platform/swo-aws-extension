@@ -36,8 +36,6 @@ def account_migration_record_factory():
             "aws_support_type": "resoldSupport",
             "technical_contact_name": "Jane Doe",
             "technical_contact_email": "jane.doe@example.com",
-            "group": "Group A",
-            "batch": "Batch 1",
         }
         record_values.update(overrides)
         return AccountMigrationRecord(**record_values)
