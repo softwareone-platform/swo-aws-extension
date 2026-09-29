@@ -1,6 +1,5 @@
 import datetime as dt
 import logging
-from dataclasses import dataclass, field
 from typing import Any
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
@@ -10,22 +9,32 @@ from swo_aws_extension.airtable.models import AccountMigrationRecord, AccountMig
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.config import Config
-from swo_aws_extension.constants import MptOrderStatus, ResponsibilityTransferStatus
+from swo_aws_extension.constants import (
+    DeploymentStatusEnum,
+    MptOrderStatus,
+    ResponsibilityTransferStatus,
+)
 from swo_aws_extension.flows.jobs.migration_billing_transfer_ticket import (
     create_ticket,
     get_stored_ticket_id,
     store_ticket_id,
 )
+from swo_aws_extension.flows.jobs.migration_services_onboarding import (
+    get_onboarding_status,
+    get_stored_execution_arn,
+    start_onboarding,
+    store_execution_arn,
+)
+from swo_aws_extension.flows.jobs.migration_sync_report import SyncReport
 from swo_aws_extension.parameters import get_responsibility_transfer_id
+from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
 from swo_aws_extension.swo.crm_service.errors import CRMError
 from swo_aws_extension.swo.mpt.order import get_orders_by_ids
-from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
 logger = logging.getLogger(__name__)
 
-NOTIFICATION_TITLE = "Synchronize AWS migration orders"
 ORDERS_QUERY_SELECT = (
-    "select=audit,error,parameters,authorization.externalIds,"
+    "select=audit,error,statusNotes,parameters,authorization.externalIds,"
     "agreement,agreement.parameters,buyer,seller"
 )
 
@@ -78,10 +87,16 @@ def get_pma_account_id(order: dict[str, Any]) -> str | None:
 
 
 def get_order_error(order: dict[str, Any]) -> str:
-    """Return the error detail of a failed order, or a generic message when it carries none."""
-    error = order.get("error") or {}
-    if isinstance(error, dict) and error.get("message"):
-        return str(error["message"])
+    """
+    Return the reason a failed order carries, or a generic message when it has none.
+
+    The status notes hold the message the Marketplace shows for the failure (for example the
+    vendor error that failed the order); the error field is the fallback for older orders.
+    """
+    for field_name in ("statusNotes", "error"):
+        detail = order.get(field_name) or {}
+        if isinstance(detail, dict) and detail.get("message"):
+            return str(detail["message"])
     return f"Order {order.get('id')} is {order.get('status')}"
 
 
@@ -110,35 +125,6 @@ def is_billing_transfer_effective(
         return False
 
 
-@dataclass
-class SyncReport:
-    """Counters of a synchronization run, reported to Teams at the end."""
-
-    dry_run: bool
-    total_rows: int = 0
-    updated_rows: list[str] = field(default_factory=list)
-    failed_rows: list[str] = field(default_factory=list)
-    created_tickets: list[str] = field(default_factory=list)
-
-    def send(self) -> None:
-        """Log the run summary and send it to Teams, as a warning when a row failed."""
-        summary = (
-            f"Rows checked: {self.total_rows}. Rows updated: {len(self.updated_rows)}. "
-            f"Tickets created: {len(self.created_tickets)}. "
-            f"Rows with errors: {len(self.failed_rows)}."
-        )
-        if self.dry_run:
-            summary = f"Dry run. {summary}"
-        logger.info(summary)
-        if self.failed_rows:
-            failed_orders = ", ".join(self.failed_rows)
-            TeamsNotificationManager().send_warning(
-                NOTIFICATION_TITLE, f"{summary}\n\nOrders with errors: {failed_orders}"
-            )
-            return
-        TeamsNotificationManager().send_success(NOTIFICATION_TITLE, summary)
-
-
 class MigrationOrdersSyncProcessor:  # noqa: WPS214
     """
     Mirror the Marketplace migration orders into the AWS Account Migration Airtable table.
@@ -148,12 +134,15 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
     the completion date (completed) or the error detail (failed). Once the billing transfer
     invitation of the order is accepted, the effective start date of the transfer is stored.
     When a completed row has a start date on or before the run date, the job creates the
-    ServiceNow ticket that tells the MCoE team the billing transfer is active, stores its id
-    in the crmMigrationTicketId parameter of the agreement and moves the row to Services
-    onboarded; migrated customers keep their existing CCO and ERP project, so no services
-    onboarding call is made. A row whose ticket fails keeps the Completed status with the
-    error detail and is retried on the next run, and a ticket already stored in the agreement
-    is never created again. Every row is saved at most once.
+    ServiceNow ticket that tells the MCoE team the billing transfer is active and stores its
+    id in the crmMigrationTicketId parameter of the agreement; it then launches the services
+    onboarding in Cloud Orchestrator, as the OnboardServices fulfillment step does, stores
+    the execution ARN in the executionArn parameter of the agreement and checks the execution
+    status. The row moves to Services onboarded only once the execution succeeded; while it
+    is pending or running the row stays Completed and is checked again on the next run. A
+    row whose ticket, onboarding or status check fails keeps the Completed status with the
+    error detail and is retried on the next run; a ticket id or execution ARN already stored
+    in the agreement is never created again. Every row is saved at most once.
     """
 
     def __init__(
@@ -183,13 +172,13 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         for record in records:
             try:
                 self._sync_record(record, orders.get(record.mpt_order_id))
-            except Exception:
+            except Exception as error:
                 logger.exception(
                     "%s - Error synchronizing migration row for MPA %s",
                     record.mpt_order_id,
                     record.masterpayer,
                 )
-                self.report.failed_rows.append(record.mpt_order_id)
+                self.report.add_failed_row(record.mpt_order_id, f"Unexpected error: {error}")
         self.report.send()
 
     def _get_records_to_sync(self) -> list[AccountMigrationRecord]:
@@ -265,7 +254,9 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
                 transfer_id,
                 error,
             )
-            self.report.failed_rows.append(str(order_id))
+            self.report.add_failed_row(
+                str(order_id), f"Billing transfer {transfer_id} details not available: {error}"
+            )
             return None
         transfer_details = transfer.get("ResponsibilityTransfer", {})
         if transfer_details.get("Status") != ResponsibilityTransferStatus.ACCEPTED:
@@ -291,19 +282,30 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         order: dict[str, Any],
         changes: dict[str, Any],
     ) -> None:
-        """Create the MCoE ticket of the effective transfer and mark the row Services onboarded."""
-        order_id = record.mpt_order_id
+        """Create the MCoE ticket, onboard the services and mark the row once both are done."""
+        if not self._ensure_billing_transfer_start_ticket(record, order, changes):
+            return
+        if not self._are_services_onboarded(record, order, changes):
+            return
+        changes["migration_status"] = AccountMigrationStatus.SERVICES_ONBOARDED
+        changes["error"] = ""
+
+    def _ensure_billing_transfer_start_ticket(
+        self,
+        record: AccountMigrationRecord,
+        order: dict[str, Any],
+        changes: dict[str, Any],
+    ) -> bool:
+        """Return whether the MCoE ticket exists, creating it when the agreement has none."""
         ticket_id = get_stored_ticket_id(order)
         if ticket_id:
             logger.info(
                 "%s - Billing transfer start ticket %s already created, skipping creation",
-                order_id,
+                record.mpt_order_id,
                 ticket_id,
             )
-        elif not self._create_billing_transfer_start_ticket(record, order, changes):
-            return
-        changes["migration_status"] = AccountMigrationStatus.SERVICES_ONBOARDED
-        changes["error"] = ""
+            return True
+        return self._create_billing_transfer_start_ticket(record, order, changes)
 
     def _create_billing_transfer_start_ticket(
         self,
@@ -323,18 +325,114 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         try:
             ticket_id = create_ticket(record, order, start_date)
         except CRMError as error:
-            logger.warning(
-                "%s - Error - Failed to create the billing transfer start ticket: %s",
-                order_id,
-                error,
-            )
-            self.report.failed_rows.append(order_id)
-            changes["error"] = str(error)
+            self._fail_row(record, changes, f"Billing transfer start ticket not created: {error}")
             return False
-        self.report.created_tickets.append(order_id)
+        self.report.add_created_ticket(order_id, ticket_id)
         if not store_ticket_id(self.mpt_client, order, ticket_id):
-            self.report.failed_rows.append(order_id)
+            self.report.add_failed_row(
+                order_id, f"Ticket {ticket_id} created but not stored in the agreement"
+            )
         return True
+
+    def _are_services_onboarded(
+        self,
+        record: AccountMigrationRecord,
+        order: dict[str, Any],
+        changes: dict[str, Any],
+    ) -> bool:
+        """Launch the services onboarding once and return whether it has succeeded."""
+        execution_arn = get_stored_execution_arn(order)
+        if execution_arn:
+            logger.info(
+                "%s - Services onboarding already started with execution ARN %s",
+                record.mpt_order_id,
+                execution_arn,
+            )
+        else:
+            execution_arn = self._start_services_onboarding(record, order, changes)
+            if not execution_arn:
+                return False
+        return self._is_onboarding_succeeded(record, order, changes, execution_arn)
+
+    def _start_services_onboarding(
+        self,
+        record: AccountMigrationRecord,
+        order: dict[str, Any],
+        changes: dict[str, Any],
+    ) -> str:
+        """
+        Launch the onboarding, store its execution ARN in the agreement and return it.
+
+        Returns an empty ARN when the onboarding could not be started or its ARN could not
+        be stored, so the row is not checked nor onboarded in this run.
+        """
+        order_id = record.mpt_order_id
+        logger.info("%s - Launching the services onboarding in Cloud Orchestrator", order_id)
+        if self.dry_run:
+            logger.info("%s - Dry run mode - skipping services onboarding", order_id)
+            return ""
+        try:
+            execution_arn = start_onboarding(self.config, order)
+        except CloudOrchestratorError as error:
+            self._fail_row(record, changes, f"Services onboarding not started: {error}")
+            return ""
+        if not execution_arn:
+            self._fail_row(record, changes, "Services onboarding started without an execution ARN")
+            return ""
+        logger.info(
+            "%s - Services onboarding started with execution ARN %s", order_id, execution_arn
+        )
+        self.report.add_started_onboarding(order_id, execution_arn)
+        if not store_execution_arn(self.mpt_client, order, execution_arn):
+            # Without the stored ARN the next run would onboard again: stop here and keep
+            # the ARN in the row error so an operator can store it in the agreement.
+            self._fail_row(
+                record,
+                changes,
+                f"Services onboarding started but execution ARN {execution_arn} was not "
+                f"stored in the agreement. Store it in executionArn before the next run.",
+            )
+            return ""
+        return execution_arn
+
+    def _is_onboarding_succeeded(
+        self,
+        record: AccountMigrationRecord,
+        order: dict[str, Any],
+        changes: dict[str, Any],
+        execution_arn: str,
+    ) -> bool:
+        """Check the onboarding execution and return whether it succeeded."""
+        order_id = record.mpt_order_id
+        try:
+            status = get_onboarding_status(self.config, order, execution_arn)
+        except CloudOrchestratorError as error:
+            self._fail_row(record, changes, f"Services onboarding status not available: {error}")
+            return False
+        if status == DeploymentStatusEnum.SUCCEEDED:
+            logger.info("%s - Services onboarding succeeded", order_id)
+            return True
+        if status == DeploymentStatusEnum.FAILED:
+            self._fail_row(
+                record,
+                changes,
+                f"Services onboarding failed in Cloud Orchestrator (execution {execution_arn})",
+            )
+            return False
+        logger.info(
+            "%s - Services onboarding status is %s, checking again on the next run",
+            order_id,
+            status or "unknown",
+        )
+        return False
+
+    def _fail_row(
+        self, record: AccountMigrationRecord, changes: dict[str, Any], message: str
+    ) -> None:
+        """Log the row error, keep it in the row and report it in the run summary."""
+        logger.warning("%s - Error - %s", record.mpt_order_id, message)
+        self.report.add_failed_row(record.mpt_order_id, message)
+        changes["error"] = message
 
     def _save(self, record: AccountMigrationRecord, **changes: Any) -> None:
         order_id = record.mpt_order_id
@@ -347,6 +445,7 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
             logger.info("%s - Migration row already up to date", order_id)
             return
         logger.info("%s - Updating migration row: %s", order_id, effective)
+        self.report.add_row_changes(order_id, effective)
         if self.dry_run:
             logger.info("%s - Dry run mode - skipping Airtable update", order_id)
             return

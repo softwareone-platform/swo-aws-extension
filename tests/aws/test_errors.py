@@ -114,6 +114,32 @@ def test_wrap_boto3_error_client_error(mocker):
     )
 
 
+def test_wrap_boto3_error_client_error_details(mocker):
+    func = mocker.Mock()
+    func.__name__ = "test_wrap_boto3_error_client_error_details"
+    func.side_effect = botocore_exceptions.ClientError(
+        {
+            "Error": {"Code": "ValidationException", "Message": "1 validation error detected."},
+            "ResponseMetadata": {"RequestId": "b21d5267", "HTTPStatusCode": 400},
+            "message": "1 validation error detected.",
+            "reason": "BUSINESS_VALIDATION_FAILED",
+            "fieldList": [{"name": "associationType", "code": "ACTION_NOT_PERMITTED"}],
+        },
+        "CreateRelationship",
+    )
+    wrapped_func = wrap_boto3_error(func)
+
+    with pytest.raises(AWSError) as error:
+        wrapped_func()
+
+    assert str(error.value) == (
+        "AWS Client error. An error occurred (ValidationException) when calling the "
+        "CreateRelationship operation: 1 validation error detected. Request ID: b21d5267. "
+        'Details: {"reason": "BUSINESS_VALIDATION_FAILED", "fieldList": '
+        '[{"name": "associationType", "code": "ACTION_NOT_PERMITTED"}]}'
+    )
+
+
 def test_wrap_boto3_error_boto_core_error(mocker):
     func = mocker.Mock()
     func.__name__ = "test_wrap_boto3_error_boto_core_error"

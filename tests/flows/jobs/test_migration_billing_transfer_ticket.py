@@ -14,6 +14,7 @@ from swo_aws_extension.flows.steps.crm_tickets.templates.billing_transfer_start 
 )
 
 MODULE = "swo_aws_extension.flows.jobs.migration_billing_transfer_ticket"
+PARAMETERS_MODULE = "swo_aws_extension.flows.jobs.migration_agreement_parameters"
 ORDER_ID = "ORD-0792-5000-2253-4210"
 AGREEMENT_ID = "AGR-2119-4550-8674-5962"
 TICKET_ID = "CS0004728"
@@ -31,8 +32,6 @@ def record():
         aws_support_type="resoldSupport",
         technical_contact_name="Jane Doe",
         technical_contact_email="jane.doe@example.com",
-        group="Group A",
-        batch="Batch 1",
         migration_status=AccountMigrationStatus.COMPLETED,
         mpt_order_id=ORDER_ID,
         billing_transfer_start_date="2026-09-01",
@@ -102,7 +101,7 @@ def test_create_ticket_returns_the_ticket_id(mocker, record, order):
 
 
 def test_store_ticket_id_updates_the_agreement(mocker, mpt_client, order):
-    mock_update_agreement = mocker.patch(f"{MODULE}.update_agreement")
+    mock_update_agreement = mocker.patch(f"{PARAMETERS_MODULE}.update_agreement")
 
     result = store_ticket_id(mpt_client, order, TICKET_ID)
 
@@ -122,7 +121,7 @@ def test_store_ticket_id_updates_the_agreement(mocker, mpt_client, order):
 
 
 def test_store_ticket_id_reports_marketplace_error(mocker, mpt_client, order):
-    mocker.patch(f"{MODULE}.update_agreement", side_effect=MPTError("error"))
+    mocker.patch(f"{PARAMETERS_MODULE}.update_agreement", side_effect=MPTError("error"))
 
     result = store_ticket_id(mpt_client, order, TICKET_ID)
 

@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, override
 
@@ -15,13 +16,39 @@ from swo_aws_extension.parameters import get_fulfillment_parameter, get_phase
 
 logger = logging.getLogger(__name__)
 
+
+@dataclass(frozen=True)
+class MigrationRecordField:
+    """AWS Account Migration record attribute that feeds a fulfillment parameter."""
+
+    attribute: str
+    required: bool = True
+
+
 # Fulfillment parameters the migration flow needs but the Migration Orders extension cannot
 # set when it creates the order, mapped to the AWS Account Migration Airtable field that
-# carries their value (as the attribute name of `AccountMigrationRecord`). Add a new entry
-# here to copy another fulfillment parameter from the migration record.
+# carries their value (as the attribute name of `AccountMigrationRecord`). A required field
+# without value stops the order; an optional one leaves the parameter untouched. Add a new
+# entry here to copy another fulfillment parameter from the migration record.
 MIGRATION_FULFILLMENT_PARAMETERS = MappingProxyType({
-    FulfillmentParametersEnum.CCO_CONTRACT_NUMBER: "mpt_cco",
+    FulfillmentParametersEnum.CCO_CONTRACT_NUMBER: MigrationRecordField("mpt_cco"),
+    FulfillmentParametersEnum.SUPPORT_DISCOUNT: MigrationRecordField(
+        "swo_support_discount", required=False
+    ),
+    FulfillmentParametersEnum.SERVICE_DISCOUNT: MigrationRecordField(
+        "swo_usage_discount", required=False
+    ),
 })
+
+
+def get_record_value(record: AccountMigrationRecord, external_id: FulfillmentParametersEnum) -> Any:
+    """Return the migration record value that feeds the given fulfillment parameter."""
+    return getattr(record, MIGRATION_FULFILLMENT_PARAMETERS[external_id].attribute)
+
+
+def has_value(record_value: Any) -> bool:
+    """Return whether a migration record value is set (zero is a valid discount)."""
+    return bool(record_value) or isinstance(record_value, int | float)
 
 
 def get_unset_migration_parameters(order: dict[str, Any]) -> list[FulfillmentParametersEnum]:
@@ -33,14 +60,25 @@ def get_unset_migration_parameters(order: dict[str, Any]) -> list[FulfillmentPar
     ]
 
 
+def get_required_parameters(
+    external_ids: list[FulfillmentParametersEnum],
+) -> list[FulfillmentParametersEnum]:
+    """Return the parameters of the list the migration flow cannot run without."""
+    return [
+        external_id
+        for external_id in external_ids
+        if MIGRATION_FULFILLMENT_PARAMETERS[external_id].required
+    ]
+
+
 def get_missing_record_values(
     record: AccountMigrationRecord, external_ids: list[FulfillmentParametersEnum]
 ) -> list[str]:
-    """Return the external ids whose value is empty in the migration record."""
+    """Return the external ids of required parameters whose value is empty in the record."""
     return [
         external_id.value
-        for external_id in external_ids
-        if not getattr(record, MIGRATION_FULFILLMENT_PARAMETERS[external_id])
+        for external_id in get_required_parameters(external_ids)
+        if not has_value(get_record_value(record, external_id))
     ]
 
 
@@ -48,10 +86,12 @@ class SetMigrationFulfillmentParameters(BasePhaseStep):
     """
     Copy the fulfillment parameters of a migration order from its Airtable migration record.
 
-    Runs once, in the createBillingTransferInvitation phase, right after the migration order
+    Runs in the createBillingTransferInvitation phase, right after the migration order
     validation. Parameters that already carry a value are left untouched, so the step is
-    idempotent. A missing record or a record without the value is an operational error: the
-    order stays in processing and the team is notified through Teams, as the validation does.
+    idempotent. A missing record or a record without a required value is an operational
+    error: the order stays in processing and the team is notified through Teams, as the
+    validation does. Once the required parameters are set, a retry in the same phase only
+    revisits the optional ones and never stops the order.
     """
 
     @override
@@ -68,15 +108,24 @@ class SetMigrationFulfillmentParameters(BasePhaseStep):
 
     @override
     def process(self, client: MPTClient, context: InitialAWSContext) -> None:
+        unset = get_unset_migration_parameters(context.order)
         record = AwsAccountMigrationTable().get_by_order_id(context.order_id)
         if record is None:
-            raise UnexpectedStopError(
-                f"Migration order {context.order_id} has no migration record",
-                f"The migration order {context.order_id} cannot be processed because no row of "
-                f"the AWS Account Migration Airtable table is linked to it. Please link the "
-                f"row to the order so the fulfillment can continue.",
+            if get_required_parameters(unset):
+                raise UnexpectedStopError(
+                    f"Migration order {context.order_id} has no migration record",
+                    f"The migration order {context.order_id} cannot be processed because no "
+                    f"row of the AWS Account Migration Airtable table is linked to it. Please "
+                    f"link the row to the order so the fulfillment can continue.",
+                )
+            # The required parameters were copied on a previous run: a retry in the same
+            # phase must not stop the order because only optional values are unset.
+            logger.info(
+                "%s - Next - No migration record found, optional parameters left unset: %s",
+                context.order_id,
+                ", ".join(external_id.value for external_id in unset),
             )
-        unset = get_unset_migration_parameters(context.order)
+            return
         missing = get_missing_record_values(record, unset)
         if missing:
             missing_parameters = ", ".join(missing)
@@ -88,8 +137,12 @@ class SetMigrationFulfillmentParameters(BasePhaseStep):
                 f"continue.",
             )
         for external_id in unset:
-            parameter_value = getattr(record, MIGRATION_FULFILLMENT_PARAMETERS[external_id])
-            get_fulfillment_parameter(external_id.value, context.order)["value"] = parameter_value
+            parameter_value = get_record_value(record, external_id)
+            if not has_value(parameter_value):
+                continue
+            get_fulfillment_parameter(external_id.value, context.order)["value"] = str(
+                parameter_value
+            )
             logger.info(
                 "%s - Action - Fulfillment parameter %s set from the migration record",
                 context.order_id,
