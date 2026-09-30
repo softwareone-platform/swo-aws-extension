@@ -8,28 +8,45 @@ from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.set_migration_fulfillment_parameters import (
     SetMigrationFulfillmentParameters,
     get_missing_record_values,
+    get_required_parameters,
     get_unset_migration_parameters,
 )
-from swo_aws_extension.parameters import get_cco_contract_number
+from swo_aws_extension.parameters import (
+    get_cco_contract_number,
+    get_service_discount,
+    get_support_discount,
+)
 
 MODULE = "swo_aws_extension.flows.steps.set_migration_fulfillment_parameters"
 SAMPLE_CCO = "CH-CCO-331705"
+SAMPLE_SUPPORT_DISCOUNT = 10
+SAMPLE_USAGE_DISCOUNT = 2.5
+ALL_MIGRATION_PARAMETERS = (
+    FulfillmentParametersEnum.CCO_CONTRACT_NUMBER,
+    FulfillmentParametersEnum.SUPPORT_DISCOUNT,
+    FulfillmentParametersEnum.SERVICE_DISCOUNT,
+)
 
 
 @pytest.fixture
 def migration_record():
-    def factory(mpt_cco=SAMPLE_CCO, mpt_order_id="ORD-0792-5000-2253-4210"):
+    def factory(
+        mpt_cco=SAMPLE_CCO,
+        mpt_order_id="ORD-0792-5000-2253-4210",
+        swo_support_discount=SAMPLE_SUPPORT_DISCOUNT,
+        swo_usage_discount=SAMPLE_USAGE_DISCOUNT,
+    ):
         return AccountMigrationRecord(
             swo_seller="SWO Spain",
             swo_buyer="Buyer",
             masterpayer="651706759263",
             mpt_cco=mpt_cco,
+            swo_support_discount=swo_support_discount,
+            swo_usage_discount=swo_usage_discount,
             aws_account_email="customer@example.com",
             aws_support_type="Business",
             technical_contact_name="Tech Contact",
             technical_contact_email="tech@example.com",
-            group="A",
-            batch="1",
             mpt_order_id=mpt_order_id,
             record_id="rec123",
         )
@@ -39,10 +56,18 @@ def migration_record():
 
 @pytest.fixture
 def migration_context(order_factory, fulfillment_parameters_factory):
-    def factory(phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION.value, cco=""):
+    def factory(
+        phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION.value,
+        cco="",
+        support_discount="",
+        service_discount="",
+    ):
         order = order_factory(
             fulfillment_parameters=fulfillment_parameters_factory(
-                phase=phase, cco_contract_number=cco
+                phase=phase,
+                cco_contract_number=cco,
+                support_discount=support_discount,
+                service_discount=service_discount,
             ),
         )
         return PurchaseContext.from_order_data(order)
@@ -70,14 +95,28 @@ def mock_notify(mocker):
 
 
 @pytest.mark.parametrize(
-    ("cco", "expected"),
+    ("cco", "support_discount", "service_discount", "expected"),
     [
-        ("", [FulfillmentParametersEnum.CCO_CONTRACT_NUMBER]),
-        (SAMPLE_CCO, []),
+        ("", "", "", list(ALL_MIGRATION_PARAMETERS)),
+        (
+            SAMPLE_CCO,
+            "",
+            "",
+            [
+                FulfillmentParametersEnum.SUPPORT_DISCOUNT,
+                FulfillmentParametersEnum.SERVICE_DISCOUNT,
+            ],
+        ),
+        (SAMPLE_CCO, "10", "", [FulfillmentParametersEnum.SERVICE_DISCOUNT]),
+        (SAMPLE_CCO, "10", "2.5", []),
     ],
 )
-def test_get_unset_migration_parameters(migration_context, cco, expected):
-    context = migration_context(cco=cco)
+def test_get_unset_migration_parameters(
+    migration_context, cco, support_discount, service_discount, expected
+):
+    context = migration_context(
+        cco=cco, support_discount=support_discount, service_discount=service_discount
+    )
 
     result = get_unset_migration_parameters(context.order)
 
@@ -95,12 +134,26 @@ def test_get_unset_migration_parameters(migration_context, cco, expected):
 def test_get_missing_record_values(migration_record, mpt_cco, expected):
     record = migration_record(mpt_cco=mpt_cco)
 
-    result = get_missing_record_values(record, [FulfillmentParametersEnum.CCO_CONTRACT_NUMBER])
+    result = get_missing_record_values(record, ALL_MIGRATION_PARAMETERS)
 
     assert result == expected
 
 
-def test_sets_cco_from_migration_record(
+def test_get_required_parameters():
+    result = get_required_parameters(list(ALL_MIGRATION_PARAMETERS))
+
+    assert result == [FulfillmentParametersEnum.CCO_CONTRACT_NUMBER]
+
+
+def test_get_missing_record_values_ignores_optional_discounts(migration_record):
+    record = migration_record(swo_support_discount=None, swo_usage_discount=None)
+
+    result = get_missing_record_values(record, ALL_MIGRATION_PARAMETERS)
+
+    assert result == []
+
+
+def test_sets_parameters_from_migration_record(
     mocker, migration_context, migration_record, mock_migration_table, mock_update_order
 ):
     mock_client = mocker.MagicMock(spec=MPTClient)
@@ -113,9 +166,72 @@ def test_sets_cco_from_migration_record(
 
     mock_migration_table.return_value.get_by_order_id.assert_called_once_with(context.order_id)
     assert get_cco_contract_number(context.order) == SAMPLE_CCO
+    assert get_support_discount(context.order) == "10"
+    assert get_service_discount(context.order) == "2.5"
     mock_update_order.assert_called_once_with(
         mock_client, context.order_id, parameters=context.order["parameters"]
     )
+    next_step_mock.assert_called_once_with(mock_client, context)
+
+
+def test_keeps_discounts_already_set_in_the_order(
+    mocker, migration_context, migration_record, mock_migration_table, mock_update_order
+):
+    mock_client = mocker.MagicMock(spec=MPTClient)
+    next_step_mock = mocker.MagicMock(spec=Step)
+    context = migration_context(support_discount="7", service_discount="3")
+    mock_migration_table.return_value.get_by_order_id.return_value = migration_record()
+    step = SetMigrationFulfillmentParameters()
+
+    step(mock_client, context, next_step_mock)  # act
+
+    assert get_cco_contract_number(context.order) == SAMPLE_CCO
+    assert get_support_discount(context.order) == "7"
+    assert get_service_discount(context.order) == "3"
+    next_step_mock.assert_called_once_with(mock_client, context)
+
+
+def test_stores_zero_discounts(
+    mocker, migration_context, migration_record, mock_migration_table, mock_update_order
+):
+    mock_client = mocker.MagicMock(spec=MPTClient)
+    next_step_mock = mocker.MagicMock(spec=Step)
+    context = migration_context()
+    mock_migration_table.return_value.get_by_order_id.return_value = migration_record(
+        swo_support_discount=0, swo_usage_discount=0
+    )
+    step = SetMigrationFulfillmentParameters()
+
+    step(mock_client, context, next_step_mock)  # act
+
+    assert get_support_discount(context.order) == "0"
+    assert get_service_discount(context.order) == "0"
+    next_step_mock.assert_called_once_with(mock_client, context)
+
+
+def test_leaves_discounts_unset_when_record_has_none(
+    mocker,
+    migration_context,
+    migration_record,
+    mock_migration_table,
+    mock_update_order,
+    mock_notify,
+):
+    mock_client = mocker.MagicMock(spec=MPTClient)
+    next_step_mock = mocker.MagicMock(spec=Step)
+    context = migration_context()
+    mock_migration_table.return_value.get_by_order_id.return_value = migration_record(
+        swo_support_discount=None, swo_usage_discount=None
+    )
+    step = SetMigrationFulfillmentParameters()
+
+    step(mock_client, context, next_step_mock)  # act
+
+    assert get_cco_contract_number(context.order) == SAMPLE_CCO
+    assert not get_support_discount(context.order)
+    assert not get_service_discount(context.order)
+    mock_notify.assert_not_called()
+    mock_update_order.assert_called_once()
     next_step_mock.assert_called_once_with(mock_client, context)
 
 
@@ -124,7 +240,7 @@ def test_skips_when_parameters_already_set(
 ):
     mock_client = mocker.MagicMock(spec=MPTClient)
     next_step_mock = mocker.MagicMock(spec=Step)
-    context = migration_context(cco=SAMPLE_CCO)
+    context = migration_context(cco=SAMPLE_CCO, support_discount="10", service_discount="2.5")
     step = SetMigrationFulfillmentParameters()
 
     step(mock_client, context, next_step_mock)  # act
@@ -169,6 +285,24 @@ def test_stops_and_notifies_when_record_is_missing(
     assert not get_cco_contract_number(context.order)
     mock_update_order.assert_not_called()
     next_step_mock.assert_not_called()
+
+
+def test_continues_without_record_when_only_optional_parameters_are_unset(
+    mocker, migration_context, mock_migration_table, mock_update_order, mock_notify
+):
+    mock_client = mocker.MagicMock(spec=MPTClient)
+    next_step_mock = mocker.MagicMock(spec=Step)
+    context = migration_context(cco=SAMPLE_CCO)
+    mock_migration_table.return_value.get_by_order_id.return_value = None
+    step = SetMigrationFulfillmentParameters()
+
+    step(mock_client, context, next_step_mock)  # act
+
+    mock_notify.assert_not_called()
+    assert get_cco_contract_number(context.order) == SAMPLE_CCO
+    assert not get_support_discount(context.order)
+    assert not get_service_discount(context.order)
+    next_step_mock.assert_called_once_with(mock_client, context)
 
 
 def test_stops_and_notifies_when_record_value_is_missing(
