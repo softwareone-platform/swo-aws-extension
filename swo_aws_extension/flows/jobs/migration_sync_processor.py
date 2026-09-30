@@ -329,9 +329,15 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
             return False
         self.report.add_created_ticket(order_id, ticket_id)
         if not store_ticket_id(self.mpt_client, order, ticket_id):
-            self.report.add_failed_row(
-                order_id, f"Ticket {ticket_id} created but not stored in the agreement"
+            # Without the stored id the next run would create a second ticket: stop here and
+            # keep the id in the row error so an operator can store it in the agreement.
+            self._fail_row(
+                record,
+                changes,
+                f"Billing transfer start ticket {ticket_id} created but its id was not stored "
+                f"in the agreement. Store it in crmMigrationTicketId before the next run.",
             )
+            return False
         return True
 
     def _are_services_onboarded(
