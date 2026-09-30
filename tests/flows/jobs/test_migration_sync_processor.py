@@ -938,22 +938,31 @@ def test_sync_skips_ticket_already_stored_in_agreement(
     )
 
 
-def test_sync_ticket_store_error_still_onboards_and_reports(
-    processor, completed_record, mock_update_agreement, mock_teams
+def test_sync_ticket_store_error_skips_onboarding(
+    processor,
+    completed_record,
+    mock_migration_table,
+    mock_update_agreement,
+    mock_cloud_orchestrator,
+    mock_teams,
 ):
-    mock_update_agreement.side_effect = [MPTError("error"), None]
+    mock_update_agreement.side_effect = MPTError("error")
 
     processor.sync()  # act
 
-    assert completed_record.migration_status == AccountMigrationStatus.SERVICES_ONBOARDED
+    mock_cloud_orchestrator.onboard_customer.assert_not_called()
+    mock_migration_table.save.assert_called_once_with(completed_record)
+    assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
+    assert completed_record.error == (
+        f"Billing transfer start ticket {TICKET_ID} created but its id was not stored in "
+        "the agreement. Store it in crmMigrationTicketId before the next run."
+    )
     report = sent_report(mock_teams, "send_warning")
     assert report.startswith(
-        "Rows checked: 1. Rows updated: 1. Tickets created: 1. Onboardings started: 1. "
+        "Rows checked: 1. Rows updated: 1. Tickets created: 1. Onboardings started: 0. "
         "Rows with errors: 1."
     )
-    assert report.endswith(
-        f"Errors:\n- {ORDER_ID}: Ticket {TICKET_ID} created but not stored in the agreement"
-    )
+    assert f"ticket {TICKET_ID} created but its id was not stored" in report
 
 
 def test_sync_creates_ticket_when_agreement_has_no_parameters(
