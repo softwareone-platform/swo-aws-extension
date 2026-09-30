@@ -516,7 +516,7 @@ def test_create_relationship_with_support_plan(config, aws_client_factory):
     support_plan = {
         "partnerLedSupport": {
             "coverage": "ENTIRE_ORGANIZATION",
-            "tamLocation": "Brazil",
+            "tamLocation": "sa-east-1",
             "provider": "DISTRIBUTOR",
         }
     }
