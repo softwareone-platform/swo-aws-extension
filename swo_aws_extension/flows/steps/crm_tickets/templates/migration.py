@@ -3,8 +3,10 @@
 from swo_aws_extension.flows.steps.crm_tickets.templates.models import CRMTicketTemplate
 
 MIGRATION_TEMPLATE = CRMTicketTemplate(
-    title="New AWS migrated customer in Marketplace",
-    additional_info="Existing SWO AWS customer migrated to the Marketplace via billing transfer",
+    title="AWS - New AWS migrated customer in Marketplace",
+    additional_info=(
+        "AWS - Existing SWO AWS customer migrated to the Marketplace via billing transfer"
+    ),
     summary=(
         "Dear MCoE Team,<br><br>"
         "An existing SoftwareOne AWS customer has been migrated to the SWO Marketplace.<br>"
