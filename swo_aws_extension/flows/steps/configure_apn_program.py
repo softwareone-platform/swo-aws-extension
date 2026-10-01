@@ -5,7 +5,13 @@ from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
 from swo_aws_extension.aws.errors import AWSError
-from swo_aws_extension.constants import PhasesEnum
+from swo_aws_extension.constants import (
+    PLS_SUPPORT_PLAN_COVERAGE,
+    PLS_SUPPORT_PLAN_PROVIDER,
+    PLS_SUPPORT_PLAN_TAM_LOCATION,
+    PhasesEnum,
+    SupportTypesEnum,
+)
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import (
@@ -18,11 +24,38 @@ from swo_aws_extension.parameters import (
     get_mpa_account_id,
     get_phase,
     get_relationship_id,
+    get_support_type,
     set_phase,
     set_relationship_id,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def build_partner_led_support_plan() -> dict:
+    """Build the ``requestedSupportPlan`` union for partner-led support relationships."""
+    return {
+        "partnerLedSupport": {
+            "coverage": PLS_SUPPORT_PLAN_COVERAGE,
+            "tamLocation": PLS_SUPPORT_PLAN_TAM_LOCATION,
+            "provider": PLS_SUPPORT_PLAN_PROVIDER,
+        }
+    }
+
+
+def get_requested_support_plan(context: PurchaseContext) -> dict | None:
+    """
+    Return the support plan to request when creating the Partner Central relationship.
+
+    Migrated customers already have a support plan under the SoftwareOne master payer, so
+    partner-led support migration orders request the PLS plan to replace it. Regular orders
+    and resold support orders keep the current behaviour and request no plan.
+    """
+    if not context.is_migration_order():
+        return None
+    if get_support_type(context.order) != SupportTypesEnum.PARTNER_LED_SUPPORT:
+        return None
+    return build_partner_led_support_plan()
 
 
 class ConfigureAPNProgram(BasePhaseStep):
@@ -60,11 +93,18 @@ class ConfigureAPNProgram(BasePhaseStep):
             )
 
         mpa_account_id = get_mpa_account_id(context.order)
+        requested_support_plan = get_requested_support_plan(context)
+        if requested_support_plan:
+            logger.info(
+                "%s - Action - Requesting partner-led support plan in the channel relationship",
+                context.order_id,
+            )
         try:
             relationship = context.aws_apn_client.create_relationship_in_partner_central(
                 pma_identifier=pm_identifier,
                 mpa_id=mpa_account_id,
                 scu=context.buyer.get("externalIds", {}).get("erpCustomer", "SCU_NOT_PROVIDED"),
+                requested_support_plan=requested_support_plan,
             )
         except AWSError as error:
             raise UnexpectedStopError(

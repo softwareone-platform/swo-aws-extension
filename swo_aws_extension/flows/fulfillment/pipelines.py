@@ -6,6 +6,7 @@ from mpt_extension_sdk.flows.context import Context
 from mpt_extension_sdk.flows.pipeline import Pipeline
 
 from swo_aws_extension.config import Config
+from swo_aws_extension.constants import PhasesEnum
 from swo_aws_extension.flows.steps.check_billing_transfer_invitation import (
     CheckBillingTransferInvitation,
 )
@@ -21,6 +22,7 @@ from swo_aws_extension.flows.steps.create_billing_transfer_invitation import (
 from swo_aws_extension.flows.steps.create_channel_handshake import CreateChannelHandshake
 from swo_aws_extension.flows.steps.create_new_aws_environment import CreateNewAWSEnvironment
 from swo_aws_extension.flows.steps.create_subscription import CreateSubscription
+from swo_aws_extension.flows.steps.crm_tickets.migration import CRMTicketMigration
 from swo_aws_extension.flows.steps.crm_tickets.new_account import CRMTicketNewAccount
 from swo_aws_extension.flows.steps.crm_tickets.onboard_services import CRMTicketOnboardServices
 from swo_aws_extension.flows.steps.crm_tickets.order_fail import CRMTicketOrderFail
@@ -28,9 +30,13 @@ from swo_aws_extension.flows.steps.crm_tickets.pls import CRMTicketPLS
 from swo_aws_extension.flows.steps.crm_tickets.terminate_order import CRMTicketTerminateOrder
 from swo_aws_extension.flows.steps.finops_entitlement import TerminateFinOpsEntitlementStep
 from swo_aws_extension.flows.steps.onboard_services import OnboardServices
+from swo_aws_extension.flows.steps.set_migration_fulfillment_parameters import (
+    SetMigrationFulfillmentParameters,
+)
 from swo_aws_extension.flows.steps.setup_context import SetupContext
 from swo_aws_extension.flows.steps.swo_job import SWOJobStep
 from swo_aws_extension.flows.steps.terminate import TerminateResponsibilityTransferStep
+from swo_aws_extension.flows.steps.validate_migration_order import ValidateMigrationOrder
 from swo_aws_extension.flows.steps.validate_order import ValidateOrder
 from swo_aws_extension.flows.steps.wait_terminate_responsibility_transfer import (
     WaitTerminateResponsibilityTransferStep,
@@ -106,6 +112,35 @@ purchase_existing_aws_environment = Pipeline(
     CRMTicketOnboardServices(config),
     CompleteOrder(config),
 )
+
+# Migration orders come from customers already under SWO-managed master payers, so the
+# pipeline skips customer roles, services deployment, contract card and ERP job steps.
+# Those skipped steps normally advance the order phase, so the handshake check and the
+# subscription step are told to jump straight to the next phase this pipeline handles.
+# The billing transfer invitation is accepted manually by the MCoE team: while it is pending
+# the order waits in querying with the migration template, and a declined, canceled or
+# expired invitation fails the order. The existing CCO cannot be set by the Migration Orders
+# extension when it creates the order, so it is copied from the AWS Account Migration Airtable
+# row into the ccoContractNumber parameter here; no contract card or ERP job runs.
+# Once the channel handshake is accepted, the migration CRM ticket is created before the
+# master payer subscription is created and the order completes with the migration template.
+# The FinOps entitlement is created afterwards by the FinOps synchronization job, as in the
+# regular flows.
+purchase_migration = Pipeline(
+    SetupContext(config),
+    ValidateOrder(),
+    ValidateMigrationOrder(),
+    SetMigrationFulfillmentParameters(),
+    CreateBillingTransferInvitation(config),
+    CheckBillingTransferInvitation(config),
+    ConfigureAPNProgram(config),
+    CreateChannelHandshake(config),
+    CheckChannelHandshakeStatus(config, next_phase=PhasesEnum.CREATE_SUBSCRIPTION),
+    CRMTicketMigration(config),
+    CreateSubscription(config, next_phase=PhasesEnum.COMPLETED),
+    CompleteOrder(config),
+)
+
 terminate = Pipeline(
     SetupContext(config),
     TerminateResponsibilityTransferStep(config),

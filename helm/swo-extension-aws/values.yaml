@@ -42,6 +42,7 @@ global:
   AwsOpenIdScope: default
   AwsRegion: us-east-1
   AirTableBases: default
+  AirTableAccountMigrationBase: default
   CcpKeyVaultSecretName: default
   ExtMinimumMpaThreshold: 1
   FfcOperationsApiBase: default
@@ -91,6 +92,9 @@ global:
     sync-finops:
       schedule: ""
       command: synchronize_finops_accounts
+    sync-migration:
+      schedule: ""
+      command: synchronize_migration_orders
     invitations-report:
       schedule: ""
       command: create_invitations_report

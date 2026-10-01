@@ -22,6 +22,14 @@ MONTHS_PER_YEAR = 12
 
 CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS = 90
 
+# Support plan requested in the Partner Central relationship of partner-led support (PLS)
+# migration orders. The SoftwareOne PLS partnership with AWS is built with the Technical
+# Account Manager located in Brazil (Partner Central expects the AWS region code of the TAM
+# location, not the country name) and SoftwareOne acting as distributor.
+PLS_SUPPORT_PLAN_COVERAGE = "ENTIRE_ORGANIZATION"
+PLS_SUPPORT_PLAN_TAM_LOCATION = "sa-east-1"
+PLS_SUPPORT_PLAN_PROVIDER = "DISTRIBUTOR"
+
 AWS_MARKETPLACE = "AWS Marketplace"
 
 
@@ -106,6 +114,7 @@ class OrderParametersEnum(StrEnum):
     NEW_ACCOUNT_INSTRUCTIONS = "newAccountInstructions"
     TECHNICAL_CONTACT_INFO = "technicalContactInfo"
     CONNECT_AWS_BILLING_ACCOUNT = "connectAWSBillingAccount"
+    IS_MIGRATION = "is_migration"
 
 
 class FulfillmentParametersEnum(StrEnum):
@@ -133,6 +142,7 @@ class FulfillmentParametersEnum(StrEnum):
     ERP_PROJECT_NO = "erpProjectNo"
     RELATIONSHIP_END_DATE = "relationshipEndDate"
     SERVICE_DISCOUNT_TYPE = "serviceDiscountType"
+    CRM_MIGRATION_TICKET_ID = "crmMigrationTicketId"
 
 
 class OrderProcessingTemplateEnum(StrEnum):
@@ -143,6 +153,7 @@ class OrderProcessingTemplateEnum(StrEnum):
         "AWS Billing Transfer Order Confirmation and next steps - Existing AWS account"
     )
     TERMINATE = "AWS Billing Transfer Termination order received"
+    MIGRATION = "AWS Migration - Order received"
 
 
 class OrderQueryingTemplateEnum(StrEnum):
@@ -153,6 +164,7 @@ class OrderQueryingTemplateEnum(StrEnum):
     NEW_ACCOUNT_CREATION = "AWS Billing Transfer New AWS account creation"
     WAITING_FOR_CUSTOMER_ROLES = "AWS Billing Transfer Waiting for roles deployment template"
     HANDSHAKE_AWAITING_ACCEPTANCE = "AWS Billing Transfer APN Channel Handshake pending acceptance"
+    MIGRATION_TRANSFER_AWAITING_INVITATIONS = "AWS Migration - Billing transfer invitation pending"
 
 
 class OrderCompletedTemplate(StrEnum):
@@ -161,12 +173,19 @@ class OrderCompletedTemplate(StrEnum):
     PURCHASE = "AWS Billing Transfer - Order Completed"
     TERMINATION = "AWS Billing Transfer Termination order approved"
     TERMINATION_WITHOUT_HANDSHAKE = "AWS Billing Transfer Termination order approved - wt handshake"
+    MIGRATION = "AWS Migration - Order completed"
 
 
 class MptOrderStatus(StrEnum):
     """MPT order statuses."""
 
+    DRAFT = "Draft"
+    QUOTED = "Quoted"
+    PROCESSING = "Processing"
+    QUERYING = "Querying"
     COMPLETED = "Completed"
+    FAILED = "Failed"
+    DELETED = "Deleted"
 
 
 class FinOpsStatusEnum(StrEnum):
@@ -205,6 +224,13 @@ class ChannelHandshakeDeployed(StrEnum):
 
     YES = "yes"
     NO_DEPLOYED = "no"
+
+
+class MigrationOrderEnum(StrEnum):
+    """Values of the vendor-only migration ordering parameter."""
+
+    YES = "yes"
+    NO_MIGRATION = "no"
 
 
 class ServicePeriodTypeEnum(StrEnum):

@@ -56,3 +56,4 @@ Example create payload:
 
 Client: [`swo_aws_extension/swo/cco/client.py`](../../swo_aws_extension/swo/cco/client.py)
 Models: [`swo_aws_extension/swo/cco/models.py`](../../swo_aws_extension/swo/cco/models.py)
+Seller to legal entity mapping: [`swo_aws_extension/swo/cco/seller_mapper.py`](../../swo_aws_extension/swo/cco/seller_mapper.py), loading [`seller_external_id_map.json`](../../swo_aws_extension/swo/cco/seller_external_id_map.json) from the same package; the key is the ISO country of the seller address, so a country with several SoftwareOne legal entities always resolves to the plain country entry

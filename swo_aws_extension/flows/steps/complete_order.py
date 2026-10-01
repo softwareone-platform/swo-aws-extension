@@ -19,6 +19,13 @@ from swo_aws_extension.parameters import (
 logger = logging.getLogger(__name__)
 
 
+def get_completed_template(context: InitialAWSContext) -> OrderCompletedTemplate:
+    """Return the completed template of a purchase order: migration orders have their own."""
+    if context.is_migration_order():
+        return OrderCompletedTemplate.MIGRATION
+    return OrderCompletedTemplate.PURCHASE
+
+
 class CompleteOrder(BasePhaseStep):
     """Handles the completion of an order."""
 
@@ -36,7 +43,7 @@ class CompleteOrder(BasePhaseStep):
 
     @override
     def process(self, client: MPTClient, context: InitialAWSContext) -> None:
-        template_name = OrderCompletedTemplate.PURCHASE
+        template_name = get_completed_template(context)
         mpa_id = get_mpa_account_id(context.order)
 
         context.agreement = update_agreement(

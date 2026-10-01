@@ -2,6 +2,7 @@ import pytest
 
 from swo_aws_extension.constants import (
     BASIC_PRICING_PLAN_ARN,
+    MigrationOrderEnum,
     OrderQueryingTemplateEnum,
     PhasesEnum,
     ResponsibilityTransferStatus,
@@ -111,6 +112,75 @@ def test_process_transfer_pending(
         CheckBillingTransferInvitation(config).process(mpt_client, context)
 
     assert error.value.template_id == OrderQueryingTemplateEnum.TRANSFER_AWAITING_INVITATIONS.value
+
+
+def test_process_transfer_pending_migration_uses_migration_template(
+    order_factory,
+    order_parameters_factory,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    config,
+    mpt_client,
+):
+    order = order_factory(
+        order_parameters=order_parameters_factory(migration=MigrationOrderEnum.YES.value),
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION.value,
+            responsibility_transfer_id="RT-123",
+        ),
+    )
+    context = PurchaseContext.from_order_data(order)
+    _, aws_client_mock = aws_client_factory(config, "mpa-id", "role-name")
+    context.aws_client = aws_client_mock
+    aws_client_mock.get_responsibility_transfer_details.return_value = {
+        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.REQUESTED}
+    }
+
+    with pytest.raises(QueryStepError) as error:
+        CheckBillingTransferInvitation(config).process(mpt_client, context)
+
+    assert (
+        error.value.template_id
+        == OrderQueryingTemplateEnum.MIGRATION_TRANSFER_AWAITING_INVITATIONS.value
+    )
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        ResponsibilityTransferStatus.DECLINED,
+        ResponsibilityTransferStatus.CANCELED,
+        ResponsibilityTransferStatus.EXPIRED,
+    ],
+)
+def test_process_migration_transfer_invalid_status_fails_order(
+    order_factory,
+    order_parameters_factory,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    config,
+    mpt_client,
+    status,
+):
+    order = order_factory(
+        order_parameters=order_parameters_factory(migration=MigrationOrderEnum.YES.value),
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION.value,
+            responsibility_transfer_id="RT-123",
+        ),
+    )
+    context = PurchaseContext.from_order_data(order)
+    _, aws_client_mock = aws_client_factory(config, "mpa-id", "role-name")
+    context.aws_client = aws_client_mock
+    aws_client_mock.get_responsibility_transfer_details.return_value = {
+        "ResponsibilityTransfer": {"Status": status}
+    }
+
+    with pytest.raises(FailStepError) as error:
+        CheckBillingTransferInvitation(config).process(mpt_client, context)
+
+    assert error.value.id == "INVALID_RESPONSIBILITY_TRANSFER_STATUS"
+    assert f"RT-123 has status: {status}" in error.value.message
 
 
 def test_process_transfer_cancelled(
