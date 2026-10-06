@@ -49,11 +49,17 @@ class InvoiceLine:
     currency: str
     exchange_rate: Decimal
     base_currency: str
+    has_spp_breakdown: bool = False
+
+    @property
+    def is_marketplace(self) -> bool:
+        """Whether the invoice is billed by AWS Marketplace."""
+        return self.billing_entity == "AWS_MARKETPLACE"
 
     @property
     def category(self) -> str:
         """Human readable category used in the manual sheet."""
-        return "AWS Marketplace" if self.billing_entity == "AWS_MARKETPLACE" else "Usage"
+        return "AWS Marketplace" if self.is_marketplace else "Usage"
 
 
 @dataclass
@@ -80,20 +86,21 @@ class MpaInvoices:
         return sum((line.spp_discount for line in self.lines), DEC_ZERO)
 
     @property
-    def aws_total(self) -> Decimal:
-        """Total of the invoices billed by AWS itself (marketplace excluded), taxes included.
+    def principal_total(self) -> Decimal:
+        """Total (taxes included) of the principal invoice, as the billing journal picks it.
 
-        When it is zero the usage was fully covered by credits and the billing journal
-        returns the SPP discount to the customer instead of keeping it.
+        The principal invoice is the one carrying the AWS SPP discount breakdown, or the
+        first invoice billed by AWS itself when none does. When its total is zero the
+        usage was fully covered by credits and the journal returns the SPP discount to
+        the customer instead of keeping it, whatever other invoices (one-time purchases,
+        marketplace) the MPA has.
         """
-        return sum(
-            (
-                line.cost + line.tax
-                for line in self.lines
-                if line.billing_entity != "AWS_MARKETPLACE"
-            ),
-            DEC_ZERO,
-        )
+        principal = next((line for line in self.lines if line.has_spp_breakdown), None)
+        if principal is None:
+            principal = next((line for line in self.lines if not line.is_marketplace), None)
+        if principal is None:
+            return DEC_ZERO
+        return principal.cost + principal.tax
 
     @property
     def exchange_rate(self) -> Decimal:

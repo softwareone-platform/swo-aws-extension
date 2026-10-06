@@ -85,6 +85,23 @@ def test_calculate_zero_aws_invoice_returns_spp_to_customer(calculator, expected
     assert "returned to the customer" in result.notes[0]
 
 
+def test_calculate_zero_principal_invoice_with_one_time_purchase(calculator, expected, discounts):
+    # Tan Long: usage invoice fully covered by credits plus a 9300 USD Countdown purchase
+    invoices = MpaInvoices(
+        mpa=MPA,
+        currency="USD",
+        lines=[
+            build_invoice_line(charges="9300.00", spp="0", cost="9300.00", has_spp_breakdown=False),
+            build_invoice_line(charges="1662.77", spp="-199.55", cost="0"),
+        ],
+    )
+
+    result = calculator.calculate(expected, invoices, discounts, None)
+
+    assert result.sales_price == Decimal("9300.00")
+    assert "principal AWS invoice is 0" in result.notes[0]
+
+
 def test_calculate_excludes_support_spp_from_service_discount(
     calculator, expected, mpa_invoices, discounts
 ):

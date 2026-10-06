@@ -58,6 +58,8 @@ def build_invoice_line(
     billing_entity="AWS",
     tax="0",
     exchange_rate="1",
+    *,
+    has_spp_breakdown=True,
 ):
     return InvoiceLine(
         invoice_id="2847784289",
@@ -72,6 +74,7 @@ def build_invoice_line(
         currency="USD",
         exchange_rate=Decimal(exchange_rate),
         base_currency="USD",
+        has_spp_breakdown=has_spp_breakdown,
     )
 
 

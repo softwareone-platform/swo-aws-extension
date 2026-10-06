@@ -55,10 +55,10 @@ class ExpectedBillingCalculator:
         expected.spp_discount = invoices.spp_discount
 
         expected.add_step("AWS cost price (invoice total before tax)", invoices.cost_price)
-        if invoices.aws_total == DEC_ZERO:
+        if invoices.principal_total == DEC_ZERO:
             expected.notes.append(
-                "AWS invoice total is 0 (usage covered by credits): the SPP discount is "
-                "returned to the customer and no extra discount applies."
+                "The principal AWS invoice is 0 (usage covered by credits): the SPP discount "
+                "is returned to the customer and no extra discount applies."
             )
             return expected
 
