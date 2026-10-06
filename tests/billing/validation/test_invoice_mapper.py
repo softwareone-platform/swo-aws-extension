@@ -36,6 +36,7 @@ def test_for_mpa_derives_other_adjustments_from_totals():
 
     assert result.lines[0].other_adjustments == Decimal("-1365.02")
     assert result.lines[0].category == "Usage"
+    assert result.lines[0].has_spp_breakdown
 
 
 def test_for_mpa_filters_by_bill_source_account_and_marks_marketplace():
