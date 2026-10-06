@@ -9,12 +9,11 @@ from swo_aws_extension.billing.models.journal_result import (
 )
 from swo_aws_extension.billing.validation.models import (
     AgreementDiscounts,
+    AgreementNames,
     MpaInvoices,
     ServiceSplit,
 )
 from swo_aws_extension.constants import DEC_ZERO
-
-BASE_STEPS = 2
 
 
 class ValidationStatus(StrEnum):
@@ -24,6 +23,35 @@ class ValidationStatus(StrEnum):
     MISMATCH = "MISMATCH"
     MISSING_IN_PLATFORM = "MISSING_IN_PLATFORM"
     MISSING_INVOICES = "MISSING_INVOICES"
+
+
+class DiscountKind(StrEnum):
+    """Operations applied on top of the AWS cost price to reach the sales price."""
+
+    SERVICE = "Service discount"
+    SUPPORT = "Support discount"
+    PLS_SUPPORT_REMOVED = "AWS Enterprise Support not charged (PLS)"
+    PLS_CHARGE = "SWO Enterprise support for AWS (PLS)"
+    PLS_DISCOUNT = "PLS discount"
+
+
+@dataclass(frozen=True)
+class DiscountStep:
+    """One discount (or PLS adjustment) applied to the sales price."""
+
+    kind: DiscountKind
+    percentage: Decimal
+    base: Decimal
+    amount: Decimal
+    base_label: str = ""
+
+    @property
+    def description(self) -> str:
+        """Human readable description, e.g. ``Service discount 62.5% of SPP on usage``."""
+        kind = self.kind.value
+        if self.base_label:
+            return f"{kind} {self.percentage}% of {self.base_label}"
+        return kind
 
 
 @dataclass
@@ -39,21 +67,31 @@ class ExpectedBilling:
     list_price: Decimal = DEC_ZERO
     spp_discount: Decimal = DEC_ZERO
     sales_price: Decimal = DEC_ZERO
-    steps: list[tuple[str, Decimal]] = field(default_factory=list)
+    steps: list[DiscountStep] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     invoices: MpaInvoices | None = None
     discounts: AgreementDiscounts | None = None
     split: ServiceSplit | None = None
+    names: AgreementNames = field(default_factory=AgreementNames)
 
-    def add_step(self, description: str, amount: Decimal) -> None:
-        """Record one operation applied to the sales price."""
-        self.steps.append((description, amount))
-        self.sales_price += amount
+    def add_step(self, step: DiscountStep) -> None:
+        """Record one discount applied to the sales price."""
+        self.steps.append(step)
+        self.sales_price += step.amount
+
+    def step_amount(self, *kinds: DiscountKind) -> Decimal:
+        """Total amount of the steps of the given kinds."""
+        return sum((step.amount for step in self.steps if step.kind in kinds), DEC_ZERO)
+
+    def step_percentage(self, kind: DiscountKind) -> Decimal | None:
+        """Percentage of the step of the given kind, None when not applied."""
+        step = next((step for step in self.steps if step.kind == kind), None)
+        return step.percentage if step else None
 
     @property
-    def discount_steps(self) -> list[tuple[str, Decimal]]:
-        """Operations other than the cost price and the SPP discount kept by SWO."""
-        return self.steps[BASE_STEPS:]
+    def total_discounts(self) -> Decimal:
+        """Sum of every discount and PLS adjustment (negative when the customer pays less)."""
+        return self.step_amount(*DiscountKind)
 
     @property
     def markup(self) -> Decimal:
@@ -98,9 +136,14 @@ class AgreementValidation:
     checks: list[CheckResult] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     tolerance: Decimal | None = None
-    sales_price_tolerance: Decimal | None = None
+    likely_cause: str = ""
+    names: AgreementNames = field(default_factory=AgreementNames)
 
     @property
     def failed_checks(self) -> list[CheckResult]:
         """Checks outside the tolerance."""
         return [check for check in self.checks if not check.ok]
+
+    def check(self, name: str) -> CheckResult | None:
+        """Check with the given name, None when not run."""
+        return next((check for check in self.checks if check.name == name), None)

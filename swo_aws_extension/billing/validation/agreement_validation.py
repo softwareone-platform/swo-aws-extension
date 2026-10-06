@@ -13,7 +13,10 @@ from swo_aws_extension.billing.models.journal_result import (
     OrganizationSppSummaryRow,
 )
 from swo_aws_extension.billing.models.usage import OrganizationUsageResult
-from swo_aws_extension.billing.validation.agreements import extract_discounts
+from swo_aws_extension.billing.validation.agreements import (
+    extract_discounts,
+    extract_info,
+)
 from swo_aws_extension.billing.validation.calculator import ExpectedBillingCalculator
 from swo_aws_extension.billing.validation.invoice_mapper import InvoiceMapper
 from swo_aws_extension.billing.validation.results import (
@@ -37,9 +40,11 @@ class AgreementBillingValidator:
         self,
         pls_charge_percentage: Decimal,
         tolerance: Decimal = DEFAULT_TOLERANCE,
+        authorization_name: str = "",
     ) -> None:
         self._calculator = ExpectedBillingCalculator(pls_charge_percentage)
         self._validator = BillingValidator(tolerance)
+        self._authorization_name = authorization_name
 
     def validate(
         self,
@@ -80,8 +85,11 @@ class AgreementBillingValidator:
         invoices = InvoiceMapper(invoice_result.raw_data, spp_summary_row.currency).for_mpa(
             spp_summary_row.mpa
         )
+        names = extract_info(agreement, self._authorization_name)
         if not invoices.lines:
-            return self._validator.missing_invoices(spp_summary_row)
+            validation = self._validator.missing_invoices(spp_summary_row)
+            validation.names = names
+            return validation
 
         expected = self._calculator.calculate(
             ExpectedBilling(
@@ -90,6 +98,7 @@ class AgreementBillingValidator:
                 pma=spp_summary_row.pma,
                 authorization_id=spp_summary_row.authorization_id,
                 currency=spp_summary_row.currency,
+                names=names,
             ),
             invoices,
             extract_discounts(agreement),
@@ -109,8 +118,9 @@ def _log_validation(validation: AgreementValidation) -> None:
         for check in validation.failed_checks
     )
     logger.warning(
-        "Billing validation %s %s %s",
+        "Billing validation %s %s %s %s",
         validation.status.value,
         details,
+        validation.likely_cause,
         " | ".join(validation.notes),
     )

@@ -9,6 +9,15 @@ HUNDRED = Decimal(100)
 
 
 @dataclass(frozen=True)
+class AgreementNames:
+    """Agreement, client and authorization names shown in the validation sheet."""
+
+    agreement_name: str = ""
+    client_name: str = ""
+    authorization_name: str = ""
+
+
+@dataclass(frozen=True)
 class AgreementDiscounts:
     """Discount related parameters read from a platform agreement."""
 
@@ -21,6 +30,11 @@ class AgreementDiscounts:
     service_discount_type: str | None = None
     support_discount: Decimal = DEC_ZERO
     pls_discount: Decimal = DEC_ZERO
+
+    @property
+    def handshake_label(self) -> str:
+        """``yes``/``no`` for the sheet."""
+        return "yes" if self.handshake_approved else "no"
 
     @property
     def is_pls(self) -> bool:
@@ -50,6 +64,7 @@ class InvoiceLine:
     exchange_rate: Decimal
     base_currency: str
     has_spp_breakdown: bool = False
+    own_exchange_rate: bool = False
 
     @property
     def is_marketplace(self) -> bool:
@@ -107,6 +122,27 @@ class MpaInvoices:
         """Highest exchange rate found in the invoices, 1 when none applies."""
         rates = [line.exchange_rate for line in self.lines if line.exchange_rate > DEC_ZERO]
         return max(rates) if rates else Decimal(1)
+
+    @property
+    def exchange_rate_source(self) -> str:
+        """Where the exchange rate of each invoice came from."""
+        own = sum(1 for line in self.lines if line.own_exchange_rate)
+        if own == len(self.lines):
+            return "invoice payment currency"
+        if own:
+            return f"{own}/{len(self.lines)} invoices with own rate, rest sibling rate"
+        if self.exchange_rate == Decimal(1):
+            return "none (base currency)"
+        return "sibling invoice rate"
+
+    @property
+    def invoice_ids(self) -> str:
+        """Invoice IDs used, principal invoice first, marketplace ones flagged."""
+        ordered = sorted(self.lines, key=lambda line: (line.is_marketplace, line.invoice_id))
+        return ", ".join(
+            f"{line.invoice_id} (MP)" if line.is_marketplace else line.invoice_id
+            for line in ordered
+        )
 
 
 @dataclass
