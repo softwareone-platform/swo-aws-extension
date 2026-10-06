@@ -65,6 +65,7 @@ def test_validate_tolerates_spp_rounding_between_invoice_and_cost_explorer(
 
     assert result.status == ValidationStatus.OK
     assert result.tolerance == Decimal("0.05")
+    assert result.sales_price_tolerance.quantize(Decimal("0.01")) == Decimal("1.14")
     assert any("AWS rounding" in note for note in result.notes)
 
 
