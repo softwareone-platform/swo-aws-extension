@@ -103,6 +103,16 @@ def test_build_validation_rows_mismatch_has_likely_cause(validations):
     assert small_row["Likely cause"].startswith("Cost Explorer reports less metered usage")
 
 
+def test_build_validation_rows_lists_steps(validations):
+    result = build_validation_rows(validations)
+
+    ok_row = dict(zip(VALIDATION_HEADERS, result[-1], strict=True))
+    assert ok_row["Steps"] == (
+        "AWS cost price: 16515.87; SPP discount kept by SWO: 1414.24; "
+        "Service discount 62.5% of SPP discount on usage: -883.90; Expected SP: 17046.21"
+    )
+
+
 def test_build_validation_rows_missing_invoices_has_empty_expected_cells(validations):
     result = build_validation_rows(validations)
 

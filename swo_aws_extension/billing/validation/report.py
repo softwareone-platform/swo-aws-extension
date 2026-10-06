@@ -2,8 +2,8 @@
 
 One compact row per agreement: identification, the two checks (PP and SP) with their
 difference, the discounts applied with percentage and amount in the agreement
-currency, and informative columns (SPP, list price, invoices, exchange rate). Steps
-and invoices are detailed in the ``Validation detail`` sheet.
+currency, and informative columns (SPP, list price, invoices, exchange rate). The
+operations behind the expected SP are listed in the ``Steps`` column.
 """
 
 from decimal import Decimal
@@ -57,6 +57,7 @@ VALIDATION_HEADERS = (
     "Invoices",
     "Exchange rate",
     "Exchange rate source",
+    "Steps",
     "Notes",
 )
 HUNDRED = Decimal(100)
@@ -79,6 +80,7 @@ def _row(validation: AgreementValidation) -> list:
         *_price_cells(validation),
         *_discount_cells(validation),
         *_info_cells(validation),
+        validation.expected.describe_steps() if validation.expected else "",
         " | ".join(validation.notes),
     ]
 
