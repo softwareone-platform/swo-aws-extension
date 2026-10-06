@@ -78,6 +78,7 @@ class AuthorizationJournalGenerator:
         # TODO update billing role to check responsibility transfers
         auth_context = AuthorizationContext(
             id=auth_id or "",
+            name=authorization.get("name", ""),
             pma_account=pma_account,
             currency=authorization.get("currency", ""),
             aws_client=AWSClient(self._config, pma_account, self._config.management_role_name),

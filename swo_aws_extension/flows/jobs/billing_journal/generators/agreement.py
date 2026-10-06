@@ -106,7 +106,9 @@ class AgreementJournalGenerator:
         self._billing_period = context.billing_period
         self._usage_generator = usage_generator
         self._invoice_generator = invoice_generator
-        self._billing_validator = AgreementBillingValidator(self._pls_charge_percentage)
+        self._billing_validator = AgreementBillingValidator(
+            self._pls_charge_percentage, authorization_name=auth_context.name
+        )
 
     @with_log_context(lambda _, agreement, **kwargs: agreement.get("id"))
     @dynamic_trace_span(lambda _, agreement, **kwargs: f"Agreement {agreement.get('id')}")

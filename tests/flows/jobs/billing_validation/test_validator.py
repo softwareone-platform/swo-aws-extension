@@ -28,13 +28,7 @@ def test_validate_within_tolerance_is_ok(expected, platform_summary):
     result = BillingValidator(Decimal("0.05")).validate(expected, platform_summary)
 
     assert result.status == ValidationStatus.OK
-    assert [check.name for check in result.checks] == [
-        "Cost price (PP)",
-        "List price",
-        "SPP discount",
-        "Sales price (SP)",
-        "SP from markup (PP * (1 + markup))",
-    ]
+    assert [check.name for check in result.checks] == ["Cost price (PP)", "Sales price (SP)"]
 
 
 def test_validate_flags_sales_price_outside_tolerance(expected, platform_summary):
@@ -47,7 +41,7 @@ def test_validate_flags_sales_price_outside_tolerance(expected, platform_summary
 
     assert result.status == ValidationStatus.MISMATCH
     assert [check.name for check in result.failed_checks] == ["Sales price (SP)"]
-    assert any("journal total does not" in note for note in result.notes)
+    assert result.likely_cause.startswith("Cost Explorer reports less metered usage")
 
 
 def test_validate_tolerates_spp_rounding_between_invoice_and_cost_explorer(
@@ -68,12 +62,13 @@ def test_validate_tolerates_spp_rounding_between_invoice_and_cost_explorer(
     assert any("AWS rounding" in note for note in result.notes)
 
 
-def test_validate_flags_spp_difference_above_one_percent(expected, platform_summary):
+def test_validate_does_not_fail_on_spp_difference_alone(expected, platform_summary):
     platform = replace(platform_summary, spp_discount=platform_summary.spp_discount * 2)
 
     result = BillingValidator(Decimal("0.05")).validate(expected, platform)
 
-    assert [check.name for check in result.failed_checks] == ["SPP discount"]
+    assert result.status == ValidationStatus.OK
+    assert any("AWS rounding" in note for note in result.notes)
 
 
 def test_validate_scales_tolerance_with_exchange_rate(expected, platform_summary):
@@ -91,6 +86,7 @@ def test_validate_without_platform_row(expected):
 
     assert result.status == ValidationStatus.MISSING_IN_PLATFORM
     assert result.checks == []
+    assert result.likely_cause == "No SPP Summary row was produced for the agreement."
 
 
 def test_missing_invoices(platform_summary):

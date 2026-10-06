@@ -23,7 +23,7 @@ from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     AuthorizationJournalResult,
 )
 from swo_aws_extension.flows.jobs.billing_journal.providers import BillingAWSClientProvider
-from swo_aws_extension.flows.jobs.billing_validation.report import (
+from swo_aws_extension.flows.jobs.billing_validation.summary import (
     describe_issues,
     describe_validation,
 )

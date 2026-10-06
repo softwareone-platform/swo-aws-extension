@@ -45,7 +45,7 @@ def _missing_invoices_validation():
         authorization_id="AUTH-1",
         currency="USD",
         status=ValidationStatus.MISSING_INVOICES,
-        notes=["No AWS invoices found for the MPA account."],
+        likely_cause="No AWS invoices found for the MPA account.",
     )
 
 
@@ -419,8 +419,9 @@ def test_validation_issues_send_warning(
     mock_context.notifier.send_warning.assert_called_once_with(
         title="Billing Validation Summary",
         text=(
-            "1 agreement(s) do not match the AWS invoices "
-            "(see the Validation sheet of the billing report):\n\n"
+            "1 agreement(s) validated, 1 outside the tolerance, 0 without discounts "
+            "configured. SP difference per currency: none "
+            "(see the Validation sheet of the billing report).\n\n"
             "• AGR-1 (MPA-1): MISSING_INVOICES - No AWS invoices found for the MPA account."
         ),
     )

@@ -20,7 +20,22 @@ from swo_aws_extension.flows.jobs.billing_validation.models import (
     MpaInvoices,
     ServiceSplit,
 )
-from swo_aws_extension.flows.jobs.billing_validation.results import ExpectedBilling
+from swo_aws_extension.flows.jobs.billing_validation.results import (
+    DiscountKind,
+    DiscountStep,
+    ExpectedBilling,
+)
+
+
+def _step(kind: DiscountKind, percentage: Decimal, base: Decimal, label: str) -> DiscountStep:
+    """Build a discount step whose amount is ``percentage`` of ``base``."""
+    return DiscountStep(
+        kind=kind,
+        percentage=percentage,
+        base=base,
+        amount=base * percentage / HUNDRED,
+        base_label=label,
+    )
 
 
 class ExpectedBillingCalculator:
@@ -54,7 +69,7 @@ class ExpectedBillingCalculator:
         expected.list_price = invoices.list_price
         expected.spp_discount = invoices.spp_discount
 
-        expected.add_step("AWS cost price (invoice total before tax)", invoices.cost_price)
+        expected.sales_price = invoices.cost_price
         if invoices.principal_total == DEC_ZERO:
             expected.notes.append(
                 "The principal AWS invoice is 0 (usage covered by credits): the SPP discount "
@@ -62,7 +77,7 @@ class ExpectedBillingCalculator:
             )
             return expected
 
-        expected.add_step("SPP discount kept by SWO", -invoices.spp_discount)
+        expected.sales_price -= invoices.spp_discount
         if discounts is None:
             expected.notes.append("Agreement not found in the platform: no discounts applied.")
             return expected
@@ -89,11 +104,7 @@ class ExpectedBillingCalculator:
             support_spp = split.support_spp if split else DEC_ZERO
             base = abs(expected.spp_discount - support_spp)
             label = "SPP discount on usage"
-        amount = base * discounts.service_discount / HUNDRED
-        expected.add_step(
-            f"SWO service discount {discounts.service_discount}% of {label}",
-            -amount,
-        )
+        expected.add_step(_step(DiscountKind.SERVICE, discounts.service_discount, -base, label))
 
     def _apply_support_discount(
         self,
@@ -108,10 +119,13 @@ class ExpectedBillingCalculator:
         if split is None:
             expected.notes.append("Support discount needs the billing report rows.")
             return
-        amount = abs(split.resold_support_spp) * discounts.support_discount / HUNDRED
         expected.add_step(
-            f"SWO support discount {discounts.support_discount}% of SPP discount on support",
-            -amount,
+            _step(
+                DiscountKind.SUPPORT,
+                discounts.support_discount,
+                -abs(split.resold_support_spp),
+                "SPP discount on support",
+            )
         )
 
     def _apply_pls(
@@ -132,15 +146,17 @@ class ExpectedBillingCalculator:
             return
 
         expected.add_step(
-            "AWS Enterprise Support not charged (PLS)",
-            -split.enterprise_support_charge,
+            DiscountStep(
+                kind=DiscountKind.PLS_SUPPORT_REMOVED,
+                percentage=DEC_ZERO,
+                base=split.enterprise_support_charge,
+                amount=-split.enterprise_support_charge,
+            )
         )
         expected.add_step(
-            f"SWO Enterprise support for AWS {self._pls_charge_percentage}% of usage",
-            split.usage_base * self._pls_charge_percentage / HUNDRED,
+            _step(DiscountKind.PLS_CHARGE, self._pls_charge_percentage, split.usage_base, "usage")
         )
         if discounts.handshake_approved and discounts.pls_discount > DEC_ZERO:
             expected.add_step(
-                f"SWO PLS discount {discounts.pls_discount}% of usage",
-                -(split.usage_base * discounts.pls_discount / HUNDRED),
+                _step(DiscountKind.PLS_DISCOUNT, discounts.pls_discount, -split.usage_base, "usage")
             )
