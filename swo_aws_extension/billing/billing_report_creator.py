@@ -4,10 +4,6 @@ from swo_aws_extension.billing.models.journal_result import (
     BillingReportRow,
     OrganizationSppSummaryRow,
 )
-from swo_aws_extension.billing.validation.detail import (
-    VALIDATION_DETAIL_HEADERS,
-    build_validation_detail_rows,
-)
 from swo_aws_extension.billing.validation.report import VALIDATION_HEADERS, build_validation_rows
 from swo_aws_extension.billing.validation.results import AgreementValidation
 from swo_aws_extension.config import Config
@@ -122,7 +118,6 @@ class BillingReportCreator:
             self._build_rows_by_account_data(rows_by_account or []),
             self._build_spp_summary_rows_data(spp_summary_rows or []),
             build_validation_rows(validations or []),
-            build_validation_detail_rows(validations or []),
         )
         folder = self._config.report_billing_folder
         blob_name = f"{folder}{billing_period_str}.xlsx"
@@ -153,14 +148,12 @@ class BillingReportCreator:
         by_account_data: list[list[CellValue]],
         spp_summary_data: list[list[CellValue]],
         validation_data: list[list[CellValue]],
-        validation_detail_data: list[list[CellValue]],
     ) -> bytes:
         return self._excel_builder.build_multi_sheet([
             ("Billing Report", list(BILLING_REPORT_HEADERS), rows_data),
             ("By Linked Account", list(BILLING_REPORT_BY_ACCOUNT_HEADERS), by_account_data),
             ("SPP Summary", list(SPP_SUMMARY_HEADERS), spp_summary_data),
             ("Validation", list(VALIDATION_HEADERS), validation_data),
-            ("Validation detail", list(VALIDATION_DETAIL_HEADERS), validation_detail_data),
         ])
 
     def _upload(self, excel_bytes: bytes, blob_name: str) -> str:

@@ -427,10 +427,9 @@ def test_validation_issues_send_warning(
     mock_context.notifier.send_warning.assert_called_once_with(
         title="Billing Validation Summary",
         text=(
-            "1 agreement(s) validated, 1 outside the tolerance, 0 without discounts "
-            "configured. SP difference per currency: none "
-            "(see the Validation sheet of the billing report).\n\n"
-            "• AGR-1 (MPA-1): MISSING_INVOICES - No AWS invoices found for the MPA account."
+            "1 of 1 agreement(s) need a review: the billing journal does not match the "
+            "AWS invoices or the agreement discounts. See the Validation sheet of the "
+            "billing report."
         ),
     )
 

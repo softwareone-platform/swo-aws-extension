@@ -88,6 +88,16 @@ class ExpectedBilling:
         step = next((step for step in self.steps if step.kind == kind), None)
         return step.percentage if step else None
 
+    def describe_steps(self) -> str:
+        """Operations from the AWS cost price to the expected sales price, one line."""
+        spp_kept = self.sales_price - self.cost_price - self.total_discounts
+        steps = [f"AWS cost price: {self.cost_price:.2f}"]
+        if spp_kept:
+            steps.append(f"SPP discount kept by SWO: {spp_kept:.2f}")
+        steps.extend(f"{step.description}: {step.amount:.2f}" for step in self.steps)
+        steps.append(f"Expected SP: {self.sales_price:.2f}")
+        return "; ".join(steps)
+
     @property
     def total_discounts(self) -> Decimal:
         """Sum of every discount and PLS adjustment (negative when the customer pays less)."""
