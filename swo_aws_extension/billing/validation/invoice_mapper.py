@@ -28,17 +28,18 @@ def _payment_rate(summary: dict, currency: str) -> Decimal:
     return _decimal(payment.get("CurrencyExchangeDetails", {}).get("Rate"))
 
 
-def _spp_discount(amounts: dict) -> Decimal:
+def _spp_breakdown(amounts: dict) -> list[dict]:
     discounts = amounts.get("AmountBreakdown", {}).get("Discounts", {})
-    breakdown = discounts.get("Breakdown", [])
-    spp = sum(
-        (
-            _decimal(entry.get("Amount"))
-            for entry in breakdown
-            if entry.get("Description") == SPP_DISCOUNT_DESCRIPTION
-        ),
-        DEC_ZERO,
-    )
+    return [
+        entry
+        for entry in discounts.get("Breakdown", [])
+        if entry.get("Description") == SPP_DISCOUNT_DESCRIPTION
+    ]
+
+
+def _spp_discount(amounts: dict) -> Decimal:
+    breakdown = _spp_breakdown(amounts)
+    spp = sum((_decimal(entry.get("Amount")) for entry in breakdown), DEC_ZERO)
     return -abs(spp)
 
 
@@ -81,6 +82,7 @@ class InvoiceMapper:
             currency=self._currency,
             exchange_rate=figures["rate"],
             base_currency=summary.get(BASE_CURRENCY_KEY, {}).get("CurrencyCode", "USD"),
+            has_spp_breakdown=bool(_spp_breakdown(summary.get(BASE_CURRENCY_KEY, {}))),
         )
 
     def _figures(self, summary: dict, fallback_rate: Decimal) -> dict[str, Decimal]:

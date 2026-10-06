@@ -13,8 +13,10 @@ from swo_aws_extension.billing.validation.results import (
 )
 
 DEFAULT_TOLERANCE = Decimal("0.05")
+SPP_SOURCE_TOLERANCE_RATIO = Decimal("0.01")
 SALES_PRICE_CHECK = "Sales price (SP)"
 COST_PRICE_CHECK = "Cost price (PP)"
+SPP_DISCOUNT_CHECK = "SPP discount"
 
 
 class BillingValidator:
@@ -22,6 +24,10 @@ class BillingValidator:
 
     The tolerance is expressed in USD and converted to the agreement currency with the
     exchange rate of the invoices, so 0.05 USD becomes roughly 800 IDR or 0.04 EUR.
+
+    The SPP discount of the invoice (rounded by AWS per line) and the one reported by
+    Cost Explorer legitimately differ by a few cents, so that check tolerates 1% of the
+    discount and the difference is not held against the sales price check either.
     """
 
     def __init__(self, tolerance: Decimal = DEFAULT_TOLERANCE) -> None:
@@ -50,11 +56,23 @@ class BillingValidator:
             return validation
 
         tolerance = self._tolerance * self._exchange_rate(expected, platform)
+        spp_source_diff = abs(platform.spp_discount - expected.spp_discount)
+        validation.tolerance = tolerance
         validation.checks = [
             CheckResult(COST_PRICE_CHECK, expected.cost_price, platform.pp, tolerance),
             CheckResult("List price", expected.list_price, platform.list_price, tolerance),
-            CheckResult("SPP discount", expected.spp_discount, platform.spp_discount, tolerance),
-            CheckResult(SALES_PRICE_CHECK, expected.sales_price, platform.sp, tolerance),
+            CheckResult(
+                SPP_DISCOUNT_CHECK,
+                expected.spp_discount,
+                platform.spp_discount,
+                max(tolerance, abs(expected.spp_discount) * SPP_SOURCE_TOLERANCE_RATIO),
+            ),
+            CheckResult(
+                SALES_PRICE_CHECK,
+                expected.sales_price,
+                platform.sp,
+                tolerance + spp_source_diff,
+            ),
             CheckResult(
                 "SP from markup (PP * (1 + markup))",
                 platform.pp * (1 + platform.markup),
@@ -62,6 +80,12 @@ class BillingValidator:
                 tolerance,
             ),
         ]
+        if spp_source_diff > tolerance:
+            validation.notes.append(
+                f"SPP discount differs between the AWS invoice and Cost Explorer by "
+                f"{spp_source_diff:.2f} {platform.currency} (AWS rounding); the sales price "
+                "tolerance was widened by that amount."
+            )
         if validation.failed_checks:
             validation.status = ValidationStatus.MISMATCH
             self._explain(validation)

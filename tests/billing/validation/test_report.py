@@ -59,6 +59,7 @@ def test_build_validation_rows_missing_invoices_has_empty_expected_cells(validat
     missing_row = dict(zip(VALIDATION_HEADERS, result[1], strict=True))
     assert missing_row["Status"] == "MISSING_INVOICES"
     assert not missing_row["Invoice cost price"]
+    assert not missing_row["Tolerance"]
     assert missing_row["Notes"] == "No AWS invoices found for the MPA account."
 
 
