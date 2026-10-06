@@ -32,6 +32,11 @@ class BillingPeriod:
         return int(self.start_date.split("-")[1])
 
     @property
+    def start_datetime(self) -> dt.datetime:
+        """The first instant of the billing period, in UTC."""
+        return dt.datetime.fromisoformat(self.start_date).replace(tzinfo=dt.UTC)
+
+    @property
     def last_day(self) -> str:
         """The last day of the billing period (end_date - 1 day)."""
         end = dt.date.fromisoformat(self.end_date)
