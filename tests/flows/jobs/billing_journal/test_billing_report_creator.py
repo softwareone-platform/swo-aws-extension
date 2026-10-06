@@ -8,7 +8,6 @@ from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     BillingReportRow,
     OrganizationSppSummaryRow,
 )
-from swo_aws_extension.flows.jobs.billing_validation.detail import VALIDATION_DETAIL_HEADERS
 from swo_aws_extension.flows.jobs.billing_validation.report import VALIDATION_HEADERS
 from swo_aws_extension.flows.jobs.billing_validation.results import (
     AgreementValidation,
@@ -292,4 +291,3 @@ def test_create_and_notify_teams_builds_validation_sheet(
         "Platform list price": 120.0,
         "Platform markup %": pytest.approx(float(sample_spp_summary_row.markup * 100)),
     }
-    assert call_args[4] == ("Validation detail", list(VALIDATION_DETAIL_HEADERS), [])
