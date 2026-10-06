@@ -105,7 +105,9 @@ class AgreementJournalGenerator:
             PlSChargeProcessor(context.pls_charge_percentage),
             SavingPlansDistributionProcessor(),
         ]
-        self._billing_validator = AgreementBillingValidator(context.pls_charge_percentage)
+        self._billing_validator = AgreementBillingValidator(
+            context.pls_charge_percentage, authorization_name=auth_context.name
+        )
 
     @with_log_context(lambda _, agreement, **kwargs: agreement.get("id"))
     @dynamic_trace_span(lambda _, agreement, **kwargs: f"Agreement {agreement.get('id')}")

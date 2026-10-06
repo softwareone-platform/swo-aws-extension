@@ -83,6 +83,7 @@ class InvoiceMapper:
             exchange_rate=figures["rate"],
             base_currency=summary.get(BASE_CURRENCY_KEY, {}).get("CurrencyCode", "USD"),
             has_spp_breakdown=bool(_spp_breakdown(summary.get(BASE_CURRENCY_KEY, {}))),
+            own_exchange_rate=figures["own_rate"] > DEC_ZERO,
         )
 
     def _figures(self, summary: dict, fallback_rate: Decimal) -> dict[str, Decimal]:
@@ -92,7 +93,8 @@ class InvoiceMapper:
         currency, otherwise the base (USD) amounts are converted with the fallback
         exchange rate found in sibling invoices.
         """
-        rate = _payment_rate(summary, self._currency)
+        own_rate = _payment_rate(summary, self._currency)
+        rate = own_rate
         if rate > DEC_ZERO:
             amounts = summary.get(PAYMENT_CURRENCY_KEY, {})
             multiplier = Decimal(1)
@@ -102,6 +104,7 @@ class InvoiceMapper:
             multiplier = rate
         return {
             "rate": rate,
+            "own_rate": own_rate,
             "charges": _decimal(amounts.get("AmountBreakdown", {}).get("SubTotalAmount"))
             * multiplier,
             "spp": _spp_discount(amounts) * multiplier,

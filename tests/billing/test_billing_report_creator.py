@@ -7,6 +7,7 @@ from swo_aws_extension.billing.models.journal_result import (
     BillingReportRow,
     OrganizationSppSummaryRow,
 )
+from swo_aws_extension.billing.validation.detail import VALIDATION_DETAIL_HEADERS
 from swo_aws_extension.billing.validation.report import VALIDATION_HEADERS
 from swo_aws_extension.billing.validation.results import AgreementValidation, ValidationStatus
 from swo_aws_extension.config import Config
@@ -263,7 +264,7 @@ def test_create_and_notify_teams_builds_validation_sheet(
         currency="USD",
         status=ValidationStatus.MISSING_INVOICES,
         platform=sample_spp_summary_row,
-        notes=["No AWS invoices found for the MPA account."],
+        likely_cause="No AWS invoices found for the MPA account.",
     )
     creator = BillingReportCreator(mock_config, mock_notifier)
 
@@ -273,27 +274,19 @@ def test_create_and_notify_teams_builds_validation_sheet(
     sheet4_name, sheet4_headers, sheet4_rows = call_args[3]
     assert sheet4_name == "Validation"
     assert list(sheet4_headers) == list(VALIDATION_HEADERS)
-    assert sheet4_rows == [
-        [
-            "AUTH-1",
-            "PMA-1",
-            "AGR-1",
-            "MPA-1",
-            "USD",
-            "MISSING_INVOICES",
-            "",
-            90.0,
-            "",
-            120.0,
-            "",
-            -10.0,
-            "",
-            100.0,
-            "",
-            "",
-            "",
-            "",
-            "",
-            "No AWS invoices found for the MPA account.",
-        ]
-    ]
+    assert dict(zip(VALIDATION_HEADERS, sheet4_rows[0], strict=True)) == {
+        **dict.fromkeys(VALIDATION_HEADERS, ""),
+        "Authorization ID": "AUTH-1",
+        "PMA": "PMA-1",
+        "Agreement ID": "AGR-1",
+        "MPA": "MPA-1",
+        "Currency": "USD",
+        "Status": "MISSING_INVOICES",
+        "Likely cause": "No AWS invoices found for the MPA account.",
+        "Platform PP": 90.0,
+        "Platform SP": 100.0,
+        "Platform SPP discount": -10.0,
+        "Platform list price": 120.0,
+        "Platform markup %": pytest.approx(float(sample_spp_summary_row.markup * 100)),
+    }
+    assert call_args[4] == ("Validation detail", list(VALIDATION_DETAIL_HEADERS), [])

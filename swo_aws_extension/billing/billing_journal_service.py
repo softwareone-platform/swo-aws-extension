@@ -17,7 +17,7 @@ from swo_aws_extension.billing.models.journal_result import (
     AuthorizationJournalResult,
 )
 from swo_aws_extension.billing.providers import BillingAWSClientProvider
-from swo_aws_extension.billing.validation.report import describe_issues, describe_validation
+from swo_aws_extension.billing.validation.summary import describe_issues, describe_validation
 from swo_aws_extension.config import Config
 from swo_aws_extension.constants import (
     BILLING_INVOICE_ATTACHMENT_WARNING_TITLE,

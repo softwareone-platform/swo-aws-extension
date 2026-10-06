@@ -17,6 +17,7 @@ class AuthorizationContext:
     pma_account: str
     currency: str
     aws_client: AWSClient
+    name: str = ""
 
 
 @dataclass
