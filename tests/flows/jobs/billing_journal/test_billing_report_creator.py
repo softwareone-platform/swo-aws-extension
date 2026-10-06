@@ -8,6 +8,11 @@ from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     BillingReportRow,
     OrganizationSppSummaryRow,
 )
+from swo_aws_extension.flows.jobs.billing_validation.report import VALIDATION_HEADERS
+from swo_aws_extension.flows.jobs.billing_validation.results import (
+    AgreementValidation,
+    ValidationStatus,
+)
 from swo_aws_extension.swo.excel_report_builder import Percent
 from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
@@ -240,3 +245,56 @@ def test_create_and_notify_teams_builds_spp_summary_sheet(
         Percent(float(sample_spp_summary_row.markup)),
     ]
     assert sheet3_rows == [expected_row]
+
+
+def test_create_and_notify_teams_builds_validation_sheet(
+    mock_config,
+    mock_notifier,
+    mock_blob_uploader_cls,
+    mock_excel_builder_cls,
+    sample_row,
+    sample_spp_summary_row,
+):
+    mock_excel_builder = mock_excel_builder_cls.return_value
+    mock_excel_builder.build_multi_sheet.return_value = b"excel_bytes"
+    mock_blob_uploader_cls.return_value.upload_and_get_sas_url.return_value = "https://url"
+    validation = AgreementValidation(
+        agreement_id="AGR-1",
+        mpa="MPA-1",
+        pma="PMA-1",
+        authorization_id="AUTH-1",
+        currency="USD",
+        status=ValidationStatus.MISSING_INVOICES,
+        platform=sample_spp_summary_row,
+        notes=["No AWS invoices found for the MPA account."],
+    )
+    creator = BillingReportCreator(mock_config, mock_notifier)
+
+    creator.create_and_notify_teams("2024-01", [sample_row], None, None, [validation])  # act
+
+    call_args = mock_excel_builder.build_multi_sheet.call_args[0][0]
+    sheet4_name, sheet4_headers, sheet4_rows = call_args[3]
+    assert sheet4_name == "Validation"
+    assert list(sheet4_headers) == list(VALIDATION_HEADERS)
+    assert sheet4_rows == [
+        [
+            "AUTH-1",
+            "PMA-1",
+            "AGR-1",
+            "MPA-1",
+            "USD",
+            "MISSING_INVOICES",
+            "",
+            90.0,
+            "",
+            120.0,
+            "",
+            -10.0,
+            "",
+            100.0,
+            "",
+            "",
+            "",
+            "No AWS invoices found for the MPA account.",
+        ]
+    ]

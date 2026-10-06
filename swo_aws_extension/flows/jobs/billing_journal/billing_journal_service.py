@@ -6,6 +6,7 @@ from swo_aws_extension.config import Config
 from swo_aws_extension.constants import (
     BILLING_INVOICE_ATTACHMENT_WARNING_TITLE,
     BILLING_JOURNAL_ERROR_TITLE,
+    BILLING_VALIDATION_WARNING_TITLE,
 )
 from swo_aws_extension.flows.jobs.billing_journal.billing_invoice_attachment_creator import (
     BillingInvoiceAttachmentCreator,
@@ -22,6 +23,10 @@ from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     AuthorizationJournalResult,
 )
 from swo_aws_extension.flows.jobs.billing_journal.providers import BillingAWSClientProvider
+from swo_aws_extension.flows.jobs.billing_validation.report import (
+    describe_issues,
+    describe_validation,
+)
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.swo.mpt.authorization import get_authorizations
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
@@ -67,6 +72,30 @@ def _log_dry_run_results(
             authorization_id,
             sorted(generator_result.invoice_ids),
         )
+    for validation in generator_result.validations:
+        logger.info(
+            "%s - [DRY-RUN] Billing validation: %s",
+            authorization_id,
+            describe_validation(validation),
+        )
+
+
+def _notify_warnings(notifier, journal_results: list[AuthorizationJournalResult]) -> None:
+    """Send the PLS mismatch and billing validation summaries, when there is something to say."""
+    pls_mismatches = [
+        mismatch for auth_result in journal_results for mismatch in auth_result.pls_mismatches
+    ]
+    if pls_mismatches:
+        details = "\n\n".join(f"• {mismatch.description}" for mismatch in pls_mismatches)
+        notifier.send_warning(
+            title="PLS Mismatch Summary",
+            text=f"{len(pls_mismatches)} agreement(s) with PLS mismatch:\n\n{details}",
+        )
+    validation_issues = describe_issues([
+        validation for auth_result in journal_results for validation in auth_result.validations
+    ])
+    if validation_issues:
+        notifier.send_warning(title=BILLING_VALIDATION_WARNING_TITLE, text=validation_issues)
 
 
 class BillingJournalService:
@@ -108,16 +137,7 @@ class BillingJournalService:
         ]
 
         self._generate_billing_report(journal_results)
-
-        pls_mismatches = [
-            mismatch for auth_result in journal_results for mismatch in auth_result.pls_mismatches
-        ]
-        if pls_mismatches:
-            details = "\n\n".join(f"• {mismatch.description}" for mismatch in pls_mismatches)
-            self._notifier.send_warning(
-                title="PLS Mismatch Summary",
-                text=f"{len(pls_mismatches)} agreement(s) with PLS mismatch:\n\n{details}",
-            )
+        _notify_warnings(self._notifier, journal_results)
 
     def _generate_billing_report(self, journal_results: list[AuthorizationJournalResult]) -> None:
         report_rows = [
@@ -131,6 +151,9 @@ class BillingJournalService:
         spp_summary_rows = [
             row for auth_result in journal_results for row in auth_result.spp_summary_rows
         ]
+        validations = [
+            validation for auth_result in journal_results for validation in auth_result.validations
+        ]
         if report_rows and not self._context.dry_run:
             report_creator = BillingReportCreator(self._context.config, self._context.notifier)
             report_creator.create_and_notify_teams(
@@ -138,6 +161,7 @@ class BillingJournalService:
                 report_rows,
                 report_rows_by_account,
                 spp_summary_rows,
+                validations,
             )
 
     def _process_authorization(self, authorization: dict) -> AuthorizationJournalResult | None:

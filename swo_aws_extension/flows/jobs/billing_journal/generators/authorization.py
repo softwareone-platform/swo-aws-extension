@@ -146,6 +146,8 @@ class AuthorizationJournalGenerator:
             result.reports_by_agreement[agreement_id] = agreement_result.report
         if agreement_result.spp_summary_row:
             result.spp_summary_rows.append(agreement_result.spp_summary_row)
+        if agreement_result.validation:
+            result.validations.append(agreement_result.validation)
 
     def _apply_pma_usage_to_report(
         self,
