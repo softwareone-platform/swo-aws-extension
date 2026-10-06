@@ -50,6 +50,32 @@ def test_validate_flags_sales_price_outside_tolerance(expected, platform_summary
     assert any("journal total does not" in note for note in result.notes)
 
 
+def test_validate_tolerates_spp_rounding_between_invoice_and_cost_explorer(
+    expected, platform_summary
+):
+    # Cost Explorer reports 1.09 more SPP than the invoice; the journal keeps it, so SP moves too
+    platform = replace(
+        platform_summary,
+        spp_discount=platform_summary.spp_discount - Decimal("1.09"),
+        sp=platform_summary.sp + Decimal("1.09"),
+        markup=(platform_summary.sp + Decimal("1.09")) / platform_summary.pp - 1,
+    )
+
+    result = BillingValidator(Decimal("0.05")).validate(expected, platform)
+
+    assert result.status == ValidationStatus.OK
+    assert result.tolerance == Decimal("0.05")
+    assert any("AWS rounding" in note for note in result.notes)
+
+
+def test_validate_flags_spp_difference_above_one_percent(expected, platform_summary):
+    platform = replace(platform_summary, spp_discount=platform_summary.spp_discount * 2)
+
+    result = BillingValidator(Decimal("0.05")).validate(expected, platform)
+
+    assert [check.name for check in result.failed_checks] == ["SPP discount"]
+
+
 def test_validate_scales_tolerance_with_exchange_rate(expected, platform_summary):
     for line in expected.invoices.lines:
         line.exchange_rate = IDR_RATE

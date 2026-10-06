@@ -97,6 +97,7 @@ class AgreementValidation:
     platform: OrganizationSppSummaryRow | None = None
     checks: list[CheckResult] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    tolerance: Decimal | None = None
 
     @property
     def failed_checks(self) -> list[CheckResult]:
