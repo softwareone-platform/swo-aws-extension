@@ -1,3 +1,5 @@
+import datetime as dt
+
 import pytest
 
 from swo_aws_extension.models import BillingPeriod
@@ -75,3 +77,11 @@ def test_last_day_property_february():
     result = billing_period.last_day
 
     assert result == "2025-02-28"
+
+
+def test_start_datetime_property():
+    billing_period = BillingPeriod(start_date="2025-10-01", end_date="2025-11-01")
+
+    result = billing_period.start_datetime
+
+    assert result == dt.datetime(TEST_YEAR, MONTH_OCTOBER, 1, tzinfo=dt.UTC)

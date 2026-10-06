@@ -1,5 +1,3 @@
-import datetime as dt
-
 from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
 
 from swo_aws_extension.billing.generators.additional_line_processors.extra_discounts import (
@@ -25,6 +23,7 @@ from swo_aws_extension.billing.models.context import AuthorizationContext, Billi
 from swo_aws_extension.billing.models.journal_line import JournalDetails, JournalLine
 from swo_aws_extension.billing.models.journal_result import AgreementJournalResult, PlsMismatch
 from swo_aws_extension.billing.models.usage import OrganizationUsageResult
+from swo_aws_extension.billing.validation.agreement_validation import AgreementBillingValidator
 from swo_aws_extension.constants import (
     DEC_ZERO,
     ResponsibilityTransferStatus,
@@ -106,6 +105,7 @@ class AgreementJournalGenerator:
             PlSChargeProcessor(context.pls_charge_percentage),
             SavingPlansDistributionProcessor(),
         ]
+        self._billing_validator = AgreementBillingValidator(context.pls_charge_percentage)
 
     @with_log_context(lambda _, agreement, **kwargs: agreement.get("id"))
     @dynamic_trace_span(lambda _, agreement, **kwargs: f"Agreement {agreement.get('id')}")
@@ -153,8 +153,7 @@ class AgreementJournalGenerator:
             agreement,
             usage_result,
             journal_details,
-            invoice_result.invoice,
-            invoice_result.invoice_ids,
+            invoice_result,
         )
         logger.info("Generated %d journal lines", len(agreement_result.lines))
         return agreement_result
@@ -164,8 +163,7 @@ class AgreementJournalGenerator:
         agreement: dict,
         usage_result: OrganizationUsageResult,
         journal_details: JournalDetails,
-        organization_invoice,
-        invoice_ids: set[str],
+        invoice_result,
     ) -> AgreementJournalResult:
         pls_in_order = get_support_type(agreement) == SupportTypesEnum.PARTNER_LED_SUPPORT
         report_has_enterprise = usage_result.has_enterprise_support()
@@ -175,13 +173,15 @@ class AgreementJournalGenerator:
             is_pls=pls_in_order and report_has_enterprise,
             usage_result=usage_result,
             journal_details=journal_details,
-            organization_invoice=organization_invoice,
+            organization_invoice=invoice_result.invoice,
         )
         # Generate additional lines from custom processors
         all_lines.extend(
             line
             for proc in self._additional_processors
-            for line in proc.process(agreement, usage_result, journal_details, organization_invoice)
+            for line in proc.process(
+                agreement, usage_result, journal_details, invoice_result.invoice
+            )
         )
 
         pls_mismatches: list[PlsMismatch] = []
@@ -197,11 +197,14 @@ class AgreementJournalGenerator:
         result = self._build_agreement_journal_result(
             all_lines,
             journal_details,
-            organization_invoice,
+            invoice_result.invoice,
             usage_result,
         )
-        result.invoice_ids = invoice_ids
+        result.invoice_ids = invoice_result.invoice_ids
         result.pls_mismatches = pls_mismatches
+        result.validation = self._billing_validator.validate(
+            agreement, usage_result, invoice_result, result.spp_summary_row
+        )
         return result
 
     def _build_agreement_journal_result(
@@ -274,11 +277,7 @@ class AgreementJournalGenerator:
         start_timestamp = responsibility_transfer.get("ResponsibilityTransfer", {}).get(
             "StartTimestamp"
         )
-        billing_start = dt.datetime.strptime(
-            self._billing_period.start_date,
-            "%Y-%m-%d",
-        ).replace(tzinfo=dt.UTC)
-        if start_timestamp and start_timestamp > billing_start:
+        if start_timestamp and start_timestamp > self._billing_period.start_datetime:
             logger.info(
                 "%s - Skipping agreement because responsibility transfer has not started yet. "
                 "Start date: %s",
