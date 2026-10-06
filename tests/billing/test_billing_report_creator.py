@@ -293,6 +293,7 @@ def test_create_and_notify_teams_builds_validation_sheet(
             "",
             "",
             "",
+            "",
             "No AWS invoices found for the MPA account.",
         ]
     ]

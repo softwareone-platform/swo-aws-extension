@@ -58,6 +58,7 @@ class BillingValidator:
         tolerance = self._tolerance * self._exchange_rate(expected, platform)
         spp_source_diff = abs(platform.spp_discount - expected.spp_discount)
         validation.tolerance = tolerance
+        validation.sales_price_tolerance = tolerance + spp_source_diff
         validation.checks = [
             CheckResult(COST_PRICE_CHECK, expected.cost_price, platform.pp, tolerance),
             CheckResult("List price", expected.list_price, platform.list_price, tolerance),
@@ -71,7 +72,7 @@ class BillingValidator:
                 SALES_PRICE_CHECK,
                 expected.sales_price,
                 platform.sp,
-                tolerance + spp_source_diff,
+                validation.sales_price_tolerance,
             ),
             CheckResult(
                 "SP from markup (PP * (1 + markup))",
