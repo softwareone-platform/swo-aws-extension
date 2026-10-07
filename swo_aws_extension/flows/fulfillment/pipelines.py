@@ -28,7 +28,6 @@ from swo_aws_extension.flows.steps.crm_tickets.onboard_services import CRMTicket
 from swo_aws_extension.flows.steps.crm_tickets.order_fail import CRMTicketOrderFail
 from swo_aws_extension.flows.steps.crm_tickets.pls import CRMTicketPLS
 from swo_aws_extension.flows.steps.crm_tickets.terminate_order import CRMTicketTerminateOrder
-from swo_aws_extension.flows.steps.finops_entitlement import TerminateFinOpsEntitlementStep
 from swo_aws_extension.flows.steps.onboard_services import OnboardServices
 from swo_aws_extension.flows.steps.set_migration_fulfillment_parameters import (
     SetMigrationFulfillmentParameters,
@@ -148,6 +147,5 @@ terminate = Pipeline(
     TerminateResponsibilityTransferStep(config),
     CRMTicketTerminateOrder(config),
     WaitTerminateResponsibilityTransferStep(config),
-    TerminateFinOpsEntitlementStep(config),
     CompleteTerminationOrder(config),
 )
