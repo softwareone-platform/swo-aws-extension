@@ -174,20 +174,37 @@ def test_sets_parameters_from_migration_record(
     next_step_mock.assert_called_once_with(mock_client, context)
 
 
-def test_keeps_discounts_already_set_in_the_order(
+def test_overrides_default_discounts_with_record_values(
     mocker, migration_context, migration_record, mock_migration_table, mock_update_order
 ):
     mock_client = mocker.MagicMock(spec=MPTClient)
     next_step_mock = mocker.MagicMock(spec=Step)
-    context = migration_context(support_discount="7", service_discount="3")
+    context = migration_context(support_discount="5", service_discount="5")
     mock_migration_table.return_value.get_by_order_id.return_value = migration_record()
     step = SetMigrationFulfillmentParameters()
 
     step(mock_client, context, next_step_mock)  # act
 
     assert get_cco_contract_number(context.order) == SAMPLE_CCO
-    assert get_support_discount(context.order) == "7"
-    assert get_service_discount(context.order) == "3"
+    assert get_support_discount(context.order) == "10"
+    assert get_service_discount(context.order) == "2.5"
+    next_step_mock.assert_called_once_with(mock_client, context)
+
+
+def test_keeps_cco_already_set_in_the_order(
+    mocker, migration_context, migration_record, mock_migration_table, mock_update_order
+):
+    mock_client = mocker.MagicMock(spec=MPTClient)
+    next_step_mock = mocker.MagicMock(spec=Step)
+    context = migration_context(cco="CH-CCO-000001")
+    mock_migration_table.return_value.get_by_order_id.return_value = migration_record()
+    step = SetMigrationFulfillmentParameters()
+
+    step(mock_client, context, next_step_mock)  # act
+
+    assert get_cco_contract_number(context.order) == "CH-CCO-000001"
+    assert get_support_discount(context.order) == "10"
+    assert get_service_discount(context.order) == "2.5"
     next_step_mock.assert_called_once_with(mock_client, context)
 
 

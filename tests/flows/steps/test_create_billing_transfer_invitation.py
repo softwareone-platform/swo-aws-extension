@@ -46,6 +46,23 @@ def test_already_processed_transfer_id_exists(
     assert get_phase(context.order) == PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION.value
 
 
+def test_already_processed_billing_group_arn_exists(
+    order_factory, config, fulfillment_parameters_factory
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION.value,
+            billing_group_arn="arn:aws:billingconductor::123456789012:billinggroup/bg-id",
+        )
+    )
+    context = PurchaseContext.from_order_data(order)
+
+    with pytest.raises(AlreadyProcessedStepError):
+        CreateBillingTransferInvitation(config).pre_step(context)
+
+    assert get_phase(context.order) == PhasesEnum.CONFIGURE_APN_PROGRAM.value
+
+
 def test_missing_mpa_id(
     order_factory, config, fulfillment_parameters_factory, order_parameters_factory, mpt_client
 ):
