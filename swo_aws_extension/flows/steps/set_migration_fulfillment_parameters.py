@@ -111,7 +111,7 @@ class SetMigrationFulfillmentParameters(BasePhaseStep):
             )
 
     @override
-    def process(self, client: MPTClient, context: InitialAWSContext) -> None:  # ruff:ignore[complex-structure]  # noqa: WPS231
+    def process(self, client: MPTClient, context: InitialAWSContext) -> None:  # noqa: C901, WPS231
         unset = get_unset_migration_parameters(context.order)
         record = AwsAccountMigrationTable().get_by_order_id(context.order_id)
         if record is None:
