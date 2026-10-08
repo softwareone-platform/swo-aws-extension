@@ -23,7 +23,6 @@ from swo_aws_extension.flows.steps.errors import (
     SkipStepError,
 )
 from swo_aws_extension.parameters import (
-    get_billing_group_arn,
     get_mpa_account_id,
     get_phase,
     get_responsibility_transfer_id,
@@ -49,12 +48,6 @@ class CreateBillingTransferInvitation(BasePhaseStep):
             raise SkipStepError(
                 f"{context.order_id} - Next - Current phase is '{phase}', skipping as it"
                 f" is not '{PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION}'"
-            )
-
-        if get_billing_group_arn(context.order):
-            context.order = set_phase(context.order, PhasesEnum.CONFIGURE_APN_PROGRAM)
-            raise AlreadyProcessedStepError(
-                f"{context.order_id} - Next - Billing transfer invitation already exists. Continue"
             )
 
         if get_responsibility_transfer_id(context.order):
