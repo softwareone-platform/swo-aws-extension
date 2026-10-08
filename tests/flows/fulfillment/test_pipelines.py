@@ -68,6 +68,7 @@ def test_purchase_migration_steps():
         "SetupContext",
         "ValidateOrder",
         "ValidateMigrationOrder",
+        "SetOrderingParametersVisibility",
         "SetMigrationFulfillmentParameters",
         "CreateBillingTransferInvitation",
         "CheckBillingTransferInvitation",

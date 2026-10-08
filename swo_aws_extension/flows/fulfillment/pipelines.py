@@ -33,6 +33,9 @@ from swo_aws_extension.flows.steps.onboard_services import OnboardServices
 from swo_aws_extension.flows.steps.set_migration_fulfillment_parameters import (
     SetMigrationFulfillmentParameters,
 )
+from swo_aws_extension.flows.steps.set_ordering_parameters_visibility import (
+    SetOrderingParametersVisibility,
+)
 from swo_aws_extension.flows.steps.setup_context import SetupContext
 from swo_aws_extension.flows.steps.swo_job import SWOJobStep
 from swo_aws_extension.flows.steps.terminate import TerminateResponsibilityTransferStep
@@ -131,6 +134,7 @@ purchase_migration = Pipeline(
     SetupContext(config),
     ValidateOrder(),
     ValidateMigrationOrder(),
+    SetOrderingParametersVisibility(),
     SetMigrationFulfillmentParameters(),
     CreateBillingTransferInvitation(config),
     CheckBillingTransferInvitation(config),

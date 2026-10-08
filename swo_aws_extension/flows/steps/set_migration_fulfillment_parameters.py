@@ -12,7 +12,11 @@ from swo_aws_extension.constants import FulfillmentParametersEnum, PhasesEnum
 from swo_aws_extension.flows.order import InitialAWSContext
 from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import SkipStepError, UnexpectedStopError
-from swo_aws_extension.parameters import get_fulfillment_parameter, get_phase
+from swo_aws_extension.parameters import (
+    get_fulfillment_parameter,
+    get_phase,
+    set_fulfillment_parameter_value,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +32,7 @@ class MigrationRecordField:
 # Fulfillment parameters the migration flow needs but the Migration Orders extension cannot
 # set when it creates the order, mapped to the AWS Account Migration Airtable field that
 # carries their value (as the attribute name of `AccountMigrationRecord`). A required field
-# without value stops the order; an optional one leaves the parameter untouched. Add a new
+# without value stops the order; an optional one with a value replaces the order value. Add a new
 # entry here to copy another fulfillment parameter from the migration record.
 MIGRATION_FULFILLMENT_PARAMETERS = MappingProxyType({
     FulfillmentParametersEnum.CCO_CONTRACT_NUMBER: MigrationRecordField("mpt_cco"),
@@ -87,8 +91,8 @@ class SetMigrationFulfillmentParameters(BasePhaseStep):
     Copy the fulfillment parameters of a migration order from its Airtable migration record.
 
     Runs in the createBillingTransferInvitation phase, right after the migration order
-    validation. Parameters that already carry a value are left untouched, so the step is
-    idempotent. A missing record or a record without a required value is an operational
+    validation. Required parameters that have a value are left untouched. Record values
+    replace optional ones. A missing record or a record without a required value is an operational
     error: the order stays in processing and the team is notified through Teams, as the
     validation does. Once the required parameters are set, a retry in the same phase only
     revisits the optional ones and never stops the order.
@@ -107,7 +111,7 @@ class SetMigrationFulfillmentParameters(BasePhaseStep):
             )
 
     @override
-    def process(self, client: MPTClient, context: InitialAWSContext) -> None:
+    def process(self, client: MPTClient, context: InitialAWSContext) -> None:  # ruff:ignore[complex-structure]  # noqa: WPS231
         unset = get_unset_migration_parameters(context.order)
         record = AwsAccountMigrationTable().get_by_order_id(context.order_id)
         if record is None:
@@ -136,12 +140,14 @@ class SetMigrationFulfillmentParameters(BasePhaseStep):
                 f"{missing_parameters}. Please complete the row so the fulfillment can "
                 f"continue.",
             )
-        for external_id in unset:
+        for external_id, record_field in MIGRATION_FULFILLMENT_PARAMETERS.items():
+            if record_field.required and external_id not in unset:
+                continue
             parameter_value = get_record_value(record, external_id)
             if not has_value(parameter_value):
                 continue
-            get_fulfillment_parameter(external_id.value, context.order)["value"] = str(
-                parameter_value
+            context.order = set_fulfillment_parameter_value(
+                context.order, external_id.value, str(parameter_value)
             )
             logger.info(
                 "%s - Action - Fulfillment parameter %s set from the migration record",
