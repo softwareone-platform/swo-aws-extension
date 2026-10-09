@@ -92,6 +92,41 @@ def test_process_transfer_accepted(
     )
 
 
+def test_process_transfer_accepted_billing_group_exists(
+    order_factory,
+    agreement_factory,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    config,
+    mpt_client,
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION.value,
+            responsibility_transfer_id="RT-123",
+            billing_group_arn="arn:aws:billingconductor::123456789012:billinggroup/bg-id",
+        ),
+        agreement=agreement_factory(vendor_id="mpa-id"),
+    )
+    context = PurchaseContext.from_order_data(order)
+    _, aws_client_mock = aws_client_factory(config, "mpa-id", "role-name")
+    context.aws_client = aws_client_mock
+    aws_client_mock.get_responsibility_transfer_details.return_value = {
+        "ResponsibilityTransfer": {
+            "Status": ResponsibilityTransferStatus.ACCEPTED,
+            "Arn": "arn:aws:billing::123456789012:responsibilitytransfer/RT-123",
+        }
+    }
+
+    CheckBillingTransferInvitation(config).process(mpt_client, context)  # act
+
+    aws_client_mock.create_billing_group.assert_not_called()
+    assert (
+        get_billing_group_arn(context.order)
+        == "arn:aws:billingconductor::123456789012:billinggroup/bg-id"
+    )
+
+
 def test_process_transfer_pending(
     order_factory, aws_client_factory, fulfillment_parameters_factory, config, mpt_client
 ):
