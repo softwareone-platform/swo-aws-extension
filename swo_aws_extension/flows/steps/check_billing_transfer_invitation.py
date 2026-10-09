@@ -21,6 +21,7 @@ from swo_aws_extension.flows.steps.errors import (
     SkipStepError,
 )
 from swo_aws_extension.parameters import (
+    get_billing_group_arn,
     get_mpa_account_id,
     get_phase,
     get_responsibility_transfer_id,
@@ -88,6 +89,9 @@ class CheckBillingTransferInvitation(BasePhaseStep):
                 context.order_id,
                 transfer_id,
             )
+            if get_billing_group_arn(context.order):
+                logger.info("%s - Next - Billing group already exists. Continue", context.order_id)
+                return
             responsibility_arn = transfer_details.get("ResponsibilityTransfer", {}).get("Arn")
             billing_group = context.aws_client.create_billing_group(
                 responsibility_transfer_arn=responsibility_arn,
