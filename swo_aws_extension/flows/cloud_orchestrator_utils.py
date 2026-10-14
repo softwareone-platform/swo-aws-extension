@@ -48,6 +48,30 @@ def onboard(config: Config, onboard_payload: dict, order_id: str) -> str:
     return execution_arn
 
 
+def upgrade(config: Config, upgrade_payload: dict, order_id: str) -> list[str]:
+    """
+    Upgrade the customer and return the execution ARNs of the deployments it launched.
+
+    Unlike onboard, the upgrade response lists one execution per deployment of the account
+    (``{"executions": [{"execution_arn": ..., "deployment_id": ...}, ...]}``). Entries without
+    an execution ARN are skipped; an empty list is logged with the raw response.
+    """
+    co_client = CloudOrchestratorClient(config)
+    upgrade_response = co_client.upgrade_customer(upgrade_payload)
+    executions = upgrade_response.get("executions") or []
+    execution_arns = [
+        execution.get("execution_arn") for execution in executions if execution.get("execution_arn")
+    ]
+    if not execution_arns:
+        logger.warning(
+            "%s - Cloud Orchestrator upgrade returned no execution ARNs: expected "
+            "executions[].execution_arn in the response, nothing to poll. Response: %s",
+            order_id,
+            upgrade_response,
+        )
+    return execution_arns
+
+
 def check_onboard_status(config: Config, context: PurchaseContext, execution_arn_value: str) -> str:
     """Check the onboard status of the feature version deployment."""
     co_client = CloudOrchestratorClient(config)
