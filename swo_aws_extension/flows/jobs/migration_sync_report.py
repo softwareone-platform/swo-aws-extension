@@ -36,12 +36,12 @@ class SyncReport:
     updated_rows: list[str] = field(default_factory=list)
     failed_rows: dict[str, str] = field(default_factory=dict)
     created_tickets: list[str] = field(default_factory=list)
-    started_onboardings: list[str] = field(default_factory=list)
+    started_upgrades: list[str] = field(default_factory=list)
     changes: dict[str, list[str]] = field(default_factory=dict)
 
     @property
     def has_changes(self) -> bool:
-        """Whether the run changed a row, created a ticket or onboarding, or failed."""
+        """Whether the run changed a row, created a ticket, started an upgrade, or failed."""
         return bool(self.changes or self.failed_rows)
 
     def add_change(self, order_id: str, change: str) -> None:
@@ -58,10 +58,11 @@ class SyncReport:
         self.created_tickets.append(order_id)
         self.add_change(order_id, f"Billing transfer start ticket {ticket_id} created")
 
-    def add_started_onboarding(self, order_id: str, execution_arn: str) -> None:
-        """Record the services onboarding launched for the order."""
-        self.started_onboardings.append(order_id)
-        self.add_change(order_id, f"Services onboarding started ({execution_arn})")
+    def add_started_upgrade(self, order_id: str, execution_arns: list[str]) -> None:
+        """Record the services upgrade launched for the order with all its execution ARNs."""
+        self.started_upgrades.append(order_id)
+        arns_text = ", ".join(execution_arns)
+        self.add_change(order_id, f"Services upgrade started ({arns_text})")
 
     def add_failed_row(self, order_id: str, message: str) -> None:
         """Report a row error, counting the row once and keeping its last error message."""
@@ -87,7 +88,7 @@ def build_summary(report: SyncReport) -> str:
     summary = (
         f"Rows checked: {report.total_rows}. Rows updated: {len(report.updated_rows)}. "
         f"Tickets created: {len(report.created_tickets)}. "
-        f"Onboardings started: {len(report.started_onboardings)}. "
+        f"Upgrades started: {len(report.started_upgrades)}. "
         f"Rows with errors: {len(report.failed_rows)}."
     )
     return f"Dry run. {summary}" if report.dry_run else summary
