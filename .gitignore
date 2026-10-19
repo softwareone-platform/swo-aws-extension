@@ -188,3 +188,6 @@ make/local.mk
 # Claude
 .claude/*
 !.claude/settings.json
+
+# Local make targets
+make/repo.mk

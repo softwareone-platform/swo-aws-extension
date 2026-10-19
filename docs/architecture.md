@@ -33,28 +33,18 @@ The runtime is organised as a pipeline-driven fulfilment flow:
 
 1. **Entry layer** (`extension.py`) — receives order fulfilment events and
    validation requests from the platform.
-2. **Orchestration** (`flows/fulfillment/base.py`) — `fulfill_order()` selects a
-   pipeline by order type: purchase a new AWS environment, purchase an existing
-   one, or terminate. Purchase orders carrying the vendor-only migration
-   parameter are routed first to the dedicated migration pipeline, regardless
-   of account type; regular purchase orders are unaffected. The migration
-   pipeline reuses the existing steps with the migration templates: it
-   validates the prefilled migration data, copies the fulfillment
-   parameters the Migration Orders extension cannot set at order creation
-   from the order's AWS Account Migration Airtable row (`ccoContractNumber`
-   from `MPT CCO`, and the optional `supportDiscount` and `serviceDiscount`
-   from `SWO support discount` and `SWO usage discount`; the mapping in
-   `flows/steps/set_migration_fulfillment_parameters.py` is extended for new
-   parameters), creates the billing transfer invitation and waits in
-   querying until the MCoE team accepts it manually (a declined, canceled or
-   expired invitation fails the order), configures the APN program and
-   channel handshake, creates the migration CRM ticket
-   (`crmOnboardTicketId`), creates the master payer subscription and
-   completes the order. The existing CCO is reused, so no contract card or
-   ERP job is created; a missing migration row or CCO keeps the order in
-   processing and notifies Teams when `ccoContractNumber` is unset. Customer roles and services deployment are
-   not executed. The FinOps entitlement is created afterwards by the FinOps
-   synchronization job, as for regular orders.
+2. **Orchestration** (`flows/fulfillment/base.py`) — selects a pipeline by
+   order type: purchase a new AWS environment, purchase an existing one,
+   terminate, or migrate. Purchase orders that carry the vendor-only migration
+   parameter run the migration pipeline regardless of account type. The
+   migration pipeline reuses the regular steps with migration templates. It
+   starts from the data that the Migration Orders extension prefilled and the
+   order's AWS Account Migration Airtable row. It creates the billing transfer
+   invitation, waits for the MCoE team to accept it, configures the APN program
+   and channel handshake, raises the migration CRM ticket and creates the
+   master payer subscription. The migrated account keeps its CCO and ERP
+   project; customer roles and services are not deployed, and the FinOps
+   entitlement follows through the FinOps sync job.
 3. **Pipelines and steps** (`flows/fulfillment/pipelines.py`, `flows/steps/`) —
    each pipeline is an ordered sequence of `BasePhaseStep` steps that create
    resources, poll status, raise tickets, and advance the order phase. Order
@@ -64,19 +54,15 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    parameter visibility/requirement rules driven by account type.
 5. **Integration clients** (`aws/`, `swo/`, `airtable/`) — typed clients that
    wrap each external system behind a single boundary.
-6. **Background jobs** (`flows/jobs/`, `billing/`) — reporting and sync work invoked by
-   management commands, including billing journal generation (`billing/`). The agreement sync
-   pipeline lives in `swo_aws_extension/swo/mpt/sync/` and is split across four
-   modules: `base.py` (shared `AgreementProcessor` base and error types),
-   `agreement_syncer.py` (`AgreementSyncer` — validates the AWS responsibility
-   transfer and delegates subscription lifecycle),
-   `responsibility_transfers.py` (helpers that fetch and select the ongoing
-   inbound responsibility transfers from AWS), and
-   `agreement_subscription_syncer.py` (`AgreementSubscriptionsSyncer` — queries
-   Cost Explorer for linked AWS accounts with active usage, creates a subscription
-   per active account that does not yet have one, sets an inactivity countdown of
-   `LINKED_ACCOUNT_INACTIVITY_MONTHS = 3` months on subscriptions whose accounts
-   have no usage, and terminates them once the countdown expires).
+6. **Background jobs** (`flows/jobs/`, `billing/`, `swo/mpt/sync/`) — reporting
+   and synchronization work that the worker runs through management commands:
+   billing journal generation, reports, FinOps entitlement sync, the AWS
+   migration order sync and the agreement sync. The agreement sync validates
+   the AWS responsibility transfer of each agreement and keeps one Marketplace
+   subscription per linked AWS account with usage: it creates the missing
+   subscriptions from Cost Explorer usage, starts an inactivity countdown on
+   accounts without usage and terminates the subscription when the countdown
+   expires.
 
 ## Major components
 
@@ -84,7 +70,7 @@ The runtime is organised as a pipeline-driven fulfilment flow:
 |---|---|
 | `swo_aws_extension/` | Extension config, runtime `config.py`, order `parameters.py`, `constants.py` |
 | `swo_aws_extension/flows/` | Fulfilment orchestration, pipelines, steps, validation, order context |
-| `swo_aws_extension/flows/jobs/` | Background jobs: reports, FinOps entitlement sync, MPT subscription sync for linked AWS accounts, AWS migration order sync to Airtable (`migration_sync_processor.py`, run daily by `synchronize_migration_orders` over the rows in `Pending notify customer`, `Migration in progress` and `Completed`: mirrors the order status of each row and sets the acceptance date, the effective billing transfer start date once AWS reports the invitation accepted, the completion date or the failure reason (the order `statusNotes` message, falling back to its `error` message); when a completed row has a start date on or before the run date it also creates the ServiceNow ticket that tells the MCoE team the transfer is active, stores its id in the `crmMigrationTicketId` parameter of the agreement (checked first, so a retried row never gets a second ticket; the ticket helpers live in `migration_billing_transfer_ticket.py`) then launches the services onboarding in Cloud Orchestrator with the same payload as the `OnboardServices` fulfillment step (`migration_services_onboarding.py`), stores the execution ARN in the `executionArn` parameter of the agreement (checked first, so a retried row never onboards twice; the agreement read and write helpers live in `migration_agreement_parameters.py`) and checks the execution status: the row moves to `Services onboarded` only when the execution succeeded, stays `Completed` and is checked again on the next run while it is pending or running, and keeps `Completed` with the error detail when the ticket, the onboarding start or the execution fails, all in a single Airtable write per row; migrated customers keep their existing CCO and ERP project; the run report (`migration_sync_report.py`) is sent to Teams only when a row changed, a ticket or onboarding was created or a row failed, listing the changes and errors per order; a run with nothing to report is only logged) |
+| `swo_aws_extension/flows/jobs/` | Background jobs run by the worker: reports, FinOps entitlement sync, MPT subscription sync for linked AWS accounts, and the daily AWS migration order sync. The migration sync mirrors each Marketplace migration order into its AWS Account Migration Airtable row. Once the billing transfer of a completed migration is effective, it creates the ServiceNow ticket for the MCoE team, launches the services upgrade of the migrated account in Cloud Orchestrator, stores both references in the agreement and marks the row when the upgrade succeeds. Each run reports its changes and errors to Teams. |
 | `swo_aws_extension/billing/` | Billing journal generation, line processors, generators, models, and AWS invoice document attachment |
 | `swo_aws_extension/processor/` | Chain-of-responsibility processors for querying AWS roles, handshakes, transfers |
 | `swo_aws_extension/aws/` | `AWSClient` (boto3 AssumeRole, account/billing/CUR operations, Cost Explorer with dimension attributes, Invoicing summaries and invoice document retrieval) |
