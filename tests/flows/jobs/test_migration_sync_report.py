@@ -45,7 +45,7 @@ def test_send_lists_changes_per_order(mock_teams):
     report = SyncReport(dry_run=False, total_rows=3)
     report.add_row_changes(ORDER_ID, {"mpt_order_status": "Processing"})
     report.add_created_ticket(ORDER_ID, "CS0004728")
-    report.add_started_onboarding(ORDER_ID, "arn:execution")
+    report.add_started_upgrade(ORDER_ID, ["arn:execution-1", "arn:execution-2"])
     report.updated_rows.append(ORDER_ID)
     report.add_row_changes(OTHER_ORDER_ID, {"migration_status": AccountMigrationStatus.COMPLETED})
     report.updated_rows.append(OTHER_ORDER_ID)
@@ -54,12 +54,12 @@ def test_send_lists_changes_per_order(mock_teams):
 
     mock_teams.send_success.assert_called_once_with(
         NOTIFICATION_TITLE,
-        "Rows checked: 3. Rows updated: 2. Tickets created: 1. Onboardings started: 1. "
+        "Rows checked: 3. Rows updated: 2. Tickets created: 1. Upgrades started: 1. "
         "Rows with errors: 0.\n\n"
         "Changes:\n"
         f"- {ORDER_ID}: MPT Order status: Processing; "
         "Billing transfer start ticket CS0004728 created; "
-        "Services onboarding started (arn:execution)\n"
+        "Services upgrade started (arn:execution-1, arn:execution-2)\n"
         f"- {OTHER_ORDER_ID}: Migration status: Completed",
     )
     mock_teams.send_warning.assert_not_called()
@@ -75,7 +75,7 @@ def test_send_warns_with_errors_and_counts_each_failed_row_once(mock_teams):
     assert report.has_changes is True
     mock_teams.send_warning.assert_called_once_with(
         NOTIFICATION_TITLE,
-        "Rows checked: 1. Rows updated: 0. Tickets created: 0. Onboardings started: 0. "
+        "Rows checked: 1. Rows updated: 0. Tickets created: 0. Upgrades started: 0. "
         f"Rows with errors: 1.\n\nErrors:\n- {ORDER_ID}: second failure",
     )
     mock_teams.send_success.assert_not_called()
@@ -89,7 +89,7 @@ def test_send_marks_dry_run_changes_as_not_applied(mock_teams):
 
     mock_teams.send_success.assert_called_once_with(
         NOTIFICATION_TITLE,
-        "Dry run. Rows checked: 1. Rows updated: 0. Tickets created: 0. Onboardings started: 0. "
+        "Dry run. Rows checked: 1. Rows updated: 0. Tickets created: 0. Upgrades started: 0. "
         "Rows with errors: 0.\n\n"
         f"Changes (dry run, not applied):\n- {ORDER_ID}: MPT Order status: Completed",
     )

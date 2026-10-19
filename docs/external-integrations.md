@@ -8,7 +8,7 @@ Each integration document covers: purpose, authentication mechanism, required en
 
 | Service | Purpose | Auth Mechanism | Document |
 | --- | --- | --- | --- |
-| [Cloud Orchestrator](external/cloud-orchestrator.md) | AWS customer onboarding, bootstrap role validation, deployment status | OAuth 2.0 (OpenID Bearer) | [cloud-orchestrator.md](external/cloud-orchestrator.md) |
+| [Cloud Orchestrator](external/cloud-orchestrator.md) | AWS customer onboarding and upgrade, bootstrap role validation, deployment status | OAuth 2.0 (OpenID Bearer) | [cloud-orchestrator.md](external/cloud-orchestrator.md) |
 | [CCP Platform](external/ccp.md) | Monthly OpenID client secret rotation via Azure AD | OAuth 2.0 Client Credentials | [ccp.md](external/ccp.md) |
 | [Service-Now (CRM)](external/service-now.md) | Customer service request creation and tracking | OAuth 2.0 Client Credentials | [service-now.md](external/service-now.md) |
 | [FinOps (FFC)](external/finops.md) | Billing entitlement and datasource management | Self-signed JWT (HS256) | [finops.md](external/finops.md) |
