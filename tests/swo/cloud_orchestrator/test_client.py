@@ -1,5 +1,6 @@
 """Tests for Cloud Orchestrator client."""
 
+import logging
 from http import HTTPStatus
 from urllib.parse import quote
 
@@ -172,6 +173,74 @@ def test_onboard_customer_not_found(cloud_orchestrator_client, mock_api, mock_op
 
     with pytest.raises(CloudOrchestratorNotFoundError):
         cloud_orchestrator_client.onboard_customer({})
+
+
+def test_upgrade_customer_success(cloud_orchestrator_client, mock_api, mock_openid_client, caplog):
+    caplog.set_level(logging.INFO)
+    expected_response = {
+        "executions": [
+            {
+                "execution_arn": "arn:aws:states:us-east-1:123456789012:execution:test",
+                "deployment_id": "f54e1c4b-3d90-4489-8ec6-f2b1157daf3b",
+            }
+        ]
+    }
+    payload = {"scu": "US-SCU-999999", "master_payer_id": "987654321098"}
+    mock_api.add(
+        responses.POST,
+        f"{BASE_URL}api/v1/marketplace/upgrade",
+        match=[responses.matchers.json_params_matcher(payload)],
+        json=expected_response,
+        status=HTTPStatus.OK,
+    )
+
+    result = cloud_orchestrator_client.upgrade_customer(payload)
+
+    assert result == expected_response
+    assert (
+        f"Cloud Orchestrator upgrade request: POST {BASE_URL}api/v1/marketplace/upgrade "
+        "payload={'scu': 'US-SCU-999999', 'master_payer_id': '987654321098'}"
+    ) in caplog.text
+    assert (
+        "Cloud Orchestrator upgrade response: status=200 "
+        'body={"executions": [{"execution_arn": '
+        '"arn:aws:states:us-east-1:123456789012:execution:test", '
+        '"deployment_id": "f54e1c4b-3d90-4489-8ec6-f2b1157daf3b"}]}'
+    ) in caplog.text
+
+
+def test_upgrade_customer_http_error(
+    cloud_orchestrator_client, mock_api, mock_openid_client, caplog
+):
+    caplog.set_level(logging.INFO)
+    mock_api.add(
+        responses.POST,
+        f"{BASE_URL}api/v1/marketplace/upgrade",
+        json={"error": "Internal Server Error"},
+        status=HTTPStatus.INTERNAL_SERVER_ERROR,
+    )
+
+    with pytest.raises(CloudOrchestratorHttpError) as exc_info:
+        cloud_orchestrator_client.upgrade_customer({"scu": "US-SCU-999999"})
+
+    assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert (
+        f"upgrade request: POST {BASE_URL}api/v1/marketplace/upgrade "
+        "payload={'scu': 'US-SCU-999999'}"
+    ) in caplog.text
+    assert 'upgrade response: status=500 body={"error": "Internal Server Error"}' in caplog.text
+
+
+def test_upgrade_customer_not_found(cloud_orchestrator_client, mock_api, mock_openid_client):
+    mock_api.add(
+        responses.POST,
+        f"{BASE_URL}api/v1/marketplace/upgrade",
+        json={"error": "Not found"},
+        status=HTTPStatus.NOT_FOUND,
+    )
+
+    with pytest.raises(CloudOrchestratorNotFoundError):
+        cloud_orchestrator_client.upgrade_customer({})
 
 
 def test_get_deployment_status_success(cloud_orchestrator_client, mock_api, mock_openid_client):

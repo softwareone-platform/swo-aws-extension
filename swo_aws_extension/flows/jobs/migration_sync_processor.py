@@ -19,11 +19,11 @@ from swo_aws_extension.flows.jobs.migration_billing_transfer_ticket import (
     get_stored_ticket_id,
     store_ticket_id,
 )
-from swo_aws_extension.flows.jobs.migration_services_onboarding import (
-    get_onboarding_status,
-    get_stored_execution_arn,
-    start_onboarding,
-    store_execution_arn,
+from swo_aws_extension.flows.jobs.migration_services_upgrade import (
+    get_stored_execution_arns,
+    get_upgrade_status,
+    start_upgrade,
+    store_execution_arns,
 )
 from swo_aws_extension.flows.jobs.migration_sync_report import SyncReport
 from swo_aws_extension.parameters import get_responsibility_transfer_id
@@ -136,13 +136,14 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
     When a completed row has a start date on or before the run date, the job creates the
     ServiceNow ticket that tells the MCoE team the billing transfer is active and stores its
     id in the crmMigrationTicketId parameter of the agreement; it then launches the services
-    onboarding in Cloud Orchestrator, as the OnboardServices fulfillment step does, stores
-    the execution ARN in the executionArn parameter of the agreement and checks the execution
-    status. The row moves to Services onboarded only once the execution succeeded; while it
-    is pending or running the row stays Completed and is checked again on the next run. A
-    row whose ticket, onboarding or status check fails keeps the Completed status with the
-    error detail and is retried on the next run; a ticket id or execution ARN already stored
-    in the agreement is never created again. Every row is saved at most once.
+    upgrade in Cloud Orchestrator, because a migrated account is already onboarded there,
+    stores the execution ARNs it returns (one per deployment of the account) comma-separated
+    in the executionArn parameter of the agreement and checks the status of every execution.
+    The row moves to Services onboarded only once all the executions succeeded; while any of
+    them is pending or running the row stays Completed and is checked again on the next run.
+    A row whose ticket, upgrade or status check fails keeps the Completed status with the
+    error detail and is retried on the next run; a ticket id or execution ARNs already stored
+    in the agreement are never created again. Every row is saved at most once.
     """
 
     def __init__(
@@ -282,10 +283,10 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         order: dict[str, Any],
         changes: dict[str, Any],
     ) -> None:
-        """Create the MCoE ticket, onboard the services and mark the row once both are done."""
+        """Create the MCoE ticket, upgrade the services and mark the row once both are done."""
         if not self._ensure_billing_transfer_start_ticket(record, order, changes):
             return
-        if not self._are_services_onboarded(record, order, changes):
+        if not self._are_services_upgraded(record, order, changes):
             return
         changes["migration_status"] = AccountMigrationStatus.SERVICES_ONBOARDED
         changes["error"] = ""
@@ -313,7 +314,7 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         order: dict[str, Any],
         changes: dict[str, Any],
     ) -> bool:
-        """Create the MCoE ticket and store its id; return whether the row can be onboarded."""
+        """Create the MCoE ticket and store its id; return whether the row can be upgraded."""
         order_id = record.mpt_order_id
         start_date = (
             changes.get("billing_transfer_start_date") or record.billing_transfer_start_date
@@ -340,97 +341,142 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
             return False
         return True
 
-    def _are_services_onboarded(
+    def _are_services_upgraded(
         self,
         record: AccountMigrationRecord,
         order: dict[str, Any],
         changes: dict[str, Any],
     ) -> bool:
-        """Launch the services onboarding once and return whether it has succeeded."""
-        execution_arn = get_stored_execution_arn(order)
-        if execution_arn:
+        """Launch the services upgrade once and return whether all its executions succeeded."""
+        execution_arns = get_stored_execution_arns(order)
+        if execution_arns:
             logger.info(
-                "%s - Services onboarding already started with execution ARN %s",
+                "%s - Services upgrade already started with execution ARNs %s",
                 record.mpt_order_id,
-                execution_arn,
+                ", ".join(execution_arns),
             )
         else:
-            execution_arn = self._start_services_onboarding(record, order, changes)
-            if not execution_arn:
+            execution_arns = self._start_services_upgrade(record, order, changes)
+            if not execution_arns:
                 return False
-        return self._is_onboarding_succeeded(record, order, changes, execution_arn)
+        return self._is_upgrade_succeeded(record, order, changes, execution_arns)
 
-    def _start_services_onboarding(
+    def _start_services_upgrade(
         self,
         record: AccountMigrationRecord,
         order: dict[str, Any],
         changes: dict[str, Any],
-    ) -> str:
+    ) -> list[str]:
         """
-        Launch the onboarding, store its execution ARN in the agreement and return it.
+        Launch the upgrade, store its execution ARNs in the agreement and return them.
 
-        Returns an empty ARN when the onboarding could not be started or its ARN could not
-        be stored, so the row is not checked nor onboarded in this run.
+        Returns an empty list when the upgrade could not be started or its ARNs could not
+        be stored, so the row is not checked nor upgraded in this run.
         """
         order_id = record.mpt_order_id
-        logger.info("%s - Launching the services onboarding in Cloud Orchestrator", order_id)
+        logger.info("%s - Launching the services upgrade in Cloud Orchestrator", order_id)
         if self.dry_run:
-            logger.info("%s - Dry run mode - skipping services onboarding", order_id)
-            return ""
+            logger.info("%s - Dry run mode - skipping services upgrade", order_id)
+            return []
         try:
-            execution_arn = start_onboarding(self.config, order)
+            execution_arns = start_upgrade(self.config, order)
         except CloudOrchestratorError as error:
-            self._fail_row(record, changes, f"Services onboarding not started: {error}")
-            return ""
-        if not execution_arn:
-            self._fail_row(record, changes, "Services onboarding started without an execution ARN")
-            return ""
-        logger.info(
-            "%s - Services onboarding started with execution ARN %s", order_id, execution_arn
-        )
-        self.report.add_started_onboarding(order_id, execution_arn)
-        if not store_execution_arn(self.mpt_client, order, execution_arn):
-            # Without the stored ARN the next run would onboard again: stop here and keep
-            # the ARN in the row error so an operator can store it in the agreement.
+            self._fail_row(record, changes, f"Services upgrade not started: {error}")
+            return []
+        if not execution_arns:
+            self._fail_row(record, changes, "Services upgrade started without an execution ARN")
+            return []
+        arns_text = ", ".join(execution_arns)
+        logger.info("%s - Services upgrade started with execution ARNs %s", order_id, arns_text)
+        self.report.add_started_upgrade(order_id, execution_arns)
+        if not store_execution_arns(self.mpt_client, order, execution_arns):
+            # Without the stored ARNs the next run would upgrade again: stop here and keep
+            # the ARNs in the row error so an operator can store them in the agreement.
             self._fail_row(
                 record,
                 changes,
-                f"Services onboarding started but execution ARN {execution_arn} was not "
-                f"stored in the agreement. Store it in executionArn before the next run.",
+                f"Services upgrade started but execution ARNs {arns_text} were not stored "
+                f"in the agreement. Store them comma-separated in executionArn before the "
+                f"next run.",
             )
-            return ""
-        return execution_arn
+            return []
+        return execution_arns
 
-    def _is_onboarding_succeeded(
+    def _is_upgrade_succeeded(
         self,
         record: AccountMigrationRecord,
         order: dict[str, Any],
         changes: dict[str, Any],
-        execution_arn: str,
+        execution_arns: list[str],
     ) -> bool:
-        """Check the onboarding execution and return whether it succeeded."""
-        order_id = record.mpt_order_id
-        try:
-            status = get_onboarding_status(self.config, order, execution_arn)
-        except CloudOrchestratorError as error:
-            self._fail_row(record, changes, f"Services onboarding status not available: {error}")
+        """
+        Check every upgrade execution and return whether all of them succeeded.
+
+        A failed execution fails the row; while any execution is still pending the row is
+        checked again on the next run.
+        """
+        statuses = self._get_upgrade_statuses(record, order, changes, execution_arns)
+        if statuses is None:
             return False
-        if status == DeploymentStatusEnum.SUCCEEDED:
-            logger.info("%s - Services onboarding succeeded", order_id)
-            return True
-        if status == DeploymentStatusEnum.FAILED:
+        failed_arns = [
+            arn for arn in execution_arns if statuses[arn] == DeploymentStatusEnum.FAILED
+        ]
+        if failed_arns:
+            failed_text = ", ".join(failed_arns)
             self._fail_row(
                 record,
                 changes,
-                f"Services onboarding failed in Cloud Orchestrator (execution {execution_arn})",
+                f"Services upgrade failed in Cloud Orchestrator (failed executions: {failed_text})",
             )
             return False
+        pending_arns = [
+            arn for arn in execution_arns if statuses[arn] != DeploymentStatusEnum.SUCCEEDED
+        ]
+        if pending_arns:
+            logger.info(
+                "%s - Services upgrade pending for executions %s, checking again on the next run",
+                record.mpt_order_id,
+                ", ".join(pending_arns),
+            )
+            return False
+        logger.info("%s - Services upgrade succeeded", record.mpt_order_id)
+        return True
+
+    def _get_upgrade_statuses(
+        self,
+        record: AccountMigrationRecord,
+        order: dict[str, Any],
+        changes: dict[str, Any],
+        execution_arns: list[str],
+    ) -> dict[str, str] | None:
+        """
+        Fetch the status of every upgrade execution, keyed by its ARN.
+
+        Every ARN is polled even when some fail, so one error does not hide the others.
+        The row fails once, listing every status error, and None is returned.
+        """
+        statuses: dict[str, str] = {}
+        errors: dict[str, str] = {}
+        for execution_arn in execution_arns:
+            try:
+                statuses[execution_arn] = (
+                    get_upgrade_status(self.config, order, execution_arn) or "unknown"
+                )
+            except CloudOrchestratorError as error:
+                errors[execution_arn] = str(error)
+        if errors:
+            self._fail_row(
+                record,
+                changes,
+                f"Services upgrade status not available: {_join_pairs(errors, '; ', ': ')}",
+            )
+            return None
         logger.info(
-            "%s - Services onboarding status is %s, checking again on the next run",
-            order_id,
-            status or "unknown",
+            "%s - Services upgrade execution statuses: %s",
+            record.mpt_order_id,
+            _join_pairs(statuses, ", ", "="),
         )
-        return False
+        return statuses
 
     def _fail_row(
         self, record: AccountMigrationRecord, changes: dict[str, Any], message: str
@@ -459,3 +505,7 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
             setattr(record, field_name, field_value)
         self.migration_table.save(record)
         self.report.updated_rows.append(order_id)
+
+
+def _join_pairs(pairs: dict[str, str], separator: str, joiner: str) -> str:
+    return separator.join(f"{key}{joiner}{text}" for key, text in pairs.items())
