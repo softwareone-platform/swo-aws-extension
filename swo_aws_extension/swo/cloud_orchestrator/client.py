@@ -72,6 +72,26 @@ class CloudOrchestratorClient(requests.Session):
         return response.json()
 
     @wrap_http_error
+    def upgrade_customer(self, upgrade_payload: dict[str, Any]) -> dict:
+        """Triggers the upgrade of the onboarded customer."""
+        # Verbose on purpose while the Cloud Orchestrator upgrade API is in development.
+        url = urljoin(self.base_url, "api/v1/marketplace/upgrade")
+        logger.info(
+            "Cloud Orchestrator upgrade request: POST %s payload=%s",
+            url,
+            upgrade_payload,
+        )
+        response = self.post(url=url, json=upgrade_payload)
+        logger.info(
+            "Cloud Orchestrator upgrade response: status=%s body=%s",
+            response.status_code,
+            response.text,
+        )
+        response.raise_for_status()
+
+        return response.json()
+
+    @wrap_http_error
     def get_deployment_status(self, execution_arn: str) -> dict:
         """Gets the deployment status for the given execution ARN."""
         response = self.get(url=f"api/v1/deployments/execution-arn/{quote(execution_arn, safe='')}")

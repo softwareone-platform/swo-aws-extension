@@ -184,3 +184,6 @@ make/local.mk
 
 # mpt-tool
 .migrations-state.json
+
+# Local make targets
+make/repo.mk
