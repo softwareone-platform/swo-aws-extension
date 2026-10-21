@@ -1,5 +1,6 @@
 """Cloud Orchestrator API client."""
 
+import json
 import logging
 from collections.abc import Callable
 from http import HTTPStatus
@@ -24,8 +25,6 @@ from swo_aws_extension.swo.openid.errors import OpenIDError
 logger = logging.getLogger(__name__)
 
 TIMEOUT = 60
-
-DEPLOYMENT_STATUSES = frozenset(status.value for status in DeploymentStatusEnum)
 
 type ResponseCheck = Callable[[dict[str, Any]], str | None]
 
@@ -63,7 +62,7 @@ def _check_deployment_status(response_body: dict[str, Any]) -> str | None:
     The comparison ignores the case.
     """
     status = response_body.get("status")
-    if not isinstance(status, str) or status.lower() not in DEPLOYMENT_STATUSES:
+    if not isinstance(status, str) or status.lower() not in DeploymentStatusEnum:
         return f"response has an unknown 'status' {status!r}"
     return None
 
@@ -169,7 +168,6 @@ class CloudOrchestratorClient(requests.Session):
             CloudOrchestratorUnexpectedResponseError: When the response body is not
                 a JSON object, or when `response_check` returns a contract break.
         """
-        url = self._build_url(path)
         request_context = {
             "operation": operation,
             "method": method,
@@ -177,7 +175,7 @@ class CloudOrchestratorClient(requests.Session):
             "payload": payload,
         }
         logger.info(
-            "Cloud Orchestrator %s request: %s %s payload=%s", operation, method, url, payload
+            "Cloud Orchestrator %s request: %s %s payload=%s", operation, method, path, payload
         )
         try:
             response = self.request(method, path, json=payload)
@@ -189,30 +187,29 @@ class CloudOrchestratorClient(requests.Session):
             raise CloudOrchestratorConnectionError(
                 f"request not completed: {error}", **request_context
             ) from error
+        body_text = response.text
         logger.info(
             "Cloud Orchestrator %s response: status=%s body=%s",
             operation,
             response.status_code,
-            response.text,
+            body_text,
         )
-        request_context.update(status_code=response.status_code, response_body=response.text)
-        self._check_status(response, request_context)
-        response_body = self._decode_body(response, request_context)
+        request_context.update(status_code=response.status_code, response_body=body_text)
+        self._check_status(response.status_code, request_context)
+        response_body = self._decode_body(body_text, request_context)
         contract_break = response_check(response_body)
         if contract_break:
             raise CloudOrchestratorUnexpectedResponseError(contract_break, **request_context)
         return response_body
 
-    def _check_status(self, response: requests.Response, request_context: dict[str, Any]) -> None:
+    def _check_status(self, status_code: int, request_context: dict[str, Any]) -> None:
         """Raise the HTTP error when the response status is not 2xx."""
-        if response.status_code == HTTPStatus.NOT_FOUND:
+        if status_code == HTTPStatus.NOT_FOUND:
             raise CloudOrchestratorNotFoundError("resource not found", **request_context)
-        if not HTTPStatus.OK <= response.status_code < HTTPStatus.MULTIPLE_CHOICES:
+        if not HTTPStatus.OK <= status_code < HTTPStatus.MULTIPLE_CHOICES:
             raise CloudOrchestratorHttpError("error status returned", **request_context)
 
-    def _decode_body(
-        self, response: requests.Response, request_context: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _decode_body(self, body_text: str, request_context: dict[str, Any]) -> dict[str, Any]:
         """Return the response body as a dict.
 
         Raises:
@@ -221,10 +218,10 @@ class CloudOrchestratorClient(requests.Session):
             CloudOrchestratorUnexpectedResponseError: When the response body is not
                 a JSON object.
         """
-        if not response.text.strip():
+        if not body_text.strip():
             raise CloudOrchestratorEmptyResponseError("response body is empty", **request_context)
         try:
-            response_body = response.json()
+            response_body = json.loads(body_text)
         except ValueError as error:
             raise CloudOrchestratorInvalidJsonError(
                 "response body is not valid JSON", **request_context

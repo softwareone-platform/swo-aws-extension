@@ -3,6 +3,10 @@ import logging
 import pytest
 import requests
 
+from swo_aws_extension.swo.cloud_orchestrator.errors import (
+    CloudOrchestratorEmptyResponseError,
+    CloudOrchestratorUnexpectedResponseError,
+)
 from swo_aws_extension.swo.notifications.teams import (
     Button,
     FactsSection,
@@ -211,18 +215,30 @@ def test_notify_cloud_orchestrator_error_sends_same_error_once(
     mock_send_error.assert_called_once()
 
 
+def test_notify_cloud_orchestrator_error_ignores_response_body(
+    mock_send_error, cloud_orchestrator_error_factory
+):
+    notify_cloud_orchestrator_error(cloud_orchestrator_error_factory(), "ORD-0001")
+    other_body_error = cloud_orchestrator_error_factory(response_body='{"executions": null}')
+
+    notify_cloud_orchestrator_error(other_body_error, "ORD-0001")  # act
+
+    mock_send_error.assert_called_once()
+
+
 @pytest.mark.parametrize(
-    ("order_id", "reason"),
+    ("order_id", "error_class"),
     [
-        ("ORD-0002", "response has an empty 'executions' list"),
-        ("ORD-0001", "response body is empty"),
+        ("ORD-0002", CloudOrchestratorUnexpectedResponseError),
+        ("ORD-0001", CloudOrchestratorEmptyResponseError),
     ],
 )
 def test_notify_cloud_orchestrator_error_sends_other_error_again(
-    mock_send_error, cloud_orchestrator_error_factory, order_id, reason
+    mock_send_error, cloud_orchestrator_error_factory, order_id, error_class
 ):
     notify_cloud_orchestrator_error(cloud_orchestrator_error_factory(), "ORD-0001")
+    other_error = cloud_orchestrator_error_factory(error_class=error_class)
 
-    notify_cloud_orchestrator_error(cloud_orchestrator_error_factory(reason), order_id)  # act
+    notify_cloud_orchestrator_error(other_error, order_id)  # act
 
     assert mock_send_error.call_count == 2

@@ -8,8 +8,13 @@ FACTS_RESPONSE_LIMIT = 2000
 MISSING_FACT = "-"
 
 
-def _truncate(text: str, limit: int) -> str:
-    """Return the text cut to the limit, with a marker when the text is longer."""
+def _truncate(text: str | None, limit: int) -> str:
+    """Return the text cut to the limit, with a marker when the text is longer.
+
+    An empty or missing text gives `MISSING_FACT`.
+    """
+    if not text:
+        return MISSING_FACT
     if len(text) <= limit:
         return text
     kept_text = text[:limit]
@@ -52,12 +57,17 @@ class CloudOrchestratorError(Exception):  # noqa: WPS230
         return f"Cloud Orchestrator {self.operation} failed"
 
     @property
+    def request_line(self) -> str:
+        """HTTP method and endpoint of the failed request."""
+        return f"{self.method} {self.endpoint}"
+
+    @property
     def message(self) -> str:
         """One-line message with the reason, the request and the response.
 
         The response is cut to `MESSAGE_RESPONSE_LIMIT` characters.
         """
-        details = [f"{self.method} {self.endpoint}"]
+        details = [self.request_line]
         if self.status_code is not None:
             details.append(f"HTTP {self.status_code}")
         if self.response_body:
@@ -77,27 +87,17 @@ class CloudOrchestratorError(Exception):  # noqa: WPS230
             MISSING_FACT if self.payload is None else json.dumps(self.payload, default=str)
         )
         status_text = MISSING_FACT if self.status_code is None else str(self.status_code)
-        response_text = (
-            _truncate(self.response_body, FACTS_RESPONSE_LIMIT)
-            if self.response_body
-            else MISSING_FACT
-        )
         return {
             "Operation": self.operation,
-            "Request": f"{self.method} {self.endpoint}",
+            "Request": self.request_line,
             "Payload": payload_text,
             "HTTP status": status_text,
-            "Response": response_text,
+            "Response": _truncate(self.response_body, FACTS_RESPONSE_LIMIT),
         }
 
 
 class CloudOrchestratorHttpError(CloudOrchestratorError):
     """Cloud Orchestrator API returned a status that is not 2xx."""
-
-    @property
-    def response_content(self) -> str | None:
-        """Raw response body."""
-        return self.response_body
 
 
 class CloudOrchestratorNotFoundError(CloudOrchestratorHttpError):

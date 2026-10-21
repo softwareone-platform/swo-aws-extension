@@ -456,21 +456,20 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         error sends its own Teams error card.
         """
         statuses: dict[str, str] = {}
-        errors: list[CloudOrchestratorError] = []
+        error_messages: list[str] = []
         for execution_arn in execution_arns:
             try:
                 statuses[execution_arn] = get_upgrade_status(self.config, order, execution_arn)
             except CloudOrchestratorError as error:
-                errors.append(error)
-        if errors:
-            self._fail_row(record, changes, "; ".join(error.message for error in errors))
-            for status_error in errors:
-                notify_cloud_orchestrator_error(status_error, record.mpt_order_id)
+                error_messages.append(error.message)
+                notify_cloud_orchestrator_error(error, record.mpt_order_id)
+        if error_messages:
+            self._fail_row(record, changes, "; ".join(error_messages))
             return None
         logger.info(
             "%s - Services upgrade execution statuses: %s",
             record.mpt_order_id,
-            _join_pairs(statuses, ", ", "="),
+            ", ".join(f"{arn}={status}" for arn, status in statuses.items()),
         )
         return statuses
 
@@ -501,7 +500,3 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
             setattr(record, field_name, field_value)
         self.migration_table.save(record)
         self.report.updated_rows.append(order_id)
-
-
-def _join_pairs(pairs: dict[str, str], separator: str, joiner: str) -> str:
-    return separator.join(f"{key}{joiner}{text}" for key, text in pairs.items())

@@ -114,7 +114,7 @@ def test_facts_cut_long_response(request_context):
     assert result == f"{kept_response}... (truncated)"
 
 
-def test_http_error_keeps_status_code_and_response_content(request_context):
+def test_http_error_keeps_status_code_and_response_body(request_context):
     error = CloudOrchestratorHttpError(
         "error status returned",
         status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -122,6 +122,6 @@ def test_http_error_keeps_status_code_and_response_content(request_context):
         **request_context,
     )
 
-    result = (error.status_code, error.response_content)
+    result = (error.status_code, error.response_body)
 
     assert result == (HTTPStatus.INTERNAL_SERVER_ERROR, "boom")

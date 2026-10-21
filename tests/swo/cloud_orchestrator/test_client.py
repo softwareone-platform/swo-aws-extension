@@ -239,7 +239,7 @@ def test_upgrade_customer_success(cloud_orchestrator_client, mock_api, mock_open
 
     assert result == expected_response
     assert (
-        f"Cloud Orchestrator upgrade request: POST {BASE_URL}api/v1/marketplace/upgrade "
+        "Cloud Orchestrator upgrade request: POST api/v1/marketplace/upgrade "
         "payload={'scu': 'DM-SCU-000000', 'master_payer_id': '104688972956'}"
     ) in caplog.text
     assert (
@@ -266,8 +266,7 @@ def test_upgrade_customer_http_error(
 
     assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert (
-        f"upgrade request: POST {BASE_URL}api/v1/marketplace/upgrade "
-        "payload={'scu': 'US-SCU-999999'}"
+        "upgrade request: POST api/v1/marketplace/upgrade payload={'scu': 'US-SCU-999999'}"
     ) in caplog.text
     assert 'upgrade response: status=500 body={"error": "Internal Server Error"}' in caplog.text
 
@@ -439,7 +438,7 @@ def test_http_error_keeps_request_and_response(cloud_orchestrator_client, mock_a
     assert exc_info.value.operation == "upgrade"
     assert exc_info.value.payload == {"scu": "DM-SCU-000000"}
     assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-    assert exc_info.value.response_content == '{"error": "boom"}'
+    assert exc_info.value.response_body == '{"error": "boom"}'
     assert exc_info.value.message == (
         "Cloud Orchestrator upgrade failed: error status returned "
         '(POST api/v1/marketplace/upgrade, HTTP 500, response: {"error": "boom"})'
@@ -561,7 +560,7 @@ def test_get_endpoint_logs_request_and_response(cloud_orchestrator_client, mock_
 
     assert (
         "Cloud Orchestrator deployment status check request: "
-        f"GET {BASE_URL}{DEPLOYMENT_STATUS_PATH} payload=None"
+        f"GET {DEPLOYMENT_STATUS_PATH} payload=None"
     ) in caplog.text
     assert (
         'Cloud Orchestrator deployment status check response: status=200 body={"status": "running"}'

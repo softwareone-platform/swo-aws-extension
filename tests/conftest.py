@@ -1249,6 +1249,7 @@ def cloud_orchestrator_error_factory():
         reason="response has an empty 'executions' list",
         error_class=CloudOrchestratorUnexpectedResponseError,
         operation="upgrade",
+        response_body='{"executions": []}',
     ):
         return error_class(
             reason,
@@ -1257,7 +1258,7 @@ def cloud_orchestrator_error_factory():
             endpoint="api/v1/marketplace/upgrade",
             payload={"scu": "DM-SCU-000000", "master_payer_id": "104688972956"},
             status_code=HTTPStatus.OK,
-            response_body='{"executions": []}',
+            response_body=response_body,
         )
 
     return factory
@@ -1272,4 +1273,4 @@ def cloud_orchestrator_error(cloud_orchestrator_error_factory):
 def clear_cloud_orchestrator_error_cards():
     # The card helper sends each error once per process: forget the sent cards between tests.
     yield
-    teams._send_cloud_orchestrator_error.cache_clear()  # ruff: ignore[private-member-access]
+    teams.sent_cloud_orchestrator_errors.clear()

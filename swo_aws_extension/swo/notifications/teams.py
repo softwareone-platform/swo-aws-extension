@@ -12,7 +12,9 @@ logger = logging.getLogger(__name__)
 
 _REQUEST_TIMEOUT = 10
 
-type FactItems = tuple[tuple[str, str], ...]
+type CloudOrchestratorErrorKey = tuple[str, str, str, int | None]
+
+sent_cloud_orchestrator_errors: set[CloudOrchestratorErrorKey] = set()
 
 
 class Style(enum.Enum):
@@ -53,20 +55,19 @@ def notify_cloud_orchestrator_error(error: CloudOrchestratorError, order_id: str
     """Send one error card for the Cloud Orchestrator error of the order.
 
     The card holds the error message and the request and response facts. The order id is
-    the first fact. The card is sent once per order id and error content, because a
-    long-running processor meets the same error on every cycle.
+    the first fact. The card is sent once per order id, error type, endpoint and HTTP
+    status, because a long-running processor meets the same error on every cycle. The
+    reason and the response body are not part of that key, so a text that changes
+    between cycles does not send a new card.
     """
-    _send_cloud_orchestrator_error(order_id, error.title, error.message, tuple(error.facts.items()))
-
-
-@functools.cache
-def _send_cloud_orchestrator_error(
-    order_id: str, title: str, message: str, facts: FactItems
-) -> None:
+    error_key = (order_id, type(error).__name__, error.endpoint, error.status_code)
+    if error_key in sent_cloud_orchestrator_errors:
+        return
+    sent_cloud_orchestrator_errors.add(error_key)
     TeamsNotificationManager().send_error(
-        title,
-        message,
-        facts=FactsSection(title="Request details", data={"Order": order_id, **dict(facts)}),
+        error.title,
+        error.message,
+        facts=FactsSection(title="Request details", data={"Order": order_id, **error.facts}),
     )
 
 
