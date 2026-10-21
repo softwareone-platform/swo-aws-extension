@@ -22,6 +22,7 @@ from swo_aws_extension.parameters import (
     set_phase,
 )
 from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
+from swo_aws_extension.swo.notifications.teams import notify_cloud_orchestrator_error
 
 logger = logging.getLogger(__name__)
 
@@ -47,56 +48,31 @@ class OnboardServices(BasePhaseStep):
 
         feature_version_payload = get_feature_version_onboard_request(context)
 
-        error_email_log_message = "Onboarding services error email sent"
-
-        is_error_occurred = False
-        error_title = ""
-        error_details = ""
-
         try:
             execution_arn = onboard(self._config, feature_version_payload, context.order_id)
         except CloudOrchestratorError as error:
             logger.exception("%s - CloudOrchestratorError", context.order_id)
-            is_error_occurred = True
-            error_title = (
-                "Error deploying onboarding feature version and getting execution ARN for "
-                f"order {context.order_id}"
-            )
-            error_details = (
-                f"Error deploying onboarding feature version and getting execution ARN for "
-                f"order {context.order_id}: {error}\n\n"
-                f"for request payload:\n\n{feature_version_payload}"
-            )
-        else:
-            if execution_arn:
-                logger.info(
-                    "%s - Next - Onboarding services started with execution ARN %s",
-                    context.order_id,
-                    execution_arn,
-                )
-                context.order = set_execution_arn(context.order, execution_arn)
-            else:
-                is_error_occurred = True
-                error_title = (
-                    "Error deploying onboarding feature version and getting execution ARN for "
-                    f"order {context.order_id}"
-                )
-                error_details = (
-                    f"No execution ARN returned for order {context.order_id} "
-                    f"for request payload:\n\n{feature_version_payload}"
-                )
-
-        if is_error_occurred:
+            notify_cloud_orchestrator_error(error, context.order_id)
             handle_error(
                 context,
                 self._config,
                 client,
-                error_title,
-                error_details,
-                error_email_log_message,
+                (
+                    "Error deploying onboarding feature version and getting execution ARN for "
+                    f"order {context.order_id}"
+                ),
+                error.message,
+                "Onboarding services error email sent",
             )
-        else:
-            update_order(client, context.order_id, parameters=context.order["parameters"])
+            return
+
+        logger.info(
+            "%s - Next - Onboarding services started with execution ARN %s",
+            context.order_id,
+            execution_arn,
+        )
+        context.order = set_execution_arn(context.order, execution_arn)
+        update_order(client, context.order_id, parameters=context.order["parameters"])
 
     @override
     def post_step(self, client: MPTClient, context: PurchaseContext) -> None:

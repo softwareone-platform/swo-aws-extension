@@ -71,9 +71,7 @@ class CRMTicketDeployCustomerRoles(BaseCRMTicketStep):
             try:
                 bootstrap_roles_status = co_client.get_bootstrap_role_status(mpa_account_id)
             except CloudOrchestratorError as error:
-                raise UnexpectedStopError(
-                    "Error checking customer roles", f"Error details: {error}"
-                ) from error
+                raise UnexpectedStopError(error.title, error.message) from error
             context.bootstrap_roles_status = bootstrap_roles_status
 
         return context.bootstrap_roles_status["deployed"]

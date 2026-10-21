@@ -12,7 +12,6 @@ from swo_aws_extension.parameters import (
     get_formatted_technical_contact,
     get_mpa_account_id,
 )
-from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
 from swo_aws_extension.swo.crm_service.client import ServiceRequest
 from swo_aws_extension.swo.crm_service.errors import CRMError
 
@@ -158,6 +157,7 @@ def test_pre_step_error_on_orchestrator_failure(
     fulfillment_parameters_factory,
     mock_cloud_orchestrator_client,
     config,
+    cloud_orchestrator_error,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -166,13 +166,14 @@ def test_pre_step_error_on_orchestrator_failure(
     )
     context = PurchaseContext.from_order_data(order)
     mock_cloud_orchestrator_client.return_value.get_bootstrap_role_status.side_effect = (
-        CloudOrchestratorError("API error")
+        cloud_orchestrator_error
     )
 
     with pytest.raises(UnexpectedStopError) as error:
         CRMTicketDeployCustomerRoles(config).pre_step(context)
 
-    assert "Error checking customer roles" in error.value.title
+    assert error.value.title == cloud_orchestrator_error.title
+    assert error.value.message == cloud_orchestrator_error.message
 
 
 def test_process_creates_ticket_successfully(

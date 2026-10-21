@@ -14,6 +14,7 @@ from swo_aws_extension.flows.cloud_orchestrator_utils import (
 )
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.swo.cloud_orchestrator.client import CloudOrchestratorClient
+from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
 
 MODULE = "swo_aws_extension.flows.cloud_orchestrator_utils"
 EXECUTION_PREFIX = "arn:aws:states:eu-west-1:822835360798:execution"
@@ -52,15 +53,15 @@ def test_onboard(mocker, config):
     co_client_mock.onboard_customer.assert_called_once_with({"payload": "data"})
 
 
-def test_onboard_missing_execution_arn(mocker, config, caplog):
+def test_onboard_raises_error(mocker, config, cloud_orchestrator_error):
     co_client_mock = mocker.MagicMock(spec=CloudOrchestratorClient)
-    co_client_mock.onboard_customer.return_value = {}
+    co_client_mock.onboard_customer.side_effect = cloud_orchestrator_error
     mocker.patch(f"{MODULE}.CloudOrchestratorClient", return_value=co_client_mock)
 
-    result = onboard(config, {"payload": "data"}, "ORD-001")  # act
+    with pytest.raises(CloudOrchestratorError) as error:
+        onboard(config, {"payload": "data"}, "ORD-001")
 
-    assert not result
-    assert "ORD-001 - Onboard response missing execution_arn" in caplog.text
+    assert error.value is cloud_orchestrator_error
 
 
 def test_onboard_request_pls(order_factory, order_parameters_factory):
@@ -172,7 +173,6 @@ def test_onboard_request_dummy_scu_fallback(order_factory, order_parameters_fact
 
 
 def test_upgrade_returns_every_execution_arn(mocker, config, upgrade_response):
-    notify_mock = mocker.patch(f"{MODULE}.notify_one_time_error")
     co_client_mock = mocker.MagicMock(spec=CloudOrchestratorClient)
     co_client_mock.upgrade_customer.return_value = upgrade_response
     mocker.patch(f"{MODULE}.CloudOrchestratorClient", return_value=co_client_mock)
@@ -181,58 +181,17 @@ def test_upgrade_returns_every_execution_arn(mocker, config, upgrade_response):
 
     assert result == list(EXECUTION_ARNS)
     co_client_mock.upgrade_customer.assert_called_once_with({"payload": "data"})
-    notify_mock.assert_not_called()
 
 
-def test_upgrade_skips_executions_without_arn(mocker, config, caplog):
+def test_upgrade_raises_error(mocker, config, cloud_orchestrator_error):
     co_client_mock = mocker.MagicMock(spec=CloudOrchestratorClient)
-    co_client_mock.upgrade_customer.return_value = {
-        "executions": [
-            {"deployment_id": "f54e1c4b-3d90-4489-8ec6-f2b1157daf3b"},
-            {"execution_arn": "", "deployment_id": "0c1d7a6e-5b2f-4c3d-9e8f-7a6b5c4d3e2f"},
-            {
-                "execution_arn": SECOND_EXECUTION_ARN,
-                "deployment_id": "5fb1a5e9-2678-4cd1-92f0-830559483b4d",
-            },
-        ]
-    }
+    co_client_mock.upgrade_customer.side_effect = cloud_orchestrator_error
     mocker.patch(f"{MODULE}.CloudOrchestratorClient", return_value=co_client_mock)
 
-    result = upgrade(config, {"payload": "data"}, "ORD-001")  # act
+    with pytest.raises(CloudOrchestratorError) as error:
+        upgrade(config, {"payload": "data"}, "ORD-001")
 
-    assert result == [SECOND_EXECUTION_ARN]
-    assert "returned no execution ARNs" not in caplog.text
-
-
-@pytest.mark.parametrize(
-    "upgrade_response",
-    [
-        {},
-        {"executions": []},
-        {"executions": None},
-        {"executions": [{"deployment_id": "f54e1c4b-3d90-4489-8ec6-f2b1157daf3b"}]},
-    ],
-)
-def test_upgrade_missing_execution_arns(mocker, config, caplog, upgrade_response):
-    co_client_mock = mocker.MagicMock(spec=CloudOrchestratorClient)
-    co_client_mock.upgrade_customer.return_value = upgrade_response
-    mocker.patch(f"{MODULE}.CloudOrchestratorClient", return_value=co_client_mock)
-    notify_mock = mocker.patch(f"{MODULE}.notify_one_time_error")
-
-    result = upgrade(config, {"payload": "data"}, "ORD-001")  # act
-
-    assert result == []
-    assert (
-        "ORD-001 - Cloud Orchestrator upgrade returned no execution ARNs: expected "
-        "executions[].execution_arn in the response, nothing to poll. "
-        f"Response: {upgrade_response}"
-    ) in caplog.text
-    notify_mock.assert_called_once_with(
-        "Cloud Orchestrator upgrade error for order ORD-001",
-        "Cloud Orchestrator upgrade for order `ORD-001` returned no execution ARNs. "
-        "Expected `executions[].execution_arn` in the response. There is nothing to poll.\n\n"
-        f"```{upgrade_response}```",
-    )
+    assert error.value is cloud_orchestrator_error
 
 
 def test_onboard_status_succeeds_immediately(mocker, config, order_factory):
@@ -280,14 +239,24 @@ def test_check_onboard_status_running(mocker, config, order_factory):
     co_client_mock.get_deployment_status.assert_called_once_with("arn:test")
 
 
-def test_check_onboard_status_empty_status(mocker, config, order_factory):
-    order = order_factory()
-    context = PurchaseContext.from_order_data(order)
+def test_check_onboard_status_lowercases_status(mocker, config, order_factory):
+    context = PurchaseContext.from_order_data(order_factory())
     co_client_mock = mocker.MagicMock(spec=CloudOrchestratorClient)
-    co_client_mock.get_deployment_status.return_value = {"status": ""}
+    co_client_mock.get_deployment_status.return_value = {"status": "SUCCEEDED"}
     mocker.patch(f"{MODULE}.CloudOrchestratorClient", return_value=co_client_mock)
 
     result = check_onboard_status(config, context, "arn:test")
 
-    assert not result
-    co_client_mock.get_deployment_status.assert_called_once_with("arn:test")
+    assert result == DeploymentStatusEnum.SUCCEEDED.value
+
+
+def test_check_onboard_status_raises_error(mocker, config, order_factory, cloud_orchestrator_error):
+    context = PurchaseContext.from_order_data(order_factory())
+    co_client_mock = mocker.MagicMock(spec=CloudOrchestratorClient)
+    co_client_mock.get_deployment_status.side_effect = cloud_orchestrator_error
+    mocker.patch(f"{MODULE}.CloudOrchestratorClient", return_value=co_client_mock)
+
+    with pytest.raises(CloudOrchestratorError) as error:
+        check_onboard_status(config, context, "arn:test")
+
+    assert error.value is cloud_orchestrator_error

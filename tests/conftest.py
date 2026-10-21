@@ -1,5 +1,6 @@
 import copy
 import datetime as dt
+from http import HTTPStatus
 
 import jwt
 import pytest
@@ -17,6 +18,10 @@ from swo_aws_extension.constants import (
     SupportTypesEnum,
 )
 from swo_aws_extension.swo.ccp.client import CCPClient
+from swo_aws_extension.swo.cloud_orchestrator.errors import (
+    CloudOrchestratorUnexpectedResponseError,
+)
+from swo_aws_extension.swo.notifications import teams
 
 PARAM_COMPANY_NAME = "ACME Inc"
 AWESOME_PRODUCT = "Awesome product"
@@ -1236,3 +1241,35 @@ def mock_crm_client(mocker):
     return mocker.patch(
         "swo_aws_extension.flows.steps.crm_tickets.ticket_manager.get_service_client"
     )
+
+
+@pytest.fixture
+def cloud_orchestrator_error_factory():
+    def factory(
+        reason="response has an empty 'executions' list",
+        error_class=CloudOrchestratorUnexpectedResponseError,
+        operation="upgrade",
+    ):
+        return error_class(
+            reason,
+            operation=operation,
+            method="POST",
+            endpoint="api/v1/marketplace/upgrade",
+            payload={"scu": "DM-SCU-000000", "master_payer_id": "104688972956"},
+            status_code=HTTPStatus.OK,
+            response_body='{"executions": []}',
+        )
+
+    return factory
+
+
+@pytest.fixture
+def cloud_orchestrator_error(cloud_orchestrator_error_factory):
+    return cloud_orchestrator_error_factory()
+
+
+@pytest.fixture(autouse=True)
+def clear_cloud_orchestrator_error_cards():
+    # The card helper sends each error once per process: forget the sent cards between tests.
+    yield
+    teams._send_cloud_orchestrator_error.cache_clear()  # ruff: ignore[private-member-access]

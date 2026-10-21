@@ -7,7 +7,6 @@ from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.check_onboard_status import CheckOnboardStatus
 from swo_aws_extension.flows.steps.errors import SkipStepError, UnexpectedStopError
 from swo_aws_extension.parameters import get_phase
-from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
 
 MODULE = "swo_aws_extension.flows.steps.check_onboard_status"
 EXECUTION_ARN = "arn:aws:states:us-east-1:123456789012:execution:test"
@@ -21,6 +20,11 @@ def purchase_context(order_factory):
         return PurchaseContext.from_order_data(order)
 
     return factory
+
+
+@pytest.fixture
+def mock_notify_error(mocker):
+    return mocker.patch(f"{MODULE}.notify_cloud_orchestrator_error", autospec=True)
 
 
 @pytest.fixture
@@ -206,27 +210,6 @@ def test_process_pending_does_not_advance_phase(
     assert "pending" in caplog.text
 
 
-def test_process_unexpected_status_does_not_advance_phase(
-    mocker, onboard_status_order, purchase_context, mpt_client, config, caplog
-):
-    context = purchase_context(onboard_status_order)
-    mocker.patch(
-        f"{MODULE}.check_onboard_status",
-        autospec=True,
-        return_value="unknown_status",
-    )
-    handle_error_mock = mocker.patch(f"{MODULE}.handle_error", autospec=True)
-    update_order_mock = mocker.patch(f"{MODULE}.update_order", autospec=True)
-    step = CheckOnboardStatus(config)
-    step.process(mpt_client, context)
-
-    step.post_step(mpt_client, context)  # act
-
-    handle_error_mock.assert_not_called()
-    update_order_mock.assert_not_called()
-    assert "Unexpected onboard status" in caplog.text
-
-
 def test_process_failed_calls_handle_error(
     mocker, onboard_status_order, purchase_context, mpt_client, config
 ):
@@ -310,20 +293,35 @@ def test_process_failed_does_not_raise_for_resold(
 
 
 def test_process_cloud_orchestrator_error_calls_handle_error(
-    mocker, caplog, onboard_status_order, purchase_context, mpt_client, config
+    mocker,
+    caplog,
+    onboard_status_order,
+    purchase_context,
+    mpt_client,
+    config,
+    cloud_orchestrator_error,
+    mock_notify_error,
 ):
     context = purchase_context(onboard_status_order)
     mocker.patch(
         f"{MODULE}.check_onboard_status",
         autospec=True,
-        side_effect=CloudOrchestratorError("status failed"),
+        side_effect=cloud_orchestrator_error,
     )
     handle_error_mock = mocker.patch(f"{MODULE}.handle_error", autospec=True)
     step = CheckOnboardStatus(config)
 
     step.process(mpt_client, context)  # act
 
-    handle_error_mock.assert_called_once()
+    handle_error_mock.assert_called_once_with(
+        context,
+        config,
+        mpt_client,
+        "Error checking onboard status",
+        cloud_orchestrator_error.message,
+        "Onboard status check error email sent",
+    )
+    mock_notify_error.assert_called_once_with(cloud_orchestrator_error, context.order_id)
     assert "CloudOrchestratorError" in caplog.text
 
 
@@ -335,6 +333,8 @@ def test_process_cloud_orchestrator_error_raises_for_pls(
     purchase_context,
     mpt_client,
     config,
+    cloud_orchestrator_error,
+    mock_notify_error,
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -349,7 +349,7 @@ def test_process_cloud_orchestrator_error_raises_for_pls(
     mocker.patch(
         f"{MODULE}.check_onboard_status",
         autospec=True,
-        side_effect=CloudOrchestratorError("status failed"),
+        side_effect=cloud_orchestrator_error,
     )
     mocker.patch(
         f"{MODULE}.handle_error", autospec=True, side_effect=UnexpectedStopError("error", "details")
@@ -368,6 +368,8 @@ def test_process_cloud_orchestrator_error_does_not_raise_for_resold(
     purchase_context,
     mpt_client,
     config,
+    cloud_orchestrator_error,
+    mock_notify_error,
 ):
     order = order_factory(
         order_parameters=order_parameters_factory(
@@ -382,7 +384,7 @@ def test_process_cloud_orchestrator_error_does_not_raise_for_resold(
     mocker.patch(
         f"{MODULE}.check_onboard_status",
         autospec=True,
-        side_effect=CloudOrchestratorError("status failed"),
+        side_effect=cloud_orchestrator_error,
     )
     handle_error_mock = mocker.patch(f"{MODULE}.handle_error", autospec=True)
     step = CheckOnboardStatus(config)

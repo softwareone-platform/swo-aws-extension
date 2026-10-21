@@ -154,23 +154,15 @@ def test_start_upgrade_without_scu_uses_the_default(config, order, mock_cloud_or
     assert upgrade_payload["scu"] == DEFAULT_SCU
 
 
-def test_start_upgrade_without_executions(mocker, config, order, mock_cloud_orchestrator):
-    mock_notify = mocker.patch(
-        "swo_aws_extension.flows.cloud_orchestrator_utils.notify_one_time_error"
-    )
-    mock_cloud_orchestrator.upgrade_customer.return_value = {"executions": []}
+def test_start_upgrade_raises_cloud_orchestrator_error(
+    config, order, mock_cloud_orchestrator, cloud_orchestrator_error
+):
+    mock_cloud_orchestrator.upgrade_customer.side_effect = cloud_orchestrator_error
 
-    result = start_upgrade(config, order)
-
-    assert result == []
-    mock_notify.assert_called_once()
-
-
-def test_start_upgrade_raises_cloud_orchestrator_error(config, order, mock_cloud_orchestrator):
-    mock_cloud_orchestrator.upgrade_customer.side_effect = CloudOrchestratorError("co down")
-
-    with pytest.raises(CloudOrchestratorError):
+    with pytest.raises(CloudOrchestratorError) as error:
         start_upgrade(config, order)
+
+    assert error.value is cloud_orchestrator_error
 
 
 def test_store_execution_arns_joins_them_with_commas(mocker, mpt_client, order):

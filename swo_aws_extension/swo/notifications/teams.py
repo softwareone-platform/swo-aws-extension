@@ -6,9 +6,13 @@ from dataclasses import dataclass
 import requests
 from django.conf import settings
 
+from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
+
 logger = logging.getLogger(__name__)
 
 _REQUEST_TIMEOUT = 10
+
+type FactItems = tuple[tuple[str, str], ...]
 
 
 class Style(enum.Enum):
@@ -43,6 +47,27 @@ class FactsSection:
 def notify_one_time_error(title: str, message: str) -> None:
     """Send a one-time error notification once per (title, message) pair."""
     TeamsNotificationManager().send_exception(title, message)
+
+
+def notify_cloud_orchestrator_error(error: CloudOrchestratorError, order_id: str) -> None:
+    """Send one error card for the Cloud Orchestrator error of the order.
+
+    The card holds the error message and the request and response facts. The order id is
+    the first fact. The card is sent once per order id and error content, because a
+    long-running processor meets the same error on every cycle.
+    """
+    _send_cloud_orchestrator_error(order_id, error.title, error.message, tuple(error.facts.items()))
+
+
+@functools.cache
+def _send_cloud_orchestrator_error(
+    order_id: str, title: str, message: str, facts: FactItems
+) -> None:
+    TeamsNotificationManager().send_error(
+        title,
+        message,
+        facts=FactsSection(title="Request details", data={"Order": order_id, **dict(facts)}),
+    )
 
 
 class TeamsNotificationManager:

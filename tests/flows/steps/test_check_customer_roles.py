@@ -18,7 +18,6 @@ from swo_aws_extension.parameters import (
     get_fulfillment_parameter,
     get_phase,
 )
-from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
 
 
 @pytest.fixture
@@ -140,6 +139,7 @@ def test_process_error_on_orchestrator_fails(
     config,
     mpt_client,
     mock_cloud_orchestrator_client,
+    cloud_orchestrator_error,
 ):
     order = order_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -148,13 +148,14 @@ def test_process_error_on_orchestrator_fails(
     )
     context = PurchaseContext.from_order_data(order)
     mock_cloud_orchestrator_client.return_value.get_bootstrap_role_status.side_effect = (
-        CloudOrchestratorError("API error")
+        cloud_orchestrator_error
     )
 
     with pytest.raises(UnexpectedStopError) as exc_info:
         CheckCustomerRoles(config).process(mpt_client, context)  # act
 
-    assert "Error checking customer roles" in exc_info.value.title
+    assert exc_info.value.title == cloud_orchestrator_error.title
+    assert exc_info.value.message == cloud_orchestrator_error.message
 
 
 def test_post_step_updates_phase(

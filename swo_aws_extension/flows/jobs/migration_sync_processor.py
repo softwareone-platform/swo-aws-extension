@@ -30,6 +30,7 @@ from swo_aws_extension.parameters import get_responsibility_transfer_id
 from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
 from swo_aws_extension.swo.crm_service.errors import CRMError
 from swo_aws_extension.swo.mpt.order import get_orders_by_ids
+from swo_aws_extension.swo.notifications.teams import notify_cloud_orchestrator_error
 
 logger = logging.getLogger(__name__)
 
@@ -381,10 +382,8 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         try:
             execution_arns = start_upgrade(self.config, order)
         except CloudOrchestratorError as error:
-            self._fail_row(record, changes, f"Services upgrade not started: {error}")
-            return []
-        if not execution_arns:
-            self._fail_row(record, changes, "Services upgrade started without an execution ARN")
+            self._fail_row(record, changes, error.message)
+            notify_cloud_orchestrator_error(error, order_id)
             return []
         arns_text = ", ".join(execution_arns)
         logger.info("%s - Services upgrade started with execution ARNs %s", order_id, arns_text)
@@ -453,23 +452,20 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         Fetch the status of every upgrade execution, keyed by its ARN.
 
         Every ARN is polled even when some fail, so one error does not hide the others.
-        The row fails once, listing every status error, and None is returned.
+        The row fails once, listing every status error, and None is returned. Every status
+        error sends its own Teams error card.
         """
         statuses: dict[str, str] = {}
-        errors: dict[str, str] = {}
+        errors: list[CloudOrchestratorError] = []
         for execution_arn in execution_arns:
             try:
-                statuses[execution_arn] = (
-                    get_upgrade_status(self.config, order, execution_arn) or "unknown"
-                )
+                statuses[execution_arn] = get_upgrade_status(self.config, order, execution_arn)
             except CloudOrchestratorError as error:
-                errors[execution_arn] = str(error)
+                errors.append(error)
         if errors:
-            self._fail_row(
-                record,
-                changes,
-                f"Services upgrade status not available: {_join_pairs(errors, '; ', ': ')}",
-            )
+            self._fail_row(record, changes, "; ".join(error.message for error in errors))
+            for status_error in errors:
+                notify_cloud_orchestrator_error(status_error, record.mpt_order_id)
             return None
         logger.info(
             "%s - Services upgrade execution statuses: %s",

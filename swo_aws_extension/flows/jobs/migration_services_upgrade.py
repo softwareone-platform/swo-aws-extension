@@ -62,11 +62,11 @@ def start_upgrade(config: Config, order: dict[str, Any]) -> list[str]:
 
     The account is already onboarded in Cloud Orchestrator, so the payload only carries the
     SCU and the master payer id. Cloud Orchestrator launches one execution per deployment of
-    the account; an empty list means it accepted the request without returning any execution
-    to follow.
+    the account.
 
     Raises:
-        CloudOrchestratorError: When the upgrade cannot be started.
+        CloudOrchestratorError: When the upgrade call fails, or when the response holds no
+            execution ARN.
     """
     context = build_order_context(order)
     upgrade_payload = get_upgrade_request(context)
@@ -90,6 +90,7 @@ def get_upgrade_status(config: Config, order: dict[str, Any], execution_arn: str
     Return the lower-cased status of the services upgrade execution.
 
     Raises:
-        CloudOrchestratorError: When the status cannot be retrieved.
+        CloudOrchestratorError: When the status call fails, or when the response holds an
+            unknown status.
     """
     return check_onboard_status(config, build_order_context(order), execution_arn)

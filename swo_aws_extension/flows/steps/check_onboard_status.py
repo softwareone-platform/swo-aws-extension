@@ -13,6 +13,7 @@ from swo_aws_extension.flows.steps.base import BasePhaseStep
 from swo_aws_extension.flows.steps.errors import SkipStepError
 from swo_aws_extension.parameters import get_execution_arn, get_phase, set_phase
 from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
+from swo_aws_extension.swo.notifications.teams import notify_cloud_orchestrator_error
 
 logger = logging.getLogger(__name__)
 
@@ -57,12 +58,13 @@ class CheckOnboardStatus(BasePhaseStep):
             onboard_status_value = check_onboard_status(self._config, context, execution_arn_value)
         except CloudOrchestratorError as error:
             logger.exception("%s - CloudOrchestratorError", context.order_id)
+            notify_cloud_orchestrator_error(error, context.order_id)
             handle_error(
                 context,
                 self._config,
                 client,
                 error_title,
-                f"Error checking onboard status for order {context.order_id}: {error}",
+                error.message,
                 error_email_log_message,
             )
             return
@@ -84,15 +86,6 @@ class CheckOnboardStatus(BasePhaseStep):
                 f"Onboard process failed in Cloud Orchestrator for order {context.order_id}",
                 error_email_log_message,
             )
-            return
-
-        if onboard_status_value != DeploymentStatusEnum.SUCCEEDED.value:
-            logger.warning(
-                "%s - Next - Unexpected onboard status: %s",
-                context.order_id,
-                onboard_status_value,
-            )
-            self._onboard_still_running = True
             return
 
         logger.info("%s - Next - Onboard status check completed successfully", context.order_id)

@@ -14,7 +14,6 @@ from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.processor.querying.aws_customer_roles import (
     AWSCustomerRolesProcessor,
 )
-from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
 from swo_aws_extension.swo.crm_service.errors import CRMHttpError
 
 
@@ -319,13 +318,15 @@ def test_process_cloud_orchestrator_error(
     mocker: Any,
     processor: AWSCustomerRolesProcessor,
     mock_context: MagicMock,
+    cloud_orchestrator_error,
+    caplog,
 ) -> None:
     mocker.patch(
         "swo_aws_extension.processor.querying.aws_customer_roles.get_mpa_account_id",
         return_value="mpa-account-123",
     )
     mock_co_client = MagicMock()
-    mock_co_client.get_bootstrap_role_status.side_effect = CloudOrchestratorError("error")
+    mock_co_client.get_bootstrap_role_status.side_effect = cloud_orchestrator_error
     mocker.patch(
         "swo_aws_extension.processor.querying.aws_customer_roles.CloudOrchestratorClient",
         return_value=mock_co_client,
@@ -338,3 +339,5 @@ def test_process_cloud_orchestrator_error(
     processor.process(mock_context)  # act
 
     mock_switch.assert_not_called()
+    assert caplog.records[-1].levelname == "WARNING"
+    assert cloud_orchestrator_error.message in caplog.records[-1].getMessage()

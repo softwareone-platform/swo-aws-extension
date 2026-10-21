@@ -1,7 +1,9 @@
 import datetime as dt
 from http import HTTPStatus
+from unittest.mock import call as mocker_call
 
 import pytest
+import responses
 from mpt_api_client.exceptions import MPTError
 
 from swo_aws_extension.airtable.models import AccountMigrationRecord, AccountMigrationStatus
@@ -25,7 +27,6 @@ from swo_aws_extension.flows.jobs.migration_sync_report import NOTIFICATION_TITL
 from swo_aws_extension.flows.steps.crm_tickets.templates.billing_transfer_start import (
     BILLING_TRANSFER_START_TEMPLATE,
 )
-from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
 from swo_aws_extension.swo.crm_service.client import ServiceRequest
 from swo_aws_extension.swo.crm_service.errors import CRMError
 from swo_aws_extension.swo.mpt.order import ORDERS_QUERY_BATCH_SIZE
@@ -103,6 +104,21 @@ def mock_get_orders(mocker):
 def mock_teams(mocker):
     return mocker.patch(
         "swo_aws_extension.flows.jobs.migration_sync_report.TeamsNotificationManager"
+    ).return_value
+
+
+@pytest.fixture
+def mock_notify_error(mocker):
+    return mocker.patch(
+        "swo_aws_extension.flows.jobs.migration_sync_processor.notify_cloud_orchestrator_error",
+        autospec=True,
+    )
+
+
+@pytest.fixture
+def mock_error_cards(mocker):
+    return mocker.patch(
+        "swo_aws_extension.swo.notifications.teams.TeamsNotificationManager"
     ).return_value
 
 
@@ -1144,39 +1160,102 @@ def test_sync_upgrade_failure_names_only_the_failed_execution(
 
 
 def test_sync_upgrade_start_error_is_retried_next_run(
-    processor, completed_record, mock_cloud_orchestrator, mock_update_agreement, mock_teams
+    processor,
+    completed_record,
+    mock_cloud_orchestrator,
+    mock_update_agreement,
+    mock_teams,
+    mock_notify_error,
+    cloud_orchestrator_error,
 ):
-    mock_cloud_orchestrator.upgrade_customer.side_effect = CloudOrchestratorError("co down")
+    mock_cloud_orchestrator.upgrade_customer.side_effect = cloud_orchestrator_error
 
     processor.sync()  # act
 
     mock_cloud_orchestrator.get_deployment_status.assert_not_called()
     assert mock_update_agreement.call_count == 1  # only the ticket id
     assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
-    assert completed_record.error == "Services upgrade not started: co down"
+    assert completed_record.error == cloud_orchestrator_error.message
+    mock_notify_error.assert_called_once_with(cloud_orchestrator_error, ORDER_ID)
     report = sent_report(mock_teams, "send_warning")
     assert report.startswith(
         "Rows checked: 1. Rows updated: 1. Tickets created: 1. Upgrades started: 0. "
         "Rows with errors: 1."
     )
-    assert report.endswith(f"Errors:\n- {ORDER_ID}: Services upgrade not started: co down")
+    assert report.endswith(f"Errors:\n- {ORDER_ID}: {cloud_orchestrator_error.message}")
 
 
-def test_sync_upgrade_without_execution_arn_is_reported(
-    mocker, processor, completed_record, mock_cloud_orchestrator, mock_update_agreement
+@pytest.mark.parametrize(
+    ("response_kwargs", "expected_reason"),
+    [
+        (
+            {"status": HTTPStatus.INTERNAL_SERVER_ERROR, "json": {"error": "boom"}},
+            (
+                "error status returned (POST api/v1/marketplace/upgrade, HTTP 500, "
+                'response: {"error": "boom"})'
+            ),
+        ),
+        (
+            {"status": HTTPStatus.OK, "body": ""},
+            "response body is empty (POST api/v1/marketplace/upgrade, HTTP 200)",
+        ),
+        (
+            {"status": HTTPStatus.OK, "body": "not json"},
+            (
+                "response body is not valid JSON (POST api/v1/marketplace/upgrade, HTTP 200, "
+                "response: not json)"
+            ),
+        ),
+        (
+            {"status": HTTPStatus.OK, "json": {"executions": []}},
+            (
+                "response has an empty 'executions' list (POST api/v1/marketplace/upgrade, "
+                'HTTP 200, response: {"executions": []})'
+            ),
+        ),
+    ],
+)
+def test_sync_upgrade_client_error_is_written_to_the_row_and_sent_to_teams(
+    mocker,
+    requests_mocker,
+    mpt_client,
+    config,
+    completed_record,
+    mock_teams,
+    mock_aws_client,
+    mock_crm,
+    mock_update_agreement,
+    mock_error_cards,
+    response_kwargs,
+    expected_reason,
 ):
-    mock_notify = mocker.patch(
-        "swo_aws_extension.flows.cloud_orchestrator_utils.notify_one_time_error"
+    mocker.patch("swo_aws_extension.swo.cloud_orchestrator.client.OpenIDClient")
+    requests_mocker.add(
+        responses.POST,
+        "https://cloud-orchestrator.test.com/api/v1/marketplace/upgrade",
+        **response_kwargs,
     )
-    mock_cloud_orchestrator.upgrade_customer.return_value = {"executions": []}
+    processor = MigrationOrdersSyncProcessor(mpt_client, config, RUN_DATE)
+    expected_message = f"Cloud Orchestrator upgrade failed: {expected_reason}"
 
     processor.sync()  # act
 
-    mock_notify.assert_called_once()
-    mock_cloud_orchestrator.get_deployment_status.assert_not_called()
-    assert mock_update_agreement.call_count == 1  # only the ticket id
-    assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
-    assert completed_record.error == "Services upgrade started without an execution ARN"
+    facts_section = mock_error_cards.send_error.call_args.kwargs["facts"]
+    assert (completed_record.migration_status, completed_record.error) == (
+        AccountMigrationStatus.COMPLETED,
+        expected_message,
+    )
+    mock_error_cards.send_error.assert_called_once_with(
+        "Cloud Orchestrator upgrade failed", expected_message, facts=facts_section
+    )
+    assert {fact: facts_section.data[fact] for fact in ("Order", "Request")} == {
+        "Order": ORDER_ID,
+        "Request": "POST api/v1/marketplace/upgrade",
+    }
+    assert MASTER_PAYER_ID in facts_section.data["Payload"]
+    assert sent_report(mock_teams, "send_warning").endswith(
+        f"Errors:\n- {ORDER_ID}: {expected_message}"
+    )
 
 
 def stored_arns_order(order_factory_sync, execution_arn):
@@ -1193,22 +1272,24 @@ def test_sync_upgrade_status_errors_poll_every_arn_and_list_them_all(
     mock_get_orders,
     mock_cloud_orchestrator,
     mock_teams,
+    mock_notify_error,
     order_factory_sync,
+    cloud_orchestrator_error_factory,
 ):
+    timeout_error = cloud_orchestrator_error_factory("request not completed: timeout")
+    status_error = cloud_orchestrator_error_factory("response has an unknown 'status' None")
     mock_get_orders.return_value = [stored_arns_order(order_factory_sync, STORED_EXECUTION_ARNS)]
-    mock_cloud_orchestrator.get_deployment_status.side_effect = [
-        CloudOrchestratorError("timeout"),
-        CloudOrchestratorError("boom"),
-    ]
+    mock_cloud_orchestrator.get_deployment_status.side_effect = [timeout_error, status_error]
 
     processor.sync()  # act
 
     assert mock_cloud_orchestrator.get_deployment_status.call_count == 2
     assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
-    assert completed_record.error == (
-        f"Services upgrade status not available: {FIRST_EXECUTION_ARN}: timeout; "
-        f"{SECOND_EXECUTION_ARN}: boom"
-    )
+    assert completed_record.error == f"{timeout_error.message}; {status_error.message}"
+    assert mock_notify_error.call_args_list == [
+        mocker_call(timeout_error, ORDER_ID),
+        mocker_call(status_error, ORDER_ID),
+    ]
     mock_teams.send_warning.assert_called_once()
 
 
@@ -1218,11 +1299,13 @@ def test_sync_upgrade_status_error_names_only_the_failing_arn(
     mock_get_orders,
     mock_cloud_orchestrator,
     mock_teams,
+    mock_notify_error,
     order_factory_sync,
+    cloud_orchestrator_error,
 ):
     mock_get_orders.return_value = [stored_arns_order(order_factory_sync, STORED_EXECUTION_ARNS)]
     mock_cloud_orchestrator.get_deployment_status.side_effect = [
-        CloudOrchestratorError("timeout"),
+        cloud_orchestrator_error,
         {"status": "SUCCEEDED"},
     ]
 
@@ -1230,10 +1313,8 @@ def test_sync_upgrade_status_error_names_only_the_failing_arn(
 
     assert mock_cloud_orchestrator.get_deployment_status.call_count == 2
     assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
-    assert completed_record.error == (
-        f"Services upgrade status not available: {FIRST_EXECUTION_ARN}: timeout"
-    )
-    assert SECOND_EXECUTION_ARN not in completed_record.error
+    assert completed_record.error == cloud_orchestrator_error.message
+    mock_notify_error.assert_called_once_with(cloud_orchestrator_error, ORDER_ID)
     mock_teams.send_warning.assert_called_once()
 
 
@@ -1243,17 +1324,17 @@ def test_sync_upgrade_status_error_with_single_arn_is_retried_next_run(
     mock_get_orders,
     mock_cloud_orchestrator,
     mock_teams,
+    mock_notify_error,
     order_factory_sync,
+    cloud_orchestrator_error,
 ):
     mock_get_orders.return_value = [stored_arns_order(order_factory_sync, FIRST_EXECUTION_ARN)]
-    mock_cloud_orchestrator.get_deployment_status.side_effect = CloudOrchestratorError("timeout")
+    mock_cloud_orchestrator.get_deployment_status.side_effect = cloud_orchestrator_error
 
     processor.sync()  # act
 
     mock_cloud_orchestrator.get_deployment_status.assert_called_once_with(FIRST_EXECUTION_ARN)
-    assert completed_record.error == (
-        f"Services upgrade status not available: {FIRST_EXECUTION_ARN}: timeout"
-    )
+    assert completed_record.error == cloud_orchestrator_error.message
 
 
 def test_sync_execution_arns_store_error_keeps_row_completed_with_the_arns(

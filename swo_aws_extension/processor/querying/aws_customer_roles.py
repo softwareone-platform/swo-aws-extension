@@ -54,7 +54,9 @@ class AWSCustomerRolesProcessor(Processor):
         try:
             bootstrap_roles_status = co_client.get_bootstrap_role_status(mpa_account_id)
         except CloudOrchestratorError as error:
-            logger.info("%s - Error checking customer roles: %s", context.order_id, error)
+            logger.warning(
+                "%s - Error checking customer roles: %s", context.order_id, error.message
+            )
             return
 
         if bootstrap_roles_status["deployed"]:

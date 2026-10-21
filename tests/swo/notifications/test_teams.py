@@ -8,8 +8,16 @@ from swo_aws_extension.swo.notifications.teams import (
     FactsSection,
     Style,
     TeamsNotificationManager,
+    notify_cloud_orchestrator_error,
     notify_one_time_error,
 )
+
+
+@pytest.fixture
+def mock_send_error(mocker):
+    return mocker.patch(
+        "swo_aws_extension.swo.notifications.teams.TeamsNotificationManager.send_error"
+    )
 
 
 def test_send_notification_full(mocker, settings):
@@ -172,3 +180,49 @@ def test_notify_one_time_exception_in_teams(mocker):
         "title",
         "error-message",
     )
+
+
+def test_notify_cloud_orchestrator_error_sends_error_card(
+    mock_send_error, cloud_orchestrator_error
+):
+    notify_cloud_orchestrator_error(cloud_orchestrator_error, "ORD-0001")  # act
+
+    mock_send_error.assert_called_once_with(
+        cloud_orchestrator_error.title,
+        cloud_orchestrator_error.message,
+        facts=FactsSection(
+            title="Request details",
+            data={"Order": "ORD-0001", **cloud_orchestrator_error.facts},
+        ),
+    )
+    sent_facts = mock_send_error.call_args.kwargs["facts"].data
+    assert next(iter(sent_facts)) == "Order"
+
+
+def test_notify_cloud_orchestrator_error_sends_same_error_once(
+    mock_send_error, cloud_orchestrator_error_factory
+):
+    first_error = cloud_orchestrator_error_factory()
+    same_error = cloud_orchestrator_error_factory()
+    notify_cloud_orchestrator_error(first_error, "ORD-0001")
+
+    notify_cloud_orchestrator_error(same_error, "ORD-0001")  # act
+
+    mock_send_error.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("order_id", "reason"),
+    [
+        ("ORD-0002", "response has an empty 'executions' list"),
+        ("ORD-0001", "response body is empty"),
+    ],
+)
+def test_notify_cloud_orchestrator_error_sends_other_error_again(
+    mock_send_error, cloud_orchestrator_error_factory, order_id, reason
+):
+    notify_cloud_orchestrator_error(cloud_orchestrator_error_factory(), "ORD-0001")
+
+    notify_cloud_orchestrator_error(cloud_orchestrator_error_factory(reason), order_id)  # act
+
+    assert mock_send_error.call_count == 2
