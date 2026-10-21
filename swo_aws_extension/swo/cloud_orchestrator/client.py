@@ -2,7 +2,6 @@
 
 import json
 import logging
-from collections.abc import Callable
 from http import HTTPStatus
 from typing import Any
 from urllib.parse import quote, urljoin
@@ -26,52 +25,11 @@ logger = logging.getLogger(__name__)
 
 TIMEOUT = 60
 
-type ResponseCheck = Callable[[dict[str, Any]], str | None]
+type RequestContext = dict[str, Any]
 
 
 def _is_non_empty_string(field_value: Any) -> bool:
     return isinstance(field_value, str) and bool(field_value)
-
-
-def _check_execution_arn(response_body: dict[str, Any]) -> str | None:
-    """Return the contract break when `execution_arn` is not a non-empty string."""
-    if not _is_non_empty_string(response_body.get("execution_arn")):
-        return "response has no 'execution_arn' string"
-    return None
-
-
-def _check_executions(response_body: dict[str, Any]) -> str | None:
-    """Return the contract break when `executions` is not a non-empty list of executions.
-
-    Every execution MUST be an object with a non-empty `execution_arn` string.
-    """
-    executions = response_body.get("executions")
-    if not isinstance(executions, list):
-        return "response has no 'executions' list"
-    if not executions:
-        return "response has an empty 'executions' list"
-    for index, execution in enumerate(executions):
-        if not isinstance(execution, dict) or _check_execution_arn(execution):
-            return f"execution {index} has no 'execution_arn' string"
-    return None
-
-
-def _check_deployment_status(response_body: dict[str, Any]) -> str | None:
-    """Return the contract break when `status` is not a known deployment status.
-
-    The comparison ignores the case.
-    """
-    status = response_body.get("status")
-    if not isinstance(status, str) or status.lower() not in DeploymentStatusEnum:
-        return f"response has an unknown 'status' {status!r}"
-    return None
-
-
-def _check_bootstrap_role_status(response_body: dict[str, Any]) -> str | None:
-    """Return the contract break when `deployed` is not a boolean."""
-    if not isinstance(response_body.get("deployed"), bool):
-        return "response has no 'deployed' boolean"
-    return None
 
 
 class CloudOrchestratorClient(requests.Session):
@@ -94,81 +52,145 @@ class CloudOrchestratorClient(requests.Session):
         kwargs.setdefault("timeout", TIMEOUT)
         return super().request(method, self._build_url(url), *args, **kwargs)
 
-    def get_bootstrap_role_status(self, target_account_id: str) -> dict:
+    def get_bootstrap_role_status(self, target_account_id: str) -> dict[str, Any]:
         """Gets the bootstrap role deployment status for the target account.
 
         The response MUST hold a boolean `deployed`.
+
+        Raises:
+            CloudOrchestratorAuthError: When the access token is not available.
+            CloudOrchestratorConnectionError: When the request does not complete.
+            CloudOrchestratorNotFoundError: When the response status is 404.
+            CloudOrchestratorHttpError: When the response status is not 2xx.
+            CloudOrchestratorEmptyResponseError: When the response body is empty.
+            CloudOrchestratorInvalidJsonError: When the response body is not valid JSON.
+            CloudOrchestratorUnexpectedResponseError: When the response body is not
+                a JSON object, or when `deployed` is not a boolean.
         """
-        return self._call(
+        response_body, request_context = self._request_json(
             "bootstrap role check",
             "GET",
             f"api/v1/bootstrap-role/check?target_account_id={quote(target_account_id, safe='')}",
-            response_check=_check_bootstrap_role_status,
         )
+        if not isinstance(response_body.get("deployed"), bool):
+            raise CloudOrchestratorUnexpectedResponseError(
+                "response has no 'deployed' boolean", **request_context
+            )
+        return response_body
 
-    def onboard_customer(self, onboard_payload: dict[str, Any]) -> dict:
+    def onboard_customer(self, onboard_payload: dict[str, Any]) -> dict[str, Any]:
         """Triggers the deployment of the feature version.
 
         The response MUST hold a non-empty `execution_arn` string.
-        """
-        return self._call(
-            "onboard",
-            "POST",
-            "api/v1/marketplace/onboard",
-            onboard_payload,
-            response_check=_check_execution_arn,
-        )
 
-    def upgrade_customer(self, upgrade_payload: dict[str, Any]) -> dict:
+        Raises:
+            CloudOrchestratorAuthError: When the access token is not available.
+            CloudOrchestratorConnectionError: When the request does not complete.
+            CloudOrchestratorNotFoundError: When the response status is 404.
+            CloudOrchestratorHttpError: When the response status is not 2xx.
+            CloudOrchestratorEmptyResponseError: When the response body is empty.
+            CloudOrchestratorInvalidJsonError: When the response body is not valid JSON.
+            CloudOrchestratorUnexpectedResponseError: When the response body is not
+                a JSON object, or when `execution_arn` is not a non-empty string.
+        """
+        response_body, request_context = self._request_json(
+            "onboard", "POST", "api/v1/marketplace/onboard", onboard_payload
+        )
+        if not _is_non_empty_string(response_body.get("execution_arn")):
+            raise CloudOrchestratorUnexpectedResponseError(
+                "response has no 'execution_arn' string", **request_context
+            )
+        return response_body
+
+    def upgrade_customer(self, upgrade_payload: dict[str, Any]) -> dict[str, Any]:
         """Triggers the upgrade of the onboarded customer.
 
-        The response MUST hold a non-empty `executions` list. Every execution MUST hold
-        a non-empty `execution_arn` string.
-        """
-        return self._call(
-            "upgrade",
-            "POST",
-            "api/v1/marketplace/upgrade",
-            upgrade_payload,
-            response_check=_check_executions,
-        )
+        The response MUST hold a non-empty `executions` list. Every execution MUST be
+        an object with a non-empty `execution_arn` string.
 
-    def get_deployment_status(self, execution_arn: str) -> dict:
+        Raises:
+            CloudOrchestratorAuthError: When the access token is not available.
+            CloudOrchestratorConnectionError: When the request does not complete.
+            CloudOrchestratorNotFoundError: When the response status is 404.
+            CloudOrchestratorHttpError: When the response status is not 2xx.
+            CloudOrchestratorEmptyResponseError: When the response body is empty.
+            CloudOrchestratorInvalidJsonError: When the response body is not valid JSON.
+            CloudOrchestratorUnexpectedResponseError: When the response body is not
+                a JSON object, when `executions` is not a non-empty list, or when
+                an execution has no non-empty `execution_arn` string.
+        """
+        response_body, request_context = self._request_json(
+            "upgrade", "POST", "api/v1/marketplace/upgrade", upgrade_payload
+        )
+        executions = response_body.get("executions")
+        if not isinstance(executions, list):
+            raise CloudOrchestratorUnexpectedResponseError(
+                "response has no 'executions' list", **request_context
+            )
+        if not executions:
+            raise CloudOrchestratorUnexpectedResponseError(
+                "response has an empty 'executions' list", **request_context
+            )
+        for index, execution in enumerate(executions):
+            if not isinstance(execution, dict) or not _is_non_empty_string(
+                execution.get("execution_arn")
+            ):
+                raise CloudOrchestratorUnexpectedResponseError(
+                    f"execution {index} has no 'execution_arn' string", **request_context
+                )
+        return response_body
+
+    def get_deployment_status(self, execution_arn: str) -> dict[str, Any]:
         """Gets the deployment status for the given execution ARN.
 
         The response MUST hold a `status` that is a known deployment status, in any case.
+
+        Raises:
+            CloudOrchestratorAuthError: When the access token is not available.
+            CloudOrchestratorConnectionError: When the request does not complete.
+            CloudOrchestratorNotFoundError: When the response status is 404.
+            CloudOrchestratorHttpError: When the response status is not 2xx.
+            CloudOrchestratorEmptyResponseError: When the response body is empty.
+            CloudOrchestratorInvalidJsonError: When the response body is not valid JSON.
+            CloudOrchestratorUnexpectedResponseError: When the response body is not
+                a JSON object, or when `status` is not a known deployment status.
         """
-        return self._call(
+        response_body, request_context = self._request_json(
             "deployment status check",
             "GET",
             f"api/v1/deployments/execution-arn/{quote(execution_arn, safe='')}",
-            response_check=_check_deployment_status,
         )
+        status = response_body.get("status")
+        if not isinstance(status, str) or status.lower() not in DeploymentStatusEnum:
+            raise CloudOrchestratorUnexpectedResponseError(
+                f"response has an unknown 'status' {status!r}", **request_context
+            )
+        return response_body
 
-    def _call(  # noqa: WPS211
+    def _request_json(
         self,
         operation: str,
         method: str,
         path: str,
         payload: dict[str, Any] | None = None,
-        *,
-        response_check: ResponseCheck,
-    ) -> dict:
-        """Send the request and return the response body as a dict.
+    ) -> tuple[dict[str, Any], RequestContext]:
+        """Send the request and return the response body as a dict, with the request context.
 
-        This method logs the request and the response at INFO level.
+        The request context holds the request and the response, as the keyword arguments
+        of a `CloudOrchestratorError`. This method logs the request and the response at
+        INFO level.
 
         Raises:
             CloudOrchestratorAuthError: When the access token is not available.
             CloudOrchestratorConnectionError: When the request does not complete.
-            CloudOrchestratorHttpError: When the response status is not 2xx.
             CloudOrchestratorNotFoundError: When the response status is 404.
+            CloudOrchestratorHttpError: When the response status is not 2xx.
             CloudOrchestratorEmptyResponseError: When the response body is empty.
             CloudOrchestratorInvalidJsonError: When the response body is not valid JSON.
             CloudOrchestratorUnexpectedResponseError: When the response body is not
-                a JSON object, or when `response_check` returns a contract break.
+                a JSON object.
         """
-        request_context = {
+        request_context: RequestContext = {
             "operation": operation,
             "method": method,
             "endpoint": path,
@@ -196,20 +218,16 @@ class CloudOrchestratorClient(requests.Session):
         )
         request_context.update(status_code=response.status_code, response_body=body_text)
         self._check_status(response.status_code, request_context)
-        response_body = self._decode_body(body_text, request_context)
-        contract_break = response_check(response_body)
-        if contract_break:
-            raise CloudOrchestratorUnexpectedResponseError(contract_break, **request_context)
-        return response_body
+        return self._decode_body(body_text, request_context), request_context
 
-    def _check_status(self, status_code: int, request_context: dict[str, Any]) -> None:
+    def _check_status(self, status_code: int, request_context: RequestContext) -> None:
         """Raise the HTTP error when the response status is not 2xx."""
         if status_code == HTTPStatus.NOT_FOUND:
             raise CloudOrchestratorNotFoundError("resource not found", **request_context)
         if not HTTPStatus.OK <= status_code < HTTPStatus.MULTIPLE_CHOICES:
             raise CloudOrchestratorHttpError("error status returned", **request_context)
 
-    def _decode_body(self, body_text: str, request_context: dict[str, Any]) -> dict[str, Any]:
+    def _decode_body(self, body_text: str, request_context: RequestContext) -> dict[str, Any]:
         """Return the response body as a dict.
 
         Raises:
