@@ -89,7 +89,7 @@ class AccountMigrationStatus(StrEnum):
     PROCESSING = "Processing"
     PENDING_NOTIFY_CUSTOMER = "Pending notify customer"
     MIGRATION_IN_PROGRESS = "Migration in progress"
-    COMPLETED = "Completed"
+    AWAITING_CLIENT_ONBOARDING = "Awaiting Client Onboarding"
     SERVICES_ONBOARDED = "Services onboarded"
     ERROR = "Error"
     FAILED = "Failed"
