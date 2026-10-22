@@ -39,12 +39,12 @@ ORDERS_QUERY_SELECT = (
 )
 
 # Airtable rows the daily job keeps revisiting: rows whose Marketplace order can still change,
-# and completed rows waiting for their billing transfer to become effective. Rows without an
+# and rows awaiting client onboarding until their billing transfer is effective. Rows without an
 # order, or already in a terminal migration status, are left untouched.
 SYNCABLE_MIGRATION_STATUSES = (
     AccountMigrationStatus.PENDING_NOTIFY_CUSTOMER,
     AccountMigrationStatus.MIGRATION_IN_PROGRESS,
-    AccountMigrationStatus.COMPLETED,
+    AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING,
 )
 
 # Order statuses that mean the customer has accepted the quoted order (moved it to processing).
@@ -104,14 +104,14 @@ def is_billing_transfer_effective(
     record: AccountMigrationRecord, changes: dict[str, Any], run_date: dt.date
 ) -> bool:
     """
-    Return whether the row, once the changes apply, is completed with an effective transfer.
+    Return whether the row, once the changes apply, awaits onboarding with an effective transfer.
 
     The billing transfer is effective when its start date is on or before the run date. An
     invalid start date is logged and treated as not effective, so it never stops the run.
     """
     status = changes.get("migration_status", record.migration_status)
     start_date = changes.get("billing_transfer_start_date") or record.billing_transfer_start_date
-    if status != AccountMigrationStatus.COMPLETED or not start_date:
+    if status != AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING or not start_date:
         return False
     try:
         return dt.date.fromisoformat(start_date) <= run_date
@@ -129,21 +129,22 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
     """
     Mirror the Marketplace migration orders into the AWS Account Migration Airtable table.
 
-    The job runs daily over the rows still in progress. For every row it copies the order
-    status and, depending on it, sets the customer acceptance date (migration in progress),
-    the completion date (completed) or the error detail (failed). Once the billing transfer
-    invitation of the order is accepted, the effective start date of the transfer is stored.
-    When a completed row has a start date on or before the run date, the job creates the
-    ServiceNow ticket that tells the MCoE team the billing transfer is active and stores its
-    id in the crmMigrationTicketId parameter of the agreement; it then launches the services
-    upgrade in Cloud Orchestrator, because a migrated account is already onboarded there,
-    stores the execution ARNs it returns (one per deployment of the account) comma-separated
-    in the executionArn parameter of the agreement and checks the status of every execution.
-    The row moves to Services onboarded only once all the executions succeeded; while any of
-    them is pending or running the row stays Completed and is checked again on the next run.
-    A row whose ticket, upgrade or status check fails keeps the Completed status with the
-    error detail and is retried on the next run; a ticket id or execution ARNs already stored
-    in the agreement are never created again. Every row is saved at most once.
+    The job runs daily over the rows still in progress. For every row it copies the order status
+    and, depending on it, sets the customer acceptance date (migration in progress), the
+    completion date (awaiting client onboarding) or the error detail (failed). Once the billing
+    transfer invitation of the order is accepted, the effective start date of the transfer is
+    stored. When a row awaiting client onboarding has a start date on or before the run date,
+    the job creates the ServiceNow ticket that tells the MCoE team the billing transfer is
+    active and stores its id in the crmMigrationTicketId parameter of the agreement; it then
+    launches the services upgrade in Cloud Orchestrator, because a migrated account is already
+    onboarded there, stores the execution ARNs it returns (one per deployment of the account)
+    comma-separated in the executionArn parameter of the agreement and checks the status of
+    every execution. The row moves to Services onboarded only once all the executions succeeded;
+    while any of them is pending or running the row stays Awaiting Client Onboarding and is
+    checked again on the next run. A row whose ticket, upgrade or status check fails keeps the
+    Awaiting Client Onboarding status with the error detail and is retried on the next run; a
+    ticket id or execution ARNs already stored in the agreement are never created again. Every
+    row is saved at most once.
     """
 
     def __init__(
@@ -218,7 +219,7 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         if order_status in IN_PROGRESS_ORDER_STATUSES:
             changes["migration_status"] = AccountMigrationStatus.MIGRATION_IN_PROGRESS
         elif order_status == MptOrderStatus.COMPLETED:
-            changes["migration_status"] = AccountMigrationStatus.COMPLETED
+            changes["migration_status"] = AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
             changes["migration_completed_date"] = get_audit_date(order, MptOrderStatus.COMPLETED)
         elif order_status in FAILED_ORDER_STATUSES:
             changes["mpt_order_status"] = MptOrderStatus.FAILED.value

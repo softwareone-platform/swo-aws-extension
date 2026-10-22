@@ -20,13 +20,13 @@ def mock_teams(mocker):
 
 def test_describe_row_changes_uses_airtable_column_names():
     result = describe_row_changes({
-        "migration_status": AccountMigrationStatus.COMPLETED,
+        "migration_status": AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING,
         "migration_completed_date": "2026-09-17",
         "error": "",
     })
 
     assert result == [
-        "Migration status: Completed",
+        "Migration status: Awaiting Client Onboarding",
         "Migration completed date: 2026-09-17",
         "Error: cleared",
     ]
@@ -47,7 +47,9 @@ def test_send_lists_changes_per_order(mock_teams):
     report.add_created_ticket(ORDER_ID, "CS0004728")
     report.add_started_upgrade(ORDER_ID, ["arn:execution-1", "arn:execution-2"])
     report.updated_rows.append(ORDER_ID)
-    report.add_row_changes(OTHER_ORDER_ID, {"migration_status": AccountMigrationStatus.COMPLETED})
+    report.add_row_changes(
+        OTHER_ORDER_ID, {"migration_status": AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING}
+    )
     report.updated_rows.append(OTHER_ORDER_ID)
 
     report.send()  # act
@@ -60,7 +62,7 @@ def test_send_lists_changes_per_order(mock_teams):
         f"- {ORDER_ID}: MPT Order status: Processing; "
         "Billing transfer start ticket CS0004728 created; "
         "Services upgrade started (arn:execution-1, arn:execution-2)\n"
-        f"- {OTHER_ORDER_ID}: Migration status: Completed",
+        f"- {OTHER_ORDER_ID}: Migration status: Awaiting Client Onboarding",
     )
     mock_teams.send_warning.assert_not_called()
 
