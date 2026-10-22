@@ -124,6 +124,20 @@ def test_process_cloud_orchestrator_error_calls_handle_error(
     assert "CloudOrchestratorError" in caplog.text
 
 
+def test_process_without_scu_calls_handle_error(
+    mocker, onboard_order, purchase_context, mpt_client, config
+):
+    context = purchase_context(onboard_order)
+    onboard_mock = mocker.patch(f"{MODULE}.onboard", autospec=True)
+    handle_error_mock = mocker.patch(f"{MODULE}.handle_error", autospec=True)
+    step = OnboardServices(config)
+
+    step.process(mpt_client, context)  # act
+
+    onboard_mock.assert_not_called()
+    handle_error_mock.assert_called_once()
+
+
 def test_process_cloud_orchestrator_error_raises_for_pls(
     mocker,
     order_factory,

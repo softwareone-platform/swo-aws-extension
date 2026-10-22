@@ -35,7 +35,7 @@ def _get_deploy_services_context(context: PurchaseContext) -> dict:
     return {
         "customer_name": context.buyer.get("name"),
         "buyer_id": context.buyer.get("id"),
-        "buyer_external_id": context.buyer.get("externalIds", {}).get("erpCustomer", ""),
+        "buyer_external_id": (context.buyer.get("externalIds") or {}).get("erpCustomer", ""),
         "pm_account_id": context.pm_account_id,
         "order_id": context.order_id,
         "master_payer_id": get_mpa_account_id(context.order),

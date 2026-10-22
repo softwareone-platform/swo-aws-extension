@@ -46,6 +46,8 @@ The upgrade payload only carries the customer SCU and the master payer id, becau
 }
 ```
 
+Both the onboard and the upgrade payloads require the buyer SCU (`buyer.externalIds.erpCustomer`). When it is missing, empty or null, the extension raises `CloudOrchestratorMissingScuError` with the order id, master payer id and buyer id, and does not call Cloud Orchestrator. The `ValidateOrder` step of the purchase pipelines runs the same check first: it keeps the order in processing and notifies Teams, so the order does not reach Cloud Orchestrator.
+
 Unlike onboard, the upgrade returns one execution per deployment of the account:
 
 ```json

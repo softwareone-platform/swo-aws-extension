@@ -4,8 +4,12 @@ from typing import Any
 from mpt_extension_sdk.mpt_http.base import MPTClient
 
 from swo_aws_extension.config import Config
-from swo_aws_extension.constants import DEFAULT_SCU, FulfillmentParametersEnum
-from swo_aws_extension.flows.cloud_orchestrator_utils import check_onboard_status, upgrade
+from swo_aws_extension.constants import FulfillmentParametersEnum
+from swo_aws_extension.flows.cloud_orchestrator_utils import (
+    check_onboard_status,
+    get_buyer_scu,
+    upgrade,
+)
 from swo_aws_extension.flows.jobs.migration_agreement_parameters import (
     get_agreement_parameter,
     store_agreement_parameter,
@@ -38,20 +42,18 @@ def build_order_context(order: dict[str, Any]) -> PurchaseContext:
     return PurchaseContext.from_order_data(dict(order))
 
 
-def _get_buyer_scu(buyer: dict[str, Any], default: str = "") -> str:
-    """Return the buyer SCU (externalIds.erpCustomer), or `default` when it is missing or empty."""
-    return (buyer.get("externalIds") or {}).get("erpCustomer") or default
-
-
 def get_upgrade_request(context: PurchaseContext) -> dict:
     """
     Build the upgrade request payload from the context.
 
     Cloud Orchestrator already holds the onboarded account, so the payload only carries the
     SCU and the master payer id.
+
+    Raises:
+        CloudOrchestratorMissingScuError: When the buyer SCU is missing, empty or null.
     """
     return {
-        "scu": _get_buyer_scu(context.buyer, DEFAULT_SCU),
+        "scu": get_buyer_scu(context),
         "master_payer_id": get_mpa_account_id(context.order),
     }
 
