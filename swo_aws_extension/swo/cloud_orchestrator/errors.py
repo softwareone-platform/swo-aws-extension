@@ -21,3 +21,12 @@ class CloudOrchestratorNotFoundError(CloudOrchestratorHttpError):
 
     def __init__(self, response_content: str):
         super().__init__(HTTPStatus.NOT_FOUND, response_content)
+
+
+class CloudOrchestratorMissingScuError(CloudOrchestratorError):
+    """The buyer has no SCU, so no Cloud Orchestrator request can be sent."""
+
+    def __init__(self, order_id: str, master_payer_id: str, buyer_id: str):
+        super().__init__(
+            f"Buyer SCU is not set for order {order_id} (MPA {master_payer_id}, buyer {buyer_id})"
+        )

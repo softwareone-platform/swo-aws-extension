@@ -1,16 +1,14 @@
 import logging
 
 from swo_aws_extension.config import Config
-from swo_aws_extension.constants import (
-    CLOUD_ORCHESTRATOR_ONBOARDING_TYPE,
-    DEFAULT_SCU,
-)
-from swo_aws_extension.flows.order import PurchaseContext
+from swo_aws_extension.constants import CLOUD_ORCHESTRATOR_ONBOARDING_TYPE
+from swo_aws_extension.flows.order import InitialAWSContext, PurchaseContext
 from swo_aws_extension.parameters import (
     get_mpa_account_id,
     get_support_type,
 )
 from swo_aws_extension.swo.cloud_orchestrator.client import CloudOrchestratorClient
+from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorMissingScuError
 from swo_aws_extension.swo.notifications.teams import (
     notify_one_time_error,
 )
@@ -18,12 +16,32 @@ from swo_aws_extension.swo.notifications.teams import (
 logger = logging.getLogger(__name__)
 
 
+def get_buyer_scu(context: InitialAWSContext) -> str:
+    """
+    Return the buyer SCU (externalIds.erpCustomer).
+
+    Raises:
+        CloudOrchestratorMissingScuError: When the buyer SCU is missing, empty or null.
+    """
+    scu = (context.buyer.get("externalIds") or {}).get("erpCustomer")
+    if not scu:
+        raise CloudOrchestratorMissingScuError(
+            context.order_id, get_mpa_account_id(context.order), context.buyer.get("id")
+        )
+    return scu
+
+
 def get_feature_version_onboard_request(context: PurchaseContext) -> dict:
-    """Build the onboard request payload for the feature version."""
+    """
+    Build the onboard request payload for the feature version.
+
+    Raises:
+        CloudOrchestratorMissingScuError: When the buyer SCU is missing, empty or null.
+    """
     pma = context.pm_account_id
     master_payer_id = get_mpa_account_id(context.order)
     customer_name = context.buyer.get("name")
-    scu = context.buyer.get("externalIds", {}).get("erpCustomer") or DEFAULT_SCU
+    scu = get_buyer_scu(context)
     support_type_value = get_support_type(context.order)
     onboarding_type = CLOUD_ORCHESTRATOR_ONBOARDING_TYPE
 

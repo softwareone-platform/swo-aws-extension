@@ -1,25 +1,37 @@
+import re
+
 import pytest
 
 from swo_aws_extension.constants import (
     CLOUD_ORCHESTRATOR_ONBOARDING_TYPE,
-    DEFAULT_SCU,
     DeploymentStatusEnum,
     SupportTypesEnum,
 )
 from swo_aws_extension.flows.cloud_orchestrator_utils import (
     check_onboard_status,
+    get_buyer_scu,
     get_feature_version_onboard_request,
     onboard,
     upgrade,
 )
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.swo.cloud_orchestrator.client import CloudOrchestratorClient
+from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorMissingScuError
 
 MODULE = "swo_aws_extension.flows.cloud_orchestrator_utils"
 EXECUTION_PREFIX = "arn:aws:states:eu-west-1:822835360798:execution"
 FIRST_EXECUTION_ARN = f"{EXECUTION_PREFIX}:deployment-1155d5f6:execution-54b05eea"
 SECOND_EXECUTION_ARN = f"{EXECUTION_PREFIX}:deployment-bf570ae0:execution-789355e7"
 EXECUTION_ARNS = (FIRST_EXECUTION_ARN, SECOND_EXECUTION_ARN)
+BUYER_SCU = "US-SCU-111111"
+MISSING_SCU_MESSAGE = (
+    "Buyer SCU is not set for order ORD-0792-5000-2253-4210 (MPA 123456789012, buyer BUY-1111-1111)"
+)
+
+
+@pytest.fixture
+def scu_buyer(buyer_factory):
+    return {**buyer_factory(), "externalIds": {"erpCustomer": BUYER_SCU}}
 
 
 @pytest.fixture
@@ -63,52 +75,57 @@ def test_onboard_missing_execution_arn(mocker, config, caplog):
     assert "ORD-001 - Onboard response missing execution_arn" in caplog.text
 
 
-def test_onboard_request_pls(order_factory, order_parameters_factory):
+def test_onboard_request_pls(order_factory, order_parameters_factory, scu_buyer):
     order = order_factory(
         order_parameters=order_parameters_factory(
             mpa_id="123456789012",
             support_type=SupportTypesEnum.PARTNER_LED_SUPPORT.value,
-        )
+        ),
+        buyer=scu_buyer,
     )
     context = PurchaseContext.from_order_data(order)
 
     result = get_feature_version_onboard_request(context)
 
     assert result["customer"] == "A buyer"
-    assert result["scu"] == DEFAULT_SCU
+    assert result["scu"] == BUYER_SCU
     assert result["pma"] == "123456789012"
     assert result["master_payer_id"] == "123456789012"
     assert result["support_type"] == SupportTypesEnum.PARTNER_LED_SUPPORT.value
     assert result["onboarding_type"] == CLOUD_ORCHESTRATOR_ONBOARDING_TYPE
 
 
-def test_onboard_request_resold_support(order_factory, order_parameters_factory):
+def test_onboard_request_resold_support(order_factory, order_parameters_factory, scu_buyer):
     order = order_factory(
         order_parameters=order_parameters_factory(
             mpa_id="123456789012",
             support_type=SupportTypesEnum.AWS_RESOLD_SUPPORT.value,
-        )
+        ),
+        buyer=scu_buyer,
     )
     context = PurchaseContext.from_order_data(order)
 
     result = get_feature_version_onboard_request(context)
 
     assert result["customer"] == "A buyer"
-    assert result["scu"] == DEFAULT_SCU
+    assert result["scu"] == BUYER_SCU
     assert result["pma"] == "123456789012"
     assert result["master_payer_id"] == "123456789012"
     assert result["support_type"] == SupportTypesEnum.AWS_RESOLD_SUPPORT.value
     assert result["onboarding_type"] == CLOUD_ORCHESTRATOR_ONBOARDING_TYPE
 
 
-def test_onboard_request_master_payer_id(order_factory, order_parameters_factory):
-    order = order_factory(order_parameters=order_parameters_factory(mpa_id="123456789012"))
+def test_onboard_request_master_payer_id(order_factory, order_parameters_factory, scu_buyer):
+    order = order_factory(
+        order_parameters=order_parameters_factory(mpa_id="123456789012"),
+        buyer=scu_buyer,
+    )
     context = PurchaseContext.from_order_data(order)
 
     result = get_feature_version_onboard_request(context)
 
     assert result["customer"] == "A buyer"
-    assert result["scu"] == DEFAULT_SCU
+    assert result["scu"] == BUYER_SCU
     assert result["pma"] == "123456789012"
     assert result["master_payer_id"] == "123456789012"
     assert result["support_type"] == SupportTypesEnum.PARTNER_LED_SUPPORT.value
@@ -116,7 +133,7 @@ def test_onboard_request_master_payer_id(order_factory, order_parameters_factory
 
 
 def test_onboard_request_customer_name(order_factory, order_parameters_factory, buyer_factory):
-    buyer = buyer_factory(name="Acme Corp")
+    buyer = {**buyer_factory(name="Acme Corp"), "externalIds": {"erpCustomer": BUYER_SCU}}
     order = order_factory(
         order_parameters=order_parameters_factory(mpa_id="123456789012"),
         buyer=buyer,
@@ -126,7 +143,7 @@ def test_onboard_request_customer_name(order_factory, order_parameters_factory, 
     result = get_feature_version_onboard_request(context)
 
     assert result["customer"] == "Acme Corp"
-    assert result["scu"] == DEFAULT_SCU
+    assert result["scu"] == BUYER_SCU
     assert result["pma"] == "123456789012"
     assert result["master_payer_id"] == "123456789012"
     assert result["support_type"] == SupportTypesEnum.PARTNER_LED_SUPPORT.value
@@ -155,20 +172,42 @@ def test_onboard_request_customer_scu(order_factory, order_parameters_factory):
     assert result["onboarding_type"] == CLOUD_ORCHESTRATOR_ONBOARDING_TYPE
 
 
-def test_onboard_request_dummy_scu_fallback(order_factory, order_parameters_factory):
+def test_onboard_request_without_scu_raises(order_factory, order_parameters_factory):
+    order = order_factory(order_parameters=order_parameters_factory(mpa_id="123456789012"))
+    context = PurchaseContext.from_order_data(order)
+
+    with pytest.raises(CloudOrchestratorMissingScuError, match=re.escape(MISSING_SCU_MESSAGE)):
+        get_feature_version_onboard_request(context)
+
+
+def test_get_buyer_scu(order_factory, scu_buyer):
+    context = PurchaseContext.from_order_data(order_factory(buyer=scu_buyer))
+
+    result = get_buyer_scu(context)
+
+    assert result == BUYER_SCU
+
+
+@pytest.mark.parametrize(
+    "buyer_without_scu",
+    [
+        {"id": "BUY-1111-1111", "name": "A buyer"},
+        {"id": "BUY-1111-1111", "name": "A buyer", "externalIds": None},
+        {"id": "BUY-1111-1111", "name": "A buyer", "externalIds": {}},
+        {"id": "BUY-1111-1111", "name": "A buyer", "externalIds": {"erpCustomer": ""}},
+    ],
+)
+def test_get_buyer_scu_without_scu_raises(
+    order_factory, order_parameters_factory, buyer_without_scu
+):
     order = order_factory(
         order_parameters=order_parameters_factory(mpa_id="123456789012"),
+        buyer=buyer_without_scu,
     )
     context = PurchaseContext.from_order_data(order)
 
-    result = get_feature_version_onboard_request(context)
-
-    assert result["customer"] == "A buyer"
-    assert result["scu"] == DEFAULT_SCU
-    assert result["pma"] == "123456789012"
-    assert result["master_payer_id"] == "123456789012"
-    assert result["support_type"] == SupportTypesEnum.PARTNER_LED_SUPPORT.value
-    assert result["onboarding_type"] == CLOUD_ORCHESTRATOR_ONBOARDING_TYPE
+    with pytest.raises(CloudOrchestratorMissingScuError, match=re.escape(MISSING_SCU_MESSAGE)):
+        get_buyer_scu(context)
 
 
 def test_upgrade_returns_every_execution_arn(mocker, config, upgrade_response):

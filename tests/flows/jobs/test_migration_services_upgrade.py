@@ -1,7 +1,6 @@
 import pytest
 
 from swo_aws_extension.constants import (
-    DEFAULT_SCU,
     FulfillmentParametersEnum,
     ParamPhasesEnum,
 )
@@ -13,7 +12,10 @@ from swo_aws_extension.flows.jobs.migration_services_upgrade import (
     start_upgrade,
     store_execution_arns,
 )
-from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
+from swo_aws_extension.swo.cloud_orchestrator.errors import (
+    CloudOrchestratorError,
+    CloudOrchestratorMissingScuError,
+)
 
 ORDER_ID = "ORD-0792-5000-2253-4210"
 AGREEMENT_ID = "AGR-2119-4550-8674-5962"
@@ -117,22 +119,26 @@ def test_build_order_context_keeps_the_order_intact(order, buyer):
     assert order["buyer"] == buyer
 
 
-@pytest.mark.parametrize(
-    ("external_ids", "expected_scu"),
-    [
-        ({"erpCustomer": "US-SCU-999999"}, "US-SCU-999999"),
-        ({}, DEFAULT_SCU),
-        ({"erpCustomer": ""}, DEFAULT_SCU),
-        (None, DEFAULT_SCU),
-    ],
-)
-def test_get_upgrade_request(order, external_ids, expected_scu):
-    order["buyer"] = {"id": "BUY-1111-1111", "name": "A buyer", "externalIds": external_ids}
+def test_get_upgrade_request(order):
+    order["buyer"] = {
+        "id": "BUY-1111-1111",
+        "name": "A buyer",
+        "externalIds": {"erpCustomer": "US-SCU-999999"},
+    }
     context = build_order_context(order)
 
     result = get_upgrade_request(context)
 
-    assert result == {"scu": expected_scu, "master_payer_id": MASTER_PAYER_ID}
+    assert result == {"scu": "US-SCU-999999", "master_payer_id": MASTER_PAYER_ID}
+
+
+@pytest.mark.parametrize("external_ids", [{}, {"erpCustomer": ""}, None])
+def test_get_upgrade_request_without_scu_raises(order, external_ids):
+    order["buyer"] = {"id": "BUY-1111-1111", "name": "A buyer", "externalIds": external_ids}
+    context = build_order_context(order)
+
+    with pytest.raises(CloudOrchestratorMissingScuError, match="Buyer SCU is not set"):
+        get_upgrade_request(context)
 
 
 def test_start_upgrade_sends_the_order_data(config, order, buyer, mock_cloud_orchestrator):
@@ -145,13 +151,13 @@ def test_start_upgrade_sends_the_order_data(config, order, buyer, mock_cloud_orc
     })
 
 
-def test_start_upgrade_without_scu_uses_the_default(config, order, mock_cloud_orchestrator):
-    order["buyer"] = {"name": "Customer"}
+def test_start_upgrade_without_scu_skips_cloud_orchestrator(config, order, mock_cloud_orchestrator):
+    order["buyer"] = {"id": "BUY-1111-1111", "name": "Customer"}
 
-    start_upgrade(config, order)  # act
+    with pytest.raises(CloudOrchestratorMissingScuError):
+        start_upgrade(config, order)
 
-    upgrade_payload = mock_cloud_orchestrator.upgrade_customer.call_args.args[0]
-    assert upgrade_payload["scu"] == DEFAULT_SCU
+    mock_cloud_orchestrator.upgrade_customer.assert_not_called()
 
 
 def test_start_upgrade_without_executions(mocker, config, order, mock_cloud_orchestrator):

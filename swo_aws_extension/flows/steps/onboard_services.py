@@ -21,7 +21,10 @@ from swo_aws_extension.parameters import (
     set_execution_arn,
     set_phase,
 )
-from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
+from swo_aws_extension.swo.cloud_orchestrator.errors import (
+    CloudOrchestratorError,
+    CloudOrchestratorMissingScuError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +48,17 @@ class OnboardServices(BasePhaseStep):
     def process(self, client: MPTClient, context: PurchaseContext) -> None:
         logger.info("%s - Action - Onboarding services", context.order_id)
 
-        feature_version_payload = get_feature_version_onboard_request(context)
-
         error_email_log_message = "Onboarding services error email sent"
+
+        try:
+            feature_version_payload = get_feature_version_onboard_request(context)
+        except CloudOrchestratorMissingScuError as error:
+            logger.exception("%s - CloudOrchestratorMissingScuError", context.order_id)
+            error_title = f"Error onboarding services for order {context.order_id}"
+            handle_error(
+                context, self._config, client, error_title, str(error), error_email_log_message
+            )
+            return
 
         is_error_occurred = False
         error_title = ""

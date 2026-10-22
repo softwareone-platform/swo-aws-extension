@@ -51,6 +51,15 @@ def test_get_deploy_services_error_email_body(order_factory, order_parameters_fa
     assert "something went wrong" in result
 
 
+def test_get_deploy_services_error_email_body_null_external_ids(order_factory, buyer_factory):
+    order = order_factory(buyer={**buyer_factory(), "externalIds": None})
+    context = PurchaseContext.from_order_data(order)
+
+    result = get_deploy_services_error_email_body(context, "something went wrong")
+
+    assert "something went wrong" in result
+
+
 def test_send_services_email(mocker, caplog, config, order_factory):
     order = order_factory()
     context = PurchaseContext.from_order_data(order)
