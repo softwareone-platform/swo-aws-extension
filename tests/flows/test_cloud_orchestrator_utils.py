@@ -14,6 +14,9 @@ from swo_aws_extension.flows.cloud_orchestrator_utils import (
 )
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.swo.cloud_orchestrator.client import CloudOrchestratorClient
+from swo_aws_extension.swo.cloud_orchestrator.errors import (
+    CloudOrchestratorMissingExecutionArnError,
+)
 
 MODULE = "swo_aws_extension.flows.cloud_orchestrator_utils"
 EXECUTION_PREFIX = "arn:aws:states:eu-west-1:822835360798:execution"
@@ -172,7 +175,6 @@ def test_onboard_request_dummy_scu_fallback(order_factory, order_parameters_fact
 
 
 def test_upgrade_returns_every_execution_arn(mocker, config, upgrade_response):
-    notify_mock = mocker.patch(f"{MODULE}.notify_one_time_error")
     co_client_mock = mocker.MagicMock(spec=CloudOrchestratorClient)
     co_client_mock.upgrade_customer.return_value = upgrade_response
     mocker.patch(f"{MODULE}.CloudOrchestratorClient", return_value=co_client_mock)
@@ -181,10 +183,9 @@ def test_upgrade_returns_every_execution_arn(mocker, config, upgrade_response):
 
     assert result == list(EXECUTION_ARNS)
     co_client_mock.upgrade_customer.assert_called_once_with({"payload": "data"})
-    notify_mock.assert_not_called()
 
 
-def test_upgrade_skips_executions_without_arn(mocker, config, caplog):
+def test_upgrade_skips_executions_without_arn(mocker, config):
     co_client_mock = mocker.MagicMock(spec=CloudOrchestratorClient)
     co_client_mock.upgrade_customer.return_value = {
         "executions": [
@@ -201,7 +202,6 @@ def test_upgrade_skips_executions_without_arn(mocker, config, caplog):
     result = upgrade(config, {"payload": "data"}, "ORD-001")  # act
 
     assert result == [SECOND_EXECUTION_ARN]
-    assert "returned no execution ARNs" not in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -213,26 +213,16 @@ def test_upgrade_skips_executions_without_arn(mocker, config, caplog):
         {"executions": [{"deployment_id": "f54e1c4b-3d90-4489-8ec6-f2b1157daf3b"}]},
     ],
 )
-def test_upgrade_missing_execution_arns(mocker, config, caplog, upgrade_response):
+def test_upgrade_missing_execution_arns(mocker, config, upgrade_response):
     co_client_mock = mocker.MagicMock(spec=CloudOrchestratorClient)
     co_client_mock.upgrade_customer.return_value = upgrade_response
     mocker.patch(f"{MODULE}.CloudOrchestratorClient", return_value=co_client_mock)
-    notify_mock = mocker.patch(f"{MODULE}.notify_one_time_error")
 
-    result = upgrade(config, {"payload": "data"}, "ORD-001")  # act
+    with pytest.raises(CloudOrchestratorMissingExecutionArnError) as error:
+        upgrade(config, {"payload": "data"}, "ORD-001")
 
-    assert result == []
-    assert (
-        "ORD-001 - Cloud Orchestrator upgrade returned no execution ARNs: expected "
-        "executions[].execution_arn in the response, nothing to poll. "
-        f"Response: {upgrade_response}"
-    ) in caplog.text
-    notify_mock.assert_called_once_with(
-        "Cloud Orchestrator upgrade error for order ORD-001",
-        "Cloud Orchestrator upgrade for order `ORD-001` returned no execution ARNs. "
-        "Expected `executions[].execution_arn` in the response. There is nothing to poll.\n\n"
-        f"```{upgrade_response}```",
-    )
+    assert error.value.upgrade_response == upgrade_response
+    assert str(error.value) == "Upgrade response has no executions[].execution_arn to poll"
 
 
 def test_onboard_status_succeeds_immediately(mocker, config, order_factory):

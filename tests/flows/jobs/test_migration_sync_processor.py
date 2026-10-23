@@ -106,6 +106,13 @@ def mock_teams(mocker):
     ).return_value
 
 
+@pytest.fixture(autouse=True)
+def mock_error_teams(mocker):
+    return mocker.patch(
+        "swo_aws_extension.flows.jobs.migration_sync_processor.TeamsNotificationManager"
+    ).return_value
+
+
 @pytest.fixture
 def mock_update_agreement(mocker):
     return mocker.patch(
@@ -1208,23 +1215,53 @@ def test_sync_upgrade_start_error_is_retried_next_run(
 
 
 def test_sync_upgrade_without_execution_arn_is_reported(
-    mocker, processor, awaiting_onboarding_record, mock_cloud_orchestrator, mock_update_agreement
+    processor, awaiting_onboarding_record, mock_cloud_orchestrator, mock_update_agreement
 ):
-    mock_notify = mocker.patch(
-        "swo_aws_extension.flows.cloud_orchestrator_utils.notify_one_time_error"
-    )
     mock_cloud_orchestrator.upgrade_customer.return_value = {"executions": []}
 
     processor.sync()  # act
 
-    mock_notify.assert_called_once()
     mock_cloud_orchestrator.get_deployment_status.assert_not_called()
     assert mock_update_agreement.call_count == 1  # only the ticket id
     assert (
         awaiting_onboarding_record.migration_status
         == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
     )
-    assert awaiting_onboarding_record.error == "Services upgrade started without an execution ARN"
+    assert awaiting_onboarding_record.error == (
+        "Services upgrade not started: Upgrade response has no executions[].execution_arn to poll"
+    )
+
+
+def test_sync_new_row_error_is_notified(
+    processor, awaiting_onboarding_record, mock_cloud_orchestrator, mock_error_teams
+):
+    awaiting_onboarding_record.error = "Services upgrade not started: previous error"
+    mock_cloud_orchestrator.upgrade_customer.side_effect = CloudOrchestratorError("co down")
+
+    processor.sync()  # act
+
+    mock_error_teams.send_error.assert_called_once_with(
+        f"AWS migration sync error for order {ORDER_ID}",
+        "Services upgrade not started: co down",
+    )
+
+
+def test_sync_same_upgrade_error_is_not_notified_nor_saved(
+    processor,
+    awaiting_onboarding_record,
+    mock_cloud_orchestrator,
+    mock_error_teams,
+    mock_migration_table,
+):
+    awaiting_onboarding_record.error = "Services upgrade not started: co down"
+    mock_cloud_orchestrator.upgrade_customer.side_effect = CloudOrchestratorError("co down")
+
+    processor.sync()  # act
+
+    mock_cloud_orchestrator.upgrade_customer.assert_called_once()
+    mock_error_teams.send_error.assert_not_called()
+    mock_migration_table.save.assert_not_called()
+    assert awaiting_onboarding_record.error == "Services upgrade not started: co down"
 
 
 def stored_arns_order(order_factory_sync, execution_arn):
@@ -1308,6 +1345,30 @@ def test_sync_upgrade_status_error_with_single_arn_is_retried_next_run(
     assert awaiting_onboarding_record.error == (
         f"Services upgrade status not available: {FIRST_EXECUTION_ARN}: timeout"
     )
+
+
+def test_sync_dry_run_new_row_error_is_not_notified(
+    mpt_client,
+    config,
+    awaiting_onboarding_record,
+    mock_get_orders,
+    mock_migration_table,
+    mock_cloud_orchestrator,
+    mock_error_teams,
+    mock_teams,
+    order_factory_sync,
+):
+    mock_get_orders.return_value = [stored_arns_order(order_factory_sync, FIRST_EXECUTION_ARN)]
+    mock_cloud_orchestrator.get_deployment_status.side_effect = CloudOrchestratorError("timeout")
+    processor = MigrationOrdersSyncProcessor(mpt_client, config, RUN_DATE, dry_run=True)
+
+    processor.sync()  # act
+
+    mock_error_teams.send_error.assert_not_called()
+    mock_migration_table.save.assert_not_called()
+    assert processor.report.failed_rows == {
+        ORDER_ID: f"Services upgrade status not available: {FIRST_EXECUTION_ARN}: timeout"
+    }
 
 
 def test_sync_execution_arns_store_error_keeps_row_awaiting_onboarding_with_the_arns(
