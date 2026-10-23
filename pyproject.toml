@@ -137,6 +137,7 @@ per-file-ignores = [
   "tests/aws/test_config.py: WPS202",
   "tests/aws/test_errors.py: WPS202",
   "tests/flows/validation/test_base.py: WPS118 WPS210",
+  "swo_aws_extension/flows/jobs/migration_sync_processor.py: WPS201",
   "tests/conftest.py: WPS202 WPS211 WPS231 WPS430",
   "tests/django/settings.py: WPS407",
   "tests/swo/ccp/test_client.py: WPS202 WPS211",

@@ -30,6 +30,7 @@ from swo_aws_extension.parameters import get_responsibility_transfer_id
 from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
 from swo_aws_extension.swo.crm_service.errors import CRMError
 from swo_aws_extension.swo.mpt.order import get_orders_by_ids
+from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
 logger = logging.getLogger(__name__)
 
@@ -384,9 +385,6 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         except CloudOrchestratorError as error:
             self._fail_row(record, changes, f"Services upgrade not started: {error}")
             return []
-        if not execution_arns:
-            self._fail_row(record, changes, "Services upgrade started without an execution ARN")
-            return []
         arns_text = ", ".join(execution_arns)
         logger.info("%s - Services upgrade started with execution ARNs %s", order_id, arns_text)
         self.report.add_started_upgrade(order_id, execution_arns)
@@ -482,10 +480,21 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
     def _fail_row(
         self, record: AccountMigrationRecord, changes: dict[str, Any], message: str
     ) -> None:
-        """Log the row error, keep it in the row and report it in the run summary."""
+        """
+        Log the row error and, when it differs from the error stored in the row, report it.
+
+        A new error is kept in the row, added to the run summary and sent to Teams, except in
+        dry runs. An error equal to the stored one is only logged, so it is not reported again
+        on each run.
+        """
         logger.warning("%s - Error - %s", record.mpt_order_id, message)
-        self.report.add_failed_row(record.mpt_order_id, message)
-        changes["error"] = message
+        if record.error != message:
+            self.report.add_failed_row(record.mpt_order_id, message)
+            if not self.dry_run:
+                TeamsNotificationManager().send_error(
+                    f"AWS migration sync error for order {record.mpt_order_id}", message
+                )
+            changes["error"] = message
 
     def _save(self, record: AccountMigrationRecord, **changes: Any) -> None:
         order_id = record.mpt_order_id

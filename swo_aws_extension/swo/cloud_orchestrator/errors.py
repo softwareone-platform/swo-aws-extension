@@ -21,3 +21,11 @@ class CloudOrchestratorNotFoundError(CloudOrchestratorHttpError):
 
     def __init__(self, response_content: str):
         super().__init__(HTTPStatus.NOT_FOUND, response_content)
+
+
+class CloudOrchestratorMissingExecutionArnError(CloudOrchestratorError):
+    """Upgrade response without any execution ARN to poll."""
+
+    def __init__(self, upgrade_response: dict):
+        self.upgrade_response = upgrade_response
+        super().__init__("Upgrade response has no executions[].execution_arn to poll")
