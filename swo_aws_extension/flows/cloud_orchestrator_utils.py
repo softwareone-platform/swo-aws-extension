@@ -11,8 +11,8 @@ from swo_aws_extension.parameters import (
     get_support_type,
 )
 from swo_aws_extension.swo.cloud_orchestrator.client import CloudOrchestratorClient
-from swo_aws_extension.swo.notifications.teams import (
-    notify_one_time_error,
+from swo_aws_extension.swo.cloud_orchestrator.errors import (
+    CloudOrchestratorMissingExecutionArnError,
 )
 
 logger = logging.getLogger(__name__)
@@ -57,8 +57,10 @@ def upgrade(config: Config, upgrade_payload: dict, order_id: str) -> list[str]:
 
     Unlike onboard, the upgrade response lists one execution per deployment of the account
     (``{"executions": [{"execution_arn": ..., "deployment_id": ...}, ...]}``). Entries without
-    an execution ARN are skipped; an empty list is logged with the raw response and reported
-    once to Teams.
+    an execution ARN are skipped.
+
+    Raises:
+        CloudOrchestratorMissingExecutionArnError: The response has no execution ARN to poll.
     """
     co_client = CloudOrchestratorClient(config)
     upgrade_response = co_client.upgrade_customer(upgrade_payload)
@@ -67,18 +69,7 @@ def upgrade(config: Config, upgrade_payload: dict, order_id: str) -> list[str]:
         execution.get("execution_arn") for execution in executions if execution.get("execution_arn")
     ]
     if not execution_arns:
-        logger.warning(
-            "%s - Cloud Orchestrator upgrade returned no execution ARNs: expected "
-            "executions[].execution_arn in the response, nothing to poll. Response: %s",
-            order_id,
-            upgrade_response,
-        )
-        notify_one_time_error(
-            f"Cloud Orchestrator upgrade error for order {order_id}",
-            f"Cloud Orchestrator upgrade for order `{order_id}` returned no execution ARNs. "
-            "Expected `executions[].execution_arn` in the response. There is nothing to poll.\n\n"
-            f"```{upgrade_response}```",
-        )
+        raise CloudOrchestratorMissingExecutionArnError(upgrade_response)
     return execution_arns
 
 
