@@ -5,7 +5,6 @@ import pytest
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import (
     PLS_SUPPORT_PLAN_COVERAGE,
-    PLS_SUPPORT_PLAN_PROVIDER,
     PLS_SUPPORT_PLAN_TAM_LOCATION,
     MigrationOrderEnum,
     PhasesEnum,
@@ -184,7 +183,6 @@ EXPECTED_PLS_SUPPORT_PLAN = MappingProxyType({
     "partnerLedSupport": {
         "coverage": PLS_SUPPORT_PLAN_COVERAGE,
         "tamLocation": PLS_SUPPORT_PLAN_TAM_LOCATION,
-        "provider": PLS_SUPPORT_PLAN_PROVIDER,
     }
 })
 
