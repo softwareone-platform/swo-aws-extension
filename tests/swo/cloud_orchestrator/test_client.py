@@ -112,6 +112,40 @@ def test_get_bootstrap_role_status_http_error(
         cloud_orchestrator_client.get_bootstrap_role_status("677276121359")
 
     assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert exc_info.value.response_content == "Internal Server Error"
+
+
+def test_get_bootstrap_role_status_server_error_hides_body(
+    cloud_orchestrator_client, mock_api, mock_openid_client
+):
+    mock_api.add(
+        responses.GET,
+        f"{BASE_URL}api/v1/bootstrap-role/check?target_account_id=677276121359",
+        body="<html>Traceback: internal details</html>",
+        status=HTTPStatus.INTERNAL_SERVER_ERROR,
+    )
+
+    with pytest.raises(CloudOrchestratorHttpError) as exc_info:
+        cloud_orchestrator_client.get_bootstrap_role_status("677276121359")
+
+    assert str(exc_info.value) == "500 - Internal Server Error"
+
+
+def test_get_bootstrap_role_status_non_server_error_keeps_body(
+    cloud_orchestrator_client, mock_api, mock_openid_client
+):
+    mock_api.add(
+        responses.GET,
+        f"{BASE_URL}api/v1/bootstrap-role/check?target_account_id=677276121359",
+        body="Invalid target account",
+        status=HTTPStatus.BAD_REQUEST,
+    )
+
+    with pytest.raises(CloudOrchestratorHttpError) as exc_info:
+        cloud_orchestrator_client.get_bootstrap_role_status("677276121359")
+
+    assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
+    assert exc_info.value.response_content == "Invalid target account"
 
 
 def test_authorization_header_is_set(cloud_orchestrator_client, mock_api, mock_openid_client):
@@ -161,6 +195,7 @@ def test_onboard_customer_http_error(cloud_orchestrator_client, mock_api, mock_o
         cloud_orchestrator_client.onboard_customer({})
 
     assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert exc_info.value.response_content == "Internal Server Error"
 
 
 def test_onboard_customer_not_found(cloud_orchestrator_client, mock_api, mock_openid_client):
@@ -224,6 +259,7 @@ def test_upgrade_customer_http_error(
         cloud_orchestrator_client.upgrade_customer({"scu": "US-SCU-999999"})
 
     assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert exc_info.value.response_content == "Internal Server Error"
     assert (
         f"upgrade request: POST {BASE_URL}api/v1/marketplace/upgrade "
         "payload={'scu': 'US-SCU-999999'}"
@@ -272,6 +308,7 @@ def test_get_deployment_status_http_error(cloud_orchestrator_client, mock_api, m
         cloud_orchestrator_client.get_deployment_status(execution_arn)
 
     assert exc_info.value.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert exc_info.value.response_content == "Internal Server Error"
 
 
 def test_get_deployment_status_not_found(cloud_orchestrator_client, mock_api, mock_openid_client):

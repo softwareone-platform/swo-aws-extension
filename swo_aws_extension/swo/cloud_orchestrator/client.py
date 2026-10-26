@@ -19,6 +19,26 @@ logger = logging.getLogger(__name__)
 TIMEOUT = 60
 
 
+def _build_http_error(response: requests.Response) -> CloudOrchestratorHttpError:
+    """Builds the Cloud Orchestrator error for a failed HTTP response.
+
+    A 500 response uses the standard status phrase instead of the response body.
+
+    Args:
+        response: The failed HTTP response.
+
+    Returns:
+        The Cloud Orchestrator error for the response.
+    """
+    if response.status_code == HTTPStatus.NOT_FOUND:
+        return CloudOrchestratorNotFoundError(response.text)
+    if response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR:
+        return CloudOrchestratorHttpError(
+            response.status_code, HTTPStatus.INTERNAL_SERVER_ERROR.phrase
+        )
+    return CloudOrchestratorHttpError(response.status_code, response.text)
+
+
 def wrap_http_error(func):
     """Decorator to wrap HTTP errors into Cloud Orchestrator errors."""
 
@@ -27,9 +47,7 @@ def wrap_http_error(func):
         try:
             return func(*args, **kwargs)
         except requests.HTTPError as err:
-            if err.response.status_code == HTTPStatus.NOT_FOUND:
-                raise CloudOrchestratorNotFoundError(err.response.text) from err
-            raise CloudOrchestratorHttpError(err.response.status_code, err.response.text) from err
+            raise _build_http_error(err.response) from err
 
     return wrapper
 
