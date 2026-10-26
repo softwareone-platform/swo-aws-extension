@@ -106,6 +106,13 @@ def mock_teams(mocker):
     ).return_value
 
 
+@pytest.fixture(autouse=True)
+def mock_error_teams(mocker):
+    return mocker.patch(
+        "swo_aws_extension.flows.jobs.migration_sync_processor.TeamsNotificationManager"
+    ).return_value
+
+
 @pytest.fixture
 def mock_update_agreement(mocker):
     return mocker.patch(
@@ -242,11 +249,11 @@ def processor(
 
 
 @pytest.fixture
-def completed_record(
+def awaiting_onboarding_record(
     mock_migration_table, mock_get_orders, migration_record_factory, order_factory_sync
 ):
     record = migration_record_factory(
-        migration_status=AccountMigrationStatus.COMPLETED,
+        migration_status=AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING,
         mpt_order_status=MptOrderStatus.COMPLETED.value,
         customer_accepted_date="2026-09-10",
         migration_completed_date="2026-09-17",
@@ -323,14 +330,16 @@ def test_get_order_error(order_factory_sync, status_notes, error, expected):
     assert result == expected
 
 
-def test_sync_reads_pending_in_progress_and_completed_rows(processor, mock_migration_table):
+def test_sync_reads_pending_in_progress_and_awaiting_onboarding_rows(
+    processor, mock_migration_table
+):
     processor.sync()  # act
 
     mock_migration_table.get_by_statuses.assert_called_once_with(SYNCABLE_MIGRATION_STATUSES)
     assert SYNCABLE_MIGRATION_STATUSES == (
         AccountMigrationStatus.PENDING_NOTIFY_CUSTOMER,
         AccountMigrationStatus.MIGRATION_IN_PROGRESS,
-        AccountMigrationStatus.COMPLETED,
+        AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING,
     )
 
 
@@ -557,7 +566,7 @@ def test_sync_querying_order_keeps_existing_acceptance_date(
     assert record.migration_status == AccountMigrationStatus.MIGRATION_IN_PROGRESS
 
 
-def test_sync_completed_order_sets_completed_status_and_date(
+def test_sync_completed_order_sets_awaiting_onboarding_status_and_date(
     processor, mock_migration_table, mock_get_orders, migration_record_factory, order_factory_sync
 ):
     record = migration_record_factory(
@@ -572,7 +581,7 @@ def test_sync_completed_order_sets_completed_status_and_date(
 
     mock_migration_table.save.assert_called_once_with(record)
     assert record.mpt_order_status == MptOrderStatus.COMPLETED.value
-    assert record.migration_status == AccountMigrationStatus.COMPLETED
+    assert record.migration_status == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
     assert record.migration_completed_date == "2026-09-17"
     assert record.customer_accepted_date == "2026-09-10"
 
@@ -587,7 +596,7 @@ def test_sync_completed_order_sets_missing_acceptance_date(
     processor.sync()  # act
 
     assert record.customer_accepted_date == "2026-09-10"
-    assert record.migration_status == AccountMigrationStatus.COMPLETED
+    assert record.migration_status == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
 
 
 @pytest.mark.parametrize("status", [MptOrderStatus.FAILED.value, MptOrderStatus.DELETED.value])
@@ -687,7 +696,10 @@ def test_sync_dry_run_does_not_save(
         "Dry run. Rows checked: 1. Rows updated: 0. Tickets created: 0. Upgrades started: 0. "
         "Rows with errors: 0.\n\nChanges (dry run, not applied):\n"
     )
-    assert f"- {ORDER_ID}: MPT Order status: Completed; Migration status: Completed" in report
+    assert (
+        f"- {ORDER_ID}: MPT Order status: Completed; Migration status: Awaiting Client Onboarding"
+        in report
+    )
 
 
 def test_sync_reports_updated_rows(
@@ -745,8 +757,8 @@ def test_sync_continues_and_reports_when_a_row_fails(
     mock_teams.send_success.assert_not_called()
 
 
-def test_sync_completed_row_with_effective_transfer_creates_ticket(
-    processor, completed_record, mock_migration_table, mock_crm, mock_teams, buyer
+def test_sync_awaiting_onboarding_row_with_effective_transfer_creates_ticket(
+    processor, awaiting_onboarding_record, mock_migration_table, mock_crm, mock_teams, buyer
 ):
     processor.sync()  # act
 
@@ -770,8 +782,8 @@ def test_sync_completed_row_with_effective_transfer_creates_ticket(
         title=BILLING_TRANSFER_START_TEMPLATE.title,
     )
     mock_crm.create_service_request.assert_called_once_with(ORDER_ID, expected_service_request)
-    mock_migration_table.save.assert_called_once_with(completed_record)
-    assert completed_record.migration_status == AccountMigrationStatus.SERVICES_ONBOARDED
+    mock_migration_table.save.assert_called_once_with(awaiting_onboarding_record)
+    assert awaiting_onboarding_record.migration_status == AccountMigrationStatus.SERVICES_ONBOARDED
     assert sent_report(mock_teams) == (
         "Rows checked: 1. Rows updated: 1. Tickets created: 1. Upgrades started: 1. "
         "Rows with errors: 0.\n\n"
@@ -782,16 +794,16 @@ def test_sync_completed_row_with_effective_transfer_creates_ticket(
 
 
 def test_sync_ticket_clears_previous_error_and_uses_start_date_of_run_date(
-    processor, completed_record, mock_crm
+    processor, awaiting_onboarding_record, mock_crm
 ):
-    completed_record.error = "previous failure"
-    completed_record.billing_transfer_start_date = RUN_DATE.isoformat()
+    awaiting_onboarding_record.error = "previous failure"
+    awaiting_onboarding_record.billing_transfer_start_date = RUN_DATE.isoformat()
 
     processor.sync()  # act
 
     service_request = mock_crm.create_service_request.call_args.args[1]
     assert "<li><b>Billing Transfer Start Date:</b> 2026-09-21</li>" in service_request.summary
-    assert not completed_record.error
+    assert not awaiting_onboarding_record.error
 
 
 def test_sync_order_completing_with_past_start_date_upgrades_in_the_same_run(
@@ -820,10 +832,10 @@ def test_sync_order_completing_with_past_start_date_upgrades_in_the_same_run(
     assert record.migration_status == AccountMigrationStatus.SERVICES_ONBOARDED
 
 
-def test_sync_completed_row_fetches_missing_start_date_and_upgrades(
-    processor, completed_record, mock_aws_client, mock_crm
+def test_sync_awaiting_onboarding_row_fetches_missing_start_date_and_upgrades(
+    processor, awaiting_onboarding_record, mock_aws_client, mock_crm
 ):
-    completed_record.billing_transfer_start_date = None
+    awaiting_onboarding_record.billing_transfer_start_date = None
     mock_aws_client.get_responsibility_transfer_details.return_value = {
         "ResponsibilityTransfer": {
             "Status": ResponsibilityTransferStatus.ACCEPTED,
@@ -836,27 +848,30 @@ def test_sync_completed_row_fetches_missing_start_date_and_upgrades(
     mock_aws_client.get_responsibility_transfer_details.assert_called_once_with(
         transfer_id=TRANSFER_ID
     )
-    assert completed_record.billing_transfer_start_date == "2026-09-01"
-    assert completed_record.migration_status == AccountMigrationStatus.SERVICES_ONBOARDED
+    assert awaiting_onboarding_record.billing_transfer_start_date == "2026-09-01"
+    assert awaiting_onboarding_record.migration_status == AccountMigrationStatus.SERVICES_ONBOARDED
     service_request = mock_crm.create_service_request.call_args.args[1]
     assert "<li><b>Billing Transfer Start Date:</b> 2026-09-01</li>" in service_request.summary
 
 
 @pytest.mark.parametrize("start_date", ["2026-10-01", "not a date"])
-def test_sync_completed_row_without_effective_transfer_is_left_untouched(
-    processor, completed_record, mock_migration_table, mock_crm, start_date
+def test_sync_awaiting_onboarding_row_without_effective_transfer_is_left_untouched(
+    processor, awaiting_onboarding_record, mock_migration_table, mock_crm, start_date
 ):
-    completed_record.billing_transfer_start_date = start_date
+    awaiting_onboarding_record.billing_transfer_start_date = start_date
 
     processor.sync()  # act
 
     mock_crm.create_service_request.assert_not_called()
     mock_migration_table.save.assert_not_called()
-    assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
+    assert (
+        awaiting_onboarding_record.migration_status
+        == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
+    )
 
 
-def test_sync_ticket_error_keeps_row_completed_for_the_next_run(
-    processor, completed_record, mock_migration_table, mock_crm, mock_teams
+def test_sync_ticket_error_keeps_row_awaiting_onboarding_for_the_next_run(
+    processor, awaiting_onboarding_record, mock_migration_table, mock_crm, mock_teams
 ):
     mock_crm.create_service_request.side_effect = CRMError(
         "crm down", HTTPStatus.SERVICE_UNAVAILABLE
@@ -864,9 +879,12 @@ def test_sync_ticket_error_keeps_row_completed_for_the_next_run(
 
     processor.sync()  # act
 
-    mock_migration_table.save.assert_called_once_with(completed_record)
-    assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
-    assert completed_record.error == (
+    mock_migration_table.save.assert_called_once_with(awaiting_onboarding_record)
+    assert (
+        awaiting_onboarding_record.migration_status
+        == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
+    )
+    assert awaiting_onboarding_record.error == (
         "Billing transfer start ticket not created: CRMError (503): crm down"
     )
     assert sent_report(mock_teams, "send_warning") == (
@@ -882,7 +900,7 @@ def test_sync_ticket_error_keeps_row_completed_for_the_next_run(
 def test_sync_dry_run_does_not_create_the_ticket(
     mpt_client,
     config,
-    completed_record,
+    awaiting_onboarding_record,
     mock_migration_table,
     mock_crm,
     mock_teams,
@@ -898,13 +916,16 @@ def test_sync_dry_run_does_not_create_the_ticket(
     mock_cloud_orchestrator.upgrade_customer.assert_not_called()
     mock_update_agreement.assert_not_called()
     mock_migration_table.save.assert_not_called()
-    assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
+    assert (
+        awaiting_onboarding_record.migration_status
+        == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
+    )
     mock_teams.send_success.assert_not_called()
     mock_teams.send_warning.assert_not_called()
 
 
 def test_sync_stores_ticket_id_and_execution_arn_in_agreement(
-    mocker, processor, completed_record, mock_update_agreement
+    mocker, processor, awaiting_onboarding_record, mock_update_agreement
 ):
     processor.sync()  # act
 
@@ -938,7 +959,7 @@ def test_sync_stores_ticket_id_and_execution_arn_in_agreement(
 
 def test_sync_skips_ticket_already_stored_in_agreement(
     processor,
-    completed_record,
+    awaiting_onboarding_record,
     mock_get_orders,
     mock_migration_table,
     mock_crm,
@@ -954,8 +975,8 @@ def test_sync_skips_ticket_already_stored_in_agreement(
 
     mock_crm.create_service_request.assert_not_called()
     mock_update_agreement.assert_called_once()
-    mock_migration_table.save.assert_called_once_with(completed_record)
-    assert completed_record.migration_status == AccountMigrationStatus.SERVICES_ONBOARDED
+    mock_migration_table.save.assert_called_once_with(awaiting_onboarding_record)
+    assert awaiting_onboarding_record.migration_status == AccountMigrationStatus.SERVICES_ONBOARDED
     assert sent_report(mock_teams).startswith(
         "Rows checked: 1. Rows updated: 1. Tickets created: 0. Upgrades started: 1. "
         "Rows with errors: 0."
@@ -964,7 +985,7 @@ def test_sync_skips_ticket_already_stored_in_agreement(
 
 def test_sync_ticket_store_error_skips_upgrade(
     processor,
-    completed_record,
+    awaiting_onboarding_record,
     mock_migration_table,
     mock_update_agreement,
     mock_cloud_orchestrator,
@@ -975,9 +996,12 @@ def test_sync_ticket_store_error_skips_upgrade(
     processor.sync()  # act
 
     mock_cloud_orchestrator.upgrade_customer.assert_not_called()
-    mock_migration_table.save.assert_called_once_with(completed_record)
-    assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
-    assert completed_record.error == (
+    mock_migration_table.save.assert_called_once_with(awaiting_onboarding_record)
+    assert (
+        awaiting_onboarding_record.migration_status
+        == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
+    )
+    assert awaiting_onboarding_record.error == (
         f"Billing transfer start ticket {TICKET_ID} created but its id was not stored in "
         "the agreement. Store it in crmMigrationTicketId before the next run."
     )
@@ -990,7 +1014,7 @@ def test_sync_ticket_store_error_skips_upgrade(
 
 
 def test_sync_creates_ticket_when_agreement_has_no_parameters(
-    processor, completed_record, mock_get_orders, mock_crm, order_factory_sync
+    processor, awaiting_onboarding_record, mock_get_orders, mock_crm, order_factory_sync
 ):
     order = order_factory_sync(status=MptOrderStatus.COMPLETED.value)
     order["agreement"] = {"id": AGREEMENT_ID}
@@ -999,11 +1023,11 @@ def test_sync_creates_ticket_when_agreement_has_no_parameters(
     processor.sync()  # act
 
     mock_crm.create_service_request.assert_called_once()
-    assert completed_record.migration_status == AccountMigrationStatus.SERVICES_ONBOARDED
+    assert awaiting_onboarding_record.migration_status == AccountMigrationStatus.SERVICES_ONBOARDED
 
 
 def test_sync_launches_upgrade_and_polls_every_execution(
-    mocker, processor, completed_record, mock_cloud_orchestrator, buyer
+    mocker, processor, awaiting_onboarding_record, mock_cloud_orchestrator, buyer
 ):
     processor.sync()  # act
 
@@ -1015,14 +1039,14 @@ def test_sync_launches_upgrade_and_polls_every_execution(
         mocker.call(FIRST_EXECUTION_ARN),
         mocker.call(SECOND_EXECUTION_ARN),
     ]
-    assert completed_record.migration_status == AccountMigrationStatus.SERVICES_ONBOARDED
-    assert not completed_record.error
+    assert awaiting_onboarding_record.migration_status == AccountMigrationStatus.SERVICES_ONBOARDED
+    assert not awaiting_onboarding_record.error
 
 
 def test_sync_reuses_execution_arns_stored_in_agreement(
     mocker,
     processor,
-    completed_record,
+    awaiting_onboarding_record,
     mock_get_orders,
     mock_cloud_orchestrator,
     mock_update_agreement,
@@ -1045,7 +1069,7 @@ def test_sync_reuses_execution_arns_stored_in_agreement(
         mocker.call(FIRST_EXECUTION_ARN),
         mocker.call(SECOND_EXECUTION_ARN),
     ]
-    assert completed_record.migration_status == AccountMigrationStatus.SERVICES_ONBOARDED
+    assert awaiting_onboarding_record.migration_status == AccountMigrationStatus.SERVICES_ONBOARDED
     assert sent_report(mock_teams) == (
         "Rows checked: 1. Rows updated: 1. Tickets created: 0. Upgrades started: 0. "
         "Rows with errors: 0.\n\n"
@@ -1054,7 +1078,11 @@ def test_sync_reuses_execution_arns_stored_in_agreement(
 
 
 def test_sync_reuses_single_execution_arn_stored_in_agreement(
-    processor, completed_record, mock_get_orders, mock_cloud_orchestrator, order_factory_sync
+    processor,
+    awaiting_onboarding_record,
+    mock_get_orders,
+    mock_cloud_orchestrator,
+    order_factory_sync,
 ):
     mock_get_orders.return_value = [
         order_factory_sync(
@@ -1068,20 +1096,28 @@ def test_sync_reuses_single_execution_arn_stored_in_agreement(
 
     mock_cloud_orchestrator.upgrade_customer.assert_not_called()
     mock_cloud_orchestrator.get_deployment_status.assert_called_once_with(FIRST_EXECUTION_ARN)
-    assert completed_record.migration_status == AccountMigrationStatus.SERVICES_ONBOARDED
+    assert awaiting_onboarding_record.migration_status == AccountMigrationStatus.SERVICES_ONBOARDED
 
 
 @pytest.mark.parametrize("status", ["PENDING", "RUNNING", "", "SOMETHING_ELSE"])
-def test_sync_keeps_row_completed_while_upgrade_is_running(
-    processor, completed_record, mock_migration_table, mock_cloud_orchestrator, mock_teams, status
+def test_sync_keeps_row_awaiting_onboarding_while_upgrade_is_running(
+    processor,
+    awaiting_onboarding_record,
+    mock_migration_table,
+    mock_cloud_orchestrator,
+    mock_teams,
+    status,
 ):
-    completed_record.error = "previous failure"
+    awaiting_onboarding_record.error = "previous failure"
     mock_cloud_orchestrator.get_deployment_status.return_value = {"status": status}
 
     processor.sync()  # act
 
     mock_migration_table.save.assert_not_called()
-    assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
+    assert (
+        awaiting_onboarding_record.migration_status
+        == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
+    )
     assert sent_report(mock_teams) == (
         "Rows checked: 1. Rows updated: 0. Tickets created: 1. Upgrades started: 1. "
         "Rows with errors: 0.\n\n"
@@ -1090,8 +1126,8 @@ def test_sync_keeps_row_completed_while_upgrade_is_running(
     )
 
 
-def test_sync_keeps_row_completed_while_one_execution_is_running(
-    processor, completed_record, mock_migration_table, mock_cloud_orchestrator, mock_teams
+def test_sync_keeps_row_awaiting_onboarding_while_one_execution_is_running(
+    processor, awaiting_onboarding_record, mock_migration_table, mock_cloud_orchestrator, mock_teams
 ):
     mock_cloud_orchestrator.get_deployment_status.side_effect = [
         {"status": "RUNNING"},
@@ -1102,21 +1138,27 @@ def test_sync_keeps_row_completed_while_one_execution_is_running(
 
     assert mock_cloud_orchestrator.get_deployment_status.call_count == 2
     mock_migration_table.save.assert_not_called()
-    assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
-    assert not completed_record.error
+    assert (
+        awaiting_onboarding_record.migration_status
+        == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
+    )
+    assert not awaiting_onboarding_record.error
     mock_teams.send_warning.assert_not_called()
 
 
-def test_sync_upgrade_failure_keeps_row_completed_with_error(
-    processor, completed_record, mock_migration_table, mock_cloud_orchestrator, mock_teams
+def test_sync_upgrade_failure_keeps_row_awaiting_onboarding_with_error(
+    processor, awaiting_onboarding_record, mock_migration_table, mock_cloud_orchestrator, mock_teams
 ):
     mock_cloud_orchestrator.get_deployment_status.return_value = {"status": "FAILED"}
 
     processor.sync()  # act
 
-    mock_migration_table.save.assert_called_once_with(completed_record)
-    assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
-    assert completed_record.error == (
+    mock_migration_table.save.assert_called_once_with(awaiting_onboarding_record)
+    assert (
+        awaiting_onboarding_record.migration_status
+        == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
+    )
+    assert awaiting_onboarding_record.error == (
         "Services upgrade failed in Cloud Orchestrator "
         f"(failed executions: {REPORTED_EXECUTION_ARNS})"
     )
@@ -1127,7 +1169,7 @@ def test_sync_upgrade_failure_keeps_row_completed_with_error(
 
 
 def test_sync_upgrade_failure_names_only_the_failed_execution(
-    processor, completed_record, mock_cloud_orchestrator
+    processor, awaiting_onboarding_record, mock_cloud_orchestrator
 ):
     mock_cloud_orchestrator.get_deployment_status.side_effect = [
         {"status": "FAILED"},
@@ -1137,14 +1179,21 @@ def test_sync_upgrade_failure_names_only_the_failed_execution(
     processor.sync()  # act
 
     assert mock_cloud_orchestrator.get_deployment_status.call_count == 2
-    assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
-    assert completed_record.error == (
+    assert (
+        awaiting_onboarding_record.migration_status
+        == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
+    )
+    assert awaiting_onboarding_record.error == (
         f"Services upgrade failed in Cloud Orchestrator (failed executions: {FIRST_EXECUTION_ARN})"
     )
 
 
 def test_sync_upgrade_start_error_is_retried_next_run(
-    processor, completed_record, mock_cloud_orchestrator, mock_update_agreement, mock_teams
+    processor,
+    awaiting_onboarding_record,
+    mock_cloud_orchestrator,
+    mock_update_agreement,
+    mock_teams,
 ):
     mock_cloud_orchestrator.upgrade_customer.side_effect = CloudOrchestratorError("co down")
 
@@ -1152,8 +1201,11 @@ def test_sync_upgrade_start_error_is_retried_next_run(
 
     mock_cloud_orchestrator.get_deployment_status.assert_not_called()
     assert mock_update_agreement.call_count == 1  # only the ticket id
-    assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
-    assert completed_record.error == "Services upgrade not started: co down"
+    assert (
+        awaiting_onboarding_record.migration_status
+        == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
+    )
+    assert awaiting_onboarding_record.error == "Services upgrade not started: co down"
     report = sent_report(mock_teams, "send_warning")
     assert report.startswith(
         "Rows checked: 1. Rows updated: 1. Tickets created: 1. Upgrades started: 0. "
@@ -1163,20 +1215,53 @@ def test_sync_upgrade_start_error_is_retried_next_run(
 
 
 def test_sync_upgrade_without_execution_arn_is_reported(
-    mocker, processor, completed_record, mock_cloud_orchestrator, mock_update_agreement
+    processor, awaiting_onboarding_record, mock_cloud_orchestrator, mock_update_agreement
 ):
-    mock_notify = mocker.patch(
-        "swo_aws_extension.flows.cloud_orchestrator_utils.notify_one_time_error"
-    )
     mock_cloud_orchestrator.upgrade_customer.return_value = {"executions": []}
 
     processor.sync()  # act
 
-    mock_notify.assert_called_once()
     mock_cloud_orchestrator.get_deployment_status.assert_not_called()
     assert mock_update_agreement.call_count == 1  # only the ticket id
-    assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
-    assert completed_record.error == "Services upgrade started without an execution ARN"
+    assert (
+        awaiting_onboarding_record.migration_status
+        == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
+    )
+    assert awaiting_onboarding_record.error == (
+        "Services upgrade not started: Upgrade response has no executions[].execution_arn to poll"
+    )
+
+
+def test_sync_new_row_error_is_notified(
+    processor, awaiting_onboarding_record, mock_cloud_orchestrator, mock_error_teams
+):
+    awaiting_onboarding_record.error = "Services upgrade not started: previous error"
+    mock_cloud_orchestrator.upgrade_customer.side_effect = CloudOrchestratorError("co down")
+
+    processor.sync()  # act
+
+    mock_error_teams.send_error.assert_called_once_with(
+        f"AWS migration sync error for order {ORDER_ID}",
+        "Services upgrade not started: co down",
+    )
+
+
+def test_sync_same_upgrade_error_is_not_notified_nor_saved(
+    processor,
+    awaiting_onboarding_record,
+    mock_cloud_orchestrator,
+    mock_error_teams,
+    mock_migration_table,
+):
+    awaiting_onboarding_record.error = "Services upgrade not started: co down"
+    mock_cloud_orchestrator.upgrade_customer.side_effect = CloudOrchestratorError("co down")
+
+    processor.sync()  # act
+
+    mock_cloud_orchestrator.upgrade_customer.assert_called_once()
+    mock_error_teams.send_error.assert_not_called()
+    mock_migration_table.save.assert_not_called()
+    assert awaiting_onboarding_record.error == "Services upgrade not started: co down"
 
 
 def stored_arns_order(order_factory_sync, execution_arn):
@@ -1189,7 +1274,7 @@ def stored_arns_order(order_factory_sync, execution_arn):
 
 def test_sync_upgrade_status_errors_poll_every_arn_and_list_them_all(
     processor,
-    completed_record,
+    awaiting_onboarding_record,
     mock_get_orders,
     mock_cloud_orchestrator,
     mock_teams,
@@ -1204,8 +1289,11 @@ def test_sync_upgrade_status_errors_poll_every_arn_and_list_them_all(
     processor.sync()  # act
 
     assert mock_cloud_orchestrator.get_deployment_status.call_count == 2
-    assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
-    assert completed_record.error == (
+    assert (
+        awaiting_onboarding_record.migration_status
+        == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
+    )
+    assert awaiting_onboarding_record.error == (
         f"Services upgrade status not available: {FIRST_EXECUTION_ARN}: timeout; "
         f"{SECOND_EXECUTION_ARN}: boom"
     )
@@ -1214,7 +1302,7 @@ def test_sync_upgrade_status_errors_poll_every_arn_and_list_them_all(
 
 def test_sync_upgrade_status_error_names_only_the_failing_arn(
     processor,
-    completed_record,
+    awaiting_onboarding_record,
     mock_get_orders,
     mock_cloud_orchestrator,
     mock_teams,
@@ -1229,17 +1317,20 @@ def test_sync_upgrade_status_error_names_only_the_failing_arn(
     processor.sync()  # act
 
     assert mock_cloud_orchestrator.get_deployment_status.call_count == 2
-    assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
-    assert completed_record.error == (
+    assert (
+        awaiting_onboarding_record.migration_status
+        == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
+    )
+    assert awaiting_onboarding_record.error == (
         f"Services upgrade status not available: {FIRST_EXECUTION_ARN}: timeout"
     )
-    assert SECOND_EXECUTION_ARN not in completed_record.error
+    assert SECOND_EXECUTION_ARN not in awaiting_onboarding_record.error
     mock_teams.send_warning.assert_called_once()
 
 
 def test_sync_upgrade_status_error_with_single_arn_is_retried_next_run(
     processor,
-    completed_record,
+    awaiting_onboarding_record,
     mock_get_orders,
     mock_cloud_orchestrator,
     mock_teams,
@@ -1251,14 +1342,38 @@ def test_sync_upgrade_status_error_with_single_arn_is_retried_next_run(
     processor.sync()  # act
 
     mock_cloud_orchestrator.get_deployment_status.assert_called_once_with(FIRST_EXECUTION_ARN)
-    assert completed_record.error == (
+    assert awaiting_onboarding_record.error == (
         f"Services upgrade status not available: {FIRST_EXECUTION_ARN}: timeout"
     )
 
 
-def test_sync_execution_arns_store_error_keeps_row_completed_with_the_arns(
+def test_sync_dry_run_new_row_error_is_not_notified(
+    mpt_client,
+    config,
+    awaiting_onboarding_record,
+    mock_get_orders,
+    mock_migration_table,
+    mock_cloud_orchestrator,
+    mock_error_teams,
+    mock_teams,
+    order_factory_sync,
+):
+    mock_get_orders.return_value = [stored_arns_order(order_factory_sync, FIRST_EXECUTION_ARN)]
+    mock_cloud_orchestrator.get_deployment_status.side_effect = CloudOrchestratorError("timeout")
+    processor = MigrationOrdersSyncProcessor(mpt_client, config, RUN_DATE, dry_run=True)
+
+    processor.sync()  # act
+
+    mock_error_teams.send_error.assert_not_called()
+    mock_migration_table.save.assert_not_called()
+    assert processor.report.failed_rows == {
+        ORDER_ID: f"Services upgrade status not available: {FIRST_EXECUTION_ARN}: timeout"
+    }
+
+
+def test_sync_execution_arns_store_error_keeps_row_awaiting_onboarding_with_the_arns(
     processor,
-    completed_record,
+    awaiting_onboarding_record,
     mock_migration_table,
     mock_update_agreement,
     mock_cloud_orchestrator,
@@ -1269,9 +1384,12 @@ def test_sync_execution_arns_store_error_keeps_row_completed_with_the_arns(
     processor.sync()  # act
 
     mock_cloud_orchestrator.get_deployment_status.assert_not_called()
-    mock_migration_table.save.assert_called_once_with(completed_record)
-    assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
-    assert completed_record.error == (
+    mock_migration_table.save.assert_called_once_with(awaiting_onboarding_record)
+    assert (
+        awaiting_onboarding_record.migration_status
+        == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
+    )
+    assert awaiting_onboarding_record.error == (
         f"Services upgrade started but execution ARNs {REPORTED_EXECUTION_ARNS} were not "
         "stored in the agreement. Store them comma-separated in executionArn before the "
         "next run."
@@ -1285,11 +1403,14 @@ def test_sync_execution_arns_store_error_keeps_row_completed_with_the_arns(
 
 
 def test_sync_ticket_error_skips_upgrade(
-    processor, completed_record, mock_crm, mock_cloud_orchestrator
+    processor, awaiting_onboarding_record, mock_crm, mock_cloud_orchestrator
 ):
     mock_crm.create_service_request.side_effect = CRMError("crm down", HTTPStatus.BAD_GATEWAY)
 
     processor.sync()  # act
 
     mock_cloud_orchestrator.upgrade_customer.assert_not_called()
-    assert completed_record.migration_status == AccountMigrationStatus.COMPLETED
+    assert (
+        awaiting_onboarding_record.migration_status
+        == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
+    )

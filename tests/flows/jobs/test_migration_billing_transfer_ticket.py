@@ -32,7 +32,7 @@ def record():
         aws_support_type="resoldSupport",
         technical_contact_name="Jane Doe",
         technical_contact_email="jane.doe@example.com",
-        migration_status=AccountMigrationStatus.COMPLETED,
+        migration_status=AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING,
         mpt_order_id=ORDER_ID,
         billing_transfer_start_date="2026-09-01",
     )

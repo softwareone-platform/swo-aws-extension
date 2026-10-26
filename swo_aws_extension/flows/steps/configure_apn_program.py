@@ -7,7 +7,6 @@ from mpt_extension_sdk.mpt_http.mpt import update_order
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.constants import (
     PLS_SUPPORT_PLAN_COVERAGE,
-    PLS_SUPPORT_PLAN_PROVIDER,
     PLS_SUPPORT_PLAN_TAM_LOCATION,
     PhasesEnum,
     SupportTypesEnum,
@@ -38,7 +37,6 @@ def build_partner_led_support_plan() -> dict:
         "partnerLedSupport": {
             "coverage": PLS_SUPPORT_PLAN_COVERAGE,
             "tamLocation": PLS_SUPPORT_PLAN_TAM_LOCATION,
-            "provider": PLS_SUPPORT_PLAN_PROVIDER,
         }
     }
 

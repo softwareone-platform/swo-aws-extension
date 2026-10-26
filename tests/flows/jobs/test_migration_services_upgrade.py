@@ -13,7 +13,10 @@ from swo_aws_extension.flows.jobs.migration_services_upgrade import (
     start_upgrade,
     store_execution_arns,
 )
-from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
+from swo_aws_extension.swo.cloud_orchestrator.errors import (
+    CloudOrchestratorError,
+    CloudOrchestratorMissingExecutionArnError,
+)
 
 ORDER_ID = "ORD-0792-5000-2253-4210"
 AGREEMENT_ID = "AGR-2119-4550-8674-5962"
@@ -154,16 +157,11 @@ def test_start_upgrade_without_scu_uses_the_default(config, order, mock_cloud_or
     assert upgrade_payload["scu"] == DEFAULT_SCU
 
 
-def test_start_upgrade_without_executions(mocker, config, order, mock_cloud_orchestrator):
-    mock_notify = mocker.patch(
-        "swo_aws_extension.flows.cloud_orchestrator_utils.notify_one_time_error"
-    )
+def test_start_upgrade_without_executions(config, order, mock_cloud_orchestrator):
     mock_cloud_orchestrator.upgrade_customer.return_value = {"executions": []}
 
-    result = start_upgrade(config, order)
-
-    assert result == []
-    mock_notify.assert_called_once()
+    with pytest.raises(CloudOrchestratorMissingExecutionArnError):
+        start_upgrade(config, order)
 
 
 def test_start_upgrade_raises_cloud_orchestrator_error(config, order, mock_cloud_orchestrator):

@@ -82,13 +82,14 @@ def test_get_by_statuses_uses_or_formula(mock_table):
     account_migration_table = AwsAccountMigrationTable()
 
     account_migration_table.get_by_statuses((
-        AccountMigrationStatus.COMPLETED,
+        AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING,
         AccountMigrationStatus.MIGRATION_IN_PROGRESS,
     ))  # act
 
     assert (
         str(mock_table.all.call_args.kwargs["formula"])
-        == "OR({Migration status}='Completed', {Migration status}='Migration in progress')"
+        == "OR({Migration status}='Awaiting Client Onboarding', "
+        "{Migration status}='Migration in progress')"
     )
 
 
@@ -99,7 +100,9 @@ def test_get_by_statuses_returns_records_in_table_order(mock_table):
     ]
     account_migration_table = AwsAccountMigrationTable()
 
-    result = account_migration_table.get_by_statuses([AccountMigrationStatus.COMPLETED])
+    result = account_migration_table.get_by_statuses([
+        AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
+    ])
 
     assert [(record.record_id, record.masterpayer) for record in result] == [
         ("rec1", "111111111111"),
@@ -161,18 +164,18 @@ def test_save_updates_existing_record(mock_table, account_migration_record_facto
         "id": "rec123",
         "fields": {
             AccountMigrationFields.MASTERPAYER.value: "123456789012",
-            AccountMigrationFields.MIGRATION_STATUS.value: "Completed",
+            AccountMigrationFields.MIGRATION_STATUS.value: "Awaiting Client Onboarding",
         },
     }
     account_migration_table = AwsAccountMigrationTable()
     existing_record = account_migration_record_factory(
-        record_id="rec123", migration_status=AccountMigrationStatus.COMPLETED
+        record_id="rec123", migration_status=AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
     )
 
     result = account_migration_table.save(existing_record)
 
     mock_table.update.assert_called_once_with("rec123", existing_record.to_airtable_fields())
-    assert result.migration_status == "Completed"
+    assert result.migration_status == "Awaiting Client Onboarding"
 
 
 def test_update_status(mock_table, account_migration_record_factory):
