@@ -3,14 +3,17 @@ from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.wrap_http_error import MPTError
 
 from swo_aws_extension.constants import (
+    AccountTypesEnum,
     MptOrderStatus,
     OrderCompletedTemplate,
+    OrderParametersEnum,
     OrderQueryingTemplateEnum,
 )
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.order_utils import (
     OrderStatusChangeError,
     has_previous_order,
+    hide_master_payer_account,
     set_order_template,
     strip_whitespace_from_mpa_account,
     switch_order_status_to_complete,
@@ -19,7 +22,7 @@ from swo_aws_extension.flows.order_utils import (
     switch_order_status_to_query,
     update_processing_template,
 )
-from swo_aws_extension.parameters import get_mpa_account_id
+from swo_aws_extension.parameters import get_mpa_account_id, get_ordering_parameter
 
 
 def test_set_order_template(mocker, order_factory, fulfillment_parameters_factory):
@@ -287,6 +290,53 @@ def test_strip_whitespace_from_mpa_account_without_value(order_factory, order_pa
     result = strip_whitespace_from_mpa_account(order)
 
     assert not get_mpa_account_id(result)
+
+
+def test_hide_master_payer_account_keeps_existing_account_purchase(
+    order_factory, order_parameters_factory
+):
+    order = order_factory(
+        order_type="Purchase",
+        order_parameters=order_parameters_factory(
+            account_type=AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value
+        ),
+    )
+
+    result = hide_master_payer_account(order)
+
+    assert result == order
+
+
+def test_hide_master_payer_account_hides_new_account_purchase(
+    order_factory, order_parameters_factory
+):
+    order = order_factory(
+        order_type="Purchase",
+        order_parameters=order_parameters_factory(
+            account_type=AccountTypesEnum.NEW_AWS_ENVIRONMENT.value
+        ),
+    )
+
+    result = hide_master_payer_account(order)
+
+    mpa_param = get_ordering_parameter(OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value, result)
+    assert mpa_param["constraints"] == {"hidden": True, "required": False, "readonly": False}
+
+
+def test_hide_master_payer_account_hides_non_purchase_order(
+    order_factory, order_parameters_factory
+):
+    order = order_factory(
+        order_type="Termination",
+        order_parameters=order_parameters_factory(
+            account_type=AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value
+        ),
+    )
+
+    result = hide_master_payer_account(order)
+
+    mpa_param = get_ordering_parameter(OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value, result)
+    assert mpa_param["constraints"] == {"hidden": True, "required": False, "readonly": False}
 
 
 def test_has_previous_order_returns_true_when_found(mocker, order_factory):

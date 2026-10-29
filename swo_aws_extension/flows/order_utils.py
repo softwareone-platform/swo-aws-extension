@@ -1,6 +1,7 @@
 import copy
 import logging
 
+from mpt_extension_sdk.flows.context import ORDER_TYPE_PURCHASE
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import (
     complete_order,
@@ -12,9 +13,19 @@ from mpt_extension_sdk.mpt_http.mpt import (
 )
 from mpt_extension_sdk.mpt_http.wrap_http_error import MPTError, wrap_mpt_http_error
 
-from swo_aws_extension.constants import AgreementStatusEnum, MptOrderStatus
+from swo_aws_extension.constants import (
+    AccountTypesEnum,
+    AgreementStatusEnum,
+    MptOrderStatus,
+    OrderParametersEnum,
+)
 from swo_aws_extension.flows.order import InitialAWSContext
-from swo_aws_extension.parameters import get_mpa_account_id, set_mpa_account_id
+from swo_aws_extension.parameters import (
+    get_account_type,
+    get_mpa_account_id,
+    set_mpa_account_id,
+    set_order_parameter_constraints,
+)
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 logger = logging.getLogger(__name__)
@@ -48,6 +59,21 @@ def strip_whitespace_from_mpa_account(order: dict) -> dict:
     if mpa_account_id:
         return set_mpa_account_id(order, mpa_account_id.strip())
     return order
+
+
+def hide_master_payer_account(order: dict) -> dict:
+    """Hide the Master Payer Account ID parameter unless it is an existing account purchase."""
+    is_existing_account_purchase = (
+        order.get("type") == ORDER_TYPE_PURCHASE
+        and get_account_type(order) == AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value
+    )
+    if is_existing_account_purchase:
+        return order
+    return set_order_parameter_constraints(
+        order,
+        OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value,
+        constraints={"hidden": True, "required": False, "readonly": False},
+    )
 
 
 # TODO: SDK candidate
