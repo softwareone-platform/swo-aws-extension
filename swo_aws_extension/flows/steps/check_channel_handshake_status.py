@@ -4,6 +4,7 @@ from typing import override
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
+from swo_aws_extension.aws.models import ChannelHandshakeServicePeriod
 from swo_aws_extension.constants import (
     ChannelHandshakeDeployed,
     ChannelHandshakeStatusEnum,
@@ -20,9 +21,11 @@ from swo_aws_extension.flows.steps.errors import (
 )
 from swo_aws_extension.parameters import (
     get_channel_handshake_id,
+    get_handshake_expiration_date,
     get_phase,
     get_relationship_id,
     set_channel_handshake_approved,
+    set_handshake_expiration_date,
     set_phase,
 )
 
@@ -83,6 +86,7 @@ class CheckChannelHandshakeStatus(BasePhaseStep):
             context.order = set_channel_handshake_approved(
                 context.order, ChannelHandshakeDeployed.YES
             )
+            self._set_expiration_date(context, handshake)
             return
         if handshake.get("status") == ChannelHandshakeStatusEnum.PENDING.value:
             logger.info(
@@ -108,3 +112,27 @@ class CheckChannelHandshakeStatus(BasePhaseStep):
         context.order = update_order(
             client, context.order_id, parameters=context.order["parameters"]
         )
+
+    def _set_expiration_date(self, context: PurchaseContext, handshake: dict) -> None:
+        if get_handshake_expiration_date(context.order):
+            return
+        try:
+            service_period = ChannelHandshakeServicePeriod.from_handshake(handshake)
+        except (TypeError, ValueError) as error:
+            logger.warning(
+                "%s - Warning - Invalid service period in channel handshake %s (%s); "
+                "the agreement sync sets the expiration date later",
+                context.order_id,
+                handshake.get("id"),
+                error,
+            )
+            return
+        if not service_period.is_fixed_commitment() or not service_period.end_date:
+            return
+        expiration_date = service_period.end_date.date().isoformat()
+        logger.info(
+            "%s - Action - Setting handshake expiration date to %s",
+            context.order_id,
+            expiration_date,
+        )
+        context.order = set_handshake_expiration_date(context.order, expiration_date)

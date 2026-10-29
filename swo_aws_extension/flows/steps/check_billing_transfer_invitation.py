@@ -22,12 +22,16 @@ from swo_aws_extension.flows.steps.errors import (
 )
 from swo_aws_extension.parameters import (
     get_billing_group_arn,
+    get_billing_transfer_acceptance_date,
     get_mpa_account_id,
     get_phase,
     get_responsibility_transfer_id,
     set_billing_group_arn,
+    set_billing_transfer_acceptance_date,
     set_phase,
 )
+from swo_aws_extension.swo.mpt.sync.responsibility_transfers import get_transfer_start_date
+from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +93,7 @@ class CheckBillingTransferInvitation(BasePhaseStep):
                 context.order_id,
                 transfer_id,
             )
+            self._set_acceptance_date(context, transfer_details.get("ResponsibilityTransfer", {}))
             if get_billing_group_arn(context.order):
                 logger.info("%s - Next - Billing group already exists. Continue", context.order_id)
                 return
@@ -124,3 +129,21 @@ class CheckBillingTransferInvitation(BasePhaseStep):
         context.order = update_order(
             client, context.order_id, parameters=context.order["parameters"]
         )
+
+    def _set_acceptance_date(self, context: PurchaseContext, transfer: dict) -> None:
+        if get_billing_transfer_acceptance_date(context.order):
+            return
+        acceptance_date = get_transfer_start_date(transfer)
+        if not acceptance_date:
+            message = "Billing transfer has no start date; acceptance date not set"
+            logger.warning("%s - Warning - %s", context.order_id, message)
+            TeamsNotificationManager().send_warning(
+                f"{context.order_id} - Set billing transfer acceptance date", message
+            )
+            return
+        logger.info(
+            "%s - Action - Setting billing transfer acceptance date to %s",
+            context.order_id,
+            acceptance_date,
+        )
+        context.order = set_billing_transfer_acceptance_date(context.order, acceptance_date)

@@ -382,6 +382,9 @@ def fulfillment_parameters_factory():
         crm_migration_ticket_id="",
         support_discount="",
         service_discount="",
+        billing_transfer_acceptance_date="",
+        handshake_expiration_date="",
+        management_account_name="",
     ):
         return [
             {
@@ -476,6 +479,18 @@ def fulfillment_parameters_factory():
             {
                 "externalId": FulfillmentParametersEnum.SERVICE_DISCOUNT.value,
                 "value": service_discount,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.BILLING_TRANSFER_ACCEPTANCE_DATE.value,
+                "value": billing_transfer_acceptance_date,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.HANDSHAKE_EXPIRATION_DATE.value,
+                "value": handshake_expiration_date,
+            },
+            {
+                "externalId": FulfillmentParametersEnum.MANAGEMENT_ACCOUNT_NAME.value,
+                "value": management_account_name,
             },
         ]
 

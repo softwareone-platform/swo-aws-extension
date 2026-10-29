@@ -144,6 +144,9 @@ class FulfillmentParametersEnum(StrEnum):
     RELATIONSHIP_END_DATE = "relationshipEndDate"
     SERVICE_DISCOUNT_TYPE = "serviceDiscountType"
     CRM_MIGRATION_TICKET_ID = "crmMigrationTicketId"
+    BILLING_TRANSFER_ACCEPTANCE_DATE = "billingTransferAcceptanceDate"
+    HANDSHAKE_EXPIRATION_DATE = "handshakeExpirationDate"
+    MANAGEMENT_ACCOUNT_NAME = "managementAccountName"
 
 
 class OrderProcessingTemplateEnum(StrEnum):

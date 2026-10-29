@@ -19,8 +19,12 @@ from swo_aws_extension.flows.steps.crm_tickets.templates.terminate_order import 
 )
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.parameters import (
+    get_billing_transfer_acceptance_date,
+    get_channel_handshake_id,
     get_crm_terminate_order_ticket_id,
+    get_handshake_expiration_date,
     get_relationship_end_date,
+    get_relationship_id,
     get_responsibility_transfer_id,
 )
 from swo_aws_extension.swo.crm_service.client import ServiceRequest, get_service_client
@@ -33,8 +37,10 @@ from swo_aws_extension.swo.mpt.sync.base import (
     AgreementProcessorError,
     AgreementType,
 )
+from swo_aws_extension.swo.mpt.sync.channel_handshakes import get_fixed_commitment_end_date
 from swo_aws_extension.swo.mpt.sync.responsibility_transfers import (
     get_available_transfer_for_account,
+    get_transfer_start_date,
     transfer_has_ended,
 )
 from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
@@ -149,6 +155,56 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
             notification_title="Synchronize responsibility transfer ID",
         )
 
+    def sync_billing_transfer_acceptance_date(
+        self, agreement: AgreementType, acceptance_date: str | None
+    ) -> None:
+        """Backfill an empty billing transfer acceptance date with the transfer start date."""
+        if get_billing_transfer_acceptance_date(agreement):
+            return
+        if not acceptance_date:
+            message = "Billing transfer has no start date; acceptance date not set"
+            logger.warning(message)
+            TeamsNotificationManager().send_warning(
+                f"{agreement['id']} - Synchronize billing transfer acceptance date", message
+            )
+            return
+        logger.info("Synchronizing billing transfer acceptance date: %s", acceptance_date)
+        self._update_fulfillment_parameter(
+            agreement,
+            FulfillmentParametersEnum.BILLING_TRANSFER_ACCEPTANCE_DATE.value,
+            acceptance_date,
+            error_message=(
+                f"Failed to update agreement with billing transfer acceptance date "
+                f"{acceptance_date}"
+            ),
+            notification_title="Synchronize billing transfer acceptance date",
+        )
+
+    def sync_handshake_expiration_date(self, agreement: AgreementType) -> None:
+        """Backfill an empty handshake expiration date with the fixed commitment end date."""
+        if get_handshake_expiration_date(agreement):
+            return
+        relationship_id = get_relationship_id(agreement)
+        handshake_id = get_channel_handshake_id(agreement)
+        if not relationship_id or not handshake_id:
+            return
+        commitment_end_date = get_fixed_commitment_end_date(
+            agreement["id"], relationship_id, handshake_id
+        )
+        if not commitment_end_date:
+            return
+        expiration_date = commitment_end_date.isoformat()
+        logger.info("Synchronizing handshake expiration date: %s", expiration_date)
+        self._update_fulfillment_parameter(
+            agreement,
+            FulfillmentParametersEnum.HANDSHAKE_EXPIRATION_DATE.value,
+            expiration_date,
+            error_message=(
+                f"Failed to update agreement with handshake expiration date {expiration_date}"
+            ),
+            notification_title="Synchronize handshake expiration date",
+        )
+
     def terminate_agreement(self, agreement: AgreementType) -> None:
         """Terminates agreement by terminating all its active subscriptions."""
         mpt_client = self.mpt_client
@@ -209,6 +265,10 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
             self.notify_scheduled_transfer_end(agreement, end_date)
 
         self.sync_responsibility_transfer_id(agreement, available_transfer["Id"])
+        self.sync_billing_transfer_acceptance_date(
+            agreement, get_transfer_start_date(available_transfer)
+        )
+        self.sync_handshake_expiration_date(agreement)
 
         AgreementSubscriptionsSyncer(self.mpt_client, dry_run=self.dry_run).process(agreement)
 

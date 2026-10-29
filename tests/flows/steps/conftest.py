@@ -3,6 +3,7 @@ from mpt_extension_sdk.flows.pipeline import Step
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.flows.order import InitialAWSContext
+from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
 
 @pytest.fixture
@@ -42,3 +43,8 @@ def mock_switch_order_status_to_complete(mocker):
     return mocker.patch(
         "swo_aws_extension.flows.order.InitialAWSContext.switch_order_status_to_complete"
     )
+
+
+@pytest.fixture
+def mock_teams_send_warning(mocker):
+    return mocker.patch.object(TeamsNotificationManager, "send_warning", autospec=True)

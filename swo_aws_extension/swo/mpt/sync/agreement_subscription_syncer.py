@@ -8,6 +8,7 @@ from mpt_extension_sdk.mpt_http.mpt import (
     create_agreement_subscription,
     get_product_items_by_skus,
     terminate_subscription,
+    update_agreement,
     update_agreement_subscription,
 )
 from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
@@ -27,7 +28,7 @@ from swo_aws_extension.constants import (
 )
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.models import BillingPeriod
-from swo_aws_extension.parameters import get_termination_date
+from swo_aws_extension.parameters import get_management_account_name, get_termination_date
 from swo_aws_extension.swo.mpt.sync.base import AgreementProcessor, AgreementType
 from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
@@ -58,6 +59,7 @@ class AgreementSubscriptionsSyncer(AgreementProcessor):  # noqa: WPS214
             aws_client, mpa_account_id, self._get_billing_period(), agreement.get("id", "")
         )
         logger.info("Found %d linked accounts with usage", len(linked_accounts))
+        self._sync_management_account_name(agreement, mpa_account_id, linked_accounts)
         self._sync_subscriptions(agreement, linked_accounts)
         self._terminate_expired_subscriptions(agreement)
 
@@ -67,6 +69,50 @@ class AgreementSubscriptionsSyncer(AgreementProcessor):  # noqa: WPS214
         return BillingPeriod(
             today.replace(day=1).isoformat(), next_month.replace(day=1).isoformat()
         )
+
+    def _sync_management_account_name(
+        self,
+        agreement: AgreementType,
+        mpa_account_id: str,
+        linked_accounts: list[dict[str, str]],
+    ) -> None:
+        if get_management_account_name(agreement):
+            return
+        management_account_id = str(mpa_account_id)
+        account_name = next(
+            (
+                account["account_name"]
+                for account in linked_accounts
+                if account["account_id"] == management_account_id
+            ),
+            None,
+        )
+        if not account_name or account_name == management_account_id:
+            logger.info("Management account %s name not available, skipping", mpa_account_id)
+            return
+        logger.info("Synchronizing management account name: %s", account_name)
+        if self.dry_run:
+            logger.info("Dry run mode - skipping management account name update")
+            return
+        try:
+            update_agreement(
+                self.mpt_client,
+                agreement["id"],
+                parameters={
+                    ParamPhasesEnum.FULFILLMENT.value: [
+                        {
+                            "externalId": FulfillmentParametersEnum.MANAGEMENT_ACCOUNT_NAME.value,
+                            "value": account_name,
+                        }
+                    ]
+                },
+            )
+        except MPTError:
+            msg = f"Error updating management account name for agreement {agreement['id']}"
+            logger.exception(msg)
+            TeamsNotificationManager().send_exception(
+                f"{agreement['id']} - Synchronizing management account name", msg
+            )
 
     def _sync_subscriptions(
         self, agreement: AgreementType, linked_accounts: list[dict[str, str]]

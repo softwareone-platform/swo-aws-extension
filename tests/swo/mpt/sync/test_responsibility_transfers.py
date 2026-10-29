@@ -6,6 +6,7 @@ from swo_aws_extension.constants import ResponsibilityTransferStatus
 from swo_aws_extension.swo.mpt.sync.responsibility_transfers import (
     get_available_responsibility_transfers,
     get_available_transfer_for_account,
+    get_transfer_start_date,
 )
 
 
@@ -43,11 +44,13 @@ def test_get_available_transfers_success(config, mock_awsclient, responsibility_
         "225989344502": {
             "Id": "rt-8lr3q6sn",
             "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+            "StartTimestamp": dt.datetime.fromisoformat("2025-11-01T00:00:00Z"),
             "EndTimestamp": None,
         },
         "651706759265": {
             "Id": "rt-8lr3q6sn",
             "Status": ResponsibilityTransferStatus.WITHDRAWN.value,
+            "StartTimestamp": dt.datetime.fromisoformat("2025-11-01T00:00:00Z"),
             "EndTimestamp": dt.datetime.fromisoformat(withdrawn_end),
         },
     }
@@ -85,6 +88,7 @@ def test_get_available_transfers_multiple_withdrawn_keeps_latest(
         "225989344502": {
             "Id": "rt-latest",
             "Status": withdrawn,
+            "StartTimestamp": dt.datetime.fromisoformat("2025-11-01T00:00:00Z"),
             "EndTimestamp": dt.datetime.fromisoformat("2026-10-31T23:59:59+00:00"),
         },
     }
@@ -178,6 +182,7 @@ def test_get_available_transfers_no_source(config, mock_awsclient, responsibilit
         "225989344502": {
             "Id": "rt-8lr3q6sn",
             "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+            "StartTimestamp": dt.datetime.fromisoformat("2025-11-01T00:00:00Z"),
             "EndTimestamp": None,
         },
     }
@@ -214,3 +219,17 @@ def test_get_transfer_for_account_not_found(
     result = get_available_transfer_for_account("651706759263", "999999999999")
 
     assert result is None
+
+
+@pytest.mark.parametrize(
+    ("transfer", "expected_start_date"),
+    [
+        ({"StartTimestamp": dt.datetime.fromisoformat("2026-02-01T23:30:00-02:00")}, "2026-02-02"),
+        ({"StartTimestamp": None}, None),
+        ({}, None),
+    ],
+)
+def test_get_transfer_start_date(transfer, expected_start_date):
+    result = get_transfer_start_date(transfer)
+
+    assert result == expected_start_date

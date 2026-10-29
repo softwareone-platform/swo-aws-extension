@@ -688,3 +688,54 @@ def set_crm_migration_ticket_id(order: dict[str, Any], ticket_id: str) -> dict[s
     )
     fulfillment_param["value"] = ticket_id
     return updated_order
+
+
+def get_billing_transfer_acceptance_date(source: dict[str, Any]) -> str | None:
+    """Get the billing transfer acceptance date from the fulfillment parameter or None."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.BILLING_TRANSFER_ACCEPTANCE_DATE.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def set_billing_transfer_acceptance_date(
+    order: dict[str, Any], acceptance_date: str
+) -> dict[str, Any]:
+    """Set the billing transfer acceptance date on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.BILLING_TRANSFER_ACCEPTANCE_DATE.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = acceptance_date
+    return updated_order
+
+
+def get_handshake_expiration_date(source: dict[str, Any]) -> str | None:
+    """Get the handshake expiration date from the fulfillment parameter or None if not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.HANDSHAKE_EXPIRATION_DATE.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)
+
+
+def set_handshake_expiration_date(order: dict[str, Any], expiration_date: str) -> dict[str, Any]:
+    """Set the handshake expiration date on the fulfillment parameters."""
+    updated_order = copy.deepcopy(order)
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.HANDSHAKE_EXPIRATION_DATE.value,
+        updated_order,
+    )
+    fulfillment_param["value"] = expiration_date
+    return updated_order
+
+
+def get_management_account_name(source: dict[str, Any]) -> str | None:
+    """Get the management account name from the fulfillment parameter or None if not set."""
+    fulfillment_param = get_fulfillment_parameter(
+        FulfillmentParametersEnum.MANAGEMENT_ACCOUNT_NAME.value,
+        source,
+    )
+    return fulfillment_param.get("value", None)

@@ -1,5 +1,7 @@
 import datetime as dt
 
+import pytest
+
 from swo_aws_extension.aws.models import ChannelHandshakeServicePeriod
 from swo_aws_extension.constants import ServicePeriodTypeEnum
 
@@ -76,3 +78,34 @@ def test_commitment_ends_after_without_end_date():
     result = service_period.commitment_ends_after(COMMITMENT_END)
 
     assert not result
+
+
+def test_from_handshake_null_detail():
+    service_period = ChannelHandshakeServicePeriod.from_handshake({"detail": None})  # act
+
+    assert service_period == ChannelHandshakeServicePeriod(period_type="", end_date=None)
+
+
+def test_from_handshake_iso_end_date():
+    handshake = _build_handshake(
+        ServicePeriodTypeEnum.FIXED_COMMITMENT_PERIOD.value,
+        end_date="2026-01-01T00:00:00Z",
+    )
+
+    service_period = ChannelHandshakeServicePeriod.from_handshake(handshake)  # act
+
+    assert service_period.end_date == COMMITMENT_END
+
+
+@pytest.mark.parametrize(
+    ("end_date", "expected_error"),
+    [("not-a-date", ValueError), (1767225600, TypeError)],
+)
+def test_from_handshake_invalid_end_date(end_date, expected_error):
+    handshake = _build_handshake(
+        ServicePeriodTypeEnum.FIXED_COMMITMENT_PERIOD.value,
+        end_date=end_date,
+    )
+
+    with pytest.raises(expected_error):
+        ChannelHandshakeServicePeriod.from_handshake(handshake)
