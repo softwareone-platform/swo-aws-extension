@@ -1,17 +1,14 @@
 from typing import override
 
-from mpt_api_client.exceptions import MPTError
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import (
     get_agreements_by_query,
     terminate_subscription,
-    update_agreement,
 )
 from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
 
 from swo_aws_extension.constants import (
     FulfillmentParametersEnum,
-    ParamPhasesEnum,
     SubscriptionStatus,
 )
 from swo_aws_extension.flows.steps.crm_tickets.templates.terminate_order import (
@@ -19,16 +16,13 @@ from swo_aws_extension.flows.steps.crm_tickets.templates.terminate_order import 
 )
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.parameters import (
-    get_billing_transfer_acceptance_date,
-    get_channel_handshake_id,
     get_crm_terminate_order_ticket_id,
-    get_handshake_expiration_date,
     get_relationship_end_date,
-    get_relationship_id,
     get_responsibility_transfer_id,
 )
 from swo_aws_extension.swo.crm_service.client import ServiceRequest, get_service_client
 from swo_aws_extension.swo.crm_service.errors import CRMError
+from swo_aws_extension.swo.mpt.sync.agreement_parameters_syncer import AgreementParametersSyncer
 from swo_aws_extension.swo.mpt.sync.agreement_subscription_syncer import (
     AgreementSubscriptionsSyncer,
 )
@@ -37,7 +31,6 @@ from swo_aws_extension.swo.mpt.sync.base import (
     AgreementProcessorError,
     AgreementType,
 )
-from swo_aws_extension.swo.mpt.sync.channel_handshakes import get_fixed_commitment_end_date
 from swo_aws_extension.swo.mpt.sync.responsibility_transfers import (
     get_available_transfer_for_account,
     get_transfer_start_date,
@@ -52,15 +45,6 @@ logger = get_logger(__name__)
 
 class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
     """Class to synchronize MPT agreements with AWS responsibility transfers."""
-
-    def __init__(
-        self,
-        mpt_client: MPTClient,
-        *,
-        dry_run: bool,
-    ):
-        self.mpt_client = mpt_client
-        self.dry_run = dry_run
 
     def terminate(self, agreement: AgreementType):
         """Terminate an agreement, leaving AWS offboarding to be handled manually."""
@@ -155,56 +139,6 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
             notification_title="Synchronize responsibility transfer ID",
         )
 
-    def sync_billing_transfer_acceptance_date(
-        self, agreement: AgreementType, acceptance_date: str | None
-    ) -> None:
-        """Backfill an empty billing transfer acceptance date with the transfer start date."""
-        if get_billing_transfer_acceptance_date(agreement):
-            return
-        if not acceptance_date:
-            message = "Billing transfer has no start date; acceptance date not set"
-            logger.warning(message)
-            TeamsNotificationManager().send_warning(
-                f"{agreement['id']} - Synchronize billing transfer acceptance date", message
-            )
-            return
-        logger.info("Synchronizing billing transfer acceptance date: %s", acceptance_date)
-        self._update_fulfillment_parameter(
-            agreement,
-            FulfillmentParametersEnum.BILLING_TRANSFER_ACCEPTANCE_DATE.value,
-            acceptance_date,
-            error_message=(
-                f"Failed to update agreement with billing transfer acceptance date "
-                f"{acceptance_date}"
-            ),
-            notification_title="Synchronize billing transfer acceptance date",
-        )
-
-    def sync_handshake_expiration_date(self, agreement: AgreementType) -> None:
-        """Backfill an empty handshake expiration date with the fixed commitment end date."""
-        if get_handshake_expiration_date(agreement):
-            return
-        relationship_id = get_relationship_id(agreement)
-        handshake_id = get_channel_handshake_id(agreement)
-        if not relationship_id or not handshake_id:
-            return
-        commitment_end_date = get_fixed_commitment_end_date(
-            agreement["id"], relationship_id, handshake_id
-        )
-        if not commitment_end_date:
-            return
-        expiration_date = commitment_end_date.isoformat()
-        logger.info("Synchronizing handshake expiration date: %s", expiration_date)
-        self._update_fulfillment_parameter(
-            agreement,
-            FulfillmentParametersEnum.HANDSHAKE_EXPIRATION_DATE.value,
-            expiration_date,
-            error_message=(
-                f"Failed to update agreement with handshake expiration date {expiration_date}"
-            ),
-            notification_title="Synchronize handshake expiration date",
-        )
-
     def terminate_agreement(self, agreement: AgreementType) -> None:
         """Terminates agreement by terminating all its active subscriptions."""
         mpt_client = self.mpt_client
@@ -265,10 +199,11 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
             self.notify_scheduled_transfer_end(agreement, end_date)
 
         self.sync_responsibility_transfer_id(agreement, available_transfer["Id"])
-        self.sync_billing_transfer_acceptance_date(
-            agreement, get_transfer_start_date(available_transfer)
-        )
-        self.sync_handshake_expiration_date(agreement)
+        AgreementParametersSyncer(
+            self.mpt_client,
+            dry_run=self.dry_run,
+            transfer_start_date=get_transfer_start_date(available_transfer),
+        ).process(agreement)
 
         AgreementSubscriptionsSyncer(self.mpt_client, dry_run=self.dry_run).process(agreement)
 
@@ -307,38 +242,6 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
             error_message=f"Failed to update agreement with termination ticket ID {ticket_id}",
             notification_title="Transfer end notification",
         )
-
-    def _update_fulfillment_parameter(
-        self,
-        agreement: AgreementType,
-        external_id: str,
-        parameter_value: str,
-        *,
-        error_message: str,
-        notification_title: str,
-    ) -> None:
-        agreement_parameters = {
-            ParamPhasesEnum.FULFILLMENT.value: [
-                {
-                    "externalId": external_id,
-                    "value": parameter_value,
-                }
-            ]
-        }
-        if self.dry_run:
-            logger.info(
-                "Dry run mode - skipping update with parameters: %s",
-                agreement_parameters,
-            )
-            return
-        agreement_id = agreement["id"]
-        try:
-            update_agreement(self.mpt_client, agreement_id, parameters=agreement_parameters)
-        except MPTError:
-            logger.exception(error_message)
-            TeamsNotificationManager().send_exception(
-                f"{agreement_id} - {notification_title}", error_message
-            )
 
 
 def synchronize_agreements(

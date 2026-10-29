@@ -656,7 +656,7 @@ def test_subscription_syncer_sets_management_account_name(
     mock_get_linked_accounts_with_usage,
     mock_get_product_items_by_skus,
     mock_create_agreement_subscription,
-    mock_sub_update_agreement,
+    mock_update_agreement,
 ):
     mock_get_linked_accounts_with_usage.return_value = [
         {"account_id": "225989344502", "account_name": "Stark Industries"},
@@ -665,7 +665,7 @@ def test_subscription_syncer_sets_management_account_name(
 
     subscription_syncer.process(agreement)  # act
 
-    mock_sub_update_agreement.assert_called_once_with(
+    mock_update_agreement.assert_called_once_with(
         subscription_syncer.mpt_client,
         agreement["id"],
         parameters={
@@ -698,7 +698,7 @@ def test_subscription_syncer_skips_management_account_name(
     mock_get_linked_accounts_with_usage,
     mock_get_product_items_by_skus,
     mock_create_agreement_subscription,
-    mock_sub_update_agreement,
+    mock_update_agreement,
     saved_account_name,
     linked_accounts,
 ):
@@ -711,7 +711,7 @@ def test_subscription_syncer_skips_management_account_name(
 
     subscription_syncer.process(agreement)  # act
 
-    mock_sub_update_agreement.assert_not_called()
+    mock_update_agreement.assert_not_called()
 
 
 def test_subscription_syncer_management_account_name_dry_run(
@@ -720,7 +720,7 @@ def test_subscription_syncer_management_account_name_dry_run(
     mock_awsclient,
     mock_get_linked_accounts_with_usage,
     mock_get_product_items_by_skus,
-    mock_sub_update_agreement,
+    mock_update_agreement,
 ):
     mock_get_linked_accounts_with_usage.return_value = [
         {"account_id": "225989344502", "account_name": "Stark Industries"}
@@ -728,7 +728,7 @@ def test_subscription_syncer_management_account_name_dry_run(
 
     subscription_syncer_dry_run.process(agreement)  # act
 
-    mock_sub_update_agreement.assert_not_called()
+    mock_update_agreement.assert_not_called()
 
 
 def test_subscription_syncer_management_account_name_error(
@@ -739,12 +739,12 @@ def test_subscription_syncer_management_account_name_error(
     mock_get_linked_accounts_with_usage,
     mock_get_product_items_by_skus,
     mock_create_agreement_subscription,
-    mock_sub_update_agreement,
+    mock_update_agreement,
 ):
     mock_get_linked_accounts_with_usage.return_value = [
         {"account_id": "225989344502", "account_name": "Stark Industries"}
     ]
-    mock_sub_update_agreement.side_effect = MPTError("update failed")
+    mock_update_agreement.side_effect = MPTError("update failed")
 
     subscription_syncer.process(agreement)  # act
 
@@ -761,7 +761,7 @@ def test_subscription_syncer_matches_numeric_management_account_id(
     mock_get_linked_accounts_with_usage,
     mock_get_product_items_by_skus,
     mock_create_agreement_subscription,
-    mock_sub_update_agreement,
+    mock_update_agreement,
 ):
     agreement = agreement_factory(vendor_id=int("225989344502"))
     mock_get_linked_accounts_with_usage.return_value = [
@@ -770,7 +770,7 @@ def test_subscription_syncer_matches_numeric_management_account_id(
 
     subscription_syncer.process(agreement)  # act
 
-    mock_sub_update_agreement.assert_called_once_with(
+    mock_update_agreement.assert_called_once_with(
         subscription_syncer.mpt_client,
         agreement["id"],
         parameters={

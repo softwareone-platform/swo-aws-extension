@@ -511,13 +511,13 @@ def test_synchronize_agreements_no_agreement_ids(
     mock_get_available_transfer_method.assert_called_once()
 
 
-def test_agreement_syncer_sync_backfills_accounts_parameters(
-    mocker,
+def test_agreement_syncer_sync_runs_parameters_syncer(
     agreement,
     mock_get_available_transfer_for_account,
     mock_sync_responsibility_transfer_id_method,
     mock_awsclient,
     mock_get_linked_accounts_with_usage,
+    mock_parameters_syncer,
     syncer,
 ):
     mock_get_available_transfer_for_account.return_value = {
@@ -525,163 +525,10 @@ def test_agreement_syncer_sync_backfills_accounts_parameters(
         "Status": ResponsibilityTransferStatus.ACCEPTED.value,
         "StartTimestamp": dt.datetime.fromisoformat("2026-02-01T00:00:00+00:00"),
     }
-    mock_sync_acceptance_date = mocker.patch.object(
-        syncer, "sync_billing_transfer_acceptance_date", autospec=True
-    )
-    mock_sync_expiration_date = mocker.patch.object(
-        syncer, "sync_handshake_expiration_date", autospec=True
-    )
 
     syncer.process(agreement)  # act
 
-    assert (
-        mock_sync_acceptance_date.call_args_list,
-        mock_sync_expiration_date.call_args_list,
-    ) == ([mocker.call(agreement, "2026-02-01")], [mocker.call(agreement)])
-
-
-def test_sync_billing_transfer_acceptance_date_update(agreement, mock_update_agreement, syncer):
-    syncer.sync_billing_transfer_acceptance_date(agreement, "2026-02-01")  # act
-
-    mock_update_agreement.assert_called_once_with(
-        syncer.mpt_client,
-        agreement["id"],
-        parameters={
-            "fulfillment": [{"externalId": "billingTransferAcceptanceDate", "value": "2026-02-01"}]
-        },
+    mock_parameters_syncer.assert_called_once_with(
+        syncer.mpt_client, dry_run=False, transfer_start_date="2026-02-01"
     )
-
-
-@pytest.mark.parametrize(
-    ("saved_acceptance_date", "acceptance_date"),
-    [
-        ("2026-01-15", "2026-02-01"),
-        ("", None),
-    ],
-)
-def test_sync_billing_transfer_acceptance_date_skips(
-    agreement_factory,
-    fulfillment_parameters_factory,
-    mock_update_agreement,
-    mock_send_warning,
-    syncer,
-    saved_acceptance_date,
-    acceptance_date,
-):
-    agreement = agreement_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            billing_transfer_acceptance_date=saved_acceptance_date
-        )
-    )
-
-    syncer.sync_billing_transfer_acceptance_date(agreement, acceptance_date)  # act
-
-    mock_update_agreement.assert_not_called()
-
-
-def test_sync_billing_transfer_acceptance_date_error(
-    agreement, mock_update_agreement, mock_send_exception, syncer
-):
-    mock_update_agreement.side_effect = MPTError("error")
-
-    syncer.sync_billing_transfer_acceptance_date(agreement, "2026-02-01")  # act
-
-    mock_send_exception.assert_called_once_with(
-        f"{agreement['id']} - Synchronize billing transfer acceptance date",
-        "Failed to update agreement with billing transfer acceptance date 2026-02-01",
-    )
-
-
-def test_sync_handshake_expiration_date_update(
-    agreement_factory,
-    fulfillment_parameters_factory,
-    mock_get_fixed_commitment_end_date,
-    mock_update_agreement,
-    syncer,
-):
-    agreement = agreement_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            relationship_id="rel-123456", channel_handshake_id="hs-123456"
-        )
-    )
-    mock_get_fixed_commitment_end_date.return_value = dt.date.fromisoformat("2027-02-01")
-
-    syncer.sync_handshake_expiration_date(agreement)  # act
-
-    mock_update_agreement.assert_called_once_with(
-        syncer.mpt_client,
-        agreement["id"],
-        parameters={
-            "fulfillment": [{"externalId": "handshakeExpirationDate", "value": "2027-02-01"}]
-        },
-    )
-    mock_get_fixed_commitment_end_date.assert_called_once_with(
-        agreement["id"], "rel-123456", "hs-123456"
-    )
-
-
-@pytest.mark.parametrize(
-    "factory_kwargs",
-    [
-        {"relationship_id": "", "channel_handshake_id": "hs-123456"},
-        {"relationship_id": "rel-123456", "channel_handshake_id": ""},
-        {
-            "relationship_id": "rel-123456",
-            "channel_handshake_id": "hs-123456",
-            "handshake_expiration_date": "2027-01-01",
-        },
-    ],
-)
-def test_sync_handshake_expiration_date_skips_lookup(
-    agreement_factory,
-    fulfillment_parameters_factory,
-    mock_get_fixed_commitment_end_date,
-    mock_update_agreement,
-    syncer,
-    factory_kwargs,
-):
-    agreement = agreement_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(**factory_kwargs)
-    )
-
-    syncer.sync_handshake_expiration_date(agreement)  # act
-
-    assert (
-        mock_get_fixed_commitment_end_date.called,
-        mock_update_agreement.called,
-    ) == (False, False)
-
-
-def test_sync_handshake_expiration_date_no_fixed_commitment(
-    agreement_factory,
-    fulfillment_parameters_factory,
-    mock_get_fixed_commitment_end_date,
-    mock_update_agreement,
-    syncer,
-):
-    agreement = agreement_factory(
-        fulfillment_parameters=fulfillment_parameters_factory(
-            relationship_id="rel-123456", channel_handshake_id="hs-123456"
-        )
-    )
-    mock_get_fixed_commitment_end_date.return_value = None
-
-    syncer.sync_handshake_expiration_date(agreement)  # act
-
-    mock_update_agreement.assert_not_called()
-
-
-def test_sync_billing_transfer_acceptance_date_warns_without_start_date(
-    mocker, caplog, agreement, mock_update_agreement, mock_send_warning, syncer
-):
-    message = "Billing transfer has no start date; acceptance date not set"
-
-    syncer.sync_billing_transfer_acceptance_date(agreement, None)  # act
-
-    assert (
-        [(record.levelname, record.getMessage()) for record in caplog.records],
-        mock_send_warning.call_args_list,
-    ) == (
-        [("WARNING", message)],
-        [mocker.call(f"{agreement['id']} - Synchronize billing transfer acceptance date", message)],
-    )
+    mock_parameters_syncer.return_value.process.assert_called_once_with(agreement)
