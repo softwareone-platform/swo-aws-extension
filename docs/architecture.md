@@ -51,7 +51,10 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    data flows through the steps as an `InitialAWSContext` / `PurchaseContext`
    (`flows/order.py`).
 4. **Validation** (`flows/validation/base.py`) — pre-fulfilment validation and
-   parameter visibility/requirement rules driven by account type.
+   parameter visibility/requirement rules driven by account type. The
+   `masterPayerID` parameter is hidden on every order except Purchase drafts
+   with an existing account; migration orders show it because they skip draft
+   validation and use the product default (`hidden: false`).
 5. **Integration clients** (`aws/`, `swo/`, `airtable/`) — typed clients that
    wrap each external system behind a single boundary.
 6. **Background jobs** (`flows/jobs/`, `billing/`, `swo/mpt/sync/`) — reporting

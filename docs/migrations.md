@@ -18,6 +18,7 @@ This repository uses the standard migration workflow and standard make-based com
 - Migration commands are exposed through [`make/migrations.mk`](../make/migrations.mk) and run `mpt-service-cli migrate` inside the Docker-based app container.
 - Repository job and billing flows under [`swo_aws_extension/flows/jobs/`](../swo_aws_extension/flows/jobs) are business workflows, not `mpt-service-cli` migrations.
 - Changes to reporting, billing journal generation, or querying logic do not automatically require a new schema or data migration.
+- Deploy the validation change that hides `masterPayerID` before running the `master_payer_id_visible` schema migration. Otherwise every regular draft shows the parameter until the deploy completes.
 
 ## When To Update This Document
 

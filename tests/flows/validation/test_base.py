@@ -1,3 +1,4 @@
+from types import MappingProxyType
 from unittest.mock import MagicMock
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
@@ -10,6 +11,8 @@ from swo_aws_extension.flows.validation.base import (
     validate_order,
 )
 from swo_aws_extension.parameters import get_ordering_parameter, set_order_parameter_constraints
+
+VISIBLE_CONSTRAINTS = MappingProxyType({"hidden": False, "required": False, "readonly": False})
 
 
 def test_validate_order_orchestrates_all_steps_new_aws_environment(
@@ -134,6 +137,7 @@ def test_validate_order_with_invalid_account_type(order_factory, order_parameter
     order = order_factory(
         order_parameters=order_parameters_factory(
             account_type="INVALID_TYPE",
+            constraints=dict(VISIBLE_CONSTRAINTS),
         ),
         lines=[],
     )
@@ -149,7 +153,47 @@ def test_validate_order_with_invalid_account_type(order_factory, order_parameter
     result = validate_order(mock_client, order)
 
     account_type_param = get_ordering_parameter(OrderParametersEnum.ACCOUNT_TYPE.value, result)
+    master_payer_account_id_param = get_ordering_parameter(
+        OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value, result
+    )
     assert account_type_param["error"]["id"] == "AWS001"
+    assert master_payer_account_id_param["constraints"] == {
+        "hidden": True,
+        "required": False,
+        "readonly": False,
+    }
+
+
+def test_validate_order_hides_master_payer_account_without_account_type(
+    order_factory, order_parameters_factory, mocker
+):
+    mock_client = MagicMock()
+    order = order_factory(
+        order_parameters=order_parameters_factory(
+            account_type=None,
+            constraints=dict(VISIBLE_CONSTRAINTS),
+        ),
+        lines=[],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.has_previous_order",
+        return_value=False,
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_product_items_by_skus",
+        return_value=[],
+    )
+
+    result = validate_order(mock_client, order)
+
+    master_payer_account_id_param = get_ordering_parameter(
+        OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value, result
+    )
+    assert master_payer_account_id_param["constraints"] == {
+        "hidden": True,
+        "required": False,
+        "readonly": False,
+    }
 
 
 def test_validate_order_when_product_items_not_found(
@@ -204,14 +248,24 @@ def test_validate_order_strips_whitespace_from_mpa_account(
     assert mpa_param["value"] == "651706759263"
 
 
-def test_validate_order_rejects_change_order(order_factory):
+def test_validate_order_rejects_change_order(order_factory, order_parameters_factory):
     mock_client = MagicMock(spec=MPTClient)
-    order = order_factory(order_type="Change")
+    order = order_factory(
+        order_type="Change",
+        order_parameters=order_parameters_factory(
+            account_type=AccountTypesEnum.EXISTING_AWS_ENVIRONMENT.value,
+            constraints=dict(VISIBLE_CONSTRAINTS),
+        ),
+    )
 
     result = validate_order(mock_client, order)
 
+    master_payer_account_id_param = get_ordering_parameter(
+        OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value, result
+    )
     assert result["error"]["id"] == "AWS003"
     assert "Change orders are not supported" in result["error"]["message"]
+    assert master_payer_account_id_param["constraints"]["hidden"] is True
 
 
 def test_validate_termination_order_rejected_for_linked_account(order_factory, mocker):
@@ -250,6 +304,44 @@ def test_validate_termination_order_rejected_for_linked_account(order_factory, m
 
     assert result["error"]["id"] == "AWS005"
     assert "linked-account subscriptions are not supported" in result["error"]["message"]
+
+
+def test_validate_termination_order_hides_master_payer_account(
+    order_factory, order_parameters_factory, mocker
+):
+    mock_client = MagicMock(spec=MPTClient)
+    agreement_info = {
+        "externalIds": {"vendor": "225989344502"},
+        "subscriptions": [
+            {
+                "id": "SUB-MASTER-001",
+                "externalIds": {"vendor": "225989344502"},
+                "status": "Active",
+            },
+        ],
+    }
+    order = order_factory(
+        order_type="Termination",
+        order_parameters=order_parameters_factory(constraints=dict(VISIBLE_CONSTRAINTS)),
+        lines=[
+            {"subscription": {"id": "SUB-MASTER-001"}, "quantity": 0, "oldQuantity": 1},
+        ],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.setup_client",
+        return_value=MagicMock(),
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.get_agreement",
+        return_value=agreement_info,
+    )
+
+    result = validate_order(mock_client, order)
+
+    master_payer_account_id_param = get_ordering_parameter(
+        OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value, result
+    )
+    assert master_payer_account_id_param["constraints"]["hidden"] is True
 
 
 def test_validate_termination_order_allowed_when_master_subscription_is_terminating(
@@ -357,3 +449,29 @@ def test_validate_order_returns_error_for_duplicate_agreement(
     account_type_param = get_ordering_parameter(OrderParametersEnum.ACCOUNT_TYPE.value, result)
     assert account_type_param["error"]["id"] == "AWS004"
     assert "active agreement already exists" in account_type_param["error"]["message"]
+
+
+def test_validate_order_hides_master_payer_account_for_duplicate_agreement(
+    order_factory, order_parameters_factory, mocker
+):
+    mock_client = MagicMock(spec=MPTClient)
+    order = order_factory(
+        order_parameters=order_parameters_factory(
+            account_type=AccountTypesEnum.NEW_AWS_ENVIRONMENT.value,
+            constraints=dict(VISIBLE_CONSTRAINTS),
+        ),
+        lines=[],
+    )
+    mocker.patch(
+        "swo_aws_extension.flows.validation.base.has_previous_order",
+        return_value=True,
+    )
+
+    result = validate_order(mock_client, order)
+
+    master_payer_account_id_param = get_ordering_parameter(
+        OrderParametersEnum.MASTER_PAYER_ACCOUNT_ID.value, result
+    )
+    account_type_param = get_ordering_parameter(OrderParametersEnum.ACCOUNT_TYPE.value, result)
+    assert account_type_param["error"]["id"] == "AWS004"
+    assert master_payer_account_id_param["constraints"]["hidden"] is True
