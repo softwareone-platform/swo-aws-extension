@@ -3,12 +3,10 @@ from typing import override
 
 from dateutil.relativedelta import relativedelta
 from mpt_api_client.exceptions import MPTError
-from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import (
     create_agreement_subscription,
     get_product_items_by_skus,
     terminate_subscription,
-    update_agreement,
     update_agreement_subscription,
 )
 from mpt_extension_sdk.runtime.tracer import dynamic_trace_span
@@ -39,10 +37,6 @@ LINKED_ACCOUNT_INACTIVITY_MONTHS = 3
 
 class AgreementSubscriptionsSyncer(AgreementProcessor):  # noqa: WPS214
     """Synchronizes MPT subscriptions for linked accounts within an agreement."""
-
-    def __init__(self, mpt_client: MPTClient, *, dry_run: bool):
-        self.mpt_client = mpt_client
-        self.dry_run = dry_run
 
     @override
     @dynamic_trace_span(
@@ -91,28 +85,15 @@ class AgreementSubscriptionsSyncer(AgreementProcessor):  # noqa: WPS214
             logger.info("Management account %s name not available, skipping", mpa_account_id)
             return
         logger.info("Synchronizing management account name: %s", account_name)
-        if self.dry_run:
-            logger.info("Dry run mode - skipping management account name update")
-            return
-        try:
-            update_agreement(
-                self.mpt_client,
-                agreement["id"],
-                parameters={
-                    ParamPhasesEnum.FULFILLMENT.value: [
-                        {
-                            "externalId": FulfillmentParametersEnum.MANAGEMENT_ACCOUNT_NAME.value,
-                            "value": account_name,
-                        }
-                    ]
-                },
-            )
-        except MPTError:
-            msg = f"Error updating management account name for agreement {agreement['id']}"
-            logger.exception(msg)
-            TeamsNotificationManager().send_exception(
-                f"{agreement['id']} - Synchronizing management account name", msg
-            )
+        self._update_fulfillment_parameter(
+            agreement,
+            FulfillmentParametersEnum.MANAGEMENT_ACCOUNT_NAME.value,
+            account_name,
+            error_message=(
+                f"Error updating management account name for agreement {agreement['id']}"
+            ),
+            notification_title="Synchronizing management account name",
+        )
 
     def _sync_subscriptions(
         self, agreement: AgreementType, linked_accounts: list[dict[str, str]]
