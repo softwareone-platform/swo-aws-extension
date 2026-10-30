@@ -42,7 +42,9 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    order's AWS Account Migration Airtable row. It creates the billing transfer
    invitation, waits for the MCoE team to accept it, configures the APN program
    and channel handshake, raises the migration CRM ticket and creates the
-   master payer subscription. The migrated account keeps its CCO and ERP
+   master payer subscription. A channel handshake that times out does not stop
+   the order: the pipeline continues to the CRM ticket and the subscription.
+   The migrated account keeps its CCO and ERP
    project; customer roles and services are not deployed, and the FinOps
    entitlement follows through the FinOps sync job.
 3. **Pipelines and steps** (`flows/fulfillment/pipelines.py`, `flows/steps/`) —
