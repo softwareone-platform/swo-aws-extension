@@ -1,7 +1,7 @@
 import pytest
 from freezegun import freeze_time
 
-from swo_aws_extension.aws.errors import AWSError
+from swo_aws_extension.aws.errors import AWSError, IneligibleForBillingTransferError
 from swo_aws_extension.constants import OrderQueryingTemplateEnum, PhasesEnum
 from swo_aws_extension.flows.order import PurchaseContext
 from swo_aws_extension.flows.steps.create_billing_transfer_invitation import (
@@ -9,6 +9,7 @@ from swo_aws_extension.flows.steps.create_billing_transfer_invitation import (
 )
 from swo_aws_extension.flows.steps.errors import (
     AlreadyProcessedStepError,
+    FailStepError,
     QueryStepError,
     SkipStepError,
 )
@@ -118,6 +119,35 @@ def test_create_transfer_billing_invitation_error(
         CreateBillingTransferInvitation(config).process(mpt_client, context)
 
     assert error.value.template_id == OrderQueryingTemplateEnum.INVALID_ACCOUNT_ID.value
+
+
+def test_create_transfer_billing_invitation_ineligible_error(
+    order_factory, config, aws_client_factory, fulfillment_parameters_factory, mpt_client
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION.value,
+            responsibility_transfer_id="",
+        )
+    )
+    context = PurchaseContext.from_order_data(order)
+    _, aws_client_mock = aws_client_factory(config, "mpa-id", "role-name")
+    context.aws_client = aws_client_mock
+    ineligible_message = (
+        "Ineligible for Billing Transfer. Your organization is subject to a pricing agreement"
+        " with AWS that Billing Transfer does not support."
+    )
+    aws_client_mock.invite_organization_to_transfer_billing.side_effect = (
+        IneligibleForBillingTransferError(ineligible_message)
+    )
+
+    with pytest.raises(FailStepError) as error:
+        CreateBillingTransferInvitation(config).process(mpt_client, context)
+
+    assert error.value.id == "AWS006"
+    assert error.value.message == (
+        f"Billing transfer is not possible for account 651706759263: {ineligible_message}"
+    )
 
 
 def test_post_step_sets_phase(
