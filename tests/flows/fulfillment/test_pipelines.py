@@ -75,6 +75,7 @@ def test_purchase_migration_steps():
         "ConfigureAPNProgram",
         "CreateChannelHandshake",
         "CheckChannelHandshakeStatus",
+        "SkipPhaseStep",
         "CRMTicketMigration",
         "CreateSubscription",
         "CompleteOrder",
@@ -129,6 +130,21 @@ def test_pipeline_phase_chain(
     )
 
     assert result == (expected_handshake_phase.value, expected_subscription_phase.value)
+
+
+def test_purchase_migration_moves_handshake_timeout_phase(
+    mocker, order_factory, fulfillment_parameters_factory
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(phase=PhasesEnum.CHECK_CUSTOMER_ROLES)
+    )
+    steps = {step.__class__.__name__: step for step in pipelines.purchase_migration.queue}
+    skip_phase_step = steps["SkipPhaseStep"]
+    context = PurchaseContext.from_order_data(order)
+
+    skip_phase_step.process(mocker.MagicMock(spec=MPTClient), context)  # act
+
+    assert get_phase(context.order) == PhasesEnum.CREATE_SUBSCRIPTION.value
 
 
 def test_terminate_steps():

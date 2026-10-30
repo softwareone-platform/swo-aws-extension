@@ -37,6 +37,7 @@ from swo_aws_extension.flows.steps.set_ordering_parameters_visibility import (
     SetOrderingParametersVisibility,
 )
 from swo_aws_extension.flows.steps.setup_context import SetupContext
+from swo_aws_extension.flows.steps.skip_phase import SkipPhaseStep
 from swo_aws_extension.flows.steps.swo_job import SWOJobStep
 from swo_aws_extension.flows.steps.terminate import TerminateResponsibilityTransferStep
 from swo_aws_extension.flows.steps.validate_migration_order import ValidateMigrationOrder
@@ -121,6 +122,8 @@ purchase_existing_aws_environment = Pipeline(
 # pipeline skips customer roles, services deployment, contract card and ERP job steps.
 # Those skipped steps normally advance the order phase, so the handshake check and the
 # subscription step are told to jump straight to the next phase this pipeline handles.
+# On a channel handshake timeout the querying job sets the checkCustomerRoles phase, and the
+# skip phase step moves the order on to createSubscription.
 # The billing transfer invitation is accepted manually by the MCoE team: while it is pending
 # the order waits in querying with the migration template, and a declined, canceled or
 # expired invitation fails the order. The existing CCO cannot be set by the Migration Orders
@@ -141,6 +144,7 @@ purchase_migration = Pipeline(
     ConfigureAPNProgram(config),
     CreateChannelHandshake(config),
     CheckChannelHandshakeStatus(config, next_phase=PhasesEnum.CREATE_SUBSCRIPTION),
+    SkipPhaseStep(PhasesEnum.CHECK_CUSTOMER_ROLES, next_phase=PhasesEnum.CREATE_SUBSCRIPTION),
     CRMTicketMigration(config),
     CreateSubscription(config, next_phase=PhasesEnum.COMPLETED),
     CompleteOrder(config),
