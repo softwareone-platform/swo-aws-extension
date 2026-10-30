@@ -32,7 +32,7 @@ Then inspect the code paths relevant to the task:
 - [`swo_aws_extension/management/commands/`](swo_aws_extension/management/commands): operational and scheduled command entry points
 - [`tests/`](tests): pytest coverage by domain area
 - [`make/`](make): canonical local commands
-- [`helm/swo-extension-aws/`](helm/swo-extension-aws): deployment manifests for API and worker workloads
+- [`deployment-manifest.yaml`](deployment-manifest.yaml) and [`helm/swo-extension-aws/`](helm/swo-extension-aws): deployment manifest for API, worker, and cron workloads, plus custom Helm templates
 
 Operational guidance:
 

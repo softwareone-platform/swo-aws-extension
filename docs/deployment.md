@@ -4,17 +4,21 @@ This document is the source of truth for runtime configuration referenced by loc
 
 ## Deployment Model
 
-The repository deploys more than one workload shape from [`helm/swo-extension-aws/`](../helm/swo-extension-aws):
+The repository describes its workloads in [`deployment-manifest.yaml`](../deployment-manifest.yaml). The Azure DevOps build (`azure-pipelines.yml`) renders it into a Helm chart with the common templates of `ops-mpt-infra` (`helm/helm-init.yaml@ops-mpt-infra`, branch `releases/v1`) and publishes the chart as `helm/swo-extension-aws`. [`helm/swo-extension-aws/templates/`](../helm/swo-extension-aws/templates) holds only templates the common chart cannot express.
 
-- an API workload
-- a worker workload
-- operational command workloads run from the same extension image
+The chart contains:
+
+- an API workload (Deployment and Service `swo-extension-aws-web-api`, plus the compatibility Service `swo-extension-aws-api` still used by the `/mpt-extension-aws-api/` route)
+- a worker workload (`swo-extension-aws-worker`, a single event consumer)
+- cron jobs `swo-extension-aws-<key>` for the commands `order_querying_processor`, `synchronize_agreements`, `refresh_ccp_openid_secret`, `generate_billing_journals`, `synchronize_migration_orders`, `create_invitations_report`, and `create_pending_orders_information_report`
+
+All workloads run as the service account `swo-extension-aws-sa` with Azure workload identity.
 
 ## Configuration Source
 
 Local Docker Compose reads `.env`.
 
-Deployed workloads receive configuration through Helm config maps and secrets. The deployed templates map the same runtime variables used locally.
+Deployed workloads receive configuration through one config map and one secret, both named `swo-extension-aws`. Each `env` and `secrets` entry in the manifest maps an App Configuration key `swo-extension-aws/<logicalKey>` to the runtime variable used locally. The logical key is the variable name in lowerCamelCase (`EXT_CRM_CLIENT_SECRET` -> `extCrmClientSecret`); `APPLICATIONINSIGHTS_CONNECTION_STRING` comes from the shared key `applicationInsightsConnectionString`. Secret values must reach Helm base64-encoded (`base64encode` tag in App Configuration).
 
 ## Core Marketplace Settings
 
@@ -28,7 +32,7 @@ Deployed workloads receive configuration through Helm config maps and secrets. T
 | `MPT_ORDERS_API_POLLING_INTERVAL_SECS` | `120` | `60` | Order polling interval |
 | `MPT_KEY_VAULT_NAME` | - | `https://mpt-key-vault-name.vault.azure.net/` | Azure Key Vault URL used to resolve secrets |
 | `MPT_TOOL_STORAGE_TYPE` | `local` | `airtable` | `mpt-tool` storage backend |
-| `MPT_TOOL_STORAGE_AIRTABLE_API_KEY` | - | `patXXXXXXXX` | Airtable API key for `mpt-tool` storage; fed by the `AirTableApiToken` Helm secret (shared service-account token) |
+| `MPT_TOOL_STORAGE_AIRTABLE_API_KEY` | - | `patXXXXXXXX` | Airtable API key for `mpt-tool` storage; carries the shared Airtable service-account token (App Configuration key `mptToolStorageAirtableApiKey`) |
 | `MPT_TOOL_STORAGE_AIRTABLE_BASE_ID` | - | `appXXXXXXXX` | Airtable base id for `mpt-tool` storage |
 | `MPT_TOOL_STORAGE_AIRTABLE_TABLE_NAME` | - | `MigrationTracking` | Airtable table for `mpt-tool` storage |
 
@@ -66,8 +70,8 @@ Deployed workloads receive configuration through Helm config maps and secrets. T
 | `EXT_CCO_MANUFACTURER_CODE` | - | `SWOTS` | Manufacturer code used when creating CCO contracts |
 | `EXT_CLOUD_ORCHESTRATOR_API_BASE_URL` | - | `https://cloud-orchestrator.example` | Cloud orchestrator API base URL |
 | `EXT_AIRTABLE_BASES` | - | `{"PRD-1111-1111":"app..."}` | Per-product Airtable base mapping |
-| `EXT_AIRTABLE_ACCOUNT_MIGRATION_BASE_ID` | `default` | `appXXXXXXXX` | Airtable base holding the `AWS Account Migration` table (separate from the per-product bases); fed by the `AirTableAccountMigrationBase` Helm value, whose chart default is the placeholder `default` and must be overridden per deployment |
-| `EXT_AIRTABLE_API_TOKEN` | - | `patXXXXXXXX` | Airtable token used by repository-specific flows; fed by the `AirTableApiToken` Helm secret (shared service-account token, see [external/airtable.md](external/airtable.md)) |
+| `EXT_AIRTABLE_ACCOUNT_MIGRATION_BASE_ID` | - | `appXXXXXXXX` | Airtable base holding the `AWS Account Migration` table (separate from the per-product bases); App Configuration key `extAirtableAccountMigrationBaseId`, set per deployment |
+| `EXT_AIRTABLE_API_TOKEN` | - | `patXXXXXXXX` | Airtable token used by repository-specific flows; carries the shared Airtable service-account token (App Configuration key `extAirtableApiToken`, see [external/airtable.md](external/airtable.md)) |
 
 ## Reporting, Notifications, And Storage
 
@@ -115,7 +119,7 @@ Deployed workloads receive configuration through Helm config maps and secrets. T
 ## Repository Constraints
 
 - The extension startup check in [`swo_aws_extension/apps.py`](../swo_aws_extension/apps.py) rejects multiple product ids.
-- Helm config maps and secrets under [`helm/swo-extension-aws/`](../helm/swo-extension-aws) are the best source for deployed variable names.
+- The `env` and `secrets` entries of [`deployment-manifest.yaml`](../deployment-manifest.yaml) are the best source for deployed variable names.
 - If configuration behavior is unclear, document the current code path instead of inventing expected values.
 
 ## Behavioral Constants
