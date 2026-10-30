@@ -9,6 +9,7 @@ from botocore.config import Config as BotoConfig
 
 from swo_aws_extension.aws.errors import (
     AWSError,
+    IneligibleForBillingTransferError,
     InvalidDateInTerminateResponsibilityError,
     wrap_boto3_error,
 )
@@ -23,6 +24,9 @@ INVOICE_PDF_DOWNLOAD_TIMEOUT_SECONDS = 60
 # Standard mode retries throttling, server (5xx) and connection errors with
 # exponential backoff and jitter, keeping the default total max attempts.
 BOTO3_CLIENT_CONFIG = BotoConfig(retries={"mode": "standard"})
+# Start of the ConstraintViolationException message AWS returns when the organization
+# cannot transfer its billing, for example because of a pricing agreement with AWS.
+INELIGIBLE_FOR_BILLING_TRANSFER_MESSAGE = "Ineligible for Billing Transfer"
 
 logger = logging.getLogger(__name__)
 
@@ -119,12 +123,18 @@ class AWSClient:
     ) -> dict:
         """Invite organization to transfer billing responsibility."""
         org_client = self._get_organization_client()
-        return org_client.invite_organization_to_transfer_responsibility(
-            Type="BILLING",
-            Target={"Id": customer_id, "Type": "ACCOUNT"},
-            StartTimestamp=start_timestamp,
-            SourceName=source_name,
-        )
+        try:
+            return org_client.invite_organization_to_transfer_responsibility(
+                Type="BILLING",
+                Target={"Id": customer_id, "Type": "ACCOUNT"},
+                StartTimestamp=start_timestamp,
+                SourceName=source_name,
+            )
+        except org_client.exceptions.ConstraintViolationException as exception:
+            message = exception.response.get("Error", {}).get("Message", "")
+            if message.startswith(INELIGIBLE_FOR_BILLING_TRANSFER_MESSAGE):
+                raise IneligibleForBillingTransferError(message) from exception
+            raise
 
     @wrap_boto3_error
     def get_responsibility_transfer_details(self, transfer_id: str) -> dict:

@@ -5,7 +5,7 @@ from typing import override
 from mpt_extension_sdk.mpt_http.base import MPTClient
 from mpt_extension_sdk.mpt_http.mpt import update_order
 
-from swo_aws_extension.aws.errors import AWSError
+from swo_aws_extension.aws.errors import AWSError, IneligibleForBillingTransferError
 from swo_aws_extension.config import Config
 from swo_aws_extension.constants import (
     MONTHS_PER_YEAR,
@@ -19,6 +19,7 @@ from swo_aws_extension.flows.steps.errors import (
     ERR_CREATING_INVITATION_RESPONSE,
     ERR_MISSING_MPA_ID,
     AlreadyProcessedStepError,
+    FailStepError,
     QueryStepError,
     SkipStepError,
 )
@@ -89,6 +90,17 @@ class CreateBillingTransferInvitation(BasePhaseStep):
                 source_name=relationship_name,
                 start_timestamp=self._get_start_billing_transfer_timestamp(),
             )
+        except IneligibleForBillingTransferError as error:
+            logger.info(
+                "%s - Error - Billing transfer is not possible for account %s: %s",
+                context.order_id,
+                mpa_id,
+                error.message,
+            )
+            raise FailStepError(
+                "AWS006",
+                f"Billing transfer is not possible for account {mpa_id}: {error.message}",
+            ) from error
         except AWSError as error:
             logger.info(
                 "%s - Error - Failed to invite organization to transfer billing responsibility: %s",
