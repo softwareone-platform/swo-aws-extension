@@ -41,10 +41,10 @@ class SkipPhaseStep(BasePhaseStep):
             self._phase,
             self._next_phase,
         )
+        context.order = set_phase(context.order, self._next_phase)
 
     @override
     def post_step(self, client: MPTClient, context: PurchaseContext) -> None:
-        context.order = set_phase(context.order, self._next_phase)
         context.order = update_order(
             client, context.order_id, parameters=context.order["parameters"]
         )

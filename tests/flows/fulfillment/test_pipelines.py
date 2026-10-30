@@ -140,13 +140,11 @@ def test_purchase_migration_moves_handshake_timeout_phase(
     )
     steps = {step.__class__.__name__: step for step in pipelines.purchase_migration.queue}
     skip_phase_step = steps["SkipPhaseStep"]
+    context = PurchaseContext.from_order_data(order)
 
-    result = (
-        skip_phase_step.pre_step(PurchaseContext.from_order_data(order)),
-        _post_step_phase(mocker, skip_phase_step, "skip_phase", order),
-    )
+    skip_phase_step.process(mocker.MagicMock(spec=MPTClient), context)  # act
 
-    assert result == (None, PhasesEnum.CREATE_SUBSCRIPTION.value)
+    assert get_phase(context.order) == PhasesEnum.CREATE_SUBSCRIPTION.value
 
 
 def test_terminate_steps():
