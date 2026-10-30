@@ -133,7 +133,6 @@ per-file-ignores = [
   "swo_aws_extension/swo/finops/client.py: WPS231 WPS505 WPS111 WPS121 WPS122 WPS214 WPS420 WPS430 WPS432 WPS458",
   "swo_aws_extension/flows/jobs/invitations_report_creator.py: WPS214",
   "swo_aws_extension/flows/jobs/migration_sync_processor.py: WPS201",
-  "swo_aws_extension/swo/mpt/sync/agreement_syncer.py: WPS201",
   "tests/conftest.py: WPS202 WPS211 WPS231 WPS430",
   "tests/django/settings.py: WPS407",
   "tests/aws/test_client.py: WPS432 WPS202 WPS204",
