@@ -1,3 +1,5 @@
+import datetime as dt
+
 import pytest
 
 from swo_aws_extension.constants import (
@@ -17,7 +19,11 @@ from swo_aws_extension.flows.steps.errors import (
     QueryStepError,
     SkipStepError,
 )
-from swo_aws_extension.parameters import get_billing_group_arn, get_phase
+from swo_aws_extension.parameters import (
+    get_billing_group_arn,
+    get_billing_transfer_acceptance_date,
+    get_phase,
+)
 
 
 def test_skip_phase_is_not_expected(fulfillment_parameters_factory, order_factory, config):
@@ -69,6 +75,7 @@ def test_process_transfer_accepted(
         "ResponsibilityTransfer": {
             "Status": ResponsibilityTransferStatus.ACCEPTED,
             "Arn": "arn:aws:billing::123456789012:responsibilitytransfer/RT-123",
+            "StartTimestamp": dt.datetime.fromisoformat("2026-11-01T00:00:00+00:00"),
         }
     }
     aws_client_mock.create_billing_group.return_value = {
@@ -115,6 +122,7 @@ def test_process_transfer_accepted_billing_group_exists(
         "ResponsibilityTransfer": {
             "Status": ResponsibilityTransferStatus.ACCEPTED,
             "Arn": "arn:aws:billing::123456789012:responsibilitytransfer/RT-123",
+            "StartTimestamp": dt.datetime.fromisoformat("2026-11-01T00:00:00+00:00"),
         }
     }
 
@@ -282,3 +290,112 @@ def test_post_step_sets_phase_to_configure_apn(
     step.post_step(mpt_client, context)  # act
 
     assert get_phase(context.order) == PhasesEnum.CONFIGURE_APN_PROGRAM.value
+
+
+@pytest.mark.parametrize(
+    ("saved_acceptance_date", "start_timestamp", "expected_acceptance_date"),
+    [
+        ("", dt.datetime.fromisoformat("2026-11-01T00:00:00+00:00"), "2026-11-01"),
+        ("2026-02-01", dt.datetime.fromisoformat("2026-11-01T00:00:00+00:00"), "2026-02-01"),
+        ("", None, ""),
+    ],
+)
+def test_process_transfer_accepted_sets_acceptance_date(
+    order_factory,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    config,
+    mpt_client,
+    mock_teams_send_warning,
+    saved_acceptance_date,
+    start_timestamp,
+    expected_acceptance_date,
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION.value,
+            responsibility_transfer_id="RT-123",
+            billing_group_arn="arn:aws:billingconductor::123456789012:billinggroup/bg-id",
+            billing_transfer_acceptance_date=saved_acceptance_date,
+        ),
+    )
+    context = PurchaseContext.from_order_data(order)
+    _, aws_client_mock = aws_client_factory(config, "mpa-id", "role-name")
+    context.aws_client = aws_client_mock
+    aws_client_mock.get_responsibility_transfer_details.return_value = {
+        "ResponsibilityTransfer": {
+            "Status": ResponsibilityTransferStatus.ACCEPTED,
+            "StartTimestamp": start_timestamp,
+        }
+    }
+
+    CheckBillingTransferInvitation(config).process(mpt_client, context)  # act
+
+    assert get_billing_transfer_acceptance_date(context.order) == expected_acceptance_date
+
+
+def test_process_transfer_pending_keeps_acceptance_date_empty(
+    order_factory,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    config,
+    mpt_client,
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION.value,
+            responsibility_transfer_id="RT-123",
+        ),
+    )
+    context = PurchaseContext.from_order_data(order)
+    _, aws_client_mock = aws_client_factory(config, "mpa-id", "role-name")
+    context.aws_client = aws_client_mock
+    aws_client_mock.get_responsibility_transfer_details.return_value = {
+        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.REQUESTED}
+    }
+
+    with pytest.raises(QueryStepError):
+        CheckBillingTransferInvitation(config).process(mpt_client, context)
+
+    assert not get_billing_transfer_acceptance_date(context.order)
+
+
+def test_process_transfer_accepted_warns_without_start_date(
+    mocker,
+    caplog,
+    order_factory,
+    aws_client_factory,
+    fulfillment_parameters_factory,
+    config,
+    mpt_client,
+    mock_teams_send_warning,
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            phase=PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION.value,
+            responsibility_transfer_id="RT-123",
+            billing_group_arn="arn:aws:billingconductor::123456789012:billinggroup/bg-id",
+        ),
+    )
+    context = PurchaseContext.from_order_data(order)
+    _, aws_client_mock = aws_client_factory(config, "mpa-id", "role-name")
+    context.aws_client = aws_client_mock
+    aws_client_mock.get_responsibility_transfer_details.return_value = {
+        "ResponsibilityTransfer": {"Status": ResponsibilityTransferStatus.ACCEPTED}
+    }
+
+    CheckBillingTransferInvitation(config).process(mpt_client, context)  # act
+
+    assert (
+        [record.levelname for record in caplog.records if "no start date" in record.getMessage()],
+        mock_teams_send_warning.call_args_list,
+    ) == (
+        ["WARNING"],
+        [
+            mocker.call(
+                mocker.ANY,
+                f"{context.order_id} - Set billing transfer acceptance date",
+                "Billing transfer has no start date; acceptance date not set",
+            )
+        ],
+    )

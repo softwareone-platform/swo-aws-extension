@@ -65,7 +65,12 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    subscription per linked AWS account with usage: it creates the missing
    subscriptions from Cost Explorer usage, starts an inactivity countdown on
    accounts without usage and terminates the subscription when the countdown
-   expires.
+   expires. It also backfills empty agreement parameters: the billing transfer
+   acceptance date from the transfer start date, the handshake expiration date
+   from the fixed commitment end date of the channel handshake, and the
+   management account name from the Cost Explorer usage of the management
+   account. The order flow sets the same dates when the billing transfer
+   invitation and the channel handshake are accepted.
 
 ## Major components
 

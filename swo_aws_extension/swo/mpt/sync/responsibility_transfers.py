@@ -4,6 +4,7 @@ from functools import cache
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.config import get_config
 from swo_aws_extension.constants import ResponsibilityTransferStatus
+from swo_aws_extension.utils import date_parser
 
 AVAILABLE_TRANSFER_STATUSES = frozenset((
     ResponsibilityTransferStatus.ACCEPTED.value,
@@ -15,6 +16,14 @@ def transfer_has_ended(transfer: dict) -> bool:
     """Whether the transfer has an end date that has already been reached."""
     end_date = transfer.get("EndTimestamp")
     return bool(end_date) and end_date <= dt.datetime.now(dt.UTC)
+
+
+def get_transfer_start_date(transfer: dict) -> str | None:
+    """Get the transfer start date as an ISO date in UTC, or None if it is not set."""
+    start_date = transfer.get("StartTimestamp")
+    if not start_date:
+        return None
+    return date_parser.to_utc(start_date).date().isoformat()
 
 
 def select_transfer(current: dict | None, candidate: dict) -> dict:
@@ -66,6 +75,7 @@ def get_available_responsibility_transfers(pma_account_id: str) -> dict:
             {
                 "Id": rt["Id"],
                 "Status": rt["Status"],
+                "StartTimestamp": rt.get("StartTimestamp"),
                 "EndTimestamp": rt.get("EndTimestamp"),
             },
         )

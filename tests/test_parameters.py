@@ -176,3 +176,60 @@ def test_set_crm_migration_ticket_id(order_factory, fulfillment_parameters_facto
     result = parameters.set_crm_migration_ticket_id(order, "CS0001234")
 
     assert parameters.get_crm_migration_ticket_id(result) == "CS0001234"
+
+
+@pytest.mark.parametrize(
+    ("factory_kwarg", "getter", "parameter_value"),
+    [
+        (
+            "billing_transfer_acceptance_date",
+            parameters.get_billing_transfer_acceptance_date,
+            "2026-02-01",
+        ),
+        (
+            "handshake_expiration_date",
+            parameters.get_handshake_expiration_date,
+            "2027-02-01",
+        ),
+        (
+            "management_account_name",
+            parameters.get_management_account_name,
+            "Stark Industries",
+        ),
+    ],
+)
+def test_get_accounts_extension_parameter(
+    order_factory, fulfillment_parameters_factory, factory_kwarg, getter, parameter_value
+):
+    order = order_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(**{factory_kwarg: parameter_value})
+    )
+
+    result = getter(order)
+
+    assert result == parameter_value
+
+
+@pytest.mark.parametrize(
+    ("getter", "setter", "parameter_value"),
+    [
+        (
+            parameters.get_billing_transfer_acceptance_date,
+            parameters.set_billing_transfer_acceptance_date,
+            "2026-02-01",
+        ),
+        (
+            parameters.get_handshake_expiration_date,
+            parameters.set_handshake_expiration_date,
+            "2027-02-01",
+        ),
+    ],
+)
+def test_set_accounts_extension_parameter(
+    order_factory, fulfillment_parameters_factory, getter, setter, parameter_value
+):
+    order = order_factory(fulfillment_parameters=fulfillment_parameters_factory())
+
+    result = setter(order, parameter_value)
+
+    assert getter(result) == parameter_value
