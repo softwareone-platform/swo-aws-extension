@@ -59,8 +59,6 @@ truth for the current layout.
 Operations are performed through the `pyairtable` table API rather than direct
 HTTP calls.
 
-The migration sync job writes with `typecast=False`, so the `Migration status` single-select must contain the `Awaiting billing transfer response`, `Awaiting channel handshake response` and `Fulfilling Error` options before the job is deployed; otherwise Airtable rejects the update.
-
 ## Code Reference
 
 - FinOps table client: [`swo_aws_extension/airtable/finops_table.py`](../../swo_aws_extension/airtable/finops_table.py)
