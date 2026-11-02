@@ -253,7 +253,6 @@ def test_account_migration_is_new(record_id, expected):
             AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE,
             "Awaiting channel handshake response",
         ),
-        (AccountMigrationStatus.FULFILLING_ERROR, "Fulfilling Error"),
         (AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING, "Awaiting Client Onboarding"),
         (AccountMigrationStatus.SERVICES_ONBOARDED, "Services onboarded"),
         (AccountMigrationStatus.ERROR, "Error"),

@@ -342,7 +342,6 @@ def test_sync_reads_the_rows_the_job_keeps_revisiting(processor, mock_migration_
         AccountMigrationStatus.MIGRATION_IN_PROGRESS,
         AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE,
         AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE,
-        AccountMigrationStatus.FULFILLING_ERROR,
         AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING,
     )
 
@@ -514,15 +513,13 @@ def test_sync_aws_error_keeps_other_changes_and_reports_row(
     processor.sync()  # act
 
     mock_migration_table.save.assert_called_once_with(record)
-    assert record.migration_status == AccountMigrationStatus.FULFILLING_ERROR
-    assert record.error == f"Billing transfer {TRANSFER_ID} details not available: access denied"
+    assert record.migration_status == AccountMigrationStatus.MIGRATION_IN_PROGRESS
     assert record.billing_transfer_start_date is None
     assert sent_report(mock_teams, "send_warning") == (
         "Rows checked: 1. Rows updated: 1. Tickets created: 0. Upgrades started: 0. "
         "Rows with errors: 1.\n\n"
         f"Changes:\n- {ORDER_ID}: MPT Order status: Processing; "
-        "Migration status: Fulfilling Error; Customer accepted date: 2026-09-10; "
-        f"Error: Billing transfer {TRANSFER_ID} details not available: access denied\n\n"
+        "Migration status: Migration in progress; Customer accepted date: 2026-09-10\n\n"
         f"Errors:\n- {ORDER_ID}: Billing transfer {TRANSFER_ID} details not available: "
         "access denied"
     )
@@ -562,19 +559,52 @@ def test_sync_querying_order_keeps_existing_acceptance_date(
         customer_accepted_date="2026-09-01",
     )
     mock_migration_table.get_by_statuses.return_value = [record]
-    mock_get_orders.return_value = [
-        order_factory_sync(
-            status=MptOrderStatus.QUERYING.value,
-            phase=PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION.value,
-        )
-    ]
+    mock_get_orders.return_value = [order_factory_sync(status=MptOrderStatus.QUERYING.value)]
 
     processor.sync()  # act
 
     mock_migration_table.save.assert_called_once_with(record)
     assert record.mpt_order_status == MptOrderStatus.QUERYING.value
     assert record.customer_accepted_date == "2026-09-01"
-    assert record.migration_status == AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE
+    assert record.migration_status == AccountMigrationStatus.MIGRATION_IN_PROGRESS
+
+
+@pytest.mark.parametrize(
+    ("phase", "expected"),
+    [
+        (
+            PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION,
+            AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE,
+        ),
+        (
+            PhasesEnum.CHECK_CHANNEL_HANDSHAKE_STATUS,
+            AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE,
+        ),
+        ("", AccountMigrationStatus.MIGRATION_IN_PROGRESS),
+        (PhasesEnum.ONBOARD_SERVICES, AccountMigrationStatus.MIGRATION_IN_PROGRESS),
+    ],
+)
+def test_sync_querying_order_shows_status_from_its_phase(
+    processor,
+    mock_migration_table,
+    mock_get_orders,
+    migration_record_factory,
+    order_factory_sync,
+    phase,
+    expected,
+):
+    record = migration_record_factory(
+        migration_status=AccountMigrationStatus.MIGRATION_IN_PROGRESS,
+        mpt_order_status=MptOrderStatus.PROCESSING.value,
+    )
+    mock_migration_table.get_by_statuses.return_value = [record]
+    mock_get_orders.return_value = [
+        order_factory_sync(status=MptOrderStatus.QUERYING.value, phase=phase)
+    ]
+
+    processor.sync()  # act
+
+    assert record.migration_status == expected
 
 
 def test_sync_completed_order_sets_awaiting_onboarding_status_and_date(
@@ -635,7 +665,7 @@ def test_sync_failed_order_sets_failed_with_error(
     assert record.error == STATUS_NOTES_MESSAGE
 
 
-def test_sync_missing_order_marks_row_fulfilling_error(
+def test_sync_missing_order_marks_row_failed(
     processor, mock_migration_table, mock_get_orders, migration_record_factory
 ):
     record = migration_record_factory()
@@ -645,140 +675,9 @@ def test_sync_missing_order_marks_row_fulfilling_error(
     processor.sync()  # act
 
     mock_migration_table.save.assert_called_once_with(record)
-    assert record.mpt_order_status == MptOrderStatus.DRAFT.value
-    assert record.migration_status == AccountMigrationStatus.FULFILLING_ERROR
+    assert record.mpt_order_status == MptOrderStatus.FAILED.value
+    assert record.migration_status == AccountMigrationStatus.FAILED
     assert record.error == f"Order {ORDER_ID} not found in the marketplace"
-
-
-@pytest.mark.parametrize(
-    ("phase", "expected"),
-    [
-        (
-            PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION.value,
-            AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE,
-        ),
-        (
-            PhasesEnum.CHECK_CHANNEL_HANDSHAKE_STATUS.value,
-            AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE,
-        ),
-    ],
-)
-def test_sync_querying_order_in_waiting_phase_shows_the_mcoe_wait(
-    processor,
-    mock_migration_table,
-    mock_get_orders,
-    migration_record_factory,
-    order_factory_sync,
-    phase,
-    expected,
-):
-    record = migration_record_factory(migration_status=AccountMigrationStatus.MIGRATION_IN_PROGRESS)
-    mock_migration_table.get_by_statuses.return_value = [record]
-    mock_get_orders.return_value = [
-        order_factory_sync(status=MptOrderStatus.QUERYING.value, phase=phase)
-    ]
-
-    processor.sync()  # act
-
-    mock_migration_table.save.assert_called_once_with(record)
-    assert record.migration_status == expected
-    assert not record.error
-
-
-@pytest.mark.parametrize("phase", ["", None, PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION.value])
-def test_sync_querying_order_in_other_phase_sets_fulfilling_error(
-    processor,
-    mock_migration_table,
-    mock_get_orders,
-    migration_record_factory,
-    order_factory_sync,
-    phase,
-):
-    record = migration_record_factory(migration_status=AccountMigrationStatus.MIGRATION_IN_PROGRESS)
-    mock_migration_table.get_by_statuses.return_value = [record]
-    mock_get_orders.return_value = [
-        order_factory_sync(status=MptOrderStatus.QUERYING.value, phase=phase)
-    ]
-
-    processor.sync()  # act
-
-    mock_migration_table.save.assert_called_once_with(record)
-    assert record.migration_status == AccountMigrationStatus.FULFILLING_ERROR
-    assert record.error == (
-        f"Order {ORDER_ID} is in Querying in phase {phase}, which no job resolves"
-    )
-
-
-def test_sync_aws_error_on_completed_order_keeps_onboarding_status_and_reports_row(
-    processor,
-    mock_migration_table,
-    mock_get_orders,
-    mock_aws_client,
-    mock_teams,
-    migration_record_factory,
-    order_factory_sync,
-):
-    mock_aws_client.get_responsibility_transfer_details.side_effect = AWSError("access denied")
-    record = migration_record_factory()
-    mock_migration_table.get_by_statuses.return_value = [record]
-    mock_get_orders.return_value = [order_factory_sync(status=MptOrderStatus.COMPLETED.value)]
-
-    processor.sync()  # act
-
-    assert record.migration_status == AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
-    assert not record.error
-    assert (
-        f"Errors:\n- {ORDER_ID}: Billing transfer {TRANSFER_ID} details not available: "
-        "access denied"
-    ) in sent_report(mock_teams, "send_warning")
-
-
-@pytest.mark.parametrize(
-    ("order_status", "phase", "expected"),
-    [
-        (MptOrderStatus.PROCESSING.value, "", AccountMigrationStatus.MIGRATION_IN_PROGRESS),
-        (
-            MptOrderStatus.QUERYING.value,
-            PhasesEnum.CHECK_CHANNEL_HANDSHAKE_STATUS.value,
-            AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE,
-        ),
-    ],
-)
-def test_sync_fulfilling_error_row_that_recovers_clears_the_error(
-    processor,
-    mock_migration_table,
-    mock_get_orders,
-    migration_record_factory,
-    order_factory_sync,
-    order_status,
-    phase,
-    expected,
-):
-    record = migration_record_factory(
-        migration_status=AccountMigrationStatus.FULFILLING_ERROR, error="previous failure"
-    )
-    mock_migration_table.get_by_statuses.return_value = [record]
-    mock_get_orders.return_value = [order_factory_sync(status=order_status, phase=phase)]
-
-    processor.sync()  # act
-
-    assert record.migration_status == expected
-    assert not record.error
-
-
-def test_sync_fulfilling_error_row_still_in_error_updates_the_error(
-    processor, mock_migration_table, mock_get_orders, migration_record_factory, order_factory_sync
-):
-    record = migration_record_factory(
-        migration_status=AccountMigrationStatus.FULFILLING_ERROR, error="previous failure"
-    )
-    mock_migration_table.get_by_statuses.return_value = [record]
-    mock_get_orders.return_value = [order_factory_sync(status=MptOrderStatus.QUERYING.value)]
-
-    processor.sync()  # act
-
-    assert record.migration_status == AccountMigrationStatus.FULFILLING_ERROR
-    assert record.error == f"Order {ORDER_ID} is in Querying in phase , which no job resolves"
 
 
 @pytest.mark.parametrize("status", [MptOrderStatus.DRAFT.value, MptOrderStatus.QUOTED.value])

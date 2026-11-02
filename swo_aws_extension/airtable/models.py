@@ -91,7 +91,6 @@ class AccountMigrationStatus(StrEnum):
     MIGRATION_IN_PROGRESS = "Migration in progress"
     AWAITING_BILLING_TRANSFER_RESPONSE = "Awaiting billing transfer response"
     AWAITING_CHANNEL_HANDSHAKE_RESPONSE = "Awaiting channel handshake response"
-    FULFILLING_ERROR = "Fulfilling Error"
     AWAITING_CLIENT_ONBOARDING = "Awaiting Client Onboarding"
     SERVICES_ONBOARDED = "Services onboarded"
     ERROR = "Error"

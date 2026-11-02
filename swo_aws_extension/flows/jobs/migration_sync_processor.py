@@ -42,15 +42,13 @@ ORDERS_QUERY_SELECT = (
 )
 
 # Airtable rows the daily job keeps revisiting: rows whose Marketplace order can still change,
-# rows waiting for the MCoE, rows in Fulfilling Error (retried until they recover), and rows
-# awaiting client onboarding until their billing transfer is effective. Rows without an order,
-# or already in a terminal migration status, are left untouched.
+# rows waiting for the MCoE, and rows awaiting client onboarding until their billing transfer is
+# effective. Rows without an order, or already in a terminal migration status, are left untouched.
 SYNCABLE_MIGRATION_STATUSES = (
     AccountMigrationStatus.PENDING_NOTIFY_CUSTOMER,
     AccountMigrationStatus.MIGRATION_IN_PROGRESS,
     AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE,
     AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE,
-    AccountMigrationStatus.FULFILLING_ERROR,
     AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING,
 )
 
@@ -70,12 +68,6 @@ QUERYING_PHASE_STATUSES = MappingProxyType({
         AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE
     ),
 })
-
-# Migration statuses that carry an error detail; leaving them clears the Error column.
-ERROR_MIGRATION_STATUSES = frozenset((
-    AccountMigrationStatus.FULFILLING_ERROR,
-    AccountMigrationStatus.FAILED,
-))
 
 FAILED_ORDER_STATUSES = frozenset((MptOrderStatus.FAILED, MptOrderStatus.DELETED))
 
@@ -152,14 +144,10 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
 
     The job runs daily over the rows still in progress. For every row it copies the order status
     and, depending on it, sets the customer acceptance date (migration in progress), the
-    completion date (awaiting client onboarding) or the error detail (failed). A Querying order
-    waiting for the MCoE shows Awaiting billing transfer response or Awaiting channel handshake
-    response, depending on its phase. A row whose order is not found, is in Querying in another
-    phase, or whose billing transfer details cannot be read from AWS shows Fulfilling Error with
-    the detail; it is retried on each run and its error is cleared once it recovers. Once the
-    billing transfer invitation of the order is accepted, the effective start date of the
-    transfer is stored. When a row awaiting client onboarding has a start date on or before the
-    run date, the job creates the ServiceNow ticket that tells the MCoE team the billing transfer is
+    completion date (awaiting client onboarding) or the error detail (failed). Once the billing
+    transfer invitation of the order is accepted, the effective start date of the transfer is
+    stored. When a row awaiting client onboarding has a start date on or before the run date,
+    the job creates the ServiceNow ticket that tells the MCoE team the billing transfer is
     active and stores its id in the crmMigrationTicketId parameter of the agreement; it then
     launches the services upgrade in Cloud Orchestrator, because a migrated account is already
     onboarded there, stores the execution ARNs it returns (one per deployment of the account)
@@ -220,12 +208,12 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         order_id = record.mpt_order_id
         if order is None:
             logger.warning(
-                "%s - Order not found in the marketplace, marking row as fulfilling error",
-                order_id,
+                "%s - Order not found in the marketplace, marking row as failed", order_id
             )
             self._save(
                 record,
-                migration_status=AccountMigrationStatus.FULFILLING_ERROR,
+                mpt_order_status=MptOrderStatus.FAILED.value,
+                migration_status=AccountMigrationStatus.FAILED,
                 error=f"Order {order_id} not found in the marketplace",
             )
             return
@@ -233,20 +221,9 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         changes = self._get_status_changes(order)
         if order.get("status") in ACCEPTED_ORDER_STATUSES:
             changes.update(self._get_acceptance_changes(record, order))
-        if self._is_leaving_error_status(record, changes):
-            changes["error"] = ""
         if is_billing_transfer_effective(record, changes, self.run_date):
             self._start_billing_transfer(record, order, changes)
         self._save(record, **changes)
-
-    def _is_leaving_error_status(
-        self, record: AccountMigrationRecord, changes: dict[str, Any]
-    ) -> bool:
-        """Return whether the row is in an error status and the changes move it to another one."""
-        status = changes.get("migration_status", record.migration_status)
-        return record.migration_status in ERROR_MIGRATION_STATUSES and (
-            status not in ERROR_MIGRATION_STATUSES
-        )
 
     def _get_status_changes(self, order: dict[str, Any]) -> dict[str, Any]:
         """Return the row changes driven by the order status alone."""
@@ -255,7 +232,9 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         if order_status == MptOrderStatus.PROCESSING:
             changes["migration_status"] = AccountMigrationStatus.MIGRATION_IN_PROGRESS
         elif order_status == MptOrderStatus.QUERYING:
-            changes.update(self._get_querying_changes(order))
+            changes["migration_status"] = QUERYING_PHASE_STATUSES.get(
+                get_phase(order), AccountMigrationStatus.MIGRATION_IN_PROGRESS
+            )
         elif order_status == MptOrderStatus.COMPLETED:
             changes["migration_status"] = AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
             changes["migration_completed_date"] = get_audit_date(order, MptOrderStatus.COMPLETED)
@@ -265,18 +244,6 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
             changes["error"] = get_order_error(order)
         return changes
 
-    def _get_querying_changes(self, order: dict[str, Any]) -> dict[str, Any]:
-        """Return the row status of a Querying order from its phase."""
-        phase = get_phase(order)
-        waiting_status = QUERYING_PHASE_STATUSES.get(phase)
-        if waiting_status:
-            return {"migration_status": waiting_status}
-        return {
-            "migration_status": AccountMigrationStatus.FULFILLING_ERROR,
-            "error": f"Order {order.get('id')} is in Querying in phase {phase}, "
-            "which no job resolves",
-        }
-
     def _get_acceptance_changes(
         self, record: AccountMigrationRecord, order: dict[str, Any]
     ) -> dict[str, Any]:
@@ -285,28 +252,31 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         if not record.customer_accepted_date:
             changes["customer_accepted_date"] = get_audit_date(order, MptOrderStatus.PROCESSING)
         if not record.billing_transfer_start_date:
-            changes.update(self._get_billing_transfer_changes(order))
+            changes["billing_transfer_start_date"] = self._get_billing_transfer_start_date(order)
         return changes
 
-    def _get_billing_transfer_changes(self, order: dict[str, Any]) -> dict[str, Any]:
-        """
-        Return the row changes from the billing transfer of the order.
-
-        The start date is returned once the transfer is accepted. When AWS cannot return the
-        transfer details, the row shows Fulfilling Error with the detail, unless the order is
-        already completed.
-        """
+    def _get_billing_transfer_start_date(self, order: dict[str, Any]) -> str | None:
+        """Return the effective start date of the accepted billing transfer, if any."""
         order_id = order.get("id")
         transfer_id = get_responsibility_transfer_id(order)
         pma_account_id = get_pma_account_id(order)
         if not transfer_id or not pma_account_id:
-            return {}
+            return None
         try:
             transfer = self._get_aws_client(pma_account_id).get_responsibility_transfer_details(
                 transfer_id=transfer_id
             )
         except AWSError as error:
-            return self._get_aws_error_changes(order, transfer_id, error)
+            logger.warning(
+                "%s - Error - Failed to get billing transfer %s details: %s",
+                order_id,
+                transfer_id,
+                error,
+            )
+            self.report.add_failed_row(
+                str(order_id), f"Billing transfer {transfer_id} details not available: {error}"
+            )
+            return None
         transfer_details = transfer.get("ResponsibilityTransfer", {})
         if transfer_details.get("Status") != ResponsibilityTransferStatus.ACCEPTED:
             logger.info(
@@ -315,25 +285,8 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
                 transfer_id,
                 transfer_details.get("Status"),
             )
-            return {}
-        return {"billing_transfer_start_date": get_iso_date(transfer_details.get("StartTimestamp"))}
-
-    def _get_aws_error_changes(
-        self, order: dict[str, Any], transfer_id: str, error: AWSError
-    ) -> dict[str, Any]:
-        """Report the AWS read error and return the Fulfilling Error changes of the row."""
-        order_id = str(order.get("id"))
-        logger.warning(
-            "%s - Error - Failed to get billing transfer %s details: %s",
-            order_id,
-            transfer_id,
-            error,
-        )
-        message = f"Billing transfer {transfer_id} details not available: {error}"
-        self.report.add_failed_row(order_id, message)
-        if order.get("status") == MptOrderStatus.COMPLETED:
-            return {}
-        return {"migration_status": AccountMigrationStatus.FULFILLING_ERROR, "error": message}
+            return None
+        return get_iso_date(transfer_details.get("StartTimestamp"))
 
     def _get_aws_client(self, pma_account_id: str) -> AWSClient:
         if pma_account_id not in self._aws_clients:
