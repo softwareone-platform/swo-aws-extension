@@ -200,9 +200,15 @@ def test_parameters_syncer_process_renews_service_term_after_backfill(
     for step in (
         "sync_billing_transfer_acceptance_date",
         "sync_handshake_expiration_date",
-        "renew_expired_service_term",
+        "sync_channel_handshake_approved",
     ):
         sync_steps.attach_mock(mocker.patch.object(parameters_syncer, step, autospec=True), step)
+    sync_steps.attach_mock(
+        mocker.patch.object(
+            parameters_syncer, "renew_expired_service_term", autospec=True, return_value=False
+        ),
+        "renew_expired_service_term",
+    )
 
     parameters_syncer.process(agreement)  # act
 
@@ -210,7 +216,25 @@ def test_parameters_syncer_process_renews_service_term_after_backfill(
         mocker.call.sync_billing_transfer_acceptance_date(agreement, "2026-02-01"),
         mocker.call.sync_handshake_expiration_date(agreement),
         mocker.call.renew_expired_service_term(agreement),
+        mocker.call.sync_channel_handshake_approved(agreement),
     ]
+
+
+def test_parameters_syncer_process_skips_accepted_flag_after_renewal(
+    mocker, agreement, parameters_syncer
+):
+    mocker.patch.object(parameters_syncer, "sync_billing_transfer_acceptance_date", autospec=True)
+    mocker.patch.object(parameters_syncer, "sync_handshake_expiration_date", autospec=True)
+    mocker.patch.object(
+        parameters_syncer, "renew_expired_service_term", autospec=True, return_value=True
+    )
+    mock_sync_approved = mocker.patch.object(
+        parameters_syncer, "sync_channel_handshake_approved", autospec=True
+    )
+
+    parameters_syncer.process(agreement)  # act
+
+    mock_sync_approved.assert_not_called()
 
 
 @freeze_time("2026-11-02T12:00:00Z")
@@ -237,12 +261,14 @@ def test_renew_expired_service_term(
         "hs-654321", is_accepted=is_accepted
     )
 
-    parameters_syncer.renew_expired_service_term(agreement)  # act
+    result = parameters_syncer.renew_expired_service_term(agreement)
 
     assert (
+        result,
         mock_send_service_term_renewal.call_args_list,
         mock_update_agreement.call_args_list,
     ) == (
+        True,
         [mocker.call(agreement["id"], "651706759263", "rel-123456")],
         [
             mocker.call(
@@ -279,9 +305,13 @@ def test_renew_expired_service_term_skips_unexpired_term(
         )
     )
 
-    parameters_syncer.renew_expired_service_term(agreement)  # act
+    result = parameters_syncer.renew_expired_service_term(agreement)
 
-    assert (mock_send_service_term_renewal.called, mock_update_agreement.called) == (False, False)
+    assert (
+        result,
+        mock_send_service_term_renewal.called,
+        mock_update_agreement.called,
+    ) == (False, False, False)
 
 
 @freeze_time("2026-11-02T12:00:00Z")
@@ -345,9 +375,9 @@ def test_renew_expired_service_term_handshake_not_created(
     )
     mock_send_service_term_renewal.return_value = None
 
-    parameters_syncer.renew_expired_service_term(agreement)  # act
+    result = parameters_syncer.renew_expired_service_term(agreement)
 
-    mock_update_agreement.assert_not_called()
+    assert (result, mock_update_agreement.called) == (False, False)
 
 
 @freeze_time("2026-11-02T12:00:00Z")
@@ -372,4 +402,122 @@ def test_renew_expired_service_term_update_error(
     mock_send_exception.assert_called_once_with(
         f"{agreement['id']} - Service term renewal",
         "Failed to update agreement with the renewed service term channel handshake hs-654321",
+    )
+
+
+def test_sync_channel_handshake_approved(
+    mocker,
+    agreement_factory,
+    fulfillment_parameters_factory,
+    mock_is_channel_handshake_accepted,
+    mock_update_agreement,
+    parameters_syncer,
+):
+    agreement = agreement_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            relationship_id="rel-123456",
+            channel_handshake_id="hs-654321",
+            channel_handshake_approved="no",
+        )
+    )
+    mock_is_channel_handshake_accepted.return_value = True
+
+    parameters_syncer.sync_channel_handshake_approved(agreement)  # act
+
+    assert (
+        mock_is_channel_handshake_accepted.call_args_list,
+        mock_update_agreement.call_args_list,
+    ) == (
+        [mocker.call("rel-123456", "hs-654321")],
+        [
+            mocker.call(
+                parameters_syncer.mpt_client,
+                agreement["id"],
+                parameters={
+                    "fulfillment": [{"externalId": "channelHandshakeApproved", "value": "yes"}]
+                },
+            )
+        ],
+    )
+
+
+def test_sync_channel_handshake_approved_not_accepted(
+    agreement_factory,
+    fulfillment_parameters_factory,
+    mock_is_channel_handshake_accepted,
+    mock_update_agreement,
+    parameters_syncer,
+):
+    agreement = agreement_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            relationship_id="rel-123456",
+            channel_handshake_id="hs-654321",
+            channel_handshake_approved="no",
+        )
+    )
+    mock_is_channel_handshake_accepted.return_value = False
+
+    parameters_syncer.sync_channel_handshake_approved(agreement)  # act
+
+    mock_update_agreement.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "factory_kwargs",
+    [
+        {
+            "relationship_id": "rel-123456",
+            "channel_handshake_id": "hs-654321",
+            "channel_handshake_approved": "yes",
+        },
+        {
+            "relationship_id": "rel-123456",
+            "channel_handshake_id": "hs-654321",
+            "channel_handshake_approved": "",
+        },
+        {"relationship_id": "", "channel_handshake_id": "hs-654321"},
+        {"relationship_id": "rel-123456", "channel_handshake_id": ""},
+    ],
+)
+def test_sync_channel_handshake_approved_skips_lookup(
+    agreement_factory,
+    fulfillment_parameters_factory,
+    mock_is_channel_handshake_accepted,
+    mock_update_agreement,
+    parameters_syncer,
+    factory_kwargs,
+):
+    agreement = agreement_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(**factory_kwargs)
+    )
+
+    parameters_syncer.sync_channel_handshake_approved(agreement)  # act
+
+    assert (
+        mock_is_channel_handshake_accepted.called,
+        mock_update_agreement.called,
+    ) == (False, False)
+
+
+def test_sync_channel_handshake_approved_update_error(
+    agreement_factory,
+    fulfillment_parameters_factory,
+    mock_is_channel_handshake_accepted,
+    mock_update_agreement,
+    mock_send_exception,
+    parameters_syncer,
+):
+    agreement = agreement_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            relationship_id="rel-123456", channel_handshake_id="hs-654321"
+        )
+    )
+    mock_is_channel_handshake_accepted.return_value = True
+    mock_update_agreement.side_effect = MPTError("error")
+
+    parameters_syncer.sync_channel_handshake_approved(agreement)  # act
+
+    mock_send_exception.assert_called_once_with(
+        f"{agreement['id']} - Synchronize channel handshake accepted",
+        "Failed to update agreement with accepted channel handshake hs-654321",
     )

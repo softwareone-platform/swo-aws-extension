@@ -266,6 +266,11 @@ def mock_send_service_term_renewal(mocker):
 
 
 @pytest.fixture
+def mock_is_channel_handshake_accepted(mocker):
+    return mocker.patch(f"{_PARAMS_SYNCER_MOD}.is_channel_handshake_accepted", autospec=True)
+
+
+@pytest.fixture
 def channel_handshake_factory():
     def factory(
         period_type="FIXED_COMMITMENT_PERIOD",

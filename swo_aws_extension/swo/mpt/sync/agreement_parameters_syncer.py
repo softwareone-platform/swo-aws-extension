@@ -8,11 +8,15 @@ from swo_aws_extension.constants import ChannelHandshakeDeployed, FulfillmentPar
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.parameters import (
     get_billing_transfer_acceptance_date,
+    get_channel_handshake_approval_status,
     get_channel_handshake_id,
     get_handshake_expiration_date,
     get_relationship_id,
 )
 from swo_aws_extension.swo.mpt.sync.base import AgreementProcessor, AgreementType
+from swo_aws_extension.swo.mpt.sync.channel_handshake_acceptance import (
+    is_channel_handshake_accepted,
+)
 from swo_aws_extension.swo.mpt.sync.channel_handshakes import (
     SERVICE_TERM_RENEWAL_TITLE,
     get_fixed_commitment_end_date,
@@ -86,10 +90,18 @@ class AgreementParametersSyncer(AgreementProcessor):
             notification_title="Synchronize handshake expiration date",
         )
 
-    def renew_expired_service_term(self, agreement: AgreementType) -> None:
-        """Send the client a new 90-day service term once the one-year commitment has passed."""
+    def renew_expired_service_term(self, agreement: AgreementType) -> bool:
+        """
+        Send the client a new 90-day service term once the one-year commitment has passed.
+
+        Args:
+            agreement: The agreement to renew the service term for.
+
+        Returns:
+            True when a new service term was sent, False otherwise.
+        """
         if not self._service_term_has_expired(agreement):
-            return
+            return False
         relationship_id = get_relationship_id(agreement)
         if not relationship_id:
             message = "Service term has expired but the relationship ID is missing"
@@ -97,13 +109,13 @@ class AgreementParametersSyncer(AgreementProcessor):
             TeamsNotificationManager().send_warning(
                 f"{agreement['id']} - {SERVICE_TERM_RENEWAL_TITLE}", message
             )
-            return
+            return False
         if self.dry_run:
             logger.info("Dry run mode - skipping service term renewal")
-            return
+            return False
         renewal = send_service_term_renewal(agreement["id"], self.pma_account_id, relationship_id)
         if not renewal:
-            return
+            return False
         logger.info("Service term renewal sent with channel handshake %s", renewal.handshake_id)
         # The expiration date is cleared so the next sync run doesn't send another service term.
         # A reused renewal the client already accepted is saved as approved.
@@ -125,6 +137,31 @@ class AgreementParametersSyncer(AgreementProcessor):
             ),
             notification_title=SERVICE_TERM_RENEWAL_TITLE,
         )
+        return True
+
+    def sync_channel_handshake_approved(self, agreement: AgreementType) -> None:
+        """Set the handshake accepted flag to yes once the client accepts the channel handshake."""
+        if get_channel_handshake_approval_status(agreement) != ChannelHandshakeDeployed.NO_DEPLOYED:
+            return
+        relationship_id = get_relationship_id(agreement)
+        handshake_id = get_channel_handshake_id(agreement)
+        if not relationship_id or not handshake_id:
+            return
+        if not is_channel_handshake_accepted(relationship_id, handshake_id):
+            return
+        logger.info("Synchronizing channel handshake %s as accepted", handshake_id)
+        self._update_fulfillment_parameters(
+            agreement,
+            {
+                FulfillmentParametersEnum.CHANNEL_HANDSHAKE_APPROVED.value: (
+                    ChannelHandshakeDeployed.YES.value
+                )
+            },
+            error_message=(
+                f"Failed to update agreement with accepted channel handshake {handshake_id}"
+            ),
+            notification_title="Synchronize channel handshake accepted",
+        )
 
     @override
     @dynamic_trace_span(
@@ -133,8 +170,11 @@ class AgreementParametersSyncer(AgreementProcessor):
     def _process(self, agreement: AgreementType) -> None:
         self.sync_billing_transfer_acceptance_date(agreement, self.transfer_start_date)
         self.sync_handshake_expiration_date(agreement)
-        # MPT-27327 runs the renewal after the backfill steps.
-        self.renew_expired_service_term(agreement)
+        # MPT-27327 runs the renewal after the backfill steps, and MPT-27328 refreshes the
+        # accepted flag after the renewal. A renewal leaves this agreement copy with the previous
+        # handshake, so the flag of the new handshake is refreshed on the next run.
+        if not self.renew_expired_service_term(agreement):
+            self.sync_channel_handshake_approved(agreement)
 
     def _service_term_has_expired(self, agreement: AgreementType) -> bool:
         expiration_date = get_handshake_expiration_date(agreement)

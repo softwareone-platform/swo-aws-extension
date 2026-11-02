@@ -83,7 +83,10 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    doesn't send the client a duplicate. An accepted renewal sets the handshake
    accepted flag to `yes`. The renewal is recognised by its minimum notice
    period and its note, which names the agreement, so other service terms for
-   the relationship are left alone.
+   the relationship are left alone. While the handshake accepted flag is `no`,
+   the agreement sync reads the channel handshake and sets the flag to `yes`
+   once the client accepts it. A run that sends a new service term leaves the
+   flag for the next run.
 
 ## Major components
 
