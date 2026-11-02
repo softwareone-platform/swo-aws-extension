@@ -57,12 +57,25 @@ class AgreementProcessor:
         error_message: str,
         notification_title: str,
     ) -> None:
+        self._update_fulfillment_parameters(
+            agreement,
+            {external_id: parameter_value},
+            error_message=error_message,
+            notification_title=notification_title,
+        )
+
+    def _update_fulfillment_parameters(
+        self,
+        agreement: AgreementType,
+        parameter_values: dict[str, str],
+        *,
+        error_message: str,
+        notification_title: str,
+    ) -> None:
         agreement_parameters = {
             ParamPhasesEnum.FULFILLMENT.value: [
-                {
-                    "externalId": external_id,
-                    "value": parameter_value,
-                }
+                {"externalId": external_id, "value": parameter_value}
+                for external_id, parameter_value in parameter_values.items()
             ]
         }
         if self.dry_run:

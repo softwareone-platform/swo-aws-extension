@@ -529,6 +529,9 @@ def test_agreement_syncer_sync_runs_parameters_syncer(
     syncer.process(agreement)  # act
 
     mock_parameters_syncer.assert_called_once_with(
-        syncer.mpt_client, dry_run=False, transfer_start_date="2026-02-01"
+        syncer.mpt_client,
+        dry_run=False,
+        transfer_start_date="2026-02-01",
+        pma_account_id="651706759263",
     )
     mock_parameters_syncer.return_value.process.assert_called_once_with(agreement)

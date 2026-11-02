@@ -1,17 +1,24 @@
 import datetime as dt
-import functools
 
-from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.aws.models import ChannelHandshakeServicePeriod
-from swo_aws_extension.config import get_config
-from swo_aws_extension.constants import ChannelHandshakeStatusEnum
+from swo_aws_extension.constants import (
+    CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS,
+    ChannelHandshakeStatusEnum,
+)
 from swo_aws_extension.logger import get_logger
+from swo_aws_extension.swo.mpt.sync.apn_client import get_apn_client
 from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
 logger = get_logger(__name__)
 
-CREDENTIALS_REFRESH_MARGIN = dt.timedelta(minutes=5)
+SERVICE_TERM_RENEWAL_NOTE = (
+    "Dear customer, your initial service term for Agreement {agreement_id} has expired, hence "
+    "we are sending a new up to date service term. By accepting this service term both parties "
+    "provide mutual consent to maintain the current billing relationship active and to prevent "
+    "unilateral changes to it within the defined period."
+)
+SERVICE_TERM_RENEWAL_TITLE = "Service term renewal"
 
 
 def get_fixed_commitment_end_date(
@@ -32,7 +39,7 @@ def get_fixed_commitment_end_date(
         read, doesn't exist, isn't accepted, or doesn't hold a fixed commitment period.
     """
     try:
-        handshake = _get_apn_client().get_channel_handshake_by_id(relationship_id, handshake_id)
+        handshake = get_apn_client().get_channel_handshake_by_id(relationship_id, handshake_id)
     except AWSError:
         logger.exception("Failed to get channel handshake %s", handshake_id)
         return None
@@ -49,6 +56,54 @@ def get_fixed_commitment_end_date(
     if not service_period or not service_period.is_fixed_commitment():
         return None
     return _get_commitment_end_date(agreement_id, service_period, handshake_id)
+
+
+def send_service_term_renewal(
+    agreement_id: str, pma_account_id: str, relationship_id: str
+) -> str | None:
+    """
+    Send the client a new service term with the minimum notice period as a channel handshake.
+
+    A failure is reported to Teams, so the next sync run can try again.
+
+    Args:
+        agreement_id: The agreement whose service term has expired.
+        pma_account_id: The program management account the agreement is authorized for.
+        relationship_id: The Partner Central relationship the handshake is sent for.
+
+    Returns:
+        The ID of the new channel handshake, or None when it couldn't be created.
+    """
+    try:
+        handshake = _create_renewal_handshake(agreement_id, pma_account_id, relationship_id)
+    except AWSError as error:
+        message = f"Failed to send the new service term for relationship {relationship_id}"
+        logger.exception(message)
+        TeamsNotificationManager().send_exception(
+            f"{agreement_id} - {SERVICE_TERM_RENEWAL_TITLE}", f"{message}: {error}"
+        )
+        return None
+    return handshake["channelHandshakeDetail"]["id"] if handshake else None
+
+
+def _create_renewal_handshake(
+    agreement_id: str, pma_account_id: str, relationship_id: str
+) -> dict | None:
+    apn_client = get_apn_client()
+    pm_identifier = apn_client.get_program_management_id_by_account(pma_account_id)
+    if not pm_identifier:
+        message = f"Program management account not found for account {pma_account_id}"
+        logger.warning(message)
+        TeamsNotificationManager().send_warning(
+            f"{agreement_id} - {SERVICE_TERM_RENEWAL_TITLE}", message
+        )
+        return None
+    return apn_client.create_channel_handshake(
+        pma_identifier=pm_identifier,
+        relationship_identifier=relationship_id,
+        minimum_notice_days=CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS,
+        note=SERVICE_TERM_RENEWAL_NOTE.format(agreement_id=agreement_id),
+    )
 
 
 def _get_commitment_end_date(
@@ -68,32 +123,6 @@ def _warn(agreement_id: str, message: str) -> None:
     TeamsNotificationManager().send_warning(
         f"{agreement_id} - Synchronize handshake expiration date", message
     )
-
-
-def _get_apn_client() -> AWSClient:
-    # The sync runs once per process, so the client is reused for the whole run. It is
-    # rebuilt before its assumed-role credentials expire, because boto3 does not refresh
-    # credentials that are passed to it explicitly.
-    apn_client = create_apn_client()
-    if _credentials_expire_soon(apn_client):
-        create_apn_client.cache_clear()
-        apn_client = create_apn_client()
-    return apn_client
-
-
-@functools.cache
-def create_apn_client() -> AWSClient:
-    """Create the APN account client, cached for the rest of the process."""
-    config = get_config()
-    return AWSClient(config, config.apn_account_id, config.apn_role_name)
-
-
-def _credentials_expire_soon(apn_client: AWSClient) -> bool:
-    expiration = apn_client.credentials.get("Expiration")
-    if not expiration:
-        return False
-    refresh_deadline = dt.datetime.now(dt.UTC) + CREDENTIALS_REFRESH_MARGIN
-    return expiration <= refresh_deadline
 
 
 def _get_service_period(handshake: dict, handshake_id: str) -> ChannelHandshakeServicePeriod | None:

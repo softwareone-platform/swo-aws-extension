@@ -72,7 +72,12 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    from the fixed commitment end date of the channel handshake, and the
    management account name from the Cost Explorer usage of the management
    account. The order flow sets the same dates when the billing transfer
-   invitation and the channel handshake are accepted.
+   invitation and the channel handshake are accepted. When the handshake
+   expiration date has passed, the agreement sync sends the client a new
+   90-day service term as a channel handshake. It saves the new handshake ID,
+   clears the expiration date so the next run doesn't send another term, and
+   sets the handshake accepted flag to `no`. When the handshake can't be
+   created, the parameters stay unchanged and the next run tries again.
 
 ## Major components
 

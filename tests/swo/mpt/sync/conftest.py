@@ -8,7 +8,7 @@ from swo_aws_extension.swo.mpt.sync.agreement_subscription_syncer import (
     AgreementSubscriptionsSyncer,
 )
 from swo_aws_extension.swo.mpt.sync.agreement_syncer import AgreementSyncer
-from swo_aws_extension.swo.mpt.sync.channel_handshakes import create_apn_client
+from swo_aws_extension.swo.mpt.sync.apn_client import create_apn_client
 from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
 _BASE_MOD = "swo_aws_extension.swo.mpt.sync.base"
@@ -16,7 +16,7 @@ _SYNCER_MOD = "swo_aws_extension.swo.mpt.sync.agreement_syncer"
 _PARAMS_SYNCER_MOD = "swo_aws_extension.swo.mpt.sync.agreement_parameters_syncer"
 _SUB_SYNCER_MOD = "swo_aws_extension.swo.mpt.sync.agreement_subscription_syncer"
 _TRANSFERS_MOD = "swo_aws_extension.swo.mpt.sync.responsibility_transfers"
-_HANDSHAKES_MOD = "swo_aws_extension.swo.mpt.sync.channel_handshakes"
+_APN_CLIENT_MOD = "swo_aws_extension.swo.mpt.sync.apn_client"
 
 
 @pytest.fixture
@@ -203,7 +203,22 @@ def subscription_syncer_dry_run(mpt_client):
 
 @pytest.fixture
 def parameters_syncer(mpt_client):
-    return AgreementParametersSyncer(mpt_client, dry_run=False, transfer_start_date="2026-02-01")
+    return AgreementParametersSyncer(
+        mpt_client,
+        dry_run=False,
+        transfer_start_date="2026-02-01",
+        pma_account_id="651706759263",
+    )
+
+
+@pytest.fixture
+def parameters_syncer_dry_run(mpt_client):
+    return AgreementParametersSyncer(
+        mpt_client,
+        dry_run=True,
+        transfer_start_date="2026-02-01",
+        pma_account_id="651706759263",
+    )
 
 
 @pytest.fixture
@@ -231,7 +246,7 @@ def mock_apn_client_class(mocker):
     create_apn_client.cache_clear()
     apn_client = mocker.Mock(spec=AWSClient)
     apn_client.credentials = {"Expiration": dt.datetime.max.replace(tzinfo=dt.UTC)}
-    yield mocker.patch(f"{_HANDSHAKES_MOD}.AWSClient", return_value=apn_client)
+    yield mocker.patch(f"{_APN_CLIENT_MOD}.AWSClient", return_value=apn_client)
     create_apn_client.cache_clear()
 
 
@@ -243,6 +258,11 @@ def mock_apn_client(mock_apn_client_class):
 @pytest.fixture
 def mock_get_fixed_commitment_end_date(mocker):
     return mocker.patch(f"{_PARAMS_SYNCER_MOD}.get_fixed_commitment_end_date", autospec=True)
+
+
+@pytest.fixture
+def mock_send_service_term_renewal(mocker):
+    return mocker.patch(f"{_PARAMS_SYNCER_MOD}.send_service_term_renewal", autospec=True)
 
 
 @pytest.fixture
