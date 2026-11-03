@@ -208,6 +208,18 @@ def parameters_syncer(mpt_client):
         dry_run=False,
         transfer_start_date="2026-02-01",
         pma_account_id="651706759263",
+        transfer_end_scheduled=False,
+    )
+
+
+@pytest.fixture
+def parameters_syncer_transfer_ending(mpt_client):
+    return AgreementParametersSyncer(
+        mpt_client,
+        dry_run=False,
+        transfer_start_date="2026-02-01",
+        pma_account_id="651706759263",
+        transfer_end_scheduled=True,
     )
 
 
@@ -218,6 +230,7 @@ def parameters_syncer_dry_run(mpt_client):
         dry_run=True,
         transfer_start_date="2026-02-01",
         pma_account_id="651706759263",
+        transfer_end_scheduled=False,
     )
 
 

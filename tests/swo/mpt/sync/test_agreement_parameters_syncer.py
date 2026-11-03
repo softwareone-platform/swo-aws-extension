@@ -313,6 +313,25 @@ def test_renew_expired_service_term_without_relationship(
 
 
 @freeze_time("2026-11-02T12:00:00Z")
+def test_renew_expired_service_term_skips_scheduled_transfer_end(
+    agreement_factory,
+    fulfillment_parameters_factory,
+    mock_send_service_term_renewal,
+    mock_update_agreement,
+    parameters_syncer_transfer_ending,
+):
+    agreement = agreement_factory(
+        fulfillment_parameters=fulfillment_parameters_factory(
+            relationship_id="rel-123456", handshake_expiration_date="2026-11-01"
+        )
+    )
+
+    parameters_syncer_transfer_ending.renew_expired_service_term(agreement)  # act
+
+    assert (mock_send_service_term_renewal.called, mock_update_agreement.called) == (False, False)
+
+
+@freeze_time("2026-11-02T12:00:00Z")
 def test_renew_expired_service_term_dry_run(
     agreement_factory,
     fulfillment_parameters_factory,

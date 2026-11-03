@@ -33,10 +33,12 @@ class AgreementParametersSyncer(AgreementProcessor):
         dry_run: bool,
         transfer_start_date: str | None,
         pma_account_id: str,
+        transfer_end_scheduled: bool,
     ):
         super().__init__(mpt_client, dry_run=dry_run)
         self.transfer_start_date = transfer_start_date
         self.pma_account_id = pma_account_id
+        self.transfer_end_scheduled = transfer_end_scheduled
 
     def sync_billing_transfer_acceptance_date(
         self, agreement: AgreementType, acceptance_date: str | None
@@ -89,6 +91,12 @@ class AgreementParametersSyncer(AgreementProcessor):
     def renew_expired_service_term(self, agreement: AgreementType) -> None:
         """Send the client a new 90-day service term once the one-year commitment has passed."""
         if not self._service_term_has_expired(agreement):
+            return
+        # A client whose billing transfer is ending isn't asked to keep the billing relationship
+        # active; the parameters stay unchanged, so the next run renews if the end is cancelled.
+        # Lukasz Lancucki decided this in the review of PR #512 on 2026-11-03.
+        if self.transfer_end_scheduled:
+            logger.info("Billing transfer end is scheduled - skipping service term renewal")
             return
         relationship_id = get_relationship_id(agreement)
         if not relationship_id:

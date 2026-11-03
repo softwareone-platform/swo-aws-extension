@@ -533,5 +533,37 @@ def test_agreement_syncer_sync_runs_parameters_syncer(
         dry_run=False,
         transfer_start_date="2026-02-01",
         pma_account_id="651706759263",
+        transfer_end_scheduled=False,
     )
     mock_parameters_syncer.return_value.process.assert_called_once_with(agreement)
+
+
+@freeze_time("2026-08-06")
+def test_agreement_syncer_sync_tells_parameters_syncer_about_scheduled_end(
+    mocker,
+    agreement,
+    mock_get_available_transfer_for_account,
+    mock_sync_responsibility_transfer_id_method,
+    mock_awsclient,
+    mock_get_linked_accounts_with_usage,
+    mock_parameters_syncer,
+    syncer,
+):
+    mocker.patch.object(syncer, "sync_relationship_end_date", autospec=True)
+    mocker.patch.object(syncer, "notify_scheduled_transfer_end", autospec=True)
+    mock_get_available_transfer_for_account.return_value = {
+        "Id": "rt-8lr3q6sn",
+        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
+        "StartTimestamp": dt.datetime.fromisoformat("2026-02-01T00:00:00+00:00"),
+        "EndTimestamp": dt.datetime.fromisoformat("2026-09-30T23:59:59+00:00"),
+    }
+
+    syncer.process(agreement)  # act
+
+    mock_parameters_syncer.assert_called_once_with(
+        syncer.mpt_client,
+        dry_run=False,
+        transfer_start_date="2026-02-01",
+        pma_account_id="651706759263",
+        transfer_end_scheduled=True,
+    )

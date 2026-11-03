@@ -206,6 +206,7 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
             dry_run=self.dry_run,
             transfer_start_date=get_transfer_start_date(available_transfer),
             pma_account_id=pma_account_id,
+            transfer_end_scheduled=bool(end_date),
         ).process(agreement)
 
         AgreementSubscriptionsSyncer(self.mpt_client, dry_run=self.dry_run).process(agreement)
