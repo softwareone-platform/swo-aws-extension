@@ -11,6 +11,7 @@ from swo_aws_extension.constants import (
     FulfillmentParametersEnum,
     MptOrderStatus,
     ParamPhasesEnum,
+    PhasesEnum,
     ResponsibilityTransferStatus,
 )
 from swo_aws_extension.flows.jobs.migration_sync_processor import (
@@ -193,6 +194,7 @@ def order_factory_sync(buyer, seller, fulfillment_parameters_factory, order_para
         master_payer_id=MASTER_PAYER_ID,
         agreement_ticket_id="",
         agreement_execution_arn="",
+        phase="",
     ):
         if audit is None:
             audit = {
@@ -212,7 +214,8 @@ def order_factory_sync(buyer, seller, fulfillment_parameters_factory, order_para
                     {
                         "externalId": FulfillmentParametersEnum.RESPONSIBILITY_TRANSFER_ID.value,
                         "value": transfer_id,
-                    }
+                    },
+                    {"externalId": FulfillmentParametersEnum.PHASE.value, "value": phase},
                 ],
             },
             "authorization": {"externalIds": {"operations": pma_account_id}},
@@ -330,15 +333,15 @@ def test_get_order_error(order_factory_sync, status_notes, error, expected):
     assert result == expected
 
 
-def test_sync_reads_pending_in_progress_and_awaiting_onboarding_rows(
-    processor, mock_migration_table
-):
+def test_sync_reads_the_rows_the_job_keeps_revisiting(processor, mock_migration_table):
     processor.sync()  # act
 
     mock_migration_table.get_by_statuses.assert_called_once_with(SYNCABLE_MIGRATION_STATUSES)
     assert SYNCABLE_MIGRATION_STATUSES == (
         AccountMigrationStatus.PENDING_NOTIFY_CUSTOMER,
         AccountMigrationStatus.MIGRATION_IN_PROGRESS,
+        AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE,
+        AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE,
         AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING,
     )
 
@@ -564,6 +567,44 @@ def test_sync_querying_order_keeps_existing_acceptance_date(
     assert record.mpt_order_status == MptOrderStatus.QUERYING.value
     assert record.customer_accepted_date == "2026-09-01"
     assert record.migration_status == AccountMigrationStatus.MIGRATION_IN_PROGRESS
+
+
+@pytest.mark.parametrize(
+    ("phase", "expected"),
+    [
+        (
+            PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION,
+            AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE,
+        ),
+        (
+            PhasesEnum.CHECK_CHANNEL_HANDSHAKE_STATUS,
+            AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE,
+        ),
+        ("", AccountMigrationStatus.MIGRATION_IN_PROGRESS),
+        (PhasesEnum.ONBOARD_SERVICES, AccountMigrationStatus.MIGRATION_IN_PROGRESS),
+    ],
+)
+def test_sync_querying_order_shows_status_from_its_phase(
+    processor,
+    mock_migration_table,
+    mock_get_orders,
+    migration_record_factory,
+    order_factory_sync,
+    phase,
+    expected,
+):
+    record = migration_record_factory(
+        migration_status=AccountMigrationStatus.MIGRATION_IN_PROGRESS,
+        mpt_order_status=MptOrderStatus.PROCESSING.value,
+    )
+    mock_migration_table.get_by_statuses.return_value = [record]
+    mock_get_orders.return_value = [
+        order_factory_sync(status=MptOrderStatus.QUERYING.value, phase=phase)
+    ]
+
+    processor.sync()  # act
+
+    assert record.migration_status == expected
 
 
 def test_sync_completed_order_sets_awaiting_onboarding_status_and_date(

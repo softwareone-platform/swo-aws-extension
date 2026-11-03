@@ -1,5 +1,6 @@
 import datetime as dt
 import logging
+from types import MappingProxyType
 from typing import Any
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
@@ -12,6 +13,7 @@ from swo_aws_extension.config import Config
 from swo_aws_extension.constants import (
     DeploymentStatusEnum,
     MptOrderStatus,
+    PhasesEnum,
     ResponsibilityTransferStatus,
 )
 from swo_aws_extension.flows.jobs.migration_billing_transfer_ticket import (
@@ -26,7 +28,7 @@ from swo_aws_extension.flows.jobs.migration_services_upgrade import (
     store_execution_arns,
 )
 from swo_aws_extension.flows.jobs.migration_sync_report import SyncReport
-from swo_aws_extension.parameters import get_responsibility_transfer_id
+from swo_aws_extension.parameters import get_phase, get_responsibility_transfer_id
 from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
 from swo_aws_extension.swo.crm_service.errors import CRMError
 from swo_aws_extension.swo.mpt.order import get_orders_by_ids
@@ -40,11 +42,13 @@ ORDERS_QUERY_SELECT = (
 )
 
 # Airtable rows the daily job keeps revisiting: rows whose Marketplace order can still change,
-# and rows awaiting client onboarding until their billing transfer is effective. Rows without an
-# order, or already in a terminal migration status, are left untouched.
+# rows waiting for the MCoE, and rows awaiting client onboarding until their billing transfer is
+# effective. Rows without an order, or already in a terminal migration status, are left untouched.
 SYNCABLE_MIGRATION_STATUSES = (
     AccountMigrationStatus.PENDING_NOTIFY_CUSTOMER,
     AccountMigrationStatus.MIGRATION_IN_PROGRESS,
+    AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE,
+    AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE,
     AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING,
 )
 
@@ -55,7 +59,15 @@ ACCEPTED_ORDER_STATUSES = frozenset((
     MptOrderStatus.COMPLETED,
 ))
 
-IN_PROGRESS_ORDER_STATUSES = frozenset((MptOrderStatus.PROCESSING, MptOrderStatus.QUERYING))
+# Querying phases in which the order waits for the MCoE, with the status the row shows.
+QUERYING_PHASE_STATUSES = MappingProxyType({
+    PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION: (
+        AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE
+    ),
+    PhasesEnum.CHECK_CHANNEL_HANDSHAKE_STATUS: (
+        AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE
+    ),
+})
 
 FAILED_ORDER_STATUSES = frozenset((MptOrderStatus.FAILED, MptOrderStatus.DELETED))
 
@@ -217,8 +229,12 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         """Return the row changes driven by the order status alone."""
         order_status = order.get("status")
         changes: dict[str, Any] = {"mpt_order_status": order_status}
-        if order_status in IN_PROGRESS_ORDER_STATUSES:
+        if order_status == MptOrderStatus.PROCESSING:
             changes["migration_status"] = AccountMigrationStatus.MIGRATION_IN_PROGRESS
+        elif order_status == MptOrderStatus.QUERYING:
+            changes["migration_status"] = QUERYING_PHASE_STATUSES.get(
+                get_phase(order), AccountMigrationStatus.MIGRATION_IN_PROGRESS
+            )
         elif order_status == MptOrderStatus.COMPLETED:
             changes["migration_status"] = AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
             changes["migration_completed_date"] = get_audit_date(order, MptOrderStatus.COMPLETED)

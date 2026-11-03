@@ -51,7 +51,7 @@ truth for the current layout.
 | Operation | Description |
 | --- | --- |
 | Get by status | `get_by_status(status)` — returns the rows with the given migration status, in table order (use `AccountMigrationStatus.READY` for the pending rows) |
-| Get by statuses | `get_by_statuses(statuses)` — returns the rows in any of the given migration statuses with one `OR` formula, in table order (used by the migration sync job to read the in-progress and awaiting client onboarding rows in one query) |
+| Get by statuses | `get_by_statuses(statuses)` — returns the rows in any of the given migration statuses with one `OR` formula, in table order (used by the migration sync job to read the pending, in-progress, wait (`Awaiting billing transfer response`, `Awaiting channel handshake response`) and awaiting client onboarding rows in one query) |
 | Get by order | `get_by_order_id(order_id)` — returns the row linked to a Marketplace order, or `None` |
 | Save | `save(record)` — creates or updates a row (depending on whether it is new) |
 | Update status | `update_status(record, status, error=None)` — sets the migration status and, optionally, the error detail |
