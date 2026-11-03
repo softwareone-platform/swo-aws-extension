@@ -57,7 +57,7 @@ Unlike onboard, the upgrade returns one execution per deployment of the account:
 }
 ```
 
-The extension stores every `execution_arn` comma-separated in the single `executionArn` fulfillment parameter of the agreement and polls each ARN with Get Deployment Status on every run: the upgrade is complete once all the executions succeeded, the row fails when any execution failed, and the row is checked again while any execution is pending. A single ARN stored by an earlier version is read as a one-item list.
+The extension stores every `execution_arn` comma-separated in the single `executionArn` fulfillment parameter of the agreement and polls each ARN with Get Deployment Status on every run: the upgrade is complete once all the executions succeeded, the row fails when any execution failed, and the row is checked again while any execution is pending. A single ARN stored by an earlier version is read as a one-item list. When the ARNs cannot be stored in the agreement, the row error lists them and asks an operator to store them in `executionArn` before the next run. When the agreement has no ARNs, the job always launches a new upgrade, whatever the row error says.
 
 While the upgrade API is in development, the extension logs the upgrade request payload and the response status and body at INFO.
 
