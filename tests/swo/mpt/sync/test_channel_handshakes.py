@@ -6,6 +6,7 @@ from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.aws.models import ServiceTermRenewal
 from swo_aws_extension.constants import CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS
 from swo_aws_extension.swo.mpt.sync.channel_handshakes import (
+    SERVICE_TERM_RENEWAL_NOTE,
     get_fixed_commitment_end_date,
     send_service_term_renewal,
 )
@@ -13,10 +14,11 @@ from swo_aws_extension.swo.mpt.sync.channel_handshakes import (
 AGREEMENT_ID = "AGR-2119-4550-8674-5962"
 RENEWAL_NOTE = (
     "Dear customer, your initial service term for Agreement AGR-2119-4550-8674-5962 has "
-    "expired, hence we are sending a new up to date service term. By accepting this service "
-    "term both parties provide mutual consent to maintain the current billing relationship "
-    "active and to prevent unilateral changes to it within the defined period."
+    "expired, so we are sending a new service term. By accepting it, both parties agree to keep "
+    "the current billing relationship active and to prevent unilateral changes to it within the "
+    "defined period."
 )
+AWS_HANDSHAKE_NOTE_MAX_LENGTH = 300
 
 
 @pytest.fixture
@@ -203,6 +205,14 @@ def test_get_fixed_commitment_end_date_no_teams_warning(
     get_fixed_commitment_end_date(AGREEMENT_ID, "rel-123456", "hs-123456")  # act
 
     mock_send_warning.assert_not_called()
+
+
+def test_service_term_renewal_note_fits_aws_limit():
+    note = SERVICE_TERM_RENEWAL_NOTE.format(agreement_id=AGREEMENT_ID)
+
+    result = len(note)
+
+    assert result <= AWS_HANDSHAKE_NOTE_MAX_LENGTH
 
 
 def test_send_service_term_renewal(config, renewal_apn_client):

@@ -14,11 +14,13 @@ from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
 logger = get_logger(__name__)
 
+# AWS limits the handshake note to 300 characters, so the TDR's original note was shortened.
+# Robert Segal confirmed this text on 2026-11-03 (TDR comment 8143470610, Teams).
 SERVICE_TERM_RENEWAL_NOTE = (
-    "Dear customer, your initial service term for Agreement {agreement_id} has expired, hence "
-    "we are sending a new up to date service term. By accepting this service term both parties "
-    "provide mutual consent to maintain the current billing relationship active and to prevent "
-    "unilateral changes to it within the defined period."
+    "Dear customer, your initial service term for Agreement {agreement_id} has expired, so we "
+    "are sending a new service term. By accepting it, both parties agree to keep the current "
+    "billing relationship active and to prevent unilateral changes to it within the defined "
+    "period."
 )
 SERVICE_TERM_RENEWAL_TITLE = "Service term renewal"
 RENEWAL_REUSE_STATUSES = frozenset((
