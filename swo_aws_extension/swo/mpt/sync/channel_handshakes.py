@@ -6,6 +6,7 @@ from swo_aws_extension.aws.models import ChannelHandshakeServicePeriod
 from swo_aws_extension.constants import (
     CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS,
     ChannelHandshakeStatusEnum,
+    ServicePeriodTypeEnum,
 )
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.swo.mpt.sync.apn_client import get_apn_client
@@ -65,8 +66,8 @@ def send_service_term_renewal(
     """
     Send the client a new service term with the minimum notice period as a channel handshake.
 
-    A service term that is still pending for the relationship is reused instead of sending
-    another one, so a run after a failed agreement update doesn't send the client a duplicate.
+    A renewal that is still pending for the agreement is reused instead of sending another one,
+    so a run after a failed agreement update doesn't send the client a duplicate.
     A failure is reported to Teams, so the next sync run can try again.
 
     Args:
@@ -92,7 +93,8 @@ def _get_renewal_handshake_id(
     agreement_id: str, pma_account_id: str, relationship_id: str
 ) -> str | None:
     apn_client = get_apn_client()
-    pending_handshake_id = _find_pending_handshake_id(apn_client, relationship_id)
+    renewal_note = SERVICE_TERM_RENEWAL_NOTE.format(agreement_id=agreement_id)
+    pending_handshake_id = _find_pending_renewal_id(apn_client, relationship_id, renewal_note)
     if pending_handshake_id:
         logger.info("Reusing pending service term channel handshake %s", pending_handshake_id)
         return pending_handshake_id
@@ -104,25 +106,29 @@ def _get_renewal_handshake_id(
             f"{agreement_id} - {SERVICE_TERM_RENEWAL_TITLE}", message
         )
         return None
-    handshake = apn_client.create_channel_handshake(
+    return apn_client.create_channel_handshake(
         pma_identifier=pm_identifier,
         relationship_identifier=relationship_id,
         minimum_notice_days=CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS,
-        note=SERVICE_TERM_RENEWAL_NOTE.format(agreement_id=agreement_id),
-    )
-    return handshake["channelHandshakeDetail"]["id"]
+        note=renewal_note,
+    )["channelHandshakeDetail"]["id"]
 
 
-def _find_pending_handshake_id(apn_client: AWSClient, relationship_id: str) -> str | None:
-    handshakes = apn_client.get_channel_handshakes_by_resource(relationship_id)
-    return next(
-        (
-            handshake["id"]
-            for handshake in handshakes
-            if handshake.get("status") == ChannelHandshakeStatusEnum.PENDING.value
-        ),
-        None,
-    )
+def _find_pending_renewal_id(
+    apn_client: AWSClient, relationship_id: str, renewal_note: str
+) -> str | None:
+    # The renewal note names the agreement, so a service term sent by hand or by another order
+    # for the same relationship isn't taken for the renewal.
+    for handshake in apn_client.get_channel_handshakes_by_resource(relationship_id):
+        handshake_detail = handshake.get("detail") or {}
+        detail = handshake_detail.get("startServicePeriodHandshakeDetail") or {}
+        if (
+            handshake.get("status") == ChannelHandshakeStatusEnum.PENDING.value
+            and detail.get("servicePeriodType") == ServicePeriodTypeEnum.MINIMUM_NOTICE_PERIOD.value
+            and detail.get("note") == renewal_note
+        ):
+            return handshake["id"]
+    return None
 
 
 def _get_commitment_end_date(

@@ -19,6 +19,24 @@ RENEWAL_NOTE = (
 
 
 @pytest.fixture
+def pending_renewal_factory():
+    def factory(status="PENDING", period_type="MINIMUM_NOTICE_PERIOD", note=RENEWAL_NOTE):
+        return {
+            "id": "hs-777777",
+            "status": status,
+            "detail": {
+                "startServicePeriodHandshakeDetail": {
+                    "servicePeriodType": period_type,
+                    "minimumNoticeDays": "90",
+                    "note": note,
+                }
+            },
+        }
+
+    return factory
+
+
+@pytest.fixture
 def renewal_apn_client(mock_apn_client, channel_handshake_factory):
     mock_apn_client.get_channel_handshakes_by_resource.return_value = [channel_handshake_factory()]
     mock_apn_client.get_program_management_id_by_account.return_value = "pm-123456"
@@ -213,18 +231,38 @@ def test_send_service_term_renewal_sends_minimum_notice_term(mocker, config, ren
     )
 
 
-def test_send_service_term_renewal_reuses_pending_term(
-    config, renewal_apn_client, channel_handshake_factory
+def test_send_service_term_renewal_reuses_pending_renewal(
+    config, renewal_apn_client, channel_handshake_factory, pending_renewal_factory
 ):
-    pending_handshake = channel_handshake_factory() | {"id": "hs-777777", "status": "PENDING"}
     renewal_apn_client.get_channel_handshakes_by_resource.return_value = [
         channel_handshake_factory(),
-        pending_handshake,
+        pending_renewal_factory(),
     ]
 
     result = send_service_term_renewal(AGREEMENT_ID, "651706759263", "rel-123456")
 
     assert (result, renewal_apn_client.create_channel_handshake.called) == ("hs-777777", False)
+
+
+@pytest.mark.parametrize(
+    "handshake_changes",
+    [
+        {"status": "EXPIRED"},
+        {"period_type": "FIXED_COMMITMENT_PERIOD"},
+        {"note": "Please accept your Service Terms contract with SoftwareOne"},
+        {"note": RENEWAL_NOTE.replace(AGREEMENT_ID, "AGR-0000-0000-0000-0000")},
+    ],
+)
+def test_send_service_term_renewal_ignores_other_handshakes(
+    config, renewal_apn_client, pending_renewal_factory, handshake_changes
+):
+    renewal_apn_client.get_channel_handshakes_by_resource.return_value = [
+        pending_renewal_factory(**handshake_changes)
+    ]
+
+    result = send_service_term_renewal(AGREEMENT_ID, "651706759263", "rel-123456")
+
+    assert (result, renewal_apn_client.create_channel_handshake.call_count) == ("hs-654321", 1)
 
 
 def test_send_service_term_renewal_without_program_management_account(
