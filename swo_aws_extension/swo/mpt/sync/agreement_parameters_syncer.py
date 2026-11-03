@@ -52,10 +52,9 @@ class AgreementParametersSyncer(AgreementProcessor):
             )
             return
         logger.info("Synchronizing billing transfer acceptance date: %s", acceptance_date)
-        self._update_fulfillment_parameter(
+        self._update_fulfillment_parameters(
             agreement,
-            FulfillmentParametersEnum.BILLING_TRANSFER_ACCEPTANCE_DATE.value,
-            acceptance_date,
+            {FulfillmentParametersEnum.BILLING_TRANSFER_ACCEPTANCE_DATE.value: acceptance_date},
             error_message=(
                 f"Failed to update agreement with billing transfer acceptance date "
                 f"{acceptance_date}"
@@ -78,10 +77,9 @@ class AgreementParametersSyncer(AgreementProcessor):
             return
         expiration_date = commitment_end_date.isoformat()
         logger.info("Synchronizing handshake expiration date: %s", expiration_date)
-        self._update_fulfillment_parameter(
+        self._update_fulfillment_parameters(
             agreement,
-            FulfillmentParametersEnum.HANDSHAKE_EXPIRATION_DATE.value,
-            expiration_date,
+            {FulfillmentParametersEnum.HANDSHAKE_EXPIRATION_DATE.value: expiration_date},
             error_message=(
                 f"Failed to update agreement with handshake expiration date {expiration_date}"
             ),

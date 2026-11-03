@@ -48,22 +48,6 @@ class AgreementProcessor:
         """Process a single agreement."""
         raise NotImplementedError
 
-    def _update_fulfillment_parameter(
-        self,
-        agreement: AgreementType,
-        external_id: str,
-        parameter_value: str,
-        *,
-        error_message: str,
-        notification_title: str,
-    ) -> None:
-        self._update_fulfillment_parameters(
-            agreement,
-            {external_id: parameter_value},
-            error_message=error_message,
-            notification_title=notification_title,
-        )
-
     def _update_fulfillment_parameters(
         self,
         agreement: AgreementType,

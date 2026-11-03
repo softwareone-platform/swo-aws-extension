@@ -85,10 +85,9 @@ class AgreementSubscriptionsSyncer(AgreementProcessor):  # noqa: WPS214
             logger.info("Management account %s name not available, skipping", mpa_account_id)
             return
         logger.info("Synchronizing management account name: %s", account_name)
-        self._update_fulfillment_parameter(
+        self._update_fulfillment_parameters(
             agreement,
-            FulfillmentParametersEnum.MANAGEMENT_ACCOUNT_NAME.value,
-            account_name,
+            {FulfillmentParametersEnum.MANAGEMENT_ACCOUNT_NAME.value: account_name},
             error_message=(
                 f"Error updating management account name for agreement {agreement['id']}"
             ),

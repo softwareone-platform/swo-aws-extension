@@ -108,10 +108,9 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
         if get_relationship_end_date(agreement) == end_date_value:
             return
         logger.info("Synchronizing relationship end date: %s", end_date_value)
-        self._update_fulfillment_parameter(
+        self._update_fulfillment_parameters(
             agreement,
-            FulfillmentParametersEnum.RELATIONSHIP_END_DATE.value,
-            end_date_value,
+            {FulfillmentParametersEnum.RELATIONSHIP_END_DATE.value: end_date_value},
             error_message=f"Failed to update agreement with relationship end date {end_date_value}",
             notification_title="Synchronize relationship end date",
         )
@@ -128,10 +127,13 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
             "Synchronizing responsibility transfer ID: %s",
             responsibility_transfer_id,
         )
-        self._update_fulfillment_parameter(
+        self._update_fulfillment_parameters(
             agreement,
-            FulfillmentParametersEnum.RESPONSIBILITY_TRANSFER_ID.value,
-            responsibility_transfer_id,
+            {
+                FulfillmentParametersEnum.RESPONSIBILITY_TRANSFER_ID.value: (
+                    responsibility_transfer_id
+                ),
+            },
             error_message=(
                 f"Failed to update agreement with responsibility "
                 f"transfer ID {responsibility_transfer_id}"
@@ -236,10 +238,9 @@ class AgreementSyncer(AgreementProcessor):  # noqa: WPS214
         return ticket_id
 
     def _save_terminate_ticket_id(self, agreement: AgreementType, ticket_id: str) -> None:
-        self._update_fulfillment_parameter(
+        self._update_fulfillment_parameters(
             agreement,
-            FulfillmentParametersEnum.CRM_TERMINATE_ORDER_TICKET_ID.value,
-            ticket_id,
+            {FulfillmentParametersEnum.CRM_TERMINATE_ORDER_TICKET_ID.value: ticket_id},
             error_message=f"Failed to update agreement with termination ticket ID {ticket_id}",
             notification_title="Transfer end notification",
         )
