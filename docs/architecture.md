@@ -78,9 +78,9 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    clears the expiration date so the next run doesn't send another term, and
    sets the handshake accepted flag to `no`. When the handshake can't be
    created, the parameters stay unchanged and the next run tries again. A
-   renewal that is still pending for the agreement is saved instead of sending
-   another one, so a run after a failed agreement update doesn't send the
-   client a duplicate. The renewal is recognised by its minimum notice period
+   renewal already sent for the agreement, pending or accepted, is saved
+   instead of sending another one, so a run after a failed agreement update
+   doesn't send the client a duplicate. The renewal is recognised by its minimum notice period
    and its note, which names the agreement, so other pending service terms for
    the relationship are left alone.
 
