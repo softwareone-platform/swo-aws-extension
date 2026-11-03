@@ -253,7 +253,11 @@ def test_account_migration_is_new(record_id, expected):
             AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE,
             "Awaiting channel handshake response",
         ),
-        (AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING, "Awaiting Client Onboarding"),
+        (
+            AccountMigrationStatus.AWAITING_BILLING_TRANSFER_START_DATE,
+            "Awaiting billing transfer start date",
+        ),
+        (AccountMigrationStatus.UPGRADING_SERVICES, "Upgrading services"),
         (AccountMigrationStatus.SERVICES_ONBOARDED, "Services onboarded"),
         (AccountMigrationStatus.ERROR, "Error"),
         (AccountMigrationStatus.FAILED, "Failed"),
