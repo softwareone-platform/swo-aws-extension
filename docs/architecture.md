@@ -80,8 +80,9 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    created, the parameters stay unchanged and the next run tries again. A
    renewal already sent for the agreement, pending or accepted, is saved
    instead of sending another one, so a run after a failed agreement update
-   doesn't send the client a duplicate. The renewal is recognised by its minimum notice period
-   and its note, which names the agreement, so other pending service terms for
+   doesn't send the client a duplicate. An accepted renewal sets the handshake
+   accepted flag to `yes`. The renewal is recognised by its minimum notice
+   period and its note, which names the agreement, so other service terms for
    the relationship are left alone.
 
 ## Major components

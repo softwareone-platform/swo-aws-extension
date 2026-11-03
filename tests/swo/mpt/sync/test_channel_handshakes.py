@@ -3,6 +3,7 @@ import datetime as dt
 import pytest
 
 from swo_aws_extension.aws.errors import AWSError
+from swo_aws_extension.aws.models import ServiceTermRenewal
 from swo_aws_extension.constants import CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS
 from swo_aws_extension.swo.mpt.sync.channel_handshakes import (
     get_fixed_commitment_end_date,
@@ -207,7 +208,7 @@ def test_get_fixed_commitment_end_date_no_teams_warning(
 def test_send_service_term_renewal(config, renewal_apn_client):
     result = send_service_term_renewal(AGREEMENT_ID, "651706759263", "rel-123456")
 
-    assert result == "hs-654321"
+    assert result == ServiceTermRenewal("hs-654321", is_accepted=False)
 
 
 def test_send_service_term_renewal_sends_minimum_notice_term(mocker, config, renewal_apn_client):
@@ -231,9 +232,14 @@ def test_send_service_term_renewal_sends_minimum_notice_term(mocker, config, ren
     )
 
 
-@pytest.mark.parametrize("status", ["PENDING", "ACCEPTED"])
+@pytest.mark.parametrize(("status", "is_accepted"), [("PENDING", False), ("ACCEPTED", True)])
 def test_send_service_term_renewal_reuses_sent_renewal(
-    config, renewal_apn_client, channel_handshake_factory, pending_renewal_factory, status
+    config,
+    renewal_apn_client,
+    channel_handshake_factory,
+    pending_renewal_factory,
+    status,
+    is_accepted,
 ):
     renewal_apn_client.get_channel_handshakes_by_resource.return_value = [
         channel_handshake_factory(),
@@ -242,7 +248,10 @@ def test_send_service_term_renewal_reuses_sent_renewal(
 
     result = send_service_term_renewal(AGREEMENT_ID, "651706759263", "rel-123456")
 
-    assert (result, renewal_apn_client.create_channel_handshake.called) == ("hs-777777", False)
+    assert (result, renewal_apn_client.create_channel_handshake.called) == (
+        ServiceTermRenewal("hs-777777", is_accepted=is_accepted),
+        False,
+    )
 
 
 @pytest.mark.parametrize(
@@ -264,7 +273,10 @@ def test_send_service_term_renewal_ignores_other_handshakes(
 
     result = send_service_term_renewal(AGREEMENT_ID, "651706759263", "rel-123456")
 
-    assert (result, renewal_apn_client.create_channel_handshake.call_count) == ("hs-654321", 1)
+    assert (result, renewal_apn_client.create_channel_handshake.call_count) == (
+        ServiceTermRenewal("hs-654321", is_accepted=False),
+        1,
+    )
 
 
 def test_send_service_term_renewal_without_program_management_account(

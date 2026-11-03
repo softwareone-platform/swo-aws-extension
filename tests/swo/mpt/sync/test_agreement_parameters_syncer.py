@@ -4,6 +4,8 @@ import pytest
 from freezegun import freeze_time
 from mpt_api_client.exceptions import MPTError
 
+from swo_aws_extension.aws.models import ServiceTermRenewal
+
 
 def test_parameters_syncer_process_backfills_parameters(
     mocker,
@@ -212,6 +214,7 @@ def test_parameters_syncer_process_renews_service_term_after_backfill(
 
 
 @freeze_time("2026-11-02T12:00:00Z")
+@pytest.mark.parametrize(("is_accepted", "approved"), [(False, "no"), (True, "yes")])
 def test_renew_expired_service_term(
     mocker,
     agreement_factory,
@@ -219,6 +222,8 @@ def test_renew_expired_service_term(
     mock_send_service_term_renewal,
     mock_update_agreement,
     parameters_syncer,
+    is_accepted,
+    approved,
 ):
     agreement = agreement_factory(
         fulfillment_parameters=fulfillment_parameters_factory(
@@ -228,7 +233,9 @@ def test_renew_expired_service_term(
             handshake_expiration_date="2026-11-01",
         )
     )
-    mock_send_service_term_renewal.return_value = "hs-654321"
+    mock_send_service_term_renewal.return_value = ServiceTermRenewal(
+        "hs-654321", is_accepted=is_accepted
+    )
 
     parameters_syncer.renew_expired_service_term(agreement)  # act
 
@@ -245,7 +252,7 @@ def test_renew_expired_service_term(
                     "fulfillment": [
                         {"externalId": "channelHandshakeId", "value": "hs-654321"},
                         {"externalId": "handshakeExpirationDate", "value": ""},
-                        {"externalId": "channelHandshakeApproved", "value": "no"},
+                        {"externalId": "channelHandshakeApproved", "value": approved},
                     ]
                 },
             )
@@ -357,7 +364,7 @@ def test_renew_expired_service_term_update_error(
             relationship_id="rel-123456", handshake_expiration_date="2026-11-01"
         )
     )
-    mock_send_service_term_renewal.return_value = "hs-654321"
+    mock_send_service_term_renewal.return_value = ServiceTermRenewal("hs-654321", is_accepted=False)
     mock_update_agreement.side_effect = MPTError("error")
 
     parameters_syncer.renew_expired_service_term(agreement)  # act

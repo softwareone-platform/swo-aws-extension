@@ -39,6 +39,14 @@ class ChannelHandshakeServicePeriod:
         return self.end_date is not None and self.end_date > deadline
 
 
+@dataclass(frozen=True)
+class ServiceTermRenewal:
+    """Channel handshake that carries an agreement's service term renewal."""
+
+    handshake_id: str
+    is_accepted: bool
+
+
 def _parse_end_date(end_date: dt.datetime | str | None) -> dt.datetime | None:
     if not end_date:
         return None

@@ -2,7 +2,7 @@ import datetime as dt
 
 from swo_aws_extension.aws.client import AWSClient
 from swo_aws_extension.aws.errors import AWSError
-from swo_aws_extension.aws.models import ChannelHandshakeServicePeriod
+from swo_aws_extension.aws.models import ChannelHandshakeServicePeriod, ServiceTermRenewal
 from swo_aws_extension.constants import (
     CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS,
     ChannelHandshakeStatusEnum,
@@ -66,7 +66,7 @@ def get_fixed_commitment_end_date(
 
 def send_service_term_renewal(
     agreement_id: str, pma_account_id: str, relationship_id: str
-) -> str | None:
+) -> ServiceTermRenewal | None:
     """
     Send the client a new service term with the minimum notice period as a channel handshake.
 
@@ -80,10 +80,10 @@ def send_service_term_renewal(
         relationship_id: The Partner Central relationship the handshake is sent for.
 
     Returns:
-        The ID of the reused or new channel handshake, or None when it couldn't be created.
+        The reused or new renewal handshake, or None when it couldn't be created.
     """
     try:
-        return _get_renewal_handshake_id(agreement_id, pma_account_id, relationship_id)
+        return _get_renewal(agreement_id, pma_account_id, relationship_id)
     except AWSError as error:
         message = f"Failed to send the new service term for relationship {relationship_id}"
         logger.exception(message)
@@ -93,32 +93,35 @@ def send_service_term_renewal(
         return None
 
 
-def _get_renewal_handshake_id(
+def _get_renewal(
     agreement_id: str, pma_account_id: str, relationship_id: str
-) -> str | None:
+) -> ServiceTermRenewal | None:
     apn_client = get_apn_client()
     renewal_note = SERVICE_TERM_RENEWAL_NOTE.format(agreement_id=agreement_id)
-    renewal_id = _find_renewal_id(apn_client, relationship_id, renewal_note)
-    if renewal_id:
-        logger.info("Reusing service term renewal channel handshake %s", renewal_id)
-        return renewal_id
+    renewal = _find_renewal(apn_client, relationship_id, renewal_note)
+    if renewal:
+        logger.info("Reusing service term renewal channel handshake %s", renewal.handshake_id)
+        return renewal
     pm_identifier = apn_client.get_program_management_id_by_account(pma_account_id)
     if not pm_identifier:
-        message = f"Program management account not found for account {pma_account_id}"
-        logger.warning(message)
-        TeamsNotificationManager().send_warning(
-            f"{agreement_id} - {SERVICE_TERM_RENEWAL_TITLE}", message
+        _warn(
+            agreement_id,
+            f"Program management account not found for account {pma_account_id}",
+            notification_title=SERVICE_TERM_RENEWAL_TITLE,
         )
         return None
-    return apn_client.create_channel_handshake(
+    handshake_detail = apn_client.create_channel_handshake(
         pma_identifier=pm_identifier,
         relationship_identifier=relationship_id,
         minimum_notice_days=CHANNEL_HANDSHAKE_MINIMUM_NOTICE_DAYS,
         note=renewal_note,
-    )["channelHandshakeDetail"]["id"]
+    )["channelHandshakeDetail"]
+    return ServiceTermRenewal(handshake_detail["id"], is_accepted=False)
 
 
-def _find_renewal_id(apn_client: AWSClient, relationship_id: str, renewal_note: str) -> str | None:
+def _find_renewal(
+    apn_client: AWSClient, relationship_id: str, renewal_note: str
+) -> ServiceTermRenewal | None:
     # The renewal note names the agreement, so a service term sent by hand or by another order
     # for the same relationship isn't taken for the renewal. An accepted renewal counts too: the
     # client may accept it before the run that retries a failed agreement update.
@@ -130,7 +133,10 @@ def _find_renewal_id(apn_client: AWSClient, relationship_id: str, renewal_note: 
             and detail.get("servicePeriodType") == ServicePeriodTypeEnum.MINIMUM_NOTICE_PERIOD.value
             and detail.get("note") == renewal_note
         ):
-            return handshake["id"]
+            return ServiceTermRenewal(
+                handshake["id"],
+                is_accepted=handshake["status"] == ChannelHandshakeStatusEnum.ACCEPTED.value,
+            )
     return None
 
 
@@ -146,11 +152,14 @@ def _get_commitment_end_date(
     return None
 
 
-def _warn(agreement_id: str, message: str) -> None:
+def _warn(
+    agreement_id: str,
+    message: str,
+    *,
+    notification_title: str = "Synchronize handshake expiration date",
+) -> None:
     logger.warning(message)
-    TeamsNotificationManager().send_warning(
-        f"{agreement_id} - Synchronize handshake expiration date", message
-    )
+    TeamsNotificationManager().send_warning(f"{agreement_id} - {notification_title}", message)
 
 
 def _get_service_period(handshake: dict, handshake_id: str) -> ChannelHandshakeServicePeriod | None:

@@ -101,25 +101,27 @@ class AgreementParametersSyncer(AgreementProcessor):
         if self.dry_run:
             logger.info("Dry run mode - skipping service term renewal")
             return
-        handshake_id = send_service_term_renewal(
-            agreement["id"], self.pma_account_id, relationship_id
-        )
-        if not handshake_id:
+        renewal = send_service_term_renewal(agreement["id"], self.pma_account_id, relationship_id)
+        if not renewal:
             return
-        logger.info("Service term renewal sent with channel handshake %s", handshake_id)
+        logger.info("Service term renewal sent with channel handshake %s", renewal.handshake_id)
         # The expiration date is cleared so the next sync run doesn't send another service term.
+        # A reused renewal the client already accepted is saved as approved.
+        approved = (
+            ChannelHandshakeDeployed.YES
+            if renewal.is_accepted
+            else ChannelHandshakeDeployed.NO_DEPLOYED
+        )
         self._update_fulfillment_parameters(
             agreement,
             {
-                FulfillmentParametersEnum.CHANNEL_HANDSHAKE_ID.value: handshake_id,
+                FulfillmentParametersEnum.CHANNEL_HANDSHAKE_ID.value: renewal.handshake_id,
                 FulfillmentParametersEnum.HANDSHAKE_EXPIRATION_DATE.value: "",
-                FulfillmentParametersEnum.CHANNEL_HANDSHAKE_APPROVED.value: (
-                    ChannelHandshakeDeployed.NO_DEPLOYED.value
-                ),
+                FulfillmentParametersEnum.CHANNEL_HANDSHAKE_APPROVED.value: approved.value,
             },
             error_message=(
                 f"Failed to update agreement with the renewed service term channel handshake "
-                f"{handshake_id}"
+                f"{renewal.handshake_id}"
             ),
             notification_title=SERVICE_TERM_RENEWAL_TITLE,
         )
