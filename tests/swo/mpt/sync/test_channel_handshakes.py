@@ -18,6 +18,16 @@ RENEWAL_NOTE = (
 )
 
 
+@pytest.fixture
+def renewal_apn_client(mock_apn_client, channel_handshake_factory):
+    mock_apn_client.get_channel_handshakes_by_resource.return_value = [channel_handshake_factory()]
+    mock_apn_client.get_program_management_id_by_account.return_value = "pm-123456"
+    mock_apn_client.create_channel_handshake.return_value = {
+        "channelHandshakeDetail": {"id": "hs-654321"}
+    }
+    return mock_apn_client
+
+
 def test_get_fixed_commitment_end_date(config, mock_apn_client, channel_handshake_factory):
     mock_apn_client.get_channel_handshake_by_id.return_value = channel_handshake_factory()
 
@@ -176,29 +186,21 @@ def test_get_fixed_commitment_end_date_no_teams_warning(
     mock_send_warning.assert_not_called()
 
 
-def test_send_service_term_renewal(config, mock_apn_client):
-    mock_apn_client.get_program_management_id_by_account.return_value = "pm-123456"
-    mock_apn_client.create_channel_handshake.return_value = {
-        "channelHandshakeDetail": {"id": "hs-654321"}
-    }
-
+def test_send_service_term_renewal(config, renewal_apn_client):
     result = send_service_term_renewal(AGREEMENT_ID, "651706759263", "rel-123456")
 
     assert result == "hs-654321"
 
 
-def test_send_service_term_renewal_sends_minimum_notice_term(mocker, config, mock_apn_client):
-    mock_apn_client.get_program_management_id_by_account.return_value = "pm-123456"
-    mock_apn_client.create_channel_handshake.return_value = {
-        "channelHandshakeDetail": {"id": "hs-654321"}
-    }
-
+def test_send_service_term_renewal_sends_minimum_notice_term(mocker, config, renewal_apn_client):
     send_service_term_renewal(AGREEMENT_ID, "651706759263", "rel-123456")  # act
 
     assert (
-        mock_apn_client.get_program_management_id_by_account.call_args_list,
-        mock_apn_client.create_channel_handshake.call_args_list,
+        renewal_apn_client.get_channel_handshakes_by_resource.call_args_list,
+        renewal_apn_client.get_program_management_id_by_account.call_args_list,
+        renewal_apn_client.create_channel_handshake.call_args_list,
     ) == (
+        [mocker.call("rel-123456")],
         [mocker.call("651706759263")],
         [
             mocker.call(
@@ -211,16 +213,30 @@ def test_send_service_term_renewal_sends_minimum_notice_term(mocker, config, moc
     )
 
 
-def test_send_service_term_renewal_without_program_management_account(
-    mocker, config, mock_apn_client, mock_send_warning
+def test_send_service_term_renewal_reuses_pending_term(
+    config, renewal_apn_client, channel_handshake_factory
 ):
-    mock_apn_client.get_program_management_id_by_account.return_value = ""
+    pending_handshake = channel_handshake_factory() | {"id": "hs-777777", "status": "PENDING"}
+    renewal_apn_client.get_channel_handshakes_by_resource.return_value = [
+        channel_handshake_factory(),
+        pending_handshake,
+    ]
+
+    result = send_service_term_renewal(AGREEMENT_ID, "651706759263", "rel-123456")
+
+    assert (result, renewal_apn_client.create_channel_handshake.called) == ("hs-777777", False)
+
+
+def test_send_service_term_renewal_without_program_management_account(
+    mocker, config, renewal_apn_client, mock_send_warning
+):
+    renewal_apn_client.get_program_management_id_by_account.return_value = ""
 
     result = send_service_term_renewal(AGREEMENT_ID, "651706759263", "rel-123456")
 
     assert (
         result,
-        mock_apn_client.create_channel_handshake.called,
+        renewal_apn_client.create_channel_handshake.called,
         mock_send_warning.call_args_list,
     ) == (
         None,
@@ -235,22 +251,17 @@ def test_send_service_term_renewal_without_program_management_account(
 
 
 @pytest.mark.parametrize(
-    ("program_management_lookup", "handshake_creation"),
+    "failing_call",
     [
-        ({"side_effect": AWSError("access denied")}, {}),
-        ({"return_value": "pm-123456"}, {"side_effect": AWSError("access denied")}),
+        "get_channel_handshakes_by_resource",
+        "get_program_management_id_by_account",
+        "create_channel_handshake",
     ],
 )
 def test_send_service_term_renewal_aws_error(
-    mocker,
-    config,
-    mock_apn_client,
-    mock_send_exception,
-    program_management_lookup,
-    handshake_creation,
+    mocker, config, renewal_apn_client, mock_send_exception, failing_call
 ):
-    mock_apn_client.get_program_management_id_by_account.configure_mock(**program_management_lookup)
-    mock_apn_client.create_channel_handshake.configure_mock(**handshake_creation)
+    getattr(renewal_apn_client, failing_call).side_effect = AWSError("access denied")
 
     result = send_service_term_renewal(AGREEMENT_ID, "651706759263", "rel-123456")
 

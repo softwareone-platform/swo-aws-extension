@@ -77,7 +77,10 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    90-day service term as a channel handshake. It saves the new handshake ID,
    clears the expiration date so the next run doesn't send another term, and
    sets the handshake accepted flag to `no`. When the handshake can't be
-   created, the parameters stay unchanged and the next run tries again.
+   created, the parameters stay unchanged and the next run tries again. A
+   service term that is still pending for the relationship is saved instead of
+   sending another one, so a run after a failed agreement update doesn't send
+   the client a duplicate.
 
 ## Major components
 
