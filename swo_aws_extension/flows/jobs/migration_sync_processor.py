@@ -263,7 +263,7 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         """Return the completed order changes, keeping the status of awaiting or upgrading rows."""
         changes: dict[str, Any] = {}
         if record.migration_status not in BILLING_TRANSFER_MIGRATION_STATUSES:
-            changes["migration_status"] = AccountMigrationStatus.AWAITING_BILLING_TRANSFER_START_DATE  # ruff: ignore[line-too-long]  # fmt: skip
+            changes["migration_status"] = AccountMigrationStatus.AWAITING_BILLING_TRANSFER_START_DATE  # noqa: E501  # fmt: skip
         changes["migration_completed_date"] = get_audit_date(order, MptOrderStatus.COMPLETED)
         return changes
 
