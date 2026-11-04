@@ -60,10 +60,19 @@ ACCEPTED_ORDER_STATUSES = frozenset((
     MptOrderStatus.COMPLETED,
 ))
 
-# Querying phases in which the order waits for the MCoE, with the status the row shows.
-QUERYING_PHASE_STATUSES = MappingProxyType({
+# Phases of a processing or querying order that create or check the billing transfer invitation
+# or that configure the APN program and create or check the channel handshake, with the status
+# the row shows.
+PHASE_MIGRATION_STATUSES = MappingProxyType({
+    PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION: (
+        AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE
+    ),
     PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION: (
         AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE
+    ),
+    PhasesEnum.CONFIGURE_APN_PROGRAM: (AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE),
+    PhasesEnum.CREATE_CHANNEL_HANDSHAKE: (
+        AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE
     ),
     PhasesEnum.CHECK_CHANNEL_HANDSHAKE_STATUS: (
         AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE
@@ -236,10 +245,8 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         """Return the row changes driven by the order status and the current row status."""
         order_status = order.get("status")
         changes: dict[str, Any] = {"mpt_order_status": order_status}
-        if order_status == MptOrderStatus.PROCESSING:
-            changes["migration_status"] = AccountMigrationStatus.MIGRATION_IN_PROGRESS
-        elif order_status == MptOrderStatus.QUERYING:
-            changes["migration_status"] = QUERYING_PHASE_STATUSES.get(
+        if order_status in {MptOrderStatus.PROCESSING, MptOrderStatus.QUERYING}:
+            changes["migration_status"] = PHASE_MIGRATION_STATUSES.get(
                 get_phase(order), AccountMigrationStatus.MIGRATION_IN_PROGRESS
             )
         elif order_status == MptOrderStatus.COMPLETED:
