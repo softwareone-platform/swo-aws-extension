@@ -610,12 +610,25 @@ def test_sync_querying_order_keeps_existing_acceptance_date(
     assert record.migration_status == AccountMigrationStatus.MIGRATION_IN_PROGRESS
 
 
+@pytest.mark.parametrize("order_status", [MptOrderStatus.PROCESSING, MptOrderStatus.QUERYING])
 @pytest.mark.parametrize(
     ("phase", "expected"),
     [
         (
+            PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION,
+            AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE,
+        ),
+        (
             PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION,
             AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE,
+        ),
+        (
+            PhasesEnum.CONFIGURE_APN_PROGRAM,
+            AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE,
+        ),
+        (
+            PhasesEnum.CREATE_CHANNEL_HANDSHAKE,
+            AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE,
         ),
         (
             PhasesEnum.CHECK_CHANNEL_HANDSHAKE_STATUS,
@@ -625,23 +638,19 @@ def test_sync_querying_order_keeps_existing_acceptance_date(
         (PhasesEnum.ONBOARD_SERVICES, AccountMigrationStatus.MIGRATION_IN_PROGRESS),
     ],
 )
-def test_sync_querying_order_shows_status_from_its_phase(
+def test_sync_processing_or_querying_order_shows_status_from_its_phase(
     processor,
     mock_migration_table,
     mock_get_orders,
     migration_record_factory,
     order_factory_sync,
+    order_status,
     phase,
     expected,
 ):
-    record = migration_record_factory(
-        migration_status=AccountMigrationStatus.MIGRATION_IN_PROGRESS,
-        mpt_order_status=MptOrderStatus.PROCESSING.value,
-    )
+    record = migration_record_factory()
     mock_migration_table.get_by_statuses.return_value = [record]
-    mock_get_orders.return_value = [
-        order_factory_sync(status=MptOrderStatus.QUERYING.value, phase=phase)
-    ]
+    mock_get_orders.return_value = [order_factory_sync(status=order_status.value, phase=phase)]
 
     processor.sync()  # act
 
