@@ -10,6 +10,7 @@ from botocore.exceptions import ClientError
 from swo_aws_extension.aws.client import MAX_RESULTS_PER_PAGE, get_paged_response
 from swo_aws_extension.aws.errors import (
     AWSError,
+    IneligibleForBillingTransferError,
     InvalidDateInTerminateResponsibilityError,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.billing_period import BillingPeriod
@@ -23,6 +24,27 @@ class InvalidInputException(ClientError):  # noqa: N818
 
 class ResourceNotFoundException(ClientError):  # noqa: N818
     """Dummy exception for testing purposes."""
+
+
+# ConstraintViolationException is the name given by AWS boto3 to the error we are testing:
+# see more: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/organizations/client/invite_organization_to_transfer_responsibility.html
+class ConstraintViolationException(ClientError):  # noqa: N818
+    """Dummy exception for testing purposes."""
+
+
+@pytest.fixture
+def constraint_violation_factory():
+    def factory(message):
+        return ConstraintViolationException(
+            {
+                "Error": {"Code": "ConstraintViolationException", "Message": message},
+                "Message": message,
+                "ResponseMetadata": {"HTTPStatusCode": HTTPStatus.BAD_REQUEST},
+            },
+            "InviteOrganizationToTransferResponsibility",
+        )
+
+    return factory
 
 
 @pytest.fixture
@@ -296,6 +318,52 @@ def test_invite_org_to_transfer_billing(config, aws_client_factory):
         Target={"Id": "test_account_id", "Type": "ACCOUNT"},
         StartTimestamp=1767225600,
         SourceName="test_source_name",
+    )
+
+
+def test_invite_billing_transfer_ineligible_error(
+    config, aws_client_factory, constraint_violation_factory
+):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.exceptions.ConstraintViolationException = ConstraintViolationException
+    ineligible_message = (
+        "Ineligible for Billing Transfer. Your organization is subject to a pricing agreement"
+        " with AWS that Billing Transfer does not support."
+    )
+    mock_client.invite_organization_to_transfer_responsibility.side_effect = (
+        constraint_violation_factory(ineligible_message)
+    )
+
+    with pytest.raises(IneligibleForBillingTransferError) as error:
+        mock_aws_client.invite_organization_to_transfer_billing(
+            customer_id="test_account_id",
+            start_timestamp=1767225600,
+            source_name="test_source_name",
+        )
+
+    assert error.value.message == ineligible_message
+
+
+def test_invite_billing_transfer_other_constraint(
+    config, aws_client_factory, constraint_violation_factory
+):
+    mock_aws_client, mock_client = aws_client_factory(config, "test_account_id", "test_role_name")
+    mock_client.exceptions.ConstraintViolationException = ConstraintViolationException
+    mock_client.invite_organization_to_transfer_responsibility.side_effect = (
+        constraint_violation_factory("Other constraint violation.")
+    )
+
+    with pytest.raises(AWSError) as error:
+        mock_aws_client.invite_organization_to_transfer_billing(
+            customer_id="test_account_id",
+            start_timestamp=1767225600,
+            source_name="test_source_name",
+        )
+
+    assert error.type is AWSError
+    assert str(error.value) == (
+        "AWS Client error. An error occurred (ConstraintViolationException) when calling the"
+        " InviteOrganizationToTransferResponsibility operation: Other constraint violation."
     )
 
 

@@ -12,6 +12,7 @@ from swo_aws_extension.constants import (
 )
 from swo_aws_extension.flows.order_utils import (
     has_previous_order,
+    hide_master_payer_account,
     strip_whitespace_from_mpa_account,
 )
 from swo_aws_extension.parameters import (
@@ -165,9 +166,10 @@ def validate_order(client: MPTClient, order: dict) -> dict:
 
     This function performs the following steps:
     1. Creates a deep copy of the order to avoid mutations
-    2. Validates that newAccountInstructions is not visible
-    3. Updates parameter visibility based on account type
-    4. Adds default line items to the order
+    2. Hides masterPayerID unless it is a Purchase with an existing account
+    3. Validates that newAccountInstructions is not visible
+    4. Updates parameter visibility based on account type
+    5. Adds default line items to the order
 
     Args:
         client: MPT client for API calls.
@@ -178,6 +180,7 @@ def validate_order(client: MPTClient, order: dict) -> dict:
     """
     validated_order = copy.deepcopy(order)
     validated_order = reset_ordering_parameters_error(validated_order)
+    validated_order = hide_master_payer_account(validated_order)
     validated_order = strip_whitespace_from_mpa_account(validated_order)
     error_order = _validate_duplicate_agreement(client, validated_order)
     if error_order:

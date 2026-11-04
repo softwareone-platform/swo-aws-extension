@@ -245,7 +245,19 @@ def test_account_migration_is_new(record_id, expected):
         (AccountMigrationStatus.PROCESSING, "Processing"),
         (AccountMigrationStatus.PENDING_NOTIFY_CUSTOMER, "Pending notify customer"),
         (AccountMigrationStatus.MIGRATION_IN_PROGRESS, "Migration in progress"),
-        (AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING, "Awaiting Client Onboarding"),
+        (
+            AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE,
+            "Awaiting billing transfer response",
+        ),
+        (
+            AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE,
+            "Awaiting channel handshake response",
+        ),
+        (
+            AccountMigrationStatus.AWAITING_BILLING_TRANSFER_START_DATE,
+            "Awaiting billing transfer start date",
+        ),
+        (AccountMigrationStatus.UPGRADING_SERVICES, "Upgrading services"),
         (AccountMigrationStatus.SERVICES_ONBOARDED, "Services onboarded"),
         (AccountMigrationStatus.ERROR, "Error"),
         (AccountMigrationStatus.FAILED, "Failed"),

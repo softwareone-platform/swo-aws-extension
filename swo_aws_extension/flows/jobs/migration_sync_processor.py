@@ -1,5 +1,6 @@
 import datetime as dt
 import logging
+from types import MappingProxyType
 from typing import Any
 
 from mpt_extension_sdk.mpt_http.base import MPTClient
@@ -12,6 +13,7 @@ from swo_aws_extension.config import Config
 from swo_aws_extension.constants import (
     DeploymentStatusEnum,
     MptOrderStatus,
+    PhasesEnum,
     ResponsibilityTransferStatus,
 )
 from swo_aws_extension.flows.jobs.migration_billing_transfer_ticket import (
@@ -26,7 +28,7 @@ from swo_aws_extension.flows.jobs.migration_services_upgrade import (
     store_execution_arns,
 )
 from swo_aws_extension.flows.jobs.migration_sync_report import SyncReport
-from swo_aws_extension.parameters import get_responsibility_transfer_id
+from swo_aws_extension.parameters import get_phase, get_responsibility_transfer_id
 from swo_aws_extension.swo.cloud_orchestrator.errors import CloudOrchestratorError
 from swo_aws_extension.swo.crm_service.errors import CRMError
 from swo_aws_extension.swo.mpt.order import get_orders_by_ids
@@ -40,12 +42,15 @@ ORDERS_QUERY_SELECT = (
 )
 
 # Airtable rows the daily job keeps revisiting: rows whose Marketplace order can still change,
-# and rows awaiting client onboarding until their billing transfer is effective. Rows without an
-# order, or already in a terminal migration status, are left untouched.
+# rows waiting for the MCoE, and rows of completed orders until their services are onboarded.
+# Rows without an order, or already in a terminal migration status, are left untouched.
 SYNCABLE_MIGRATION_STATUSES = (
     AccountMigrationStatus.PENDING_NOTIFY_CUSTOMER,
     AccountMigrationStatus.MIGRATION_IN_PROGRESS,
-    AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING,
+    AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE,
+    AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE,
+    AccountMigrationStatus.AWAITING_BILLING_TRANSFER_START_DATE,
+    AccountMigrationStatus.UPGRADING_SERVICES,
 )
 
 # Order statuses that mean the customer has accepted the quoted order (moved it to processing).
@@ -55,9 +60,32 @@ ACCEPTED_ORDER_STATUSES = frozenset((
     MptOrderStatus.COMPLETED,
 ))
 
-IN_PROGRESS_ORDER_STATUSES = frozenset((MptOrderStatus.PROCESSING, MptOrderStatus.QUERYING))
+# Phases of a processing or querying order that create or check the billing transfer invitation
+# or that configure the APN program and create or check the channel handshake, with the status
+# the row shows.
+PHASE_MIGRATION_STATUSES = MappingProxyType({
+    PhasesEnum.CREATE_BILLING_TRANSFER_INVITATION: (
+        AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE
+    ),
+    PhasesEnum.CHECK_BILLING_TRANSFER_INVITATION: (
+        AccountMigrationStatus.AWAITING_BILLING_TRANSFER_RESPONSE
+    ),
+    PhasesEnum.CONFIGURE_APN_PROGRAM: (AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE),
+    PhasesEnum.CREATE_CHANNEL_HANDSHAKE: (
+        AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE
+    ),
+    PhasesEnum.CHECK_CHANNEL_HANDSHAKE_STATUS: (
+        AccountMigrationStatus.AWAITING_CHANNEL_HANDSHAKE_RESPONSE
+    ),
+})
 
 FAILED_ORDER_STATUSES = frozenset((MptOrderStatus.FAILED, MptOrderStatus.DELETED))
+
+# Statuses of a completed order's row that a later sync keeps as they are.
+BILLING_TRANSFER_MIGRATION_STATUSES = frozenset((
+    AccountMigrationStatus.AWAITING_BILLING_TRANSFER_START_DATE,
+    AccountMigrationStatus.UPGRADING_SERVICES,
+))
 
 
 def get_audit_date(order: dict[str, Any], status: MptOrderStatus) -> str | None:
@@ -101,18 +129,15 @@ def get_order_error(order: dict[str, Any]) -> str:
     return f"Order {order.get('id')} is {order.get('status')}"
 
 
-def is_billing_transfer_effective(
+def should_start_billing_transfer(
     record: AccountMigrationRecord, changes: dict[str, Any], run_date: dt.date
 ) -> bool:
-    """
-    Return whether the row, once the changes apply, awaits onboarding with an effective transfer.
-
-    The billing transfer is effective when its start date is on or before the run date. An
-    invalid start date is logged and treated as not effective, so it never stops the run.
-    """
+    """Return whether the row is upgrading services or awaits a start date that has arrived."""
     status = changes.get("migration_status", record.migration_status)
+    if status == AccountMigrationStatus.UPGRADING_SERVICES:
+        return True
     start_date = changes.get("billing_transfer_start_date") or record.billing_transfer_start_date
-    if status != AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING or not start_date:
+    if status != AccountMigrationStatus.AWAITING_BILLING_TRANSFER_START_DATE or not start_date:
         return False
     try:
         return dt.date.fromisoformat(start_date) <= run_date
@@ -132,20 +157,21 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
 
     The job runs daily over the rows still in progress. For every row it copies the order status
     and, depending on it, sets the customer acceptance date (migration in progress), the
-    completion date (awaiting client onboarding) or the error detail (failed). Once the billing
-    transfer invitation of the order is accepted, the effective start date of the transfer is
-    stored. When a row awaiting client onboarding has a start date on or before the run date,
-    the job creates the ServiceNow ticket that tells the MCoE team the billing transfer is
-    active and stores its id in the crmMigrationTicketId parameter of the agreement; it then
-    launches the services upgrade in Cloud Orchestrator, because a migrated account is already
-    onboarded there, stores the execution ARNs it returns (one per deployment of the account)
-    comma-separated in the executionArn parameter of the agreement and checks the status of
-    every execution. The row moves to Services onboarded only once all the executions succeeded;
-    while any of them is pending or running the row stays Awaiting Client Onboarding and is
-    checked again on the next run. A row whose ticket, upgrade or status check fails keeps the
-    Awaiting Client Onboarding status with the error detail and is retried on the next run; a
-    ticket id or execution ARNs already stored in the agreement are never created again. Every
-    row is saved at most once.
+    completion date (completed) or the error detail (failed). Once the billing transfer
+    invitation of the order is accepted, the effective start date of the transfer is stored.
+    A row of a completed order awaits the billing transfer start date until that date is on or
+    before the run date. From that date on, the row shows Upgrading services. The job then
+    creates the ServiceNow ticket that tells the MCoE team the billing transfer is active and
+    stores its id in the crmMigrationTicketId parameter of the agreement. It then launches the
+    services upgrade in Cloud Orchestrator, because a migrated account is already onboarded
+    there. It stores the execution ARNs that the upgrade returns (one per deployment of the
+    account) comma-separated in the executionArn parameter of the agreement and checks the
+    status of every execution. The row moves to Services onboarded only once all the
+    executions succeeded. While any of them is pending or running, the job checks the row
+    again on the next run. A row whose ticket, upgrade or status check fails stays in
+    Upgrading services with the error detail, and the next run retries it. A ticket id or
+    execution ARNs already stored in the agreement are never created again. Every row is
+    saved at most once.
     """
 
     def __init__(
@@ -206,26 +232,39 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
             )
             return
 
-        changes = self._get_status_changes(order)
+        changes = self._get_status_changes(record, order)
         if order.get("status") in ACCEPTED_ORDER_STATUSES:
             changes.update(self._get_acceptance_changes(record, order))
-        if is_billing_transfer_effective(record, changes, self.run_date):
+        if should_start_billing_transfer(record, changes, self.run_date):
             self._start_billing_transfer(record, order, changes)
         self._save(record, **changes)
 
-    def _get_status_changes(self, order: dict[str, Any]) -> dict[str, Any]:
-        """Return the row changes driven by the order status alone."""
+    def _get_status_changes(
+        self, record: AccountMigrationRecord, order: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Return the row changes driven by the order status and the current row status."""
         order_status = order.get("status")
         changes: dict[str, Any] = {"mpt_order_status": order_status}
-        if order_status in IN_PROGRESS_ORDER_STATUSES:
-            changes["migration_status"] = AccountMigrationStatus.MIGRATION_IN_PROGRESS
+        if order_status in {MptOrderStatus.PROCESSING, MptOrderStatus.QUERYING}:
+            changes["migration_status"] = PHASE_MIGRATION_STATUSES.get(
+                get_phase(order), AccountMigrationStatus.MIGRATION_IN_PROGRESS
+            )
         elif order_status == MptOrderStatus.COMPLETED:
-            changes["migration_status"] = AccountMigrationStatus.AWAITING_CLIENT_ONBOARDING
-            changes["migration_completed_date"] = get_audit_date(order, MptOrderStatus.COMPLETED)
+            changes.update(self._get_completed_changes(record, order))
         elif order_status in FAILED_ORDER_STATUSES:
             changes["mpt_order_status"] = MptOrderStatus.FAILED.value
             changes["migration_status"] = AccountMigrationStatus.FAILED
             changes["error"] = get_order_error(order)
+        return changes
+
+    def _get_completed_changes(
+        self, record: AccountMigrationRecord, order: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Return the completed order changes, keeping the status of awaiting or upgrading rows."""
+        changes: dict[str, Any] = {}
+        if record.migration_status not in BILLING_TRANSFER_MIGRATION_STATUSES:
+            changes["migration_status"] = AccountMigrationStatus.AWAITING_BILLING_TRANSFER_START_DATE  # noqa: E501  # fmt: skip
+        changes["migration_completed_date"] = get_audit_date(order, MptOrderStatus.COMPLETED)
         return changes
 
     def _get_acceptance_changes(
@@ -285,13 +324,14 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         order: dict[str, Any],
         changes: dict[str, Any],
     ) -> None:
-        """Create the MCoE ticket, upgrade the services and mark the row once both are done."""
+        """Move the row to Upgrading services, then create the MCoE ticket and upgrade services."""
+        changes["migration_status"] = AccountMigrationStatus.UPGRADING_SERVICES
+        changes["error"] = ""
         if not self._ensure_billing_transfer_start_ticket(record, order, changes):
             return
         if not self._are_services_upgraded(record, order, changes):
             return
         changes["migration_status"] = AccountMigrationStatus.SERVICES_ONBOARDED
-        changes["error"] = ""
 
     def _ensure_billing_transfer_start_ticket(
         self,
@@ -349,7 +389,7 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         order: dict[str, Any],
         changes: dict[str, Any],
     ) -> bool:
-        """Launch the services upgrade once and return whether all its executions succeeded."""
+        """Start the upgrade unless ARNs are stored and return whether all executions succeeded."""
         execution_arns = get_stored_execution_arns(order)
         if execution_arns:
             logger.info(
@@ -389,7 +429,7 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
         logger.info("%s - Services upgrade started with execution ARNs %s", order_id, arns_text)
         self.report.add_started_upgrade(order_id, execution_arns)
         if not store_execution_arns(self.mpt_client, order, execution_arns):
-            # Without the stored ARNs the next run would upgrade again: stop here and keep
+            # Without the stored ARNs the next run launches a new upgrade: stop here and keep
             # the ARNs in the row error so an operator can store them in the agreement.
             self._fail_row(
                 record,
@@ -480,21 +520,15 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
     def _fail_row(
         self, record: AccountMigrationRecord, changes: dict[str, Any], message: str
     ) -> None:
-        """
-        Log the row error and, when it differs from the error stored in the row, report it.
-
-        A new error is kept in the row, added to the run summary and sent to Teams, except in
-        dry runs. An error equal to the stored one is only logged, so it is not reported again
-        on each run.
-        """
+        """Log the row error, keep it in the row and report it only when it changed."""
         logger.warning("%s - Error - %s", record.mpt_order_id, message)
+        changes["error"] = message
         if record.error != message:
             self.report.add_failed_row(record.mpt_order_id, message)
             if not self.dry_run:
                 TeamsNotificationManager().send_error(
                     f"AWS migration sync error for order {record.mpt_order_id}", message
                 )
-            changes["error"] = message
 
     def _save(self, record: AccountMigrationRecord, **changes: Any) -> None:
         order_id = record.mpt_order_id

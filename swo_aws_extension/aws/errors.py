@@ -59,6 +59,14 @@ class InvalidDateInTerminateResponsibilityError(AWSError):
         super().__init__(message)
 
 
+class IneligibleForBillingTransferError(AWSError):
+    """Raised when AWS rejects the billing transfer because the organization is ineligible."""
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+        super().__init__(message)
+
+
 def wrap_http_error(func: Callable[FuncParams, RetType]) -> Callable[FuncParams, RetType]:  # noqa: UP047
     """Wraps http error to internal."""
 
