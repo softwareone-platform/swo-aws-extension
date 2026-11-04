@@ -202,6 +202,46 @@ def test_raw_invoice_breakdown_amount_defaults_to_zero_when_missing():
     assert result == Decimal(0)
 
 
+@pytest.mark.parametrize(
+    ("discounts", "expected"),
+    [
+        (
+            [
+                {"Description": "Discount (AWS SPP Discount)", "Amount": "-9.00"},
+                {"Description": "Discount (AWS SPP Discount)", "Amount": "-1.50"},
+                {"Description": "Some other discount", "Amount": "-100.00"},
+            ],
+            Decimal("-10.50"),
+        ),
+        ([{"Description": "Some other discount", "Amount": "-100.00"}], Decimal(0)),
+        (None, Decimal(0)),
+    ],
+    ids=["sums_spp_entries_as_negative", "ignores_other_discounts", "missing_breakdown"],
+)
+def test_raw_invoice_spp_discount(discounts, expected):
+    invoice = build_raw_invoice(discounts=discounts)
+
+    result = invoice.spp_discount("BaseCurrencyAmount")
+
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("summary", "expected"),
+    [
+        ({"InvoiceType": "CREDIT_MEMO"}, "CREDIT_MEMO"),
+        ({}, "INVOICE"),
+    ],
+    ids=["reported", "missing_defaults_to_invoice"],
+)
+def test_raw_invoice_invoice_type(summary, expected):
+    invoice = RawInvoice(summary)
+
+    result = invoice.invoice_type  # act
+
+    assert result == expected
+
+
 @pytest.fixture
 def primary_entity():
     return InvoiceEntity(
