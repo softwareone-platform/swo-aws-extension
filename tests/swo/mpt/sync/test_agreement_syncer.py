@@ -19,7 +19,6 @@ def test_agreement_syncer_sync_success(
     mock_awsclient,
     mock_get_linked_accounts_with_usage,
     syncer,
-    mock_send_warning,
 ):
     mock_get_available_transfer_for_account.return_value = {
         "Id": "rt-8lr3q6sn",
@@ -103,7 +102,6 @@ def test_agreement_syncer_notifies_scheduled_transfer_end(
     mock_update_agreement,
     mock_terminate_agreement_method,
     syncer,
-    mock_send_warning,
 ):
     end_date = dt.datetime.fromisoformat("2026-09-30T23:59:59+00:00")
     mock_get_available_transfer_for_account.return_value = {
@@ -152,7 +150,6 @@ def test_agreement_syncer_notifies_transfer_end_only_once(
     mock_crm_service_client,
     mock_update_agreement,
     syncer,
-    mock_send_warning,
 ):
     mock_get_available_transfer_for_account.return_value = {
         "Id": "rt-8lr3q6sn",
@@ -181,7 +178,6 @@ def test_agreement_syncer_notify_transfer_end_dry_run(
     mock_crm_service_client,
     mock_update_agreement,
     syncer_dry_run,
-    mock_send_warning,
 ):
     mock_get_available_transfer_for_account.return_value = {
         "Id": "rt-8lr3q6sn",
@@ -208,7 +204,6 @@ def test_agreement_syncer_notify_transfer_end_crm_error(
     mock_update_agreement,
     mock_send_exception,
     syncer,
-    mock_send_warning,
 ):
     mock_get_available_transfer_for_account.return_value = {
         "Id": "rt-8lr3q6sn",
@@ -239,7 +234,6 @@ def test_agreement_syncer_notify_transfer_end_update_agreement_error(
     mock_update_agreement,
     mock_send_exception,
     syncer,
-    mock_send_warning,
 ):
     mock_get_available_transfer_for_account.return_value = {
         "Id": "rt-8lr3q6sn",
@@ -342,7 +336,6 @@ def test_sync_agreements_with_active_transfer(
     mock_awsclient,
     mock_get_linked_accounts_with_usage,
     mpt_client,
-    mock_send_warning,
 ):
     mock_get_agreements_by_query.return_value = [agreement]
     mock_get_available_transfer_method.return_value = {
@@ -497,7 +490,6 @@ def test_synchronize_agreements_no_agreement_ids(
     mock_awsclient,
     mock_get_linked_accounts_with_usage,
     mpt_client,
-    mock_send_warning,
 ):
     mock_get_agreements_by_query.return_value = [agreement]
     mock_get_available_transfer_method.return_value = {
@@ -509,26 +501,3 @@ def test_synchronize_agreements_no_agreement_ids(
 
     mock_get_agreements_by_query.assert_called_once()
     mock_get_available_transfer_method.assert_called_once()
-
-
-def test_agreement_syncer_sync_runs_parameters_syncer(
-    agreement,
-    mock_get_available_transfer_for_account,
-    mock_sync_responsibility_transfer_id_method,
-    mock_awsclient,
-    mock_get_linked_accounts_with_usage,
-    mock_parameters_syncer,
-    syncer,
-):
-    mock_get_available_transfer_for_account.return_value = {
-        "Id": "rt-8lr3q6sn",
-        "Status": ResponsibilityTransferStatus.ACCEPTED.value,
-        "StartTimestamp": dt.datetime.fromisoformat("2026-02-01T00:00:00+00:00"),
-    }
-
-    syncer.process(agreement)  # act
-
-    mock_parameters_syncer.assert_called_once_with(
-        syncer.mpt_client, dry_run=False, transfer_start_date="2026-02-01"
-    )
-    mock_parameters_syncer.return_value.process.assert_called_once_with(agreement)
