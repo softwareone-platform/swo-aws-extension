@@ -28,7 +28,7 @@ class ResourceNotFoundException(ClientError):  # noqa: N818
 
 # ConstraintViolationException is the name given by AWS boto3 to the error we are testing:
 # see more: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/organizations/client/invite_organization_to_transfer_responsibility.html
-class ConstraintViolationException(ClientError):  # ruff:ignore[error-suffix-on-exception-name]
+class ConstraintViolationException(ClientError):  # noqa: N818
     """Dummy exception for testing purposes."""
 
 
