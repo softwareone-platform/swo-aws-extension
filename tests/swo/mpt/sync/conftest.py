@@ -3,7 +3,6 @@ import datetime as dt
 import pytest
 
 from swo_aws_extension.aws.client import AWSClient
-from swo_aws_extension.swo.mpt.sync.agreement_parameters_syncer import AgreementParametersSyncer
 from swo_aws_extension.swo.mpt.sync.agreement_subscription_syncer import (
     AgreementSubscriptionsSyncer,
 )
@@ -11,9 +10,7 @@ from swo_aws_extension.swo.mpt.sync.agreement_syncer import AgreementSyncer
 from swo_aws_extension.swo.mpt.sync.channel_handshakes import create_apn_client
 from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
 
-_BASE_MOD = "swo_aws_extension.swo.mpt.sync.base"
 _SYNCER_MOD = "swo_aws_extension.swo.mpt.sync.agreement_syncer"
-_PARAMS_SYNCER_MOD = "swo_aws_extension.swo.mpt.sync.agreement_parameters_syncer"
 _SUB_SYNCER_MOD = "swo_aws_extension.swo.mpt.sync.agreement_subscription_syncer"
 _TRANSFERS_MOD = "swo_aws_extension.swo.mpt.sync.responsibility_transfers"
 _HANDSHAKES_MOD = "swo_aws_extension.swo.mpt.sync.channel_handshakes"
@@ -138,7 +135,7 @@ def responsibility_transfer_factory():
 
 @pytest.fixture
 def mock_update_agreement(mocker):
-    return mocker.patch(f"{_BASE_MOD}.update_agreement", spec=True)
+    return mocker.patch(f"{_SYNCER_MOD}.update_agreement", spec=True)
 
 
 @pytest.fixture
@@ -202,16 +199,6 @@ def subscription_syncer_dry_run(mpt_client):
 
 
 @pytest.fixture
-def parameters_syncer(mpt_client):
-    return AgreementParametersSyncer(mpt_client, dry_run=False, transfer_start_date="2026-02-01")
-
-
-@pytest.fixture
-def mock_parameters_syncer(mocker):
-    return mocker.patch(f"{_SYNCER_MOD}.AgreementParametersSyncer", autospec=True)
-
-
-@pytest.fixture
 def mock_agreement_syncer(mocker):
     return mocker.patch(f"{_SYNCER_MOD}.AgreementSyncer", autospec=True)
 
@@ -242,7 +229,12 @@ def mock_apn_client(mock_apn_client_class):
 
 @pytest.fixture
 def mock_get_fixed_commitment_end_date(mocker):
-    return mocker.patch(f"{_PARAMS_SYNCER_MOD}.get_fixed_commitment_end_date", autospec=True)
+    return mocker.patch(f"{_SYNCER_MOD}.get_fixed_commitment_end_date", autospec=True)
+
+
+@pytest.fixture
+def mock_sub_update_agreement(mocker):
+    return mocker.patch(f"{_SUB_SYNCER_MOD}.update_agreement", autospec=True)
 
 
 @pytest.fixture
