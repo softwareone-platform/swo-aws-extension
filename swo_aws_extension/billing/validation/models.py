@@ -152,6 +152,10 @@ class ServiceSplit:
     The AWS invoice summary only carries totals, so the split between usage and
     support (needed for support discounts and PLS) comes from the per-service
     rows of the platform billing report. Amounts are in the agreement currency.
+
+    ``usage_base`` holds the ``Usage`` records only, the base of the PLS charge and
+    discount. ``discount_base`` adds the ``Recurring`` and ``SavingsPlanRecurringFee``
+    records, the base the journal uses for the service discount by usage amount.
     """
 
     enterprise_support_charge: Decimal = DEC_ZERO
@@ -159,6 +163,7 @@ class ServiceSplit:
     resold_support_charge: Decimal = DEC_ZERO
     resold_support_spp: Decimal = DEC_ZERO
     usage_base: Decimal = DEC_ZERO
+    discount_base: Decimal = DEC_ZERO
 
     @property
     def support_spp(self) -> Decimal:

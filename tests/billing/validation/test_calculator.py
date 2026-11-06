@@ -132,7 +132,9 @@ def test_calculate_applies_support_discount_on_resold_support(calculator, expect
     assert result.sales_price == SPP_KEPT_SALES_PRICE - Decimal("14.6615")
 
 
-def test_calculate_usage_amount_discount_type_uses_usage_base(calculator, expected, mpa_invoices):
+def test_calculate_usage_amount_discount_type_uses_discount_base(
+    calculator, expected, mpa_invoices
+):
     discounts = AgreementDiscounts(
         agreement_id=AGREEMENT_ID,
         mpa=MPA,
@@ -140,11 +142,32 @@ def test_calculate_usage_amount_discount_type_uses_usage_base(calculator, expect
         service_discount=Decimal("5.0"),
         service_discount_type=ServiceDiscountTypeEnum.USAGE_AMOUNT,
     )
-    split = ServiceSplit(usage_base=Decimal("1000.00"))
+    # the recurring fees (500) are part of the service discount base, as in the journal
+    split = ServiceSplit(usage_base=Decimal("1000.00"), discount_base=Decimal("1500.00"))
 
     result = calculator.calculate(expected, mpa_invoices, discounts, split)
 
-    assert result.sales_price == SPP_KEPT_SALES_PRICE - Decimal("50.00")
+    assert result.sales_price == SPP_KEPT_SALES_PRICE - Decimal("75.00")
+
+
+def test_calculate_pls_ignores_recurring_fees_in_usage_base(calculator, expected, mpa_invoices):
+    discounts = AgreementDiscounts(
+        agreement_id=AGREEMENT_ID,
+        mpa=MPA,
+        handshake_approved=True,
+        support_type=SupportTypesEnum.PARTNER_LED_SUPPORT,
+        pls_discount=Decimal("10.0"),
+    )
+    split = ServiceSplit(
+        enterprise_support_charge=Decimal("200.00"),
+        usage_base=Decimal("1000.00"),
+        discount_base=Decimal("1500.00"),
+    )
+
+    result = calculator.calculate(expected, mpa_invoices, discounts, split)
+
+    # minus the AWS enterprise support (200), plus 5% and minus 10% of the usage only (-50)
+    assert result.sales_price == SPP_KEPT_SALES_PRICE - Decimal("250.00")
 
 
 def test_calculate_partner_led_support_replaces_enterprise_support(

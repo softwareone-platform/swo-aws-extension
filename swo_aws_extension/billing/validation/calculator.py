@@ -96,8 +96,8 @@ class ExpectedBillingCalculator:
         if not discounts.handshake_approved or discounts.service_discount <= DEC_ZERO:
             return
         if discounts.service_discount_type == ServiceDiscountTypeEnum.USAGE_AMOUNT:
-            base = split.usage_base if split else DEC_ZERO
-            label = "usage"
+            base = split.discount_base if split else DEC_ZERO
+            label = "usage and recurring fees"
             if split is None:
                 expected.notes.append("Usage based discount needs the billing report rows.")
         else:
