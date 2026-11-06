@@ -8,8 +8,8 @@ migrations, and integration details, see the dedicated documents linked below.
 
 `swo-aws-extension` is a SoftwareOne Marketplace Platform (MPT) extension that
 fulfils and validates AWS Marketplace orders: it provisions AWS accounts,
-configures billing transfers and the APN program, raises CRM/CCP tickets, syncs
-FinOps entitlements, and generates billing journals and reports.
+configures billing transfers and the APN program, raises CRM/CCP tickets, and
+generates billing journals and reports.
 
 It is built on the MPT Extension SDK and runs as the registered `swo.mpt.ext`
 extension (`pyproject.toml` `[project.entry-points."swo.mpt.ext"]` ->
@@ -24,8 +24,8 @@ extension (`pyproject.toml` `[project.entry-points."swo.mpt.ext"]` ->
   - order validation endpoint (`POST /v1/orders/validate`) ->
     `process_order_validation`
 - `swo_aws_extension/management/commands/` — Django management commands used by
-  the worker for background jobs (billing journals, reports, agreement,
-  FinOps and AWS migration order sync).
+  the worker for background jobs (billing journals, reports, agreement
+  and AWS migration order sync).
 
 ## Layers
 
@@ -45,8 +45,7 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    master payer subscription. A channel handshake that times out does not stop
    the order: the pipeline continues to the CRM ticket and the subscription.
    The migrated account keeps its CCO and ERP
-   project; customer roles and services are not deployed, and the FinOps
-   entitlement follows through the FinOps sync job.
+   project; customer roles and services are not deployed.
 3. **Pipelines and steps** (`flows/fulfillment/pipelines.py`, `flows/steps/`) —
    each pipeline is an ordered sequence of `BasePhaseStep` steps that create
    resources, poll status, raise tickets, and advance the order phase. Order
@@ -61,7 +60,7 @@ The runtime is organised as a pipeline-driven fulfilment flow:
    wrap each external system behind a single boundary.
 6. **Background jobs** (`flows/jobs/`, `billing/`, `swo/mpt/sync/`) — reporting
    and synchronization work that the worker runs through management commands:
-   billing journal generation, reports, FinOps entitlement sync, the AWS
+   billing journal generation, reports, the AWS
    migration order sync and the agreement sync. The agreement sync validates
    the AWS responsibility transfer of each agreement and keeps one Marketplace
    subscription per linked AWS account with usage: it creates the missing
@@ -75,23 +74,23 @@ The runtime is organised as a pipeline-driven fulfilment flow:
 |---|---|
 | `swo_aws_extension/` | Extension config, runtime `config.py`, order `parameters.py`, `constants.py` |
 | `swo_aws_extension/flows/` | Fulfilment orchestration, pipelines, steps, validation, order context |
-| `swo_aws_extension/flows/jobs/` | Background jobs run by the worker: reports, FinOps entitlement sync, MPT subscription sync for linked AWS accounts, and the daily AWS migration order sync. The migration sync mirrors each Marketplace migration order into its AWS Account Migration Airtable row. Once the billing transfer of a completed migration is effective, it moves the row to `Upgrading services`, creates the ServiceNow ticket for the MCoE team, launches the services upgrade of the migrated account in Cloud Orchestrator and stores both references in the agreement. The row moves to `Services onboarded` when the upgrade succeeds, and stays in `Upgrading services` with the error detail when a step fails. Each run reports its changes and errors to Teams. |
+| `swo_aws_extension/flows/jobs/` | Background jobs run by the worker: reports, MPT subscription sync for linked AWS accounts, and the daily AWS migration order sync. The migration sync mirrors each Marketplace migration order into its AWS Account Migration Airtable row. Once the billing transfer of a completed migration is effective, it moves the row to `Upgrading services`, creates the ServiceNow ticket for the MCoE team, launches the services upgrade of the migrated account in Cloud Orchestrator and stores both references in the agreement. The row moves to `Services onboarded` when the upgrade succeeds, and stays in `Upgrading services` with the error detail when a step fails. Each run reports its changes and errors to Teams. |
 | `swo_aws_extension/billing/` | Billing journal generation, line processors, generators, models, and AWS invoice document attachment |
 | `swo_aws_extension/processor/` | Chain-of-responsibility processors for querying AWS roles, handshakes, transfers |
 | `swo_aws_extension/aws/` | `AWSClient` (boto3 AssumeRole, account/billing/CUR operations, Cost Explorer with dimension attributes, Invoicing summaries and invoice document retrieval) |
-| `swo_aws_extension/swo/` | External-service clients (CCP, CRM, FinOps, CCO, Cloud Orchestrator, MPT, Key Vault, Blob, notifications, OpenID) |
-| `swo_aws_extension/airtable/` | Airtable tables: FinOps entitlements sync and AWS Account Migration |
+| `swo_aws_extension/swo/` | External-service clients (CCP, CRM, CCO, Cloud Orchestrator, MPT, Key Vault, Blob, notifications, OpenID) |
+| `swo_aws_extension/airtable/` | Airtable tables: AWS Account Migration |
 | `swo_aws_extension/management/` | Django management commands run by the worker |
 | `swo_aws_extension/utils/`, `file_builder/` | Shared helpers and ZIP/report file building |
 
 The per-service API clients live under `swo_aws_extension/swo/`, grouped by
-service (`mpt/`, `ccp/`, `cco/`, `crm_service/`, `finops/`, `cloud_orchestrator/`,
+service (`mpt/`, `ccp/`, `cco/`, `crm_service/`, `cloud_orchestrator/`,
 `rql/`, `notifications/`, …) on top of the shared `base_client.py`.
 
 ## External integrations
 
-AWS (`aws/`), CCP, CRM service, FinOps, CCO, and Cloud Orchestrator (`swo/`),
-the MPT API (`swo/mpt/`), Airtable (`airtable/`), Azure Key Vault and Blob
+AWS (`aws/`), CCP, CRM service, CCO, and Cloud Orchestrator (`swo/`),
+the MPT API (`swo/mpt/`), Airtable, Azure Key Vault and Blob
 Storage, Confluence, and MS Teams / email notifications. See
 [external-integrations.md](external-integrations.md) for endpoints, auth, and
 setup expectations.
