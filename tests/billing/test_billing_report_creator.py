@@ -7,6 +7,8 @@ from swo_aws_extension.billing.models.journal_result import (
     BillingReportRow,
     OrganizationSppSummaryRow,
 )
+from swo_aws_extension.billing.validation.report import VALIDATION_HEADERS
+from swo_aws_extension.billing.validation.results import AgreementValidation, ValidationStatus
 from swo_aws_extension.config import Config
 from swo_aws_extension.swo.excel_report_builder import Percent
 from swo_aws_extension.swo.notifications.teams import TeamsNotificationManager
@@ -240,3 +242,49 @@ def test_create_and_notify_teams_builds_spp_summary_sheet(
         Percent(float(sample_spp_summary_row.markup)),
     ]
     assert sheet3_rows == [expected_row]
+
+
+def test_create_and_notify_teams_builds_validation_sheet(
+    mock_config,
+    mock_notifier,
+    mock_blob_uploader_cls,
+    mock_excel_builder_cls,
+    sample_row,
+    sample_spp_summary_row,
+):
+    mock_excel_builder = mock_excel_builder_cls.return_value
+    mock_excel_builder.build_multi_sheet.return_value = b"excel_bytes"
+    mock_blob_uploader_cls.return_value.upload_and_get_sas_url.return_value = "https://url"
+    validation = AgreementValidation(
+        agreement_id="AGR-1",
+        mpa="MPA-1",
+        pma="PMA-1",
+        authorization_id="AUTH-1",
+        currency="USD",
+        status=ValidationStatus.MISSING_INVOICES,
+        platform=sample_spp_summary_row,
+        likely_cause="No AWS invoices found for the MPA account.",
+    )
+    creator = BillingReportCreator(mock_config, mock_notifier)
+
+    creator.create_and_notify_teams("2024-01", [sample_row], None, None, [validation])  # act
+
+    call_args = mock_excel_builder.build_multi_sheet.call_args[0][0]
+    sheet4_name, sheet4_headers, sheet4_rows = call_args[3]
+    assert sheet4_name == "Validation"
+    assert list(sheet4_headers) == list(VALIDATION_HEADERS)
+    assert dict(zip(VALIDATION_HEADERS, sheet4_rows[0], strict=True)) == {
+        **dict.fromkeys(VALIDATION_HEADERS, ""),
+        "Authorization ID": "AUTH-1",
+        "PMA": "PMA-1",
+        "Agreement ID": "AGR-1",
+        "MPA": "MPA-1",
+        "Currency": "USD",
+        "Status": "MISSING_INVOICES",
+        "Likely cause": "No AWS invoices found for the MPA account.",
+        "Platform PP": 90.0,
+        "Platform SP": 100.0,
+        "Platform SPP discount": -10.0,
+        "Platform list price": 120.0,
+        "Platform markup %": pytest.approx(float(sample_spp_summary_row.markup * 100)),
+    }
