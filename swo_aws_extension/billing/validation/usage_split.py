@@ -12,13 +12,18 @@ from swo_aws_extension.billing.validation.models import ServiceSplit
 from swo_aws_extension.constants import AWSRecordTypeEnum
 
 ENTERPRISE_SUPPORT_SERVICE = "AWS Support (Enterprise)"
+SERVICE_DISCOUNT_RECORD_TYPES = frozenset((
+    AWSRecordTypeEnum.USAGE,
+    AWSRecordTypeEnum.RECURRING,
+    AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE,
+))
 
 
 def build_service_split(
     usage_result: OrganizationUsageResult,
     organization_invoice: OrganizationInvoice,
 ) -> ServiceSplit:
-    """Aggregate support charges, their SPP discount and the usage base per organization.
+    """Aggregate support charges, their SPP discount and the discount bases per organization.
 
     Amounts are converted to the agreement currency with the same rule the journal
     lines use, so the split can be combined with the invoice totals.
@@ -48,8 +53,10 @@ def _accumulate(
         _add_support(split, metric.service_name, amount)
     elif metric.record_type == AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT:
         _add_spp(split, metric.service_name, amount, support_services)
-    elif metric.record_type == AWSRecordTypeEnum.USAGE:
-        split.usage_base += amount
+    elif metric.record_type in SERVICE_DISCOUNT_RECORD_TYPES:
+        split.discount_base += amount
+        if metric.record_type == AWSRecordTypeEnum.USAGE:
+            split.usage_base += amount
 
 
 def _add_support(split: ServiceSplit, service_name: str, amount) -> None:
