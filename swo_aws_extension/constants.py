@@ -189,13 +189,6 @@ class MptOrderStatus(StrEnum):
     DELETED = "Deleted"
 
 
-class FinOpsStatusEnum(StrEnum):
-    """FinOps entitlement status enum."""
-
-    ACTIVE = "Active"
-    TERMINATED = "Terminated"
-
-
 class CustomerRolesDeployed(StrEnum):
     """Customer roles deployed status."""
 
