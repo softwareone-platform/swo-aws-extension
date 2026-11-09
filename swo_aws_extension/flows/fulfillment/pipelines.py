@@ -130,8 +130,6 @@ purchase_existing_aws_environment = Pipeline(
 # row into the ccoContractNumber parameter here; no contract card or ERP job runs.
 # Once the channel handshake is accepted, the migration CRM ticket is created before the
 # master payer subscription is created and the order completes with the migration template.
-# The FinOps entitlement is created afterwards by the FinOps synchronization job, as in the
-# regular flows.
 purchase_migration = Pipeline(
     SetupContext(config),
     ValidateOrder(),
