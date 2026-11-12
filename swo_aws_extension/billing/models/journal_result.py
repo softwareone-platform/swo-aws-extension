@@ -1,8 +1,14 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from swo_aws_extension.billing.models.journal_line import JournalLine
 from swo_aws_extension.billing.models.usage import OrganizationReport
+
+if TYPE_CHECKING:
+    from swo_aws_extension.billing.validation.results import AgreementValidation
 
 
 @dataclass
@@ -73,6 +79,7 @@ class AgreementJournalResult:
     pls_mismatches: list[PlsMismatch] = field(default_factory=list)
     invoice_ids: set[str] = field(default_factory=set)
     spp_summary_row: OrganizationSppSummaryRow | None = None
+    validation: AgreementValidation | None = None
 
 
 @dataclass
@@ -94,3 +101,4 @@ class AuthorizationJournalResult:
     pls_mismatches: list[PlsMismatch] = field(default_factory=list)
     invoice_ids: set[str] = field(default_factory=set)
     spp_summary_rows: list[OrganizationSppSummaryRow] = field(default_factory=list)
+    validations: list[AgreementValidation] = field(default_factory=list)

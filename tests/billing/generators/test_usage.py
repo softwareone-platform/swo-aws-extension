@@ -366,3 +366,67 @@ def test_create_metric_without_invoicing_entity(
     ]
     assert usage_metrics[0].invoice_entity is None
     assert not usage_metrics[0].invoice_id
+
+
+def test_create_metric_falls_back_to_primary_entity_when_entity_not_invoiced(
+    generator,
+    mock_aws_client,
+    billing_period,
+    single_billing_view,
+):
+    account_usage_data = [
+        [{"Groups": [{"Keys": ["ACT-1"]}]}],
+        [
+            {
+                "TimePeriod": {"Start": "2025-10-01", "End": "2025-10-02"},
+                "Groups": [
+                    {
+                        "Keys": ["ACT-1", "DataSunrise"],
+                        "Metrics": {"UnblendedCost": {"Amount": "1000.00"}},
+                    },
+                ],
+            },
+        ],
+        [
+            {
+                "Groups": [
+                    {"Keys": ["AmazonEC2", "NoInvoicingEntity"]},
+                    {"Keys": ["DataSunrise", "NoInvoicingEntity"]},
+                ]
+            }
+        ],
+        [
+            {
+                "TimePeriod": {"Start": "2025-10-01", "End": "2025-10-02"},
+                "Groups": [
+                    {
+                        "Keys": [AWSRecordTypeEnum.USAGE, "AmazonEC2"],
+                        "Metrics": {"UnblendedCost": {"Amount": "50.00"}},
+                    },
+                ],
+            },
+        ],
+    ]
+    mock_aws_client.get_billing_views_by_account_id.return_value = single_billing_view
+    mock_aws_client.get_cost_and_usage.side_effect = account_usage_data
+    organization_invoice = OrganizationInvoice(
+        entities={
+            "Amazon Web Services India Private Limited:AWS": InvoiceEntity(
+                invoice_id="INV-IN-1",
+                base_currency_code="USD",
+                payment_currency_code="INR",
+                exchange_rate=Decimal("94.93592"),
+                primary=True,
+            ),
+        },
+    )
+
+    result = generator.run("INR", "MPA-1", billing_period, organization_invoice)
+
+    metrics = {metric.record_type: metric for metric in result.usage_by_account["ACT-1"].metrics}
+    usage = metrics[AWSRecordTypeEnum.USAGE]
+    assert (usage.invoice_entity, usage.invoice_id) == (
+        "Amazon Web Services India Private Limited:AWS",
+        "INV-IN-1",
+    )
+    assert metrics["MARKETPLACE"].invoice_entity == "NoInvoicingEntity:AWS_MARKETPLACE"

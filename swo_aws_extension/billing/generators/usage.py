@@ -152,6 +152,7 @@ class CostExplorerUsageGenerator(BaseOrganizationUsageGenerator):
     def __init__(self, aws_client):
         super().__init__(aws_client)
         self._organization_invoice: OrganizationInvoice | None = None
+        self._unknown_entity_keys: set[str | None] = set()
         self._report_fetcher = None
         self._processor = ReportProcessor()
 
@@ -167,6 +168,7 @@ class CostExplorerUsageGenerator(BaseOrganizationUsageGenerator):
         self._usage_by_account = {}
         self._reports = OrganizationReport()
         self._organization_invoice = organization_invoice
+        self._unknown_entity_keys = set()
 
         logger.info("Generating usage report for MPA account %s", mpa_account)
         self._report_fetcher = CostExplorerReportFetcher(self._aws_client)
@@ -196,6 +198,7 @@ class CostExplorerUsageGenerator(BaseOrganizationUsageGenerator):
         self._usage_by_account = {}
         self._reports = OrganizationReport()
         self._organization_invoice = organization_invoice
+        self._unknown_entity_keys = set()
 
         logger.info("Generating usage report for PMA account %s", pma_account)
         self._report_fetcher = CostExplorerReportFetcher(self._aws_client)
@@ -314,6 +317,11 @@ class CostExplorerUsageGenerator(BaseOrganizationUsageGenerator):
         else:
             entity_key = None
         invoice_entity = self._organization_invoice.entities.get(entity_key or "", None)
+        if invoice_entity is None and record_type != "MARKETPLACE":
+            entity_key = _fallback_to_primary_entity(
+                self._organization_invoice, entity_key, self._unknown_entity_keys
+            )
+            invoice_entity = self._organization_invoice.entities.get(entity_key or "", None)
         return ServiceMetric(
             service_name=metric_data.service_name,
             record_type=record_type,
@@ -325,3 +333,25 @@ class CostExplorerUsageGenerator(BaseOrganizationUsageGenerator):
                 dt.date.fromisoformat(metric_data.end_date) - dt.timedelta(days=1)
             ).isoformat(),
         )
+
+
+def _fallback_to_primary_entity(
+    organization_invoice: OrganizationInvoice,
+    entity_key: str | None,
+    unknown_entity_keys: set[str | None],
+) -> str | None:
+    """Use the primary invoice entity when the usage entity is not among the invoices.
+
+    Cost Explorer can report usage under ``NoInvoicingEntity``. Without a matching
+    invoice entity the amount would stay in the base currency and the journal would
+    mix currencies, so the usage is converted with the primary entity instead.
+    """
+    primary_key = organization_invoice.primary_entity_name
+    if entity_key not in unknown_entity_keys:
+        unknown_entity_keys.add(entity_key)
+        logger.warning(
+            "Invoice entity %s not found in the invoices; using primary entity %s",
+            entity_key,
+            primary_key or None,
+        )
+    return primary_key or entity_key
