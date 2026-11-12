@@ -6,7 +6,10 @@ from swo_aws_extension.billing.generators.additional_line_processors.base import
     AdditionalLineProcessor,
 )
 from swo_aws_extension.billing.generators.currency import resolve_service_amount
-from swo_aws_extension.billing.generators.usage_utils import calculate_total_by_record_types
+from swo_aws_extension.billing.generators.usage_utils import (
+    USAGE_RECORD_TYPES,
+    calculate_total_by_record_types,
+)
 from swo_aws_extension.billing.models.invoice import OrganizationInvoice
 from swo_aws_extension.billing.models.journal_line import (
     JournalDetails,
@@ -16,13 +19,11 @@ from swo_aws_extension.billing.models.usage import OrganizationUsageResult
 from swo_aws_extension.constants import (
     DEC_ZERO,
     AWSRecordTypeEnum,
-    ChannelHandshakeDeployed,
     ServiceDiscountTypeEnum,
     SupportTypesEnum,
 )
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.parameters import (
-    get_channel_handshake_approval_status,
     get_pls_discount,
     get_service_discount,
     get_service_discount_type,
@@ -97,7 +98,7 @@ class ServiceDiscountProcessor(BaseExtraDiscountProcessor):
 
     @override
     def _is_applicable(self, agreement: dict, usage_result: OrganizationUsageResult) -> bool:
-        return get_channel_handshake_approval_status(agreement) == ChannelHandshakeDeployed.YES
+        return True
 
     @override
     def _get_discount_percentage(self, agreement: dict) -> Decimal:
@@ -121,17 +122,12 @@ class ServiceDiscountProcessor(BaseExtraDiscountProcessor):
         usage_result: OrganizationUsageResult,
         organization_invoice: OrganizationInvoice,
     ) -> Decimal:
-        target_record_types = {
-            AWSRecordTypeEnum.USAGE,
-            AWSRecordTypeEnum.RECURRING,
-            AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE,
-        }
         total = DEC_ZERO
         for account_usage in usage_result.usage_by_account.values():
             applicable_service_names = {
                 metric.service_name
                 for metric in account_usage.metrics
-                if metric.record_type in target_record_types
+                if metric.record_type in USAGE_RECORD_TYPES
             }
 
             spp_metrics = [
@@ -158,11 +154,7 @@ class ServiceDiscountProcessor(BaseExtraDiscountProcessor):
         return calculate_total_by_record_types(
             usage_result,
             organization_invoice,
-            {
-                AWSRecordTypeEnum.USAGE,
-                AWSRecordTypeEnum.RECURRING,
-                AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE,
-            },
+            USAGE_RECORD_TYPES,
         )
 
 
@@ -174,8 +166,6 @@ class SupportDiscountProcessor(BaseExtraDiscountProcessor):
 
     @override
     def _is_applicable(self, agreement: dict, usage_result: OrganizationUsageResult) -> bool:
-        if get_channel_handshake_approval_status(agreement) != ChannelHandshakeDeployed.YES:
-            return False
         return get_support_type(agreement) == SupportTypesEnum.AWS_RESOLD_SUPPORT
 
     @override
@@ -222,8 +212,6 @@ class PlSDiscountProcessor(BaseExtraDiscountProcessor):
 
     @override
     def _is_applicable(self, agreement: dict, usage_result: OrganizationUsageResult) -> bool:
-        if get_channel_handshake_approval_status(agreement) != ChannelHandshakeDeployed.YES:
-            return False
         if get_support_type(agreement) != SupportTypesEnum.PARTNER_LED_SUPPORT:
             return False
         return usage_result.has_enterprise_support()
@@ -240,8 +228,10 @@ class PlSDiscountProcessor(BaseExtraDiscountProcessor):
         organization_invoice: OrganizationInvoice,
         agreement: dict,
     ) -> Decimal:
-        return calculate_total_by_record_types(
+        # The discount applies on the PLS charge, not on the usage it is computed from.
+        usage_total = calculate_total_by_record_types(
             usage_result,
             organization_invoice,
-            {AWSRecordTypeEnum.USAGE},
+            USAGE_RECORD_TYPES,
         )
+        return usage_total * self._charge_percentage / Decimal(100)

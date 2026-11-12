@@ -156,13 +156,18 @@ def test_process_returns_empty_when_no_usage(journal_details, organization_invoi
     assert len(result) == 0
 
 
-def test_process_only_sums_usage_record_type(journal_details, organization_invoice):
+def test_process_sums_usage_and_recurring_fees_net_of_bundled_discount(
+    journal_details, organization_invoice
+):
     usage_result = build_usage_result({
         "ACC-1": [
             create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00"),
             create_metric("Support", AWSRecordTypeEnum.SUPPORT, "50.00"),
             create_metric("EC2", AWSRecordTypeEnum.CREDIT, "-10.00"),
-            create_metric("EC2", AWSRecordTypeEnum.RECURRING, "20.00"),
+            create_metric("EC2", AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT, "-8.00"),
+            create_metric("EC2", AWSRecordTypeEnum.RECURRING, "60.00"),
+            create_metric("Savings Plans", AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE, "40.00"),
+            create_metric("CloudWatch", AWSRecordTypeEnum.BUNDLE_DISCOUNT, "-20.00"),
             create_enterprise_metric(),
         ],
     })
@@ -171,7 +176,7 @@ def test_process_only_sums_usage_record_type(journal_details, organization_invoi
     result = manager.process(build_agreement(), usage_result, journal_details, organization_invoice)
 
     assert len(result) == 1
-    assert result[0].price.unit_pp == Decimal("5.0")
+    assert result[0].price.unit_pp == Decimal("9.0")
 
 
 def test_process_applies_exchange_rate(journal_details):

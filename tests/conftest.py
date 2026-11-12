@@ -769,7 +769,7 @@ def product_parameters_factory():
                 "id": "PAR-3895-2913-0052",
                 "name": "PLS Discount",
                 "scope": "Agreement",
-                "externalId": "plsDiscount",
+                "externalId": FulfillmentParametersEnum.PLS_DISCOUNT.value,
                 "options": {
                     "placeholderText": "PLS Discount",
                     "defaultValue": "7",

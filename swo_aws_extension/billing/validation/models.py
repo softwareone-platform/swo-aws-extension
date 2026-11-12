@@ -153,9 +153,9 @@ class ServiceSplit:
     support (needed for support discounts and PLS) comes from the per-service
     rows of the platform billing report. Amounts are in the agreement currency.
 
-    ``usage_base`` holds the ``Usage`` records only, the base of the PLS charge and
-    discount. ``discount_base`` adds the ``Recurring`` and ``SavingsPlanRecurringFee``
-    records, the base the journal uses for the service discount by usage amount.
+    ``usage_base`` holds the ``Usage``, ``Recurring`` and ``SavingsPlanRecurringFee``
+    records net of the ``Bundled Discount``, the base of the usage based service
+    discount and of the PLS charge and discount, as in the journal.
     """
 
     enterprise_support_charge: Decimal = DEC_ZERO
@@ -163,7 +163,6 @@ class ServiceSplit:
     resold_support_charge: Decimal = DEC_ZERO
     resold_support_spp: Decimal = DEC_ZERO
     usage_base: Decimal = DEC_ZERO
-    discount_base: Decimal = DEC_ZERO
 
     @property
     def support_spp(self) -> Decimal:

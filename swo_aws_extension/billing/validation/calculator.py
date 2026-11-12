@@ -26,6 +26,8 @@ from swo_aws_extension.billing.validation.results import (
 )
 from swo_aws_extension.constants import DEC_ZERO, ServiceDiscountTypeEnum
 
+USAGE_BASE_LABEL = "usage and recurring fees, net of bundled discount"
+
 
 def _step(kind: DiscountKind, percentage: Decimal, base: Decimal, label: str) -> DiscountStep:
     """Build a discount step whose amount is ``percentage`` of ``base``."""
@@ -93,11 +95,11 @@ class ExpectedBillingCalculator:
         discounts: AgreementDiscounts,
         split: ServiceSplit | None,
     ) -> None:
-        if not discounts.handshake_approved or discounts.service_discount <= DEC_ZERO:
+        if discounts.service_discount <= DEC_ZERO:
             return
         if discounts.service_discount_type == ServiceDiscountTypeEnum.USAGE_AMOUNT:
-            base = split.discount_base if split else DEC_ZERO
-            label = "usage and recurring fees"
+            base = split.usage_base if split else DEC_ZERO
+            label = USAGE_BASE_LABEL
             if split is None:
                 expected.notes.append("Usage based discount needs the billing report rows.")
         else:
@@ -112,7 +114,7 @@ class ExpectedBillingCalculator:
         discounts: AgreementDiscounts,
         split: ServiceSplit | None,
     ) -> None:
-        if not discounts.handshake_approved or not discounts.is_resold_support:
+        if not discounts.is_resold_support:
             return
         if discounts.support_discount <= DEC_ZERO:
             return
@@ -153,10 +155,19 @@ class ExpectedBillingCalculator:
                 amount=-split.enterprise_support_charge,
             )
         )
-        expected.add_step(
-            _step(DiscountKind.PLS_CHARGE, self._pls_charge_percentage, split.usage_base, "usage")
+        pls_charge = _step(
+            DiscountKind.PLS_CHARGE,
+            self._pls_charge_percentage,
+            split.usage_base,
+            USAGE_BASE_LABEL,
         )
-        if discounts.handshake_approved and discounts.pls_discount > DEC_ZERO:
+        expected.add_step(pls_charge)
+        if discounts.pls_discount > DEC_ZERO:
             expected.add_step(
-                _step(DiscountKind.PLS_DISCOUNT, discounts.pls_discount, -split.usage_base, "usage")
+                _step(
+                    DiscountKind.PLS_DISCOUNT,
+                    discounts.pls_discount,
+                    -pls_charge.amount,
+                    "PLS charge",
+                )
             )

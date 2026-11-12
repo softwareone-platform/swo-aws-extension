@@ -4,11 +4,14 @@ from typing import override
 from swo_aws_extension.billing.generators.additional_line_processors.base import (
     AdditionalLineProcessor,
 )
-from swo_aws_extension.billing.generators.usage_utils import calculate_total_by_record_types
+from swo_aws_extension.billing.generators.usage_utils import (
+    USAGE_RECORD_TYPES,
+    calculate_total_by_record_types,
+)
 from swo_aws_extension.billing.models.invoice import OrganizationInvoice
 from swo_aws_extension.billing.models.journal_line import JournalDetails, JournalLine
 from swo_aws_extension.billing.models.usage import OrganizationUsageResult
-from swo_aws_extension.constants import DEC_ZERO, AWSRecordTypeEnum, SupportTypesEnum
+from swo_aws_extension.constants import DEC_ZERO, SupportTypesEnum
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.parameters import get_support_type
 
@@ -68,5 +71,5 @@ class PlSChargeProcessor(AdditionalLineProcessor):
         return calculate_total_by_record_types(
             usage_result,
             organization_invoice,
-            {AWSRecordTypeEnum.USAGE},
+            USAGE_RECORD_TYPES,
         )

@@ -1,7 +1,7 @@
 """Guess the most likely cause of a billing validation mismatch.
 
 The guesses follow the cases found while reconciling the manual sheet with the
-platform: missing or unapproved discount parameters, invoices the platform used but
+platform: missing discount parameters, invoices the platform used but
 the manual sheet did not (or the other way round), and Cost Explorer usage arriving
 after the invoice was issued.
 """
@@ -26,10 +26,6 @@ NO_DISCOUNTS_IN_PLATFORM = (
 DISCOUNTS_NOT_EXPECTED = (
     "Platform SP is lower than the expected one by the full SPP discount: the journal "
     "applied discounts the agreement parameters do not configure."
-)
-HANDSHAKE_NOT_APPROVED = (
-    "Discount parameters are set but the channel handshake is not approved, so no "
-    "discount was expected."
 )
 LESS_USAGE = (
     "Cost Explorer reports less metered usage than the final invoice (usage arriving "
@@ -64,15 +60,9 @@ def _explain_sales_price(validation: AgreementValidation, diff: Decimal) -> str:
 
 
 def _guesses(expected: ExpectedBilling, diff: Decimal, tolerance: Decimal) -> tuple:
-    discounts = expected.discounts
-    configured = discounts.service_discount > DEC_ZERO or discounts.pls_discount > DEC_ZERO
     missing_discounts = abs(diff - abs(expected.total_discounts)) <= tolerance
     return (
         (bool(expected.steps) and missing_discounts, NO_DISCOUNTS_IN_PLATFORM),
-        (
-            not expected.steps and configured and not discounts.handshake_approved,
-            HANDSHAKE_NOT_APPROVED,
-        ),
         (abs(diff + abs(expected.spp_discount)) <= tolerance, DISCOUNTS_NOT_EXPECTED),
         (abs(diff) <= abs(expected.sales_price) * LATE_USAGE_RATIO, _usage_guess(diff)),
     )

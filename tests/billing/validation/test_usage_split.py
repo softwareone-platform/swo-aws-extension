@@ -15,8 +15,9 @@ from swo_aws_extension.constants import AWSRecordTypeEnum
 
 ENTITY = "Amazon Web Services EMEA SARL:AWS"
 SPP = AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT
-# usage (1000) plus the Savings Plan recurring fee (500) and the recurring charge (200)
-DISCOUNT_BASE = Decimal("1700.0")
+# usage (1000) plus the Savings Plan recurring fee (500) and the recurring charge (200),
+# net of the bundled discount (-100)
+USAGE_BASE = Decimal("1600.0")
 
 
 def _metric(service, record_type, amount):
@@ -39,6 +40,7 @@ def _usage_result():
             _metric("Savings Plans for AWS Compute usage", SPP, "-40"),
             _metric("Amazon RDS", AWSRecordTypeEnum.RECURRING, "200"),
             _metric("Amazon RDS", SPP, "-16"),
+            _metric("AmazonCloudWatch", AWSRecordTypeEnum.BUNDLE_DISCOUNT, "-100"),
             _metric("Amazon EC2", AWSRecordTypeEnum.REFUND, "-30"),
             _metric("AWS Support (Enterprise)", AWSRecordTypeEnum.SUPPORT, "206.11"),
             _metric("AWS Support (Enterprise)", SPP, "-82.45"),
@@ -61,16 +63,15 @@ def test_build_service_split_groups_support_and_usage():
         Decimal(100),
         Decimal(-7),
     )
-    assert result.usage_base == Decimal(1000)
+    assert result.usage_base == USAGE_BASE
     assert result.support_spp == Decimal("-89.45")
 
 
-def test_build_service_split_discount_base_adds_recurring_fees_to_usage():
+def test_build_service_split_usage_base_adds_recurring_fees_net_of_bundled_discount():
     result = build_service_split(_usage_result(), OrganizationInvoice())
 
     # support, SPP, refunds and tax stay out, as in the journal
-    assert result.discount_base == DISCOUNT_BASE
-    assert result.usage_base == Decimal(1000)
+    assert result.usage_base == USAGE_BASE
 
 
 def test_build_service_split_converts_to_payment_currency():
@@ -84,6 +85,5 @@ def test_build_service_split_converts_to_payment_currency():
 
     result = build_service_split(_usage_result(), invoice)
 
-    assert result.usage_base == Decimal("500.0")
-    assert result.discount_base == Decimal("850.0")
+    assert result.usage_base == Decimal("800.0")
     assert result.enterprise_support_charge == Decimal("103.055")

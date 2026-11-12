@@ -3,6 +3,7 @@
 from swo_aws_extension.billing.generators.currency import (
     resolve_service_amount,
 )
+from swo_aws_extension.billing.generators.usage_utils import USAGE_RECORD_TYPES
 from swo_aws_extension.billing.models.invoice import OrganizationInvoice
 from swo_aws_extension.billing.models.usage import (
     OrganizationUsageResult,
@@ -12,11 +13,6 @@ from swo_aws_extension.billing.validation.models import ServiceSplit
 from swo_aws_extension.constants import AWSRecordTypeEnum
 
 ENTERPRISE_SUPPORT_SERVICE = "AWS Support (Enterprise)"
-SERVICE_DISCOUNT_RECORD_TYPES = frozenset((
-    AWSRecordTypeEnum.USAGE,
-    AWSRecordTypeEnum.RECURRING,
-    AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE,
-))
 
 
 def build_service_split(
@@ -53,10 +49,8 @@ def _accumulate(
         _add_support(split, metric.service_name, amount)
     elif metric.record_type == AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT:
         _add_spp(split, metric.service_name, amount, support_services)
-    elif metric.record_type in SERVICE_DISCOUNT_RECORD_TYPES:
-        split.discount_base += amount
-        if metric.record_type == AWSRecordTypeEnum.USAGE:
-            split.usage_base += amount
+    elif metric.record_type in USAGE_RECORD_TYPES:
+        split.usage_base += amount
 
 
 def _add_support(split: ServiceSplit, service_name: str, amount) -> None:
