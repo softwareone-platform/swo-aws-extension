@@ -9,7 +9,7 @@ from swo_aws_extension.flows.jobs.billing_validation.models import (
     MpaInvoices,
     ServiceSplit,
 )
-from swo_aws_extension.flows.jobs.billing_validation.results import ExpectedBilling
+from swo_aws_extension.flows.jobs.billing_validation.results import DiscountKind, ExpectedBilling
 from tests.flows.jobs.billing_validation.conftest import (
     AGREEMENT_ID,
     MPA,
@@ -147,6 +147,45 @@ def test_calculate_usage_amount_discount_type_uses_usage_base(calculator, expect
     result = calculator.calculate(expected, mpa_invoices, discounts, split)
 
     assert result.sales_price == SPP_KEPT_SALES_PRICE - Decimal("75.00")
+
+
+def test_calculate_usage_amount_discount_type_skips_nonpositive_usage_base(
+    calculator, expected, mpa_invoices
+):
+    discounts = AgreementDiscounts(
+        agreement_id=AGREEMENT_ID,
+        mpa=MPA,
+        service_discount=Decimal("5.0"),
+        service_discount_type=ServiceDiscountTypeEnum.USAGE_AMOUNT,
+    )
+    # the bundled discount exceeds the usage: the journal emits no discount line
+    split = ServiceSplit(usage_base=Decimal("-10.00"))
+
+    result = calculator.calculate(expected, mpa_invoices, discounts, split)
+
+    assert result.sales_price == SPP_KEPT_SALES_PRICE
+    assert result.steps == []
+
+
+def test_calculate_pls_skips_charge_and_discount_on_nonpositive_usage_base(
+    calculator, expected, mpa_invoices
+):
+    discounts = AgreementDiscounts(
+        agreement_id=AGREEMENT_ID,
+        mpa=MPA,
+        support_type=SupportTypesEnum.PARTNER_LED_SUPPORT,
+        pls_discount=Decimal("10.0"),
+    )
+    split = ServiceSplit(
+        enterprise_support_charge=Decimal("200.00"),
+        usage_base=Decimal("-10.00"),
+    )
+
+    result = calculator.calculate(expected, mpa_invoices, discounts, split)
+
+    # only the AWS enterprise support is removed, as the journal generates no PLS charge
+    assert result.sales_price == SPP_KEPT_SALES_PRICE - Decimal("200.00")
+    assert [step.kind for step in result.steps] == [DiscountKind.PLS_SUPPORT_REMOVED]
 
 
 def test_calculate_pls_applies_on_usage_base(calculator, expected, mpa_invoices):

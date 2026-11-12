@@ -90,7 +90,7 @@ def test_validate_returns_none_without_summary_row(validator, invoice_result):
     assert result is None
 
 
-def test_validate_swallows_unexpected_errors(mocker, validator, invoice_result, platform_summary):
+def test_validate_reports_unexpected_errors(mocker, validator, invoice_result, platform_summary):
     mocker.patch(f"{MODULE}.extract_discounts", side_effect=KeyError("parameters"))
 
     result = validator.validate(
@@ -100,4 +100,25 @@ def test_validate_swallows_unexpected_errors(mocker, validator, invoice_result, 
         platform_summary,
     )
 
-    assert result is None
+    assert result.status == ValidationStatus.ERROR
+    assert result.platform is platform_summary
+    assert result.notes == ["KeyError: 'parameters'"]
+
+
+def test_validate_converts_invoices_with_the_journal_entities(
+    mocker, validator, invoice_result, platform_summary
+):
+    mapper_mock = mocker.patch(f"{MODULE}.InvoiceMapper")
+    mapper_mock.return_value.for_mpa.return_value.lines = []
+
+    result = validator.validate(
+        _agreement(),
+        OrganizationUsageResult(reports=OrganizationReport()),
+        invoice_result,
+        platform_summary,
+    )
+
+    assert result.status == ValidationStatus.MISSING_INVOICES
+    mapper_mock.assert_called_once_with(
+        invoice_result.raw_data, platform_summary.currency, invoice_result.invoice
+    )

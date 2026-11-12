@@ -94,6 +94,22 @@ class BillingValidator:
             likely_cause="No AWS invoices found for the MPA account.",
         )
 
+    def unexpected_error(
+        self, platform: OrganizationSppSummaryRow, error: Exception
+    ) -> AgreementValidation:
+        """Build the result for a platform row whose validation raised an error."""
+        return AgreementValidation(
+            agreement_id=platform.agreement_id,
+            mpa=platform.mpa,
+            pma=platform.pma,
+            authorization_id=platform.authorization_id,
+            currency=platform.currency,
+            status=ValidationStatus.ERROR,
+            platform=platform,
+            notes=[f"{type(error).__name__}: {error}"],
+            likely_cause="The validation failed with an unexpected error, see the logs.",
+        )
+
     def _exchange_rate(
         self, expected: ExpectedBilling, platform: OrganizationSppSummaryRow
     ) -> Decimal:

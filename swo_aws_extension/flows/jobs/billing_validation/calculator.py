@@ -98,10 +98,13 @@ class ExpectedBillingCalculator:
         if discounts.service_discount <= DEC_ZERO:
             return
         if discounts.service_discount_type == ServiceDiscountTypeEnum.USAGE_AMOUNT:
-            base = split.usage_base if split else DEC_ZERO
-            label = USAGE_BASE_LABEL
             if split is None:
                 expected.notes.append("Usage based discount needs the billing report rows.")
+            elif split.usage_base <= DEC_ZERO:
+                # the journal gives no usage based discount without a positive usage base
+                return
+            base = split.usage_base if split else DEC_ZERO
+            label = USAGE_BASE_LABEL
         else:
             support_spp = split.support_spp if split else DEC_ZERO
             base = abs(expected.spp_discount - support_spp)
@@ -155,6 +158,9 @@ class ExpectedBillingCalculator:
                 amount=-split.enterprise_support_charge,
             )
         )
+        if split.usage_base <= DEC_ZERO:
+            # the journal generates no PLS charge, and so no PLS discount, without usage
+            return
         pls_charge = _step(
             DiscountKind.PLS_CHARGE,
             self._pls_charge_percentage,

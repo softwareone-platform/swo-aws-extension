@@ -4,7 +4,10 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from swo_aws_extension.constants import DEC_ZERO
-from swo_aws_extension.flows.jobs.billing_journal.models.invoice import RawInvoice
+from swo_aws_extension.flows.jobs.billing_journal.models.invoice import (
+    OrganizationInvoice,
+    RawInvoice,
+)
 from swo_aws_extension.flows.jobs.billing_validation.models import InvoiceLine, MpaInvoices
 
 BASE_CURRENCY_KEY = "BaseCurrencyAmount"
@@ -27,12 +30,20 @@ class InvoiceMapper:
     Amounts are expressed in the authorization currency following the same
     rule as the billing journal: the payment currency section of the invoice
     is used when it is reported in that currency, otherwise the base (USD)
-    amounts are converted with the exchange rate found in sibling invoices.
+    amounts are converted with the exchange rate the journal resolved for the
+    invoice entity, or with the one found in sibling invoices when the journal
+    entities are not given.
     """
 
-    def __init__(self, invoice_summaries: list[dict], currency: str) -> None:
+    def __init__(
+        self,
+        invoice_summaries: list[dict],
+        currency: str,
+        organization_invoice: OrganizationInvoice | None = None,
+    ) -> None:
         self._invoices = [RawInvoice(summary) for summary in invoice_summaries]
         self._currency = currency
+        self._entities = organization_invoice.entities if organization_invoice else {}
 
     def for_mpa(self, mpa: str) -> MpaInvoices:
         """Return the invoices that belong to the given MPA account."""
@@ -52,15 +63,16 @@ class InvoiceMapper:
         """Read the invoice amounts in the authorization currency.
 
         The payment currency section is used when the invoice reports it in that
-        currency, otherwise the base (USD) amounts are converted with the fallback
-        exchange rate found in sibling invoices.
+        currency, otherwise the base (USD) amounts are converted with the rate of
+        the journal entity, falling back to the rate found in sibling invoices.
         """
         own_rate = invoice.has_payment_rate(self._currency)
         if own_rate:
             amounts = _read_amounts(invoice, PAYMENT_CURRENCY_KEY, Decimal(1))
             rate = invoice.exchange_rate
         else:
-            rate = fallback_rate if fallback_rate > DEC_ZERO else Decimal(1)
+            rate = self._entity_rate(invoice) or fallback_rate
+            rate = rate if rate > DEC_ZERO else Decimal(1)
             amounts = _read_amounts(invoice, BASE_CURRENCY_KEY, rate)
         return InvoiceLine(
             invoice_id=invoice.invoice_id,
@@ -78,6 +90,11 @@ class InvoiceMapper:
             has_spp_breakdown=invoice.is_primary,
             own_exchange_rate=own_rate,
         )
+
+    def _entity_rate(self, invoice: RawInvoice) -> Decimal:
+        """Rate the journal applies to the entity of the invoice, zero when unknown."""
+        entity = self._entities.get(invoice.entity_key)
+        return entity.exchange_rate if entity else DEC_ZERO
 
 
 def _read_amounts(invoice: RawInvoice, currency_key: str, multiplier: Decimal) -> _Amounts:

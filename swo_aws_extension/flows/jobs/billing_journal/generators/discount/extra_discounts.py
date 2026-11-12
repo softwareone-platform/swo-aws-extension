@@ -169,11 +169,13 @@ class ServiceDiscountProcessor(BaseExtraDiscountProcessor):
         usage_result: OrganizationUsageResult,
         organization_invoice: OrganizationInvoice,
     ) -> Decimal:
-        return calculate_total_by_record_types(
+        usage_total = calculate_total_by_record_types(
             usage_result,
             organization_invoice,
             USAGE_RECORD_TYPES,
         )
+        # No usage to discount when the bundled discount cancels the usage.
+        return max(DEC_ZERO, usage_total)
 
 
 class SupportDiscountProcessor(BaseExtraDiscountProcessor):
@@ -252,6 +254,9 @@ class PlSDiscountProcessor(BaseExtraDiscountProcessor):
             organization_invoice,
             USAGE_RECORD_TYPES,
         )
+        if usage_total <= DEC_ZERO:
+            # PlSChargeProcessor generates no charge without usage, so nothing to discount.
+            return DEC_ZERO
         return usage_total * self._charge_percentage / Decimal(100)
 
 
