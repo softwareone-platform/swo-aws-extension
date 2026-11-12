@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from swo_aws_extension.constants import FulfillmentParametersEnum
 from swo_aws_extension.flows.jobs.billing_validation.agreements import extract_discounts
 
 
@@ -14,7 +15,7 @@ def _agreement():
                 {"externalId": "serviceDiscount", "value": "62.5"},
                 {"externalId": "serviceDiscountType", "value": "SPP_DISCOUNT"},
                 {"externalId": "supportDiscount", "value": ""},
-                {"externalId": "plsDiscount", "value": "10"},
+                {"externalId": FulfillmentParametersEnum.PLS_DISCOUNT.value, "value": "10"},
             ],
             "ordering": [{"externalId": "supportType", "value": "PartnerLedSupport"}],
         },

@@ -4,6 +4,9 @@ from swo_aws_extension.constants import AWSRecordTypeEnum
 from swo_aws_extension.flows.jobs.billing_journal.generators.currency import (
     resolve_service_amount,
 )
+from swo_aws_extension.flows.jobs.billing_journal.generators.usage_utils import (
+    USAGE_RECORD_TYPES,
+)
 from swo_aws_extension.flows.jobs.billing_journal.models.invoice import OrganizationInvoice
 from swo_aws_extension.flows.jobs.billing_journal.models.usage import (
     OrganizationUsageResult,
@@ -48,7 +51,7 @@ def _accumulate(
         _add_support(split, metric.service_name, amount)
     elif metric.record_type == AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT:
         _add_spp(split, metric.service_name, amount, support_services)
-    elif metric.record_type == AWSRecordTypeEnum.USAGE:
+    elif metric.record_type in USAGE_RECORD_TYPES:
         split.usage_base += amount
 
 

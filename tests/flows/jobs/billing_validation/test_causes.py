@@ -7,7 +7,6 @@ from swo_aws_extension.flows.jobs.billing_validation.calculator import ExpectedB
 from swo_aws_extension.flows.jobs.billing_validation.causes import (
     COST_PRICE_MISMATCH,
     DISCOUNTS_NOT_EXPECTED,
-    HANDSHAKE_NOT_APPROVED,
     LESS_USAGE,
     MORE_USAGE,
     NO_DISCOUNTS_IN_PLATFORM,
@@ -48,15 +47,6 @@ def test_platform_did_not_apply_discounts(mpa_invoices, discounts, platform_summ
     result = BillingValidator().validate(expected, platform)
 
     assert result.likely_cause == NO_DISCOUNTS_IN_PLATFORM
-
-
-def test_handshake_not_approved(mpa_invoices, discounts, platform_summary):
-    expected = _expected(mpa_invoices, replace(discounts, handshake_approved=False))
-    platform = replace(platform_summary, sp=platform_summary.sp - BIG_DIFF)
-
-    result = BillingValidator().validate(expected, platform)
-
-    assert result.likely_cause == HANDSHAKE_NOT_APPROVED
 
 
 def test_platform_applied_unexpected_discounts(mpa_invoices, discounts, platform_summary):

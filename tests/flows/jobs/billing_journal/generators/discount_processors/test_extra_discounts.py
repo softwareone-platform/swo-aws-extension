@@ -5,6 +5,7 @@ import pytest
 from swo_aws_extension.constants import (
     AWSRecordTypeEnum,
     ChannelHandshakeDeployed,
+    FulfillmentParametersEnum,
     ServiceDiscountTypeEnum,
     SupportTypesEnum,
 )
@@ -54,12 +55,7 @@ def agreement():
     return {
         "parameters": {
             "ordering": [],
-            "fulfillment": [
-                {
-                    "externalId": "channelHandshakeApproved",
-                    "value": ChannelHandshakeDeployed.YES,
-                }
-            ],
+            "fulfillment": [],
         }
     }
 
@@ -130,12 +126,12 @@ def test_service_discount_processor(
         (SupportDiscountProcessor, "supportDiscount", SupportTypesEnum.AWS_RESOLD_SUPPORT),
         (
             lambda: PlSDiscountProcessor(Decimal("5.0")),
-            "plsDiscount",
+            FulfillmentParametersEnum.PLS_DISCOUNT.value,
             SupportTypesEnum.PARTNER_LED_SUPPORT,
         ),
     ],
 )
-def test_returns_empty_when_handshake_not_approved(
+def test_applies_discount_when_handshake_not_approved(
     agreement,
     usage_result,
     journal_details,
@@ -152,13 +148,23 @@ def test_returns_empty_when_handshake_not_approved(
         agreement["parameters"]["ordering"].append(
             {"externalId": "supportType", "value": support_type},
         )
+    usage_result.usage_by_account["ACC-1"].metrics.extend([
+        create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00"),
+        create_metric("EC2", AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT, "-10.00"),
+        create_metric("AWS Support (Enterprise)", AWSRecordTypeEnum.SUPPORT, "50.00"),
+        create_metric(
+            "AWS Support (Enterprise)",
+            AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT,
+            "-5.00",
+        ),
+    ])
     processor = processor_factory()
 
     lines = processor.process(  # act
         agreement, usage_result, journal_details, organization_invoice
     )
 
-    assert len(lines) == 0
+    assert len(lines) == 1
 
 
 def test_extra_discounts_manager(
@@ -310,6 +316,7 @@ def test_service_discount_processor_usage_amount_type(
             create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00"),
             create_metric("RDS", AWSRecordTypeEnum.RECURRING, "50.00"),
             create_metric("SP", AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE, "20.00"),
+            create_metric("CloudWatch", AWSRecordTypeEnum.BUNDLE_DISCOUNT, "-20.00"),
             create_metric("EC2", AWSRecordTypeEnum.SOLUTION_PROVIDER_PROGRAM_DISCOUNT, "-10.00"),
         ]
     })
@@ -318,7 +325,7 @@ def test_service_discount_processor_usage_amount_type(
     result = processor.process(agreement, usage_result, journal_details, organization_invoice)
 
     assert len(result) == 1
-    assert result[0].price.unit_pp == Decimal("-17.000000")
+    assert result[0].price.unit_pp == Decimal("-15.000000")
     assert result[0].description.value1 == "SWO additional Usage discount"
 
 
@@ -355,7 +362,7 @@ def test_pls_discount_processor(
         {"externalId": "supportType", "value": SupportTypesEnum.PARTNER_LED_SUPPORT},
     )
     agreement["parameters"]["fulfillment"].append(
-        {"externalId": "plsDiscount", "value": "20.0"},
+        {"externalId": FulfillmentParametersEnum.PLS_DISCOUNT.value, "value": "20.0"},
     )
     usage_result.usage_by_account["ACC-1"].metrics.extend([
         create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00"),
@@ -367,9 +374,34 @@ def test_pls_discount_processor(
     result = processor.process(agreement, usage_result, journal_details, organization_invoice)
 
     assert len(result) == 1
-    assert result[0].price.unit_pp == Decimal("-30.000000")
+    assert result[0].price.unit_pp == Decimal("-1.500000")
     assert result[0].description.value1 == "SWO additional PLS Support discount"
     assert result[0].external_ids.vendor == "MPA-1"
+
+
+def test_pls_discount_processor_includes_recurring_fees_in_base(
+    agreement,
+    usage_result,
+    journal_details,
+    organization_invoice,
+):
+    agreement["parameters"]["ordering"].append(
+        {"externalId": "supportType", "value": SupportTypesEnum.PARTNER_LED_SUPPORT},
+    )
+    agreement["parameters"]["fulfillment"].append(
+        {"externalId": FulfillmentParametersEnum.PLS_DISCOUNT.value, "value": "20.0"},
+    )
+    usage_result.usage_by_account["ACC-1"].metrics.extend([
+        create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00"),
+        create_metric("EC2", AWSRecordTypeEnum.RECURRING, "30.00"),
+        create_metric("Savings Plans", AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE, "20.00"),
+        create_metric("AWS Support (Enterprise)", AWSRecordTypeEnum.SUPPORT, "0.00"),
+    ])
+    processor = PlSDiscountProcessor(Decimal("5.0"))
+
+    result = processor.process(agreement, usage_result, journal_details, organization_invoice)
+
+    assert result[0].price.unit_pp == Decimal("-1.500000")
 
 
 def test_pls_discount_processor_skips_when_no_enterprise_support_in_usage(
@@ -382,7 +414,7 @@ def test_pls_discount_processor_skips_when_no_enterprise_support_in_usage(
         {"externalId": "supportType", "value": SupportTypesEnum.PARTNER_LED_SUPPORT},
     )
     agreement["parameters"]["fulfillment"].append(
-        {"externalId": "plsDiscount", "value": "20.0"},
+        {"externalId": FulfillmentParametersEnum.PLS_DISCOUNT.value, "value": "20.0"},
     )
     usage_result.usage_by_account["ACC-1"].metrics.extend([
         create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00"),

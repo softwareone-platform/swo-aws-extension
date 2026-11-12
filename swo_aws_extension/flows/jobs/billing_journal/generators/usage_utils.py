@@ -1,15 +1,25 @@
 from decimal import Decimal
 
-from swo_aws_extension.constants import DEC_ZERO
+from swo_aws_extension.constants import DEC_ZERO, AWSRecordTypeEnum
 from swo_aws_extension.flows.jobs.billing_journal.generators.currency import resolve_service_amount
 from swo_aws_extension.flows.jobs.billing_journal.models.invoice import OrganizationInvoice
 from swo_aws_extension.flows.jobs.billing_journal.models.usage import OrganizationUsageResult
+
+# Record types that make up the invoice usage: the base of the usage based service
+# discount and of the PLS charge and discount. The Bundled Discount is negative, so
+# the usage is always taken net of it.
+USAGE_RECORD_TYPES = frozenset((
+    AWSRecordTypeEnum.USAGE,
+    AWSRecordTypeEnum.RECURRING,
+    AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE,
+    AWSRecordTypeEnum.BUNDLE_DISCOUNT,
+))
 
 
 def calculate_total_by_record_types(
     usage_result: OrganizationUsageResult,
     organization_invoice: OrganizationInvoice,
-    record_types: set[str],
+    record_types: set[str] | frozenset[str],
 ) -> Decimal:
     """Calculate the total service amount for specific record types across the organization."""
     total = DEC_ZERO

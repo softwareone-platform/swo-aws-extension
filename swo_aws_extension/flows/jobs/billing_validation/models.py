@@ -152,6 +152,10 @@ class ServiceSplit:
     The AWS invoice summary only carries totals, so the split between usage and
     support (needed for support discounts and PLS) comes from the per-service
     rows of the platform billing report. Amounts are in the agreement currency.
+
+    ``usage_base`` holds the ``Usage``, ``Recurring`` and ``SavingsPlanRecurringFee``
+    records net of the ``Bundled Discount``, the base of the usage based service
+    discount and of the PLS charge and discount, as in the journal.
     """
 
     enterprise_support_charge: Decimal = DEC_ZERO

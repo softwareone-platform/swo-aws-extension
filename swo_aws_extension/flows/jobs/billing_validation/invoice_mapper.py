@@ -1,46 +1,24 @@
 """Map AWS ``list_invoice_summaries`` results to the manual validation sheet."""
 
+from dataclasses import dataclass
 from decimal import Decimal
 
 from swo_aws_extension.constants import DEC_ZERO
+from swo_aws_extension.flows.jobs.billing_journal.models.invoice import RawInvoice
 from swo_aws_extension.flows.jobs.billing_validation.models import InvoiceLine, MpaInvoices
 
-SPP_DISCOUNT_DESCRIPTION = "Discount (AWS SPP Discount)"
 BASE_CURRENCY_KEY = "BaseCurrencyAmount"
 PAYMENT_CURRENCY_KEY = "PaymentCurrencyAmount"
 
 
-def _decimal(raw_value) -> Decimal:
-    return Decimal(str(raw_value or 0))
+@dataclass(frozen=True)
+class _Amounts:
+    """Amounts of one currency section of an invoice."""
 
-
-def _belongs_to_mpa(summary: dict, mpa: str) -> bool:
-    bill_source_accounts = summary.get("BillSourceAccounts")
-    if bill_source_accounts is not None:
-        return mpa in bill_source_accounts
-    return summary.get("AccountId") == mpa
-
-
-def _payment_rate(summary: dict, currency: str) -> Decimal:
-    payment = summary.get(PAYMENT_CURRENCY_KEY, {})
-    if payment.get("CurrencyCode") != currency:
-        return DEC_ZERO
-    return _decimal(payment.get("CurrencyExchangeDetails", {}).get("Rate"))
-
-
-def _spp_breakdown(amounts: dict) -> list[dict]:
-    discounts = amounts.get("AmountBreakdown", {}).get("Discounts", {})
-    return [
-        entry
-        for entry in discounts.get("Breakdown", [])
-        if entry.get("Description") == SPP_DISCOUNT_DESCRIPTION
-    ]
-
-
-def _spp_discount(amounts: dict) -> Decimal:
-    breakdown = _spp_breakdown(amounts)
-    spp = sum((_decimal(entry.get("Amount")) for entry in breakdown), DEC_ZERO)
-    return -abs(spp)
+    charges: Decimal
+    spp_discount: Decimal
+    cost: Decimal
+    total: Decimal
 
 
 class InvoiceMapper:
@@ -53,61 +31,60 @@ class InvoiceMapper:
     """
 
     def __init__(self, invoice_summaries: list[dict], currency: str) -> None:
-        self._summaries = invoice_summaries
+        self._invoices = [RawInvoice(summary) for summary in invoice_summaries]
         self._currency = currency
 
     def for_mpa(self, mpa: str) -> MpaInvoices:
         """Return the invoices that belong to the given MPA account."""
-        summaries = [summary for summary in self._summaries if _belongs_to_mpa(summary, mpa)]
-        fallback_rate = self._fallback_rate(summaries)
-        lines = [self._build_line(summary, fallback_rate) for summary in summaries]
+        invoices = [invoice for invoice in self._invoices if invoice.belongs_to_mpa(mpa)]
+        fallback_rate = max(
+            (
+                invoice.exchange_rate
+                for invoice in invoices
+                if invoice.has_payment_rate(self._currency)
+            ),
+            default=DEC_ZERO,
+        )
+        lines = [self._build_line(invoice, fallback_rate) for invoice in invoices]
         return MpaInvoices(mpa=mpa, currency=self._currency, lines=lines)
 
-    def _fallback_rate(self, summaries: list[dict]) -> Decimal:
-        rates = [_payment_rate(summary, self._currency) for summary in summaries]
-        return max((rate for rate in rates if rate > DEC_ZERO), default=DEC_ZERO)
-
-    def _build_line(self, summary: dict, fallback_rate: Decimal) -> InvoiceLine:
-        figures = self._figures(summary, fallback_rate)
-        return InvoiceLine(
-            invoice_id=summary.get("InvoiceId", ""),
-            invoicing_entity=summary.get("Entity", {}).get("InvoicingEntity", ""),
-            billing_entity=summary.get("Entity", {}).get("BillingEntity", "AWS"),
-            invoice_type=summary.get("InvoiceType", "INVOICE"),
-            charges=figures["charges"],
-            spp_discount=figures["spp"],
-            other_adjustments=figures["cost"] - figures["charges"] - figures["spp"],
-            cost=figures["cost"],
-            tax=figures["total"] - figures["cost"],
-            currency=self._currency,
-            exchange_rate=figures["rate"],
-            base_currency=summary.get(BASE_CURRENCY_KEY, {}).get("CurrencyCode", "USD"),
-            has_spp_breakdown=bool(_spp_breakdown(summary.get(BASE_CURRENCY_KEY, {}))),
-            own_exchange_rate=figures["own_rate"] > DEC_ZERO,
-        )
-
-    def _figures(self, summary: dict, fallback_rate: Decimal) -> dict[str, Decimal]:
+    def _build_line(self, invoice: RawInvoice, fallback_rate: Decimal) -> InvoiceLine:
         """Read the invoice amounts in the authorization currency.
 
         The payment currency section is used when the invoice reports it in that
         currency, otherwise the base (USD) amounts are converted with the fallback
         exchange rate found in sibling invoices.
         """
-        own_rate = _payment_rate(summary, self._currency)
-        rate = own_rate
-        if rate > DEC_ZERO:
-            amounts = summary.get(PAYMENT_CURRENCY_KEY, {})
-            multiplier = Decimal(1)
+        own_rate = invoice.has_payment_rate(self._currency)
+        if own_rate:
+            amounts = _read_amounts(invoice, PAYMENT_CURRENCY_KEY, Decimal(1))
+            rate = invoice.exchange_rate
         else:
-            amounts = summary.get(BASE_CURRENCY_KEY, {})
             rate = fallback_rate if fallback_rate > DEC_ZERO else Decimal(1)
-            multiplier = rate
-        return {
-            "rate": rate,
-            "own_rate": own_rate,
-            "charges": _decimal(amounts.get("AmountBreakdown", {}).get("SubTotalAmount"))
-            * multiplier,
-            "spp": _spp_discount(amounts) * multiplier,
-            "cost": _decimal(amounts.get("TotalAmountBeforeTax")) * multiplier,
-            "total": _decimal(amounts.get("TotalAmount")) * multiplier,
-        }
+            amounts = _read_amounts(invoice, BASE_CURRENCY_KEY, rate)
+        return InvoiceLine(
+            invoice_id=invoice.invoice_id,
+            invoicing_entity=invoice.invoicing_entity,
+            billing_entity=invoice.billing_entity,
+            invoice_type=invoice.invoice_type,
+            charges=amounts.charges,
+            spp_discount=amounts.spp_discount,
+            other_adjustments=amounts.cost - amounts.charges - amounts.spp_discount,
+            cost=amounts.cost,
+            tax=amounts.total - amounts.cost,
+            currency=self._currency,
+            exchange_rate=rate,
+            base_currency=invoice.base_currency_code or "USD",
+            has_spp_breakdown=invoice.is_primary,
+            own_exchange_rate=own_rate,
+        )
+
+
+def _read_amounts(invoice: RawInvoice, currency_key: str, multiplier: Decimal) -> _Amounts:
+    """Read one currency section of the invoice, scaled to the authorization currency."""
+    return _Amounts(
+        charges=invoice.breakdown_amount(currency_key, "SubTotalAmount") * multiplier,
+        spp_discount=invoice.spp_discount(currency_key) * multiplier,
+        cost=invoice.amount(currency_key, "TotalAmountBeforeTax") * multiplier,
+        total=invoice.amount(currency_key, "TotalAmount") * multiplier,
+    )
