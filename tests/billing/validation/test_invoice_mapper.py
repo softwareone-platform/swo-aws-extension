@@ -1,6 +1,7 @@
 from decimal import Decimal
 from types import MappingProxyType
 
+from swo_aws_extension.billing.models.invoice import InvoiceEntity, OrganizationInvoice
 from swo_aws_extension.billing.validation.invoice_mapper import InvoiceMapper
 from tests.billing.validation.conftest import MPA, build_invoice_summary
 
@@ -85,3 +86,35 @@ def test_for_mpa_converts_base_amounts_with_sibling_rate():
     assert marketplace.cost == Decimal("90.0")
     assert marketplace.exchange_rate == Decimal("0.9")
     assert result.cost_price == Decimal("180.0")
+
+
+def test_for_mpa_converts_base_amounts_with_journal_entity_rate():
+    summaries = [
+        build_invoice_summary(invoice_id="EU-1", payment=dict(EUR_PAYMENT)),
+        build_invoice_summary(
+            invoice_id="MP-1",
+            billing_entity="AWS_MARKETPLACE",
+            subtotal="100.00",
+            spp="0",
+            total_before_tax="100.00",
+            total="100.00",
+        ),
+    ]
+    organization_invoice = OrganizationInvoice(
+        entities={
+            "Amazon Web Services, Inc.:AWS_MARKETPLACE": InvoiceEntity(
+                invoice_id="MP-1",
+                base_currency_code="USD",
+                payment_currency_code="EUR",
+                exchange_rate=Decimal("0.85"),
+            )
+        }
+    )
+
+    result = InvoiceMapper(summaries, "EUR", organization_invoice).for_mpa(MPA)
+
+    # the rate the journal resolved for the entity wins over the sibling invoice rate
+    marketplace = next(line for line in result.lines if line.invoice_id == "MP-1")
+    assert marketplace.cost == Decimal("85.0")
+    assert marketplace.exchange_rate == Decimal("0.85")
+    assert result.cost_price == Decimal("175.0")

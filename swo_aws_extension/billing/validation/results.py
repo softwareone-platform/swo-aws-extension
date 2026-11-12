@@ -23,6 +23,7 @@ class ValidationStatus(StrEnum):
     MISMATCH = "MISMATCH"
     MISSING_IN_PLATFORM = "MISSING_IN_PLATFORM"
     MISSING_INVOICES = "MISSING_INVOICES"
+    ERROR = "ERROR"
 
 
 class DiscountKind(StrEnum):

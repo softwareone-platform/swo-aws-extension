@@ -353,6 +353,28 @@ def test_service_discount_processor_spp_type_explicit(
     assert result[0].price.unit_pp == Decimal("-0.5")
 
 
+def test_service_discount_processor_usage_amount_type_skips_when_bundled_discount_exceeds_usage(
+    agreement,
+    journal_details,
+    organization_invoice,
+):
+    agreement["parameters"]["fulfillment"].extend([
+        {"externalId": "serviceDiscount", "value": "10.0"},
+        {"externalId": "serviceDiscountType", "value": ServiceDiscountTypeEnum.USAGE_AMOUNT},
+    ])
+    usage_result = build_usage_result({
+        "ACC-1": [
+            create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00"),
+            create_metric("CloudWatch", AWSRecordTypeEnum.BUNDLE_DISCOUNT, "-120.00"),
+        ]
+    })
+    processor = ServiceDiscountProcessor()
+
+    result = processor.process(agreement, usage_result, journal_details, organization_invoice)
+
+    assert not result
+
+
 def test_pls_discount_processor(
     agreement,
     usage_result,
@@ -403,6 +425,31 @@ def test_pls_discount_processor_includes_recurring_fees_in_base(
     result = processor.process(agreement, usage_result, journal_details, organization_invoice)
 
     assert result[0].price.unit_pp == Decimal("-1.500000")
+
+
+def test_pls_discount_processor_skips_when_bundled_discount_exceeds_usage(
+    agreement,
+    usage_result,
+    journal_details,
+    organization_invoice,
+):
+    agreement["parameters"]["ordering"].append(
+        {"externalId": "supportType", "value": SupportTypesEnum.PARTNER_LED_SUPPORT},
+    )
+    agreement["parameters"]["fulfillment"].append(
+        {"externalId": FulfillmentParametersEnum.PLS_DISCOUNT.value, "value": "20.0"},
+    )
+    usage_result.usage_by_account["ACC-1"].metrics.extend([
+        create_metric("EC2", AWSRecordTypeEnum.USAGE, "100.00"),
+        create_metric("CloudWatch", AWSRecordTypeEnum.BUNDLE_DISCOUNT, "-120.00"),
+        create_metric("AWS Support (Enterprise)", AWSRecordTypeEnum.SUPPORT, "0.00"),
+    ])
+    processor = PlSDiscountProcessor(Decimal("5.0"))
+
+    result = processor.process(agreement, usage_result, journal_details, organization_invoice)
+
+    # no PLS charge is generated for a negative usage, so there is nothing to discount
+    assert not result
 
 
 def test_pls_discount_processor_skips_when_no_enterprise_support_in_usage(

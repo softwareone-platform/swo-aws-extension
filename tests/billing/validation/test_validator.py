@@ -94,3 +94,12 @@ def test_missing_invoices(platform_summary):
 
     assert result.status == ValidationStatus.MISSING_INVOICES
     assert result.agreement_id == AGREEMENT_ID
+
+
+def test_unexpected_error(platform_summary):
+    result = BillingValidator().unexpected_error(platform_summary, ValueError("boom"))
+
+    assert result.status == ValidationStatus.ERROR
+    assert result.platform is platform_summary
+    assert result.notes == ["ValueError: boom"]
+    assert "unexpected error" in result.likely_cause

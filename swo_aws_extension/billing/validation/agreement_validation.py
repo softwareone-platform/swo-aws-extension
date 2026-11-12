@@ -55,8 +55,8 @@ class AgreementBillingValidator:
     ) -> AgreementValidation | None:
         """Compare the SPP summary row of the agreement with the manual validation rules.
 
-        The validation is informative, so any unexpected error is logged and swallowed
-        instead of blocking the journal generation.
+        The validation is informative, so any unexpected error is logged and reported
+        as an ``ERROR`` validation instead of blocking the journal generation.
 
         Args:
             agreement: Agreement payload including its parameters.
@@ -65,15 +65,16 @@ class AgreementBillingValidator:
             spp_summary_row: Agreement level row produced by the journal generator.
 
         Returns:
-            The validation with its checks, status and notes, or None when not possible.
+            The validation with its checks, status and notes, or None when the
+            agreement has no SPP summary row.
         """
         if spp_summary_row is None:
             return None
         try:
             return self._validate(agreement, usage_result, invoice_result, spp_summary_row)
-        except Exception:
+        except Exception as error:
             logger.exception("Failed to validate the billing of agreement")
-            return None
+            return self._validator.unexpected_error(spp_summary_row, error)
 
     def _validate(
         self,
@@ -82,9 +83,9 @@ class AgreementBillingValidator:
         invoice_result: OrganizationInvoiceResult,
         spp_summary_row: OrganizationSppSummaryRow,
     ) -> AgreementValidation:
-        invoices = InvoiceMapper(invoice_result.raw_data, spp_summary_row.currency).for_mpa(
-            spp_summary_row.mpa
-        )
+        invoices = InvoiceMapper(
+            invoice_result.raw_data, spp_summary_row.currency, invoice_result.invoice
+        ).for_mpa(spp_summary_row.mpa)
         names = extract_info(agreement, self._authorization_name)
         if not invoices.lines:
             validation = self._validator.missing_invoices(spp_summary_row)
