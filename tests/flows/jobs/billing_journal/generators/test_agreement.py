@@ -92,6 +92,11 @@ def mock_pls_charge_manager_cls(mocker):
     return mocker.patch(f"{MODULE}.PlSChargeManager", autospec=True)
 
 
+@pytest.fixture
+def mock_billing_validator_cls(mocker):
+    return mocker.patch(f"{MODULE}.AgreementBillingValidator", autospec=True)
+
+
 @pytest.fixture(autouse=True)
 def mock_build_spp_summary_row(mocker):
     mock = mocker.patch(f"{MODULE}.build_spp_summary_row")
@@ -137,6 +142,7 @@ def test_run(
     mock_extra_discounts_manager_cls,
     mock_pls_charge_manager_cls,
     mock_build_spp_summary_row,
+    mock_billing_validator_cls,
 ):
     mock_builder = mocker.MagicMock()
     mock_builder.build.return_value = []
@@ -200,6 +206,13 @@ def test_run(
         result.billing_report_rows,
         mock_invoice_generator.run.return_value.invoice,
         mocker.ANY,
+    )
+    assert result.validation is mock_billing_validator_cls.return_value.validate.return_value
+    mock_billing_validator_cls.return_value.validate.assert_called_once_with(
+        agreement,
+        mock_usage_result,
+        mock_invoice_generator.run.return_value,
+        result.spp_summary_row,
     )
 
 

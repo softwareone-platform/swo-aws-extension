@@ -480,3 +480,77 @@ def test_exchange_rate_resolver_get_payment_currency_defaults_to_usd_without_mat
     result = resolver.get_payment_currency(Decimal(0), "GBP")
 
     assert result == "USD"
+
+
+def test_run_uses_weighted_rate_when_entity_invoices_have_different_rates(
+    generator, mock_aws_client, billing_period
+):
+    annual_subscription = build_invoice(
+        invoice_id="2865984933",
+        invoicing_entity="Amazon Web Services, Inc.",
+        billing_entity="AWS_MARKETPLACE",
+        base_total_before_tax="4800.00",
+        payment_total_before_tax="4310.07",
+        exchange_rate="0.897930400",
+    )
+    monthly_usage = build_invoice(
+        invoice_id="2903000933",
+        invoicing_entity="Amazon Web Services, Inc.",
+        billing_entity="AWS_MARKETPLACE",
+        base_total_before_tax="57.58",
+        payment_total_before_tax="52.12",
+        exchange_rate="0.905141800",
+    )
+    mock_aws_client.list_invoice_summaries_by_account_id.return_value = [
+        annual_subscription,
+        monthly_usage,
+    ]
+
+    result = generator.run("PMA-456", "MPA-123", billing_period, "EUR")
+
+    entity = result.invoice.entities["Amazon Web Services, Inc.:AWS_MARKETPLACE"]
+    assert round(Decimal("4857.58") * entity.exchange_rate, 2) == Decimal("4362.19")
+
+
+def test_run_weighted_rate_covers_invoices_issued_in_payment_currency(
+    generator, mock_aws_client, billing_period
+):
+    usage = build_invoice(
+        invoice_id="EUINES26-106258",
+        invoicing_entity="Amazon Web Services EMEA SARL",
+        billing_entity="AWS",
+        base_total_before_tax="48781.97",
+        payment_total_before_tax="43975.68",
+        exchange_rate="0.90147412236",
+    )
+    trainings = [
+        build_invoice(
+            invoice_id=invoice_id,
+            invoicing_entity="Amazon Web Services EMEA SARL",
+            billing_entity="AWS",
+            base_total_before_tax="3623.11",
+            payment_total_before_tax="3240.00",
+            exchange_rate="0.89426",
+        )
+        for invoice_id in ("EUINES26-105490", "EUINES26-105499")
+    ]
+    mock_aws_client.list_invoice_summaries_by_account_id.return_value = [usage, *trainings]
+
+    result = generator.run("PMA-456", "MPA-123", billing_period, "EUR")
+
+    entity = result.invoice.entities["Amazon Web Services EMEA SARL:AWS"]
+    assert round(Decimal("56028.19") * entity.exchange_rate, 2) == Decimal("50455.68")
+
+
+def test_run_keeps_aws_rate_when_entity_invoices_share_the_same_rate(
+    generator, mock_aws_client, billing_period
+):
+    invoices = [
+        build_invoice(invoice_id="INV-001", exchange_rate="0.95"),
+        build_invoice(invoice_id="INV-002", exchange_rate="0.95", payment_total_before_tax="80"),
+    ]
+    mock_aws_client.list_invoice_summaries_by_account_id.return_value = invoices
+
+    result = generator.run("PMA-456", "MPA-123", billing_period, "EUR")
+
+    assert result.invoice.entities["AWS Inc.:AWS"].exchange_rate == Decimal("0.95")

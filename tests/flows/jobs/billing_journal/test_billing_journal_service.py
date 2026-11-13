@@ -28,9 +28,25 @@ from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     PlsMismatch,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.usage import OrganizationReport
+from swo_aws_extension.flows.jobs.billing_validation.results import (
+    AgreementValidation,
+    ValidationStatus,
+)
 from swo_aws_extension.swo.rql.query_builder import RQLQuery
 
 MODULE = "swo_aws_extension.flows.jobs.billing_journal.billing_journal_service"
+
+
+def _missing_invoices_validation():
+    return AgreementValidation(
+        agreement_id="AGR-1",
+        mpa="MPA-1",
+        pma="PMA-1",
+        authorization_id="AUTH-1",
+        currency="USD",
+        status=ValidationStatus.MISSING_INVOICES,
+        likely_cause="No AWS invoices found for the MPA account.",
+    )
 
 
 @pytest.fixture
@@ -148,7 +164,7 @@ def test_processes_authorizations_creates_billing_report(
     service.run()  # act
 
     mock_report_creator.create_and_notify_teams.assert_called_once_with(
-        str(mock_context.billing_period), [mock_row], [], []
+        str(mock_context.billing_period), [mock_row], [], [], []
     )
 
 
@@ -189,7 +205,7 @@ def test_processes_authorizations_passes_spp_summary_rows(
     service.run()  # act
 
     mock_report_creator.create_and_notify_teams.assert_called_once_with(
-        str(mock_context.billing_period), [mock_row], [], [spp_summary_row]
+        str(mock_context.billing_period), [mock_row], [], [spp_summary_row], []
     )
 
 
@@ -382,6 +398,58 @@ def test_pls_mismatch_sends_warning(
         title="PLS Mismatch Summary",
         text=f"1 agreement(s) with PLS mismatch:\n\n• {mismatch.description}",
     )
+
+
+def test_validation_issues_send_warning(
+    mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls
+):
+    mock_context.dry_run = False
+    mock_get_authorizations.return_value = [{"id": "AUTH-1"}]
+    mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
+    mock_auth_gen.run.return_value = AuthorizationJournalResult(
+        lines=[mocker.MagicMock(spec=JournalLine)], validations=[_missing_invoices_validation()]
+    )
+    mock_auth_generator_cls.return_value = mock_auth_gen
+    mocker.patch(f"{MODULE}.JournalManager", autospec=True)
+    mocker.patch(f"{MODULE}.BillingReportCreator", autospec=True)
+    service = BillingJournalService(mock_context)
+
+    service.run()  # act
+
+    mock_context.notifier.send_warning.assert_called_once_with(
+        title="Billing Validation Summary",
+        text=(
+            "1 of 1 agreement(s) need a review: the billing journal does not match the "
+            "AWS invoices or the agreement discounts. See the Validation sheet of the "
+            "billing report."
+        ),
+    )
+
+
+def test_dry_run_logs_billing_validation(
+    mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls, caplog
+):
+    mock_context.dry_run = True
+    mock_get_authorizations.return_value = [{"id": "AUTH-1"}]
+    mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
+    mock_line = mocker.MagicMock(spec=JournalLine)
+    mock_line.to_jsonl.return_value = '{"test": 1}\n'
+    mock_line.external_ids = ExternalIds(invoice="INV-1", reference="AGR-1", vendor="MPA-1")
+    mock_line.price = Price(pp_x1=Decimal("100.00"), unit_pp=Decimal("100.00"))
+    mock_auth_gen.run.return_value = AuthorizationJournalResult(
+        lines=[mock_line], validations=[_missing_invoices_validation()]
+    )
+    mock_auth_generator_cls.return_value = mock_auth_gen
+    mocker.patch(f"{MODULE}.BillingReportCreator", autospec=True)
+    service = BillingJournalService(mock_context)
+
+    with caplog.at_level("INFO"):
+        service.run()  # act
+
+    assert (
+        "AUTH-1 - [DRY-RUN] Billing validation: AGR-1 (MPA-1): MISSING_INVOICES - "
+        "No AWS invoices found for the MPA account."
+    ) in caplog.text
 
 
 def test_dry_run_skips_upload_with_empty_report_data(

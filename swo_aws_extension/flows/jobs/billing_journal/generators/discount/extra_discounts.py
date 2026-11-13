@@ -5,7 +5,6 @@ from typing import override
 from swo_aws_extension.constants import (
     DEC_ZERO,
     AWSRecordTypeEnum,
-    ChannelHandshakeDeployed,
     ServiceDiscountTypeEnum,
     SupportTypesEnum,
 )
@@ -13,6 +12,7 @@ from swo_aws_extension.flows.jobs.billing_journal.generators.currency import (
     resolve_service_amount,
 )
 from swo_aws_extension.flows.jobs.billing_journal.generators.usage_utils import (
+    USAGE_RECORD_TYPES,
     calculate_total_by_record_types,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.invoice import OrganizationInvoice
@@ -26,7 +26,6 @@ from swo_aws_extension.flows.jobs.billing_journal.models.usage import (
 )
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.parameters import (
-    get_channel_handshake_approval_status,
     get_pls_discount,
     get_service_discount,
     get_service_discount_type,
@@ -117,7 +116,7 @@ class ServiceDiscountProcessor(BaseExtraDiscountProcessor):
 
     @override
     def _is_applicable(self, agreement: dict, usage_result: OrganizationUsageResult) -> bool:
-        return get_channel_handshake_approval_status(agreement) == ChannelHandshakeDeployed.YES
+        return True
 
     @override
     def _get_discount_percentage(self, agreement: dict) -> Decimal:
@@ -141,17 +140,12 @@ class ServiceDiscountProcessor(BaseExtraDiscountProcessor):
         usage_result: OrganizationUsageResult,
         organization_invoice: OrganizationInvoice,
     ) -> Decimal:
-        target_record_types = {
-            AWSRecordTypeEnum.USAGE,
-            AWSRecordTypeEnum.RECURRING,
-            AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE,
-        }
         total = DEC_ZERO
         for account_usage in usage_result.usage_by_account.values():
             applicable_service_names = {
                 metric.service_name
                 for metric in account_usage.metrics
-                if metric.record_type in target_record_types
+                if metric.record_type in USAGE_RECORD_TYPES
             }
 
             spp_metrics = [
@@ -175,15 +169,13 @@ class ServiceDiscountProcessor(BaseExtraDiscountProcessor):
         usage_result: OrganizationUsageResult,
         organization_invoice: OrganizationInvoice,
     ) -> Decimal:
-        return calculate_total_by_record_types(
+        usage_total = calculate_total_by_record_types(
             usage_result,
             organization_invoice,
-            {
-                AWSRecordTypeEnum.USAGE,
-                AWSRecordTypeEnum.RECURRING,
-                AWSRecordTypeEnum.SAVING_PLAN_RECURRING_FEE,
-            },
+            USAGE_RECORD_TYPES,
         )
+        # No usage to discount when the bundled discount cancels the usage.
+        return max(DEC_ZERO, usage_total)
 
 
 class SupportDiscountProcessor(BaseExtraDiscountProcessor):
@@ -194,8 +186,6 @@ class SupportDiscountProcessor(BaseExtraDiscountProcessor):
 
     @override
     def _is_applicable(self, agreement: dict, usage_result: OrganizationUsageResult) -> bool:
-        if get_channel_handshake_approval_status(agreement) != ChannelHandshakeDeployed.YES:
-            return False
         return get_support_type(agreement) == SupportTypesEnum.AWS_RESOLD_SUPPORT
 
     @override
@@ -242,8 +232,6 @@ class PlSDiscountProcessor(BaseExtraDiscountProcessor):
 
     @override
     def _is_applicable(self, agreement: dict, usage_result: OrganizationUsageResult) -> bool:
-        if get_channel_handshake_approval_status(agreement) != ChannelHandshakeDeployed.YES:
-            return False
         if get_support_type(agreement) != SupportTypesEnum.PARTNER_LED_SUPPORT:
             return False
         return usage_result.has_enterprise_support()
@@ -260,11 +248,16 @@ class PlSDiscountProcessor(BaseExtraDiscountProcessor):
         organization_invoice: OrganizationInvoice,
         agreement: dict,
     ) -> Decimal:
-        return calculate_total_by_record_types(
+        # The discount applies on the PLS charge, not on the usage it is computed from.
+        usage_total = calculate_total_by_record_types(
             usage_result,
             organization_invoice,
-            {AWSRecordTypeEnum.USAGE},
+            USAGE_RECORD_TYPES,
         )
+        if usage_total <= DEC_ZERO:
+            # PlSChargeProcessor generates no charge without usage, so nothing to discount.
+            return DEC_ZERO
+        return usage_total * self._charge_percentage / Decimal(100)
 
 
 class ExtraDiscountsManager:

@@ -38,6 +38,9 @@ from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     PlsMismatch,
 )
 from swo_aws_extension.flows.jobs.billing_journal.models.usage import OrganizationUsageResult
+from swo_aws_extension.flows.jobs.billing_validation.agreement_validation import (
+    AgreementBillingValidator,
+)
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.parameters import get_responsibility_transfer_id, get_support_type
 from swo_aws_extension.utils.decorators import with_log_context
@@ -103,6 +106,9 @@ class AgreementJournalGenerator:
         self._billing_period = context.billing_period
         self._usage_generator = usage_generator
         self._invoice_generator = invoice_generator
+        self._billing_validator = AgreementBillingValidator(
+            self._pls_charge_percentage, authorization_name=auth_context.name
+        )
 
     @with_log_context(lambda _, agreement, **kwargs: agreement.get("id"))
     @dynamic_trace_span(lambda _, agreement, **kwargs: f"Agreement {agreement.get('id')}")
@@ -148,8 +154,7 @@ class AgreementJournalGenerator:
             agreement,
             usage_result,
             journal_details,
-            invoice_result.invoice,
-            invoice_result.invoice_ids,
+            invoice_result,
         )
         logger.info("Generated %d journal lines", len(agreement_result.lines))
         return agreement_result
@@ -159,8 +164,7 @@ class AgreementJournalGenerator:
         agreement: dict,
         usage_result: OrganizationUsageResult,
         journal_details: JournalDetails,
-        organization_invoice,
-        invoice_ids: set[str],
+        invoice_result,
     ) -> AgreementJournalResult:
         pls_in_order = get_support_type(agreement) == SupportTypesEnum.PARTNER_LED_SUPPORT
         report_has_enterprise = usage_result.has_enterprise_support()
@@ -169,7 +173,7 @@ class AgreementJournalGenerator:
             is_pls=pls_in_order and report_has_enterprise,
             usage_result=usage_result,
             journal_details=journal_details,
-            organization_invoice=organization_invoice,
+            organization_invoice=invoice_result.invoice,
         )
 
         # Process extra discounts after generating all usage lines.
@@ -178,7 +182,7 @@ class AgreementJournalGenerator:
                 agreement,
                 usage_result,
                 journal_details,
-                organization_invoice,
+                invoice_result.invoice,
             )
         )
 
@@ -198,18 +202,21 @@ class AgreementJournalGenerator:
                     self._pls_charge_percentage,
                     usage_result,
                     journal_details,
-                    organization_invoice,
+                    invoice_result.invoice,
                 )
             )
 
         result = self._build_agreement_journal_result(
             all_lines,
             journal_details,
-            organization_invoice,
+            invoice_result.invoice,
             usage_result,
         )
-        result.invoice_ids = invoice_ids
+        result.invoice_ids = invoice_result.invoice_ids
         result.pls_mismatches = pls_mismatches
+        result.validation = self._billing_validator.validate(
+            agreement, usage_result, invoice_result, result.spp_summary_row
+        )
         return result
 
     def _build_agreement_journal_result(

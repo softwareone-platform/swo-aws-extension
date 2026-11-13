@@ -5,6 +5,7 @@ from decimal import Decimal
 
 SPP_DISCOUNT_DESCRIPTION = "Discount (AWS SPP Discount)"
 AWS_BILLING_ENTITY = "AWS"
+DEFAULT_INVOICE_TYPE = "INVOICE"
 
 
 @dataclass
@@ -59,18 +60,14 @@ class RawInvoice:  # noqa: WPS214
         return self.billing_entity == AWS_BILLING_ENTITY
 
     @property
+    def invoice_type(self) -> str:
+        """The AWS invoice type, INVOICE by default."""
+        return self.summary.get("InvoiceType", DEFAULT_INVOICE_TYPE)
+
+    @property
     def is_primary(self) -> bool:
         """Whether the invoice contains an AWS SPP discount breakdown."""
-        breakdowns = (
-            self.summary
-            .get("BaseCurrencyAmount", {})
-            .get("AmountBreakdown", {})
-            .get("Discounts", {})
-            .get("Breakdown", [])
-        )
-        return any(
-            breakdown.get("Description") == SPP_DISCOUNT_DESCRIPTION for breakdown in breakdowns
-        )
+        return bool(self._spp_breakdowns("BaseCurrencyAmount"))
 
     def belongs_to_mpa(self, mpa_account: str) -> bool:
         """Whether the invoice belongs to the given MPA account."""
@@ -92,6 +89,31 @@ class RawInvoice:  # noqa: WPS214
         return Decimal(
             self.summary.get(currency_key, {}).get("AmountBreakdown", {}).get(amount_key, 0)
         )
+
+    def spp_discount(self, currency_key: str) -> Decimal:
+        """Total AWS SPP discount of a currency section, zero or negative."""
+        total = sum(
+            (
+                Decimal(breakdown.get("Amount", 0))
+                for breakdown in self._spp_breakdowns(currency_key)
+            ),
+            Decimal(0),
+        )
+        return -abs(total)
+
+    def _spp_breakdowns(self, currency_key: str) -> list[dict]:
+        breakdowns = (
+            self.summary
+            .get(currency_key, {})
+            .get("AmountBreakdown", {})
+            .get("Discounts", {})
+            .get("Breakdown", [])
+        )
+        return [
+            breakdown
+            for breakdown in breakdowns
+            if breakdown.get("Description") == SPP_DISCOUNT_DESCRIPTION
+        ]
 
 
 @dataclass

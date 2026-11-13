@@ -5,6 +5,11 @@ from swo_aws_extension.flows.jobs.billing_journal.models.journal_result import (
     BillingReportRow,
     OrganizationSppSummaryRow,
 )
+from swo_aws_extension.flows.jobs.billing_validation.report import (
+    VALIDATION_HEADERS,
+    build_validation_rows,
+)
+from swo_aws_extension.flows.jobs.billing_validation.results import AgreementValidation
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.swo.azure_blob_uploader import AzureBlobUploader
 from swo_aws_extension.swo.excel_report_builder import CellValue, ExcelReportBuilder, Percent
@@ -102,6 +107,7 @@ class BillingReportCreator:
         report_rows: list[BillingReportRow],
         rows_by_account: list[BillingReportRow] | None = None,
         spp_summary_rows: list[OrganizationSppSummaryRow] | None = None,
+        validations: list[AgreementValidation] | None = None,
     ) -> None:
         """Create the report, upload to Azure, and notify teams."""
         if not report_rows:
@@ -114,6 +120,7 @@ class BillingReportCreator:
             rows_data,
             self._build_rows_by_account_data(rows_by_account or []),
             self._build_spp_summary_rows_data(spp_summary_rows or []),
+            build_validation_rows(validations or []),
         )
         folder = self._config.report_billing_folder
         blob_name = f"{folder}{billing_period_str}.xlsx"
@@ -143,11 +150,13 @@ class BillingReportCreator:
         rows_data: list[list[CellValue]],
         by_account_data: list[list[CellValue]],
         spp_summary_data: list[list[CellValue]],
+        validation_data: list[list[CellValue]],
     ) -> bytes:
         return self._excel_builder.build_multi_sheet([
             ("Billing Report", list(BILLING_REPORT_HEADERS), rows_data),
             ("By Linked Account", list(BILLING_REPORT_BY_ACCOUNT_HEADERS), by_account_data),
             ("SPP Summary", list(SPP_SUMMARY_HEADERS), spp_summary_data),
+            ("Validation", list(VALIDATION_HEADERS), validation_data),
         ])
 
     def _upload(self, excel_bytes: bytes, blob_name: str) -> str:

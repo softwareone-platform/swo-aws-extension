@@ -132,7 +132,7 @@ class FulfillmentParametersEnum(StrEnum):
     CRM_PLS_TICKET_ID = "crmPLSTicketId"
     CRM_ORDER_FAILED_TICKET_ID = "crmOrderFailedTicketId"
     CRM_TERMINATE_ORDER_TICKET_ID = "crmTerminateOrderTicketId"
-    PLS_DISCOUNT = "plsDiscount"
+    PLS_DISCOUNT = "AWS BT PLS Discount"
     SUPPORT_DISCOUNT = "supportDiscount"
     SERVICE_DISCOUNT = "serviceDiscount"
     EXECUTION_ARN = "executionArn"
@@ -270,6 +270,7 @@ COMMAND_INVALID_BILLING_DATE_FUTURE = "Invalid billing date. Future months are n
 BILLING_JOURNAL_SUCCESS_TITLE = "AWS Billing Journal Synchronization Success"
 BILLING_JOURNAL_ERROR_TITLE = "AWS Billing Journal Synchronization Error"
 BILLING_INVOICE_ATTACHMENT_WARNING_TITLE = "AWS Billing Invoice Attachment Warning"
+BILLING_VALIDATION_WARNING_TITLE = "Billing Validation Summary"
 COST_EXPLORER_DATE_FORMAT = "%Y-%m-%d"
 
 EXCEL_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

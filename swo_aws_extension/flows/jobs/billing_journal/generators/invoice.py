@@ -33,6 +33,31 @@ class ExchangeRateResolver:
             return max(entity_rates)
         return max(self._extract_rates(currency), default=DEC_ZERO)
 
+    def get_group_rate(self, invoice: RawInvoice, currency: str) -> Decimal:
+        """Get the effective exchange rate of all invoices sharing the invoice entity key.
+
+        Cost Explorer amounts are only known per entity key, not per invoice, so a
+        single rate is applied to the whole group. When the group mixes invoices
+        issued at different rates (for example an upfront Marketplace subscription
+        billed early in the month, or training invoiced natively in the payment
+        currency), the payment-currency total weighted by the base-currency total
+        converts the group back to exactly what was invoiced. A group with a single
+        rate keeps the rate reported by AWS.
+        """
+        group = [
+            candidate
+            for candidate in self._invoices
+            if candidate.entity_key == invoice.entity_key and candidate.has_payment_rate(currency)
+        ]
+        distinct_rates = {candidate.exchange_rate for candidate in group}
+        if len(distinct_rates) == 1:
+            return distinct_rates.pop()
+        base_total = self._sum_before_tax(group, "BaseCurrencyAmount")
+        payment_total = self._sum_before_tax(group, "PaymentCurrencyAmount")
+        if base_total > DEC_ZERO and payment_total > DEC_ZERO:
+            return payment_total / base_total
+        return self.get_rate(invoice.invoicing_entity, currency)
+
     def get_payment_currency(self, exchange_rate: Decimal, currency: str) -> str:
         """Get the payment currency code for the given resolved exchange rate and currency."""
         if exchange_rate > DEC_ZERO:
@@ -49,6 +74,12 @@ class ExchangeRateResolver:
             if invoice.has_payment_rate(currency)
             and (not entity_name or invoice.invoicing_entity == entity_name)
         ]
+
+    def _sum_before_tax(self, invoices: list[RawInvoice], currency_key: str) -> Decimal:
+        return sum(
+            (invoice.amount(currency_key, "TotalAmountBeforeTax") for invoice in invoices),
+            DEC_ZERO,
+        )
 
 
 def resolve_principal_invoice(invoices: list[RawInvoice]) -> RawInvoice | None:
@@ -122,7 +153,7 @@ class OrganizationInvoiceBuilder:
                 billing_entity=invoice.billing_entity,
                 primary=primary or existing.primary,
             )
-        exchange_rate = self._resolver.get_rate(invoice.invoicing_entity, self._currency)
+        exchange_rate = self._resolver.get_group_rate(invoice, self._currency)
         return InvoiceEntity(
             invoice_id=invoice.invoice_id,
             base_currency_code=invoice.base_currency_code,
