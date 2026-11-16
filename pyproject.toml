@@ -10,10 +10,10 @@ license = { text = "Apache-2.0 license" }
 dependencies = [
   "atlassian-python-api==5.0.*",
   "azure-storage-blob==12.31.*",
-  "boto3==1.43.*",
+  "boto3>=1.43,<1.45",
   "django==4.2.*",
   "jinja2==3.1.*",
-  "markdown-it-py==4.2.*",
+  "markdown-it-py>=4.2,<4.4",
   "mpt-extension-sdk==5.22.*",
   "mpt-tool==6.0.*",
   "openpyxl==3.1.*",
