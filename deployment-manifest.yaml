@@ -1,0 +1,237 @@
+# yaml-language-server: $schema=https://nlpapp0335sda.blob.core.windows.net/schema/deployment-manifest.schema.json
+# Rendered into a Helm chart by helm/helm-init.yaml@ops-mpt-infra (see azure-pipelines.yml).
+# Logical keys under env/secrets are the App Configuration keys <component>/<logicalKey>
+# read by mpt-release: lowerCamelCase of the environment variable name the extension reads
+# (EXT_CRM_CLIENT_SECRET -> extCrmClientSecret). APPLICATIONINSIGHTS_CONNECTION_STRING uses
+# the shared/ key instead (a component key would only differ from it by case).
+# All pods run as the default service account swo-extension-aws-sa with workload identity.
+owner: turing
+api:
+  enabled: true
+  image: swo-extension-aws
+  command: ["swoext"]
+  args: ["run", "api", "--no-color", "--reload"]
+  # gunicorn binds 0.0.0.0:8080; the extension exposes no /live or /ready endpoint.
+  port: 8080
+  probesEnabled: false
+  hosts:
+    - customer-api.domain.global
+    - extensions-api.domain.global
+  http:
+    - match:
+        - uri:
+            prefix: /mpt-extension-aws-api/
+      rewrite:
+        uri: /
+worker:
+  enabled: true
+  image: swo-extension-aws
+  command: ["swoext"]
+  args: ["run", "consumer", "--no-color", "--reload"]
+  # The event consumer listens on no port, so a TCP liveness probe would restart it.
+  probesEnabled: false
+  # Single consumer: keep workers.worker.replicaCount at 1 in App Configuration.
+  replicaCount: 1
+env:
+  mptKeyVaultName:
+    name: MPT_KEY_VAULT_NAME
+  otelServiceName:
+    name: OTEL_SERVICE_NAME
+    defaultValue: Swo.Extensions.AWS
+  mptPortalBaseUrl:
+    name: MPT_PORTAL_BASE_URL
+  mptApiBaseUrl:
+    name: MPT_API_BASE_URL
+  mptProductsIds:
+    name: MPT_PRODUCTS_IDS
+  mptSetupContextsFunc:
+    name: MPT_SETUP_CONTEXTS_FUNC
+    defaultValue: swo_aws_extension.flows.fulfillment.base.setup_contexts
+  mptToolStorageType:
+    name: MPT_TOOL_STORAGE_TYPE
+    defaultValue: airtable
+  mptToolStorageAirtableBaseId:
+    name: MPT_TOOL_STORAGE_AIRTABLE_BASE_ID
+  mptToolStorageAirtableTableName:
+    name: MPT_TOOL_STORAGE_AIRTABLE_TABLE_NAME
+    defaultValue: Migrations
+  mptOrdersApiPollingIntervalSecs:
+    name: MPT_ORDERS_API_POLLING_INTERVAL_SECS
+  mptNotifyCategories:
+    name: MPT_NOTIFY_CATEGORIES
+    defaultValue: '{"ORDERS": "NTC-0000-0006"}'
+  mptInitializer:
+    name: MPT_INITIALIZER
+    defaultValue: swo_aws_extension.initializer.initialize
+  extAwsRegion:
+    name: EXT_AWS_REGION
+    defaultValue: us-east-1
+  extAwsOpenidScope:
+    name: EXT_AWS_OPENID_SCOPE
+  extCrmOauthUrl:
+    name: EXT_CRM_OAUTH_URL
+  extCrmClientId:
+    name: EXT_CRM_CLIENT_ID
+  extCrmAudience:
+    name: EXT_CRM_AUDIENCE
+  extCrmApiBaseUrl:
+    name: EXT_CRM_API_BASE_URL
+  extCcoApiBaseUrl:
+    name: EXT_CCO_API_BASE_URL
+  extCcoOauthUrl:
+    name: EXT_CCO_OAUTH_URL
+  extCcoClientId:
+    name: EXT_CCO_CLIENT_ID
+  extCcoAudience:
+    name: EXT_CCO_AUDIENCE
+  extCcoManufacturerCode:
+    name: EXT_CCO_MANUFACTURER_CODE
+    defaultValue: SWOTS
+  extSvcProvisioningApiBaseUrl:
+    name: EXT_SVC_PROVISIONING_API_BASE_URL
+  extSvcProvisioningOauthUrl:
+    name: EXT_SVC_PROVISIONING_OAUTH_URL
+  extSvcProvisioningClientId:
+    name: EXT_SVC_PROVISIONING_CLIENT_ID
+  extSvcProvisioningAudience:
+    name: EXT_SVC_PROVISIONING_AUDIENCE
+  extCcpOauthUrl:
+    name: EXT_CCP_OAUTH_URL
+  extCcpClientId:
+    name: EXT_CCP_CLIENT_ID
+  extCcpApiBaseUrl:
+    name: EXT_CCP_API_BASE_URL
+  extCcpKeyVaultSecretName:
+    name: EXT_CCP_KEY_VAULT_SECRET_NAME
+    defaultValue: swo-extension-aws-ccp-secret
+  extCcpOauthScope:
+    name: EXT_CCP_OAUTH_SCOPE
+  extCcpOauthCredentialsScope:
+    name: EXT_CCP_OAUTH_CREDENTIALS_SCOPE
+  extAirtableBases:
+    name: EXT_AIRTABLE_BASES
+  extAirtableAccountMigrationBaseId:
+    name: EXT_AIRTABLE_ACCOUNT_MIGRATION_BASE_ID
+  extMinimumMpaThreshold:
+    name: EXT_MINIMUM_MPA_THRESHOLD
+    defaultValue: "1"
+  extFfcOperationsApiBaseUrl:
+    name: EXT_FFC_OPERATIONS_API_BASE_URL
+  extManagementRole:
+    name: EXT_MANAGEMENT_ROLE
+  extBillingRole:
+    name: EXT_BILLING_ROLE
+    defaultValue: swo/mpt/SWOExtensionBillingRole
+  # Set in no environment today; kept so the variable still exists.
+  extOnboardCustomerRole:
+    name: EXT_ONBOARD_CUSTOMER_ROLE
+    defaultValue: ""
+  extApnRoleName:
+    name: EXT_APN_ROLE_NAME
+  extApnAccountId:
+    name: EXT_APN_ACCOUNT_ID
+  extQueryingTimeoutDays:
+    name: EXT_QUERYING_TIMEOUT_DAYS
+  extCustomerRolesQueryingTimeoutDays:
+    name: EXT_CUSTOMER_ROLES_QUERYING_TIMEOUT_DAYS
+  extCloudOrchestratorApiBaseUrl:
+    name: EXT_CLOUD_ORCHESTRATOR_API_BASE_URL
+  extAwsSesRegion:
+    name: EXT_AWS_SES_REGION
+    defaultValue: eu-west-1
+  extEmailNotificationsEnabled:
+    name: EXT_EMAIL_NOTIFICATIONS_ENABLED
+    defaultValue: "1"
+  extEmailNotificationsSender:
+    name: EXT_EMAIL_NOTIFICATIONS_SENDER
+  extDeployServicesFeatureRecipients:
+    name: EXT_DEPLOY_SERVICES_FEATURE_RECIPIENTS
+  extAzureStorageContainer:
+    name: EXT_AZURE_STORAGE_CONTAINER
+    defaultValue: private
+  extAzureStorageSasExpiryDays:
+    name: EXT_AZURE_STORAGE_SAS_EXPIRY_DAYS
+  extReportInvitationsFolder:
+    name: EXT_REPORT_INVITATIONS_FOLDER
+    defaultValue: reports/aws/billing-transfer-invitations/
+  extReportBillingFolder:
+    name: EXT_REPORT_BILLING_FOLDER
+    defaultValue: reports/aws/billing/
+  extPendingOrdersInformationReportPageId:
+    name: EXT_PENDING_ORDERS_INFORMATION_REPORT_PAGE_ID
+  extConfluenceBaseUrl:
+    name: EXT_CONFLUENCE_BASE_URL
+  extConfluenceUser:
+    name: EXT_CONFLUENCE_USER
+  extPlsChargePercentage:
+    name: EXT_PLS_CHARGE_PERCENTAGE
+    defaultValue: "5.0"
+secrets:
+  applicationInsightsConnectionString:
+    name: APPLICATIONINSIGHTS_CONNECTION_STRING
+  mptApiToken:
+    name: MPT_API_TOKEN
+  mptDjangoSecretKey:
+    name: MPT_DJANGO_SECRET_KEY
+  mptToolStorageAirtableApiKey:
+    name: MPT_TOOL_STORAGE_AIRTABLE_API_KEY
+  extWebhooksSecrets:
+    name: EXT_WEBHOOKS_SECRETS
+  extAirtableApiToken:
+    name: EXT_AIRTABLE_API_TOKEN
+  extMsteamsWebhookUrl:
+    name: EXT_MSTEAMS_WEBHOOK_URL
+  extCrmClientSecret:
+    name: EXT_CRM_CLIENT_SECRET
+  extCcoClientSecret:
+    name: EXT_CCO_CLIENT_SECRET
+  extSvcProvisioningClientSecret:
+    name: EXT_SVC_PROVISIONING_CLIENT_SECRET
+  extAzureStorageConnectionString:
+    name: EXT_AZURE_STORAGE_CONNECTION_STRING
+  extConfluenceToken:
+    name: EXT_CONFLUENCE_TOKEN
+  # access-key:secret-key pair for SES (was a config map entry before the migration).
+  extAwsSesCredentials:
+    name: EXT_AWS_SES_CREDENTIALS
+cronjobs:
+  order-querying:
+    schedule: "*/15 * * * *"
+    image: swo-extension-aws
+    command: ["swoext"]
+    args: ["django", "order_querying_processor"]
+  sync-agreements:
+    schedule: "0 7 * * *"
+    image: swo-extension-aws
+    command: ["swoext"]
+    args: ["django", "synchronize_agreements"]
+  ccp-secret:
+    schedule: "0 0 * * 6"
+    image: swo-extension-aws
+    command: ["swoext"]
+    args: ["django", "refresh_ccp_openid_secret"]
+  generate-billing:
+    schedule: "0 1 5 * *"
+    image: swo-extension-aws
+    command: ["swoext"]
+    args: ["django", "generate_billing_journals"]
+  sync-finops:
+    schedule: "0 0 * * *"
+    image: swo-extension-aws
+    command: ["swoext"]
+    args: ["django", "synchronize_finops_accounts"]
+  sync-migration:
+    schedule: "*/15 * * * *"
+    image: swo-extension-aws
+    command: ["swoext"]
+    args: ["django", "synchronize_migration_orders"]
+  invitations-report:
+    schedule: "0 8 * * *"
+    image: swo-extension-aws
+    command: ["swoext"]
+    args: ["django", "create_invitations_report"]
+  pending-report:
+    schedule: "0 5 * * *"
+    image: swo-extension-aws
+    command: ["swoext"]
+    args: ["django", "create_pending_orders_information_report"]
