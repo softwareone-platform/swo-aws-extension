@@ -14,8 +14,9 @@ Stores two tables used by the extension:
 
 Workspace-scoped Airtable personal access token issued from the shared Airtable
 service account. DevOps provisions and rotates the token, and it reaches the
-extension through the `AirTableApiToken` Helm secret; a rotation is a secret
-swap only, with no manifest changes. Each table client builds a `pyairtable`
+extension through the App Configuration keys `extAirtableApiToken` and
+`mptToolStorageAirtableApiKey`, which reference the same Key Vault secret; a
+rotation is a secret swap only, with no manifest changes. Each table client builds a `pyairtable`
 `Api` client with the token and opens the configured base/table.
 
 ## Configuration

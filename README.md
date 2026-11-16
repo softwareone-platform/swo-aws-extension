@@ -8,7 +8,7 @@ The repository contains:
 - Marketplace order validation and fulfillment flows
 - AWS, CCP, CRM, FinOps, and Marketplace integration clients
 - operational commands for querying, synchronization, reporting, and billing journals
-- Helm deployment charts for API and worker workloads
+- a deployment manifest for the API, worker, and cron workloads
 
 ## Documentation
 
@@ -47,7 +47,8 @@ See [docs/deployment.md](docs/deployment.md) for runtime parameters and the Dock
 - [`tests/`](tests): pytest suite
 - [`make/`](make): modular make targets
 - [`migrations/`](migrations): `mpt-service-cli` migration scripts
-- [`helm/swo-extension-aws/`](helm/swo-extension-aws): Helm charts for deployment
+- [`deployment-manifest.yaml`](deployment-manifest.yaml): deployment manifest rendered with the common Helm templates
+- [`helm/swo-extension-aws/`](helm/swo-extension-aws): custom Helm templates added to the generated chart
 
 ## Common Commands
 
