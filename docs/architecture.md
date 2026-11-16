@@ -107,9 +107,9 @@ setup expectations.
 
 ## Deployment shape
 
-Two workloads are deployed from `helm/swo-extension-aws`: an **api** workload
-(webhooks and the validation endpoint) and a **worker** workload (background
-jobs and CronJobs). The container image is built from the multi-stage
+Deployed from `deployment-manifest.yaml` as an **api** workload (webhooks and
+the validation endpoint), a **worker** workload (the event consumer), and
+**CronJobs** for the management commands. The container image is built from the multi-stage
 `Dockerfile` and started via the SDK entrypoint. See
 [deployment.md](deployment.md) for configuration and runtime parameters.
 
