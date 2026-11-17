@@ -48,6 +48,35 @@ class OrganizationSppSummaryRow:
     list_price: Decimal
     markup: Decimal
 
+    @property
+    def margin(self) -> Decimal:
+        """Share of the sales price kept as margin, (SP - PP) / SP, 0 when SP is 0."""
+        if not self.sp:
+            return Decimal(0)
+        return (self.sp - self.pp) / self.sp
+
+    def to_margin_record(self, status: str | None = None) -> dict:
+        """Build the agreement margins record of this row.
+
+        Args:
+            status: Validation status of the agreement, None when it was not validated.
+
+        Returns:
+            The record written as one line of the agreement margins attachment.
+        """
+        return {
+            "authorizationId": self.authorization_id,
+            "agreementId": self.agreement_id,
+            "mpa": self.mpa,
+            "pma": self.pma,
+            "currency": self.currency,
+            "pp": self.pp,
+            "sp": self.sp,
+            "markup": self.markup,
+            "margin": self.margin,
+            "validationStatus": status,
+        }
+
 
 @dataclass
 class PlsMismatch:
