@@ -13,8 +13,8 @@ from swo_aws_extension.billing.generators.authorization import (
 )
 from swo_aws_extension.billing.journal_manager import (
     JournalManager,
-    build_agreement_margins_filename,
-    build_agreement_margins_jsonl,
+    build_agreement_markups_filename,
+    build_agreement_markups_jsonl,
 )
 from swo_aws_extension.billing.models.context import BillingJournalContext
 from swo_aws_extension.billing.models.journal_result import (
@@ -66,9 +66,9 @@ def _log_dry_run_results(
         if rep.organization_data or rep.accounts_data
     ]
     if generator_result.spp_summary_rows:
-        attachments.append(build_agreement_margins_filename(authorization_id))
+        attachments.append(build_agreement_markups_filename(authorization_id))
         logger.info(
-            build_agreement_margins_jsonl(
+            build_agreement_markups_jsonl(
                 generator_result.spp_summary_rows,
                 generator_result.validations,
             )
@@ -215,7 +215,7 @@ class BillingJournalService:
                 journal.id,
                 generator_result.reports_by_agreement,
             )
-        journal_manager.upload_agreement_margins(
+        journal_manager.upload_agreement_markups(
             journal.id,
             generator_result.spp_summary_rows,
             generator_result.validations,

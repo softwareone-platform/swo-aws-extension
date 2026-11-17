@@ -485,7 +485,7 @@ def test_dry_run_skips_upload_with_empty_report_data(
     mock_journal_manager_cls.assert_not_called()
 
 
-def test_uploads_agreement_margins(
+def test_uploads_agreement_markups(
     mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls, spp_summary_row_factory
 ):
     mock_context.dry_run = False
@@ -507,12 +507,12 @@ def test_uploads_agreement_margins(
 
     service.run()  # act
 
-    mock_journal_manager.upload_agreement_margins.assert_called_once_with(
+    mock_journal_manager.upload_agreement_markups.assert_called_once_with(
         "JRN-1", [spp_summary_row], [validation]
     )
 
 
-def test_dry_run_logs_agreement_margins_attachment(
+def test_dry_run_logs_agreement_markups_attachment(
     mocker,
     mock_context,
     mock_get_authorizations,
@@ -540,4 +540,4 @@ def test_dry_run_logs_agreement_margins_attachment(
         service.run()  # act
 
     mock_journal_manager_cls.assert_not_called()
-    assert "AUTH-1 - [DRY-RUN] Attachments: ['AUTH-1-agreement-margins.jsonl']" in caplog.text
+    assert "AUTH-1 - [DRY-RUN] Attachments: ['AUTH-1-agreement-markups.jsonl']" in caplog.text

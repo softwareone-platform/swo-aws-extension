@@ -27,16 +27,16 @@ def serialize_default(unserializable):
     return str(unserializable)
 
 
-def build_agreement_margins_filename(authorization_id: str) -> str:
-    """Build the name of the agreement margins attachment of an authorization."""
-    return f"{authorization_id}-agreement-margins.jsonl"
+def build_agreement_markups_filename(authorization_id: str) -> str:
+    """Build the name of the agreement markups attachment of an authorization."""
+    return f"{authorization_id}-agreement-markups.jsonl"
 
 
-def build_agreement_margins_jsonl(
+def build_agreement_markups_jsonl(
     spp_summary_rows: list[OrganizationSppSummaryRow],
     validations: list[AgreementValidation],
 ) -> str:
-    """Build the agreement margins attachment content, one JSON line per agreement.
+    """Build the agreement markups attachment content, one JSON line per agreement.
 
     Args:
         spp_summary_rows: SPP summary rows of the authorization, one per agreement.
@@ -48,7 +48,7 @@ def build_agreement_margins_jsonl(
     status_by_agreement = {validation.agreement_id: validation.status for validation in validations}
     return "".join(
         json.dumps(
-            row.to_margin_record(status_by_agreement.get(row.agreement_id)),
+            row.to_markup_record(status_by_agreement.get(row.agreement_id)),
             default=serialize_default,
         )
         + "\n"
@@ -139,13 +139,13 @@ class JournalManager:  # noqa: WPS214
                     journal_id,
                 )
 
-    def upload_agreement_margins(
+    def upload_agreement_markups(
         self,
         journal_id: str,
         spp_summary_rows: list[OrganizationSppSummaryRow],
         validations: list[AgreementValidation],
     ) -> None:
-        """Upload the margins of every agreement as a JSONL attachment to the journal.
+        """Upload the markups of every agreement as a JSONL attachment to the journal.
 
         Args:
             journal_id: ID of the journal that receives the attachment.
@@ -154,13 +154,13 @@ class JournalManager:  # noqa: WPS214
         """
         if not spp_summary_rows:
             return
-        filename = build_agreement_margins_filename(self._authorization_id)
+        filename = build_agreement_markups_filename(self._authorization_id)
         jsonl_bytes = BytesIO(
-            build_agreement_margins_jsonl(spp_summary_rows, validations).encode("utf-8")
+            build_agreement_markups_jsonl(spp_summary_rows, validations).encode("utf-8")
         )
         attachment = JournalAttachment(
             name=filename,
-            description=f"Agreement margins for authorization {self._authorization_id}",
+            description=f"Agreement markups for authorization {self._authorization_id}",
         )
         try:
             self._billing_api_client.journal.attachments(journal_id).upload(

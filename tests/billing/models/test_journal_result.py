@@ -91,10 +91,10 @@ def test_pls_mismatch_description(pls_in_order, report_has_enterprise, expected)
     assert result.description == expected
 
 
-def test_organization_spp_summary_row_to_margin_record(spp_summary_row_factory):
+def test_organization_spp_summary_row_to_markup_record(spp_summary_row_factory):
     row = spp_summary_row_factory()
 
-    result = row.to_margin_record("OK")
+    result = row.to_markup_record("OK")
 
     assert result == {
         "authorizationId": "AUTH-123",
@@ -105,30 +105,13 @@ def test_organization_spp_summary_row_to_margin_record(spp_summary_row_factory):
         "pp": Decimal("90.0"),
         "sp": Decimal("100.0"),
         "markup": Decimal("0.1111"),
-        "margin": Decimal("0.1"),
         "validationStatus": "OK",
     }
 
 
-def test_organization_spp_summary_row_to_margin_record_without_status(spp_summary_row_factory):
+def test_organization_spp_summary_row_to_markup_record_without_status(spp_summary_row_factory):
     row = spp_summary_row_factory()
 
-    result = row.to_margin_record()
+    result = row.to_markup_record()
 
     assert result["validationStatus"] is None
-
-
-@pytest.mark.parametrize(
-    ("pp", "sp", "expected"),
-    [
-        (Decimal("90.0"), Decimal("100.0"), Decimal("0.1")),
-        (Decimal("120.0"), Decimal("100.0"), Decimal("-0.2")),
-        (Decimal("90.0"), Decimal(0), Decimal(0)),
-    ],
-)
-def test_organization_spp_summary_row_margin(spp_summary_row_factory, pp, sp, expected):
-    row = spp_summary_row_factory(pp=pp, sp=sp)
-
-    result = row.margin
-
-    assert result == expected

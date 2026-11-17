@@ -5,7 +5,7 @@ from io import BytesIO
 from requests import HTTPError
 
 from swo_aws_extension.billing.journal_manager import (
-    build_agreement_margins_jsonl,
+    build_agreement_markups_jsonl,
     serialize_default,
 )
 from swo_aws_extension.billing.models.journal_line import JournalLine
@@ -155,7 +155,7 @@ def test_serialize_default_with_non_datetime():
     assert result == "123.45"
 
 
-def test_build_agreement_margins_jsonl(spp_summary_row_factory):
+def test_build_agreement_markups_jsonl(spp_summary_row_factory):
     rows = [spp_summary_row_factory("AGR-1"), spp_summary_row_factory("AGR-2")]
     validations = [
         AgreementValidation(
@@ -168,51 +168,51 @@ def test_build_agreement_margins_jsonl(spp_summary_row_factory):
         ),
     ]
 
-    result = build_agreement_margins_jsonl(rows, validations)
+    result = build_agreement_markups_jsonl(rows, validations)
 
     assert result == (
         '{"authorizationId": "AUTH-123", "agreementId": "AGR-1", "mpa": "MPA-1", '
         '"pma": "PMA-1", "currency": "USD", "pp": "90.0", "sp": "100.0", '
-        '"markup": "0.1111", "margin": "0.1", "validationStatus": "MISMATCH"}\n'
+        '"markup": "0.1111", "validationStatus": "MISMATCH"}\n'
         '{"authorizationId": "AUTH-123", "agreementId": "AGR-2", "mpa": "MPA-1", '
         '"pma": "PMA-1", "currency": "USD", "pp": "90.0", "sp": "100.0", '
-        '"markup": "0.1111", "margin": "0.1", "validationStatus": null}\n'
+        '"markup": "0.1111", "validationStatus": null}\n'
     )
 
 
-def test_upload_agreement_margins(mocker, manager, mock_billing_client, spp_summary_row_factory):
+def test_upload_agreement_markups(mocker, manager, mock_billing_client, spp_summary_row_factory):
     rows = [spp_summary_row_factory()]
     mock_bytesio = mocker.patch(f"{MODULE}.BytesIO", autospec=True)
 
-    manager.upload_agreement_margins("JRN-001", rows, [])  # act
+    manager.upload_agreement_markups("JRN-001", rows, [])  # act
 
-    mock_bytesio.assert_called_once_with(build_agreement_margins_jsonl(rows, []).encode("utf-8"))
+    mock_bytesio.assert_called_once_with(build_agreement_markups_jsonl(rows, []).encode("utf-8"))
     mock_billing_client.journal.attachments("JRN-001").upload.assert_called_once_with(
-        filename="AUTH-123-agreement-margins.jsonl",
+        filename="AUTH-123-agreement-markups.jsonl",
         mimetype="application/x-ndjson",
         file=mock_bytesio.return_value,
         attachment={
-            "name": "AUTH-123-agreement-margins.jsonl",
-            "description": "Agreement margins for authorization AUTH-123",
+            "name": "AUTH-123-agreement-markups.jsonl",
+            "description": "Agreement markups for authorization AUTH-123",
         },
     )
 
 
-def test_upload_agreement_margins_skips_empty_rows(manager, mock_billing_client):
-    manager.upload_agreement_margins("JRN-001", [], [])  # act
+def test_upload_agreement_markups_skips_empty_rows(manager, mock_billing_client):
+    manager.upload_agreement_markups("JRN-001", [], [])  # act
 
     mock_billing_client.journal.attachments.assert_not_called()
 
 
-def test_upload_agreement_margins_logs_error_on_failure(
+def test_upload_agreement_markups_logs_error_on_failure(
     manager, mock_billing_client, spp_summary_row_factory, caplog
 ):
     mock_billing_client.journal.attachments("JRN-001").upload.side_effect = HTTPError("API error")
 
     with caplog.at_level("ERROR"):
-        manager.upload_agreement_margins("JRN-001", [spp_summary_row_factory()], [])  # act
+        manager.upload_agreement_markups("JRN-001", [spp_summary_row_factory()], [])  # act
 
     assert (
-        "Failed to upload attachment AUTH-123-agreement-margins.jsonl on journal JRN-001"
+        "Failed to upload attachment AUTH-123-agreement-markups.jsonl on journal JRN-001"
         in caplog.text
     )
