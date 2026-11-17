@@ -8,7 +8,9 @@ from requests import HTTPError
 
 from swo_aws_extension.billing.models.context import BillingJournalContext
 from swo_aws_extension.billing.models.journal import Journal
+from swo_aws_extension.billing.models.journal_result import OrganizationSppSummaryRow
 from swo_aws_extension.billing.models.usage import OrganizationReport
+from swo_aws_extension.billing.validation.results import AgreementValidation
 from swo_aws_extension.constants import BILLING_JOURNAL_SUCCESS_TITLE
 from swo_aws_extension.logger import get_logger
 from swo_aws_extension.swo.mpt.billing.models.hints import JournalAttachment
@@ -23,6 +25,35 @@ def serialize_default(unserializable):
     if isinstance(unserializable, dt.datetime):
         return unserializable.isoformat()
     return str(unserializable)
+
+
+def build_agreement_markups_filename(authorization_id: str) -> str:
+    """Build the name of the agreement markups attachment of an authorization."""
+    return f"{authorization_id}-agreement-markups.jsonl"
+
+
+def build_agreement_markups_jsonl(
+    spp_summary_rows: list[OrganizationSppSummaryRow],
+    validations: list[AgreementValidation],
+) -> str:
+    """Build the agreement markups attachment content, one JSON line per agreement.
+
+    Args:
+        spp_summary_rows: SPP summary rows of the authorization, one per agreement.
+        validations: Validations of the authorization, matched to the rows by agreement ID.
+
+    Returns:
+        The JSONL content. The validation status is None for an agreement without validation.
+    """
+    status_by_agreement = {validation.agreement_id: validation.status for validation in validations}
+    return "".join(
+        json.dumps(
+            row.to_markup_record(status_by_agreement.get(row.agreement_id)),
+            default=serialize_default,
+        )
+        + "\n"
+        for row in spp_summary_rows
+    )
 
 
 class JournalManager:  # noqa: WPS214
@@ -107,6 +138,45 @@ class JournalManager:  # noqa: WPS214
                     agreement_id,
                     journal_id,
                 )
+
+    def upload_agreement_markups(
+        self,
+        journal_id: str,
+        spp_summary_rows: list[OrganizationSppSummaryRow],
+        validations: list[AgreementValidation],
+    ) -> None:
+        """Upload the markups of every agreement as a JSONL attachment to the journal.
+
+        Args:
+            journal_id: ID of the journal that receives the attachment.
+            spp_summary_rows: SPP summary rows of the authorization, one per agreement.
+            validations: Validations of the authorization, matched to the rows by agreement ID.
+        """
+        if not spp_summary_rows:
+            return
+        filename = build_agreement_markups_filename(self._authorization_id)
+        jsonl_bytes = BytesIO(
+            build_agreement_markups_jsonl(spp_summary_rows, validations).encode("utf-8")
+        )
+        attachment = JournalAttachment(
+            name=filename,
+            description=f"Agreement markups for authorization {self._authorization_id}",
+        )
+        try:
+            self._billing_api_client.journal.attachments(journal_id).upload(
+                filename=filename,
+                mimetype="application/x-ndjson",
+                file=jsonl_bytes,
+                attachment=attachment,
+            )
+        except HTTPError:
+            logger.exception(
+                "Failed to upload attachment %s on journal %s",
+                filename,
+                journal_id,
+            )
+            return
+        logger.info("Uploaded journal attachment %s for journal ID %s", filename, journal_id)
 
     def _upload_single_attachment(
         self,

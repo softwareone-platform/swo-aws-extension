@@ -12,6 +12,7 @@ from swo_aws_extension.billing.models.journal_line import (
     Period,
     Price,
 )
+from swo_aws_extension.billing.models.journal_result import OrganizationSppSummaryRow
 from swo_aws_extension.billing.models.search import (
     Search,
     SearchItem,
@@ -63,3 +64,24 @@ def sample_journal_line():
         ),
         segment="COM",
     )
+
+
+@pytest.fixture
+def spp_summary_row_factory():
+    def factory(agreement_id="AGR-1", pp="90.0", sp="100.0"):
+        return OrganizationSppSummaryRow(
+            authorization_id="AUTH-123",
+            pma="PMA-1",
+            agreement_id=agreement_id,
+            mpa="MPA-1",
+            pp=Decimal(pp),
+            sp=Decimal(sp),
+            currency="USD",
+            exchange_rate=Decimal("1.0"),
+            spp_discount=Decimal("-10.0"),
+            spp_discount_pct=Decimal("0.1111"),
+            list_price=Decimal("120.0"),
+            markup=Decimal("0.1111"),
+        )
+
+    return factory
