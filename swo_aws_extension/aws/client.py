@@ -2,6 +2,7 @@ import datetime as dt
 import logging
 import time
 from collections.abc import Callable
+from enum import StrEnum
 
 import boto3
 import requests
@@ -24,11 +25,16 @@ INVOICE_PDF_DOWNLOAD_TIMEOUT_SECONDS = 60
 # Standard mode retries throttling, server (5xx) and connection errors with
 # exponential backoff and jitter, keeping the default total max attempts.
 BOTO3_CLIENT_CONFIG = BotoConfig(retries={"mode": "standard"})
-# Start of the ConstraintViolationException message AWS returns when the organization
-# cannot transfer its billing, for example because of a pricing agreement with AWS.
-INELIGIBLE_FOR_BILLING_TRANSFER_MESSAGE = "Ineligible for Billing Transfer"
 
 logger = logging.getLogger(__name__)
+
+
+class AWSErrorReason(StrEnum):
+    """Reason codes AWS returns in boto3 client error responses."""
+
+    # Organizations ConstraintViolationException: the organization has a pricing agreement
+    # with AWS that Billing Transfer does not support.
+    UNSUPPORTED_PRICING = "UNSUPPORTED_PRICING"
 
 
 def get_paged_response(
@@ -131,8 +137,9 @@ class AWSClient:
                 SourceName=source_name,
             )
         except org_client.exceptions.ConstraintViolationException as exception:
+            reason = exception.response.get("Reason", "")
             message = exception.response.get("Error", {}).get("Message", "")
-            if message.startswith(INELIGIBLE_FOR_BILLING_TRANSFER_MESSAGE):
+            if reason == AWSErrorReason.UNSUPPORTED_PRICING:
                 raise IneligibleForBillingTransferError(message) from exception
             raise
 
