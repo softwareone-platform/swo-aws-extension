@@ -483,3 +483,61 @@ def test_dry_run_skips_upload_with_empty_report_data(
     service.run()  # act
 
     mock_journal_manager_cls.assert_not_called()
+
+
+def test_uploads_agreement_markups(
+    mocker, mock_context, mock_get_authorizations, mock_auth_generator_cls, spp_summary_row_factory
+):
+    mock_context.dry_run = False
+    mock_get_authorizations.return_value = [{"id": "AUTH-1"}]
+    spp_summary_row = spp_summary_row_factory()
+    validation = _missing_invoices_validation()
+    mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
+    mock_auth_gen.run.return_value = AuthorizationJournalResult(
+        lines=[mocker.MagicMock(spec=JournalLine)],
+        spp_summary_rows=[spp_summary_row],
+        validations=[validation],
+    )
+    mock_auth_generator_cls.return_value = mock_auth_gen
+    mock_journal_manager_cls = mocker.patch(f"{MODULE}.JournalManager", autospec=True)
+    mock_journal_manager = mock_journal_manager_cls.return_value
+    mock_journal_manager.get_pending_journal.return_value = mocker.MagicMock(id="JRN-1")
+    mocker.patch(f"{MODULE}.BillingReportCreator", autospec=True)
+    service = BillingJournalService(mock_context)
+
+    service.run()  # act
+
+    mock_journal_manager.upload_agreement_markups.assert_called_once_with(
+        "JRN-1", [spp_summary_row], [validation]
+    )
+
+
+def test_dry_run_logs_agreement_markups_attachment(
+    mocker,
+    mock_context,
+    mock_get_authorizations,
+    mock_auth_generator_cls,
+    spp_summary_row_factory,
+    caplog,
+):
+    mock_context.dry_run = True
+    mock_get_authorizations.return_value = [{"id": "AUTH-1"}]
+    mock_auth_gen = mocker.MagicMock(spec=AuthorizationJournalGenerator)
+    mock_line = mocker.MagicMock(spec=JournalLine)
+    mock_line.to_jsonl.return_value = '{"test": 1}\n'
+    mock_line.external_ids = ExternalIds(invoice="INV-1", reference="AGR-1", vendor="MPA-1")
+    mock_line.price = Price(pp_x1=Decimal("100.00"), unit_pp=Decimal("100.00"))
+    mock_auth_gen.run.return_value = AuthorizationJournalResult(
+        lines=[mock_line],
+        spp_summary_rows=[spp_summary_row_factory()],
+    )
+    mock_auth_generator_cls.return_value = mock_auth_gen
+    mock_journal_manager_cls = mocker.patch(f"{MODULE}.JournalManager", autospec=True)
+    mocker.patch(f"{MODULE}.BillingReportCreator", autospec=True)
+    service = BillingJournalService(mock_context)
+
+    with caplog.at_level("INFO"):
+        service.run()  # act
+
+    mock_journal_manager_cls.assert_not_called()
+    assert "AUTH-1 - [DRY-RUN] Attachments: ['AUTH-1-agreement-markups.jsonl']" in caplog.text

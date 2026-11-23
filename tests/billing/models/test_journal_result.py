@@ -89,3 +89,29 @@ def test_pls_mismatch_description(pls_in_order, report_has_enterprise, expected)
     )
 
     assert result.description == expected
+
+
+def test_organization_spp_summary_row_to_markup_record(spp_summary_row_factory):
+    row = spp_summary_row_factory()
+
+    result = row.to_markup_record("OK")
+
+    assert result == {
+        "authorizationId": "AUTH-123",
+        "agreementId": "AGR-1",
+        "mpa": "MPA-1",
+        "pma": "PMA-1",
+        "currency": "USD",
+        "pp": Decimal("90.0"),
+        "sp": Decimal("100.0"),
+        "markup": Decimal("0.1111"),
+        "validationStatus": "OK",
+    }
+
+
+def test_organization_spp_summary_row_to_markup_record_without_status(spp_summary_row_factory):
+    row = spp_summary_row_factory()
+
+    result = row.to_markup_record()
+
+    assert result["validationStatus"] is None

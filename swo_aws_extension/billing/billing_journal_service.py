@@ -11,7 +11,11 @@ from swo_aws_extension.billing.billing_report_creator import (
 from swo_aws_extension.billing.generators.authorization import (
     AuthorizationJournalGenerator,
 )
-from swo_aws_extension.billing.journal_manager import JournalManager
+from swo_aws_extension.billing.journal_manager import (
+    JournalManager,
+    build_agreement_markups_filename,
+    build_agreement_markups_jsonl,
+)
 from swo_aws_extension.billing.models.context import BillingJournalContext
 from swo_aws_extension.billing.models.journal_result import (
     AuthorizationJournalResult,
@@ -61,6 +65,14 @@ def _log_dry_run_results(
         for agr, rep in generator_result.reports_by_agreement.items()
         if rep.organization_data or rep.accounts_data
     ]
+    if generator_result.spp_summary_rows:
+        attachments.append(build_agreement_markups_filename(authorization_id))
+        logger.info(
+            build_agreement_markups_jsonl(
+                generator_result.spp_summary_rows,
+                generator_result.validations,
+            )
+        )
     if attachments:
         logger.info("%s - [DRY-RUN] Attachments: %s", authorization_id, attachments)
     if generator_result.invoice_ids:
@@ -203,6 +215,11 @@ class BillingJournalService:
                 journal.id,
                 generator_result.reports_by_agreement,
             )
+        journal_manager.upload_agreement_markups(
+            journal.id,
+            generator_result.spp_summary_rows,
+            generator_result.validations,
+        )
         self._create_invoice_attachments(
             journal.id,
             generator_result.invoice_ids,
