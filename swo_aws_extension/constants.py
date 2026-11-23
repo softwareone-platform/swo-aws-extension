@@ -192,7 +192,7 @@ class MptOrderStatus(StrEnum):
 class CustomerRolesDeployed(StrEnum):
     """Customer roles deployed status."""
 
-    YES = "yes"
+    YES = "yes"  # noqa: WPS110
     NO_DEPLOYED = "no"
 
 
@@ -216,14 +216,14 @@ class ChannelHandshakeStatusEnum(StrEnum):
 class ChannelHandshakeDeployed(StrEnum):
     """Channel Handshake deployed status."""
 
-    YES = "yes"
+    YES = "yes"  # noqa: WPS110
     NO_DEPLOYED = "no"
 
 
 class MigrationOrderEnum(StrEnum):
     """Values of the vendor-only migration ordering parameter."""
 
-    YES = "yes"
+    YES = "yes"  # noqa: WPS110
     NO_MIGRATION = "no"
 
 
