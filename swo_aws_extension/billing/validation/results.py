@@ -95,7 +95,7 @@ class ExpectedBilling:
         steps = [f"AWS cost price: {self.cost_price:.2f}"]
         if spp_kept:
             steps.append(f"SPP discount kept by SWO: {spp_kept:.2f}")
-        steps.extend(f"{step.description}: {step.amount:.2f}" for step in self.steps)
+        steps.extend(f"{step.description}: {step.amount:.2f}" for step in self.steps)  # noqa: WPS221
         steps.append(f"Expected SP: {self.sales_price:.2f}")
         return "; ".join(steps)
 

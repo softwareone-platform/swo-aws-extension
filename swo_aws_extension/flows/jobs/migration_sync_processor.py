@@ -552,4 +552,4 @@ class MigrationOrdersSyncProcessor:  # noqa: WPS214
 
 
 def _join_pairs(pairs: dict[str, str], separator: str, joiner: str) -> str:
-    return separator.join(f"{key}{joiner}{text}" for key, text in pairs.items())
+    return separator.join(f"{key}{joiner}{text}" for key, text in pairs.items())  # noqa: WPS221
