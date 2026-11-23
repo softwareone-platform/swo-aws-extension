@@ -32,10 +32,13 @@ INELIGIBLE_MESSAGE = (
 INELIGIBLE_FAIL_MESSAGE = (
     f"Billing transfer is not possible for account {MPA_ID}: {INELIGIBLE_MESSAGE}"
 )
+INELIGIBLE_REASON = "UNSUPPORTED_PRICING"
+OTHER_CONSTRAINT_REASON = "RESPONSIBILITY_TRANSFER_MAX_TRANSFERS_QUOTA_VIOLATION"
 OTHER_CONSTRAINT_MESSAGE = "You have reached the limit of pending billing transfer invitations."
 OTHER_CONSTRAINT_AWS_ERROR = (
     "AWS Client error. An error occurred (ConstraintViolationException) when calling the"
     f" {INVITE_OPERATION} operation: {OTHER_CONSTRAINT_MESSAGE}"
+    f' Details: {{"Reason": "{OTHER_CONSTRAINT_REASON}"}}'
 )
 OTHER_CONSTRAINT_QUERYING_LOG = (
     "Querying due to error inviting organization to transfer billing responsibility:"
@@ -52,11 +55,12 @@ class ConstraintViolationException(ClientError):  # ruff:ignore[error-suffix-on-
 
 @pytest.fixture
 def constraint_violation_factory():
-    def factory(message):
+    def factory(message, reason):
         return ConstraintViolationException(
             {
                 "Error": {"Code": "ConstraintViolationException", "Message": message},
                 "Message": message,
+                "Reason": reason,
                 "ResponseMetadata": {"HTTPStatusCode": HTTPStatus.BAD_REQUEST},
             },
             INVITE_OPERATION,
@@ -162,7 +166,7 @@ def test_migration_flow_fails_order_when_ineligible_for_billing_transfer(
 ):
     caplog.set_level(logging.INFO, logger="swo_aws_extension.flows.steps.base")
     organizations_client.invite_organization_to_transfer_responsibility.side_effect = (
-        constraint_violation_factory(INELIGIBLE_MESSAGE)
+        constraint_violation_factory(INELIGIBLE_MESSAGE, INELIGIBLE_REASON)
     )
     context = InitialAWSContext.from_order_data(migration_order)
 
@@ -207,7 +211,7 @@ def test_migration_flow_queries_order_on_other_constraint_violation(
 ):
     caplog.set_level(logging.INFO, logger="swo_aws_extension.flows.steps.base")
     organizations_client.invite_organization_to_transfer_responsibility.side_effect = (
-        constraint_violation_factory(OTHER_CONSTRAINT_MESSAGE)
+        constraint_violation_factory(OTHER_CONSTRAINT_MESSAGE, OTHER_CONSTRAINT_REASON)
     )
     context = InitialAWSContext.from_order_data(migration_order)
     expected_error = ERR_CREATING_INVITATION_RESPONSE.to_dict(
