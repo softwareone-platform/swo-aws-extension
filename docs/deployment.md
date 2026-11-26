@@ -129,3 +129,4 @@ The following values are hardcoded in the source and are not configurable via en
 | Constant | Value | Location | Description |
 | --- | --- | --- | --- |
 | `LINKED_ACCOUNT_INACTIVITY_MONTHS` | `3` | `swo_aws_extension/swo/mpt/sync/agreement_subscription_syncer.py` | Number of months of billing inactivity before a linked-account subscription receives a termination countdown and is eventually terminated |
+| `TERMINATED_AGREEMENT_BILLING_WINDOW_MONTHS` | `6` | `swo_aws_extension/constants.py` | Months before the billing period start during which Terminated agreements are still selected for billing (by relationship end date). Selection does not guarantee billing: the agreement journal skips agreements whose AWS responsibility transfer status is not `ACCEPTED`, and transfers with a scheduled end report `WITHDRAWN` |

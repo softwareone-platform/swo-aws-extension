@@ -10,6 +10,9 @@ from swo_aws_extension.billing.generators.agreement import (
 from swo_aws_extension.billing.generators.authorization import (
     AuthorizationJournalGenerator,
 )
+from swo_aws_extension.billing.generators.billable_agreements_query import (
+    BillableAgreementsQuery,
+)
 from swo_aws_extension.billing.generators.invoice import InvoiceGenerator
 from swo_aws_extension.billing.generators.usage import (
     CostExplorerUsageGenerator,
@@ -321,3 +324,29 @@ def test_pma_usage_error_does_not_crash(
 
     assert result.billing_report_rows == []
     mock_generate_billing_report_rows.assert_not_called()
+
+
+def test_queries_billable_agreements(
+    mock_context,
+    mock_get_agreements,
+    mock_agreement_generator_cls,
+    mock_usage_generator_cls,
+    mock_invoice_generator_cls,
+    mock_aws_client_cls,
+    billing_aws_client_provider,
+    authorization,
+):
+    mock_get_agreements.return_value = []
+    generator = AuthorizationJournalGenerator(mock_context)
+    expected_query = BillableAgreementsQuery(
+        authorization_id="AUTH-1",
+        product_ids=mock_context.product_ids,
+        billing_period=mock_context.billing_period,
+    ).build()
+
+    generator.run(authorization, billing_aws_client_provider)  # act
+
+    mock_get_agreements.assert_called_once_with(
+        mock_context.mpt_client,
+        f"{expected_query}&select=subscriptions,subscriptions.lines,parameters",
+    )
