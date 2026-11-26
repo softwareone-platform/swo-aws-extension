@@ -38,6 +38,7 @@ class AgreementStatusEnum(StrEnum):
     ACTIVE = "Active"
     UPDATING = "Updating"
     PROVISIONING = "Provisioning"
+    TERMINATED = "Terminated"
 
 
 class SubscriptionStatus(StrEnum):
@@ -264,6 +265,7 @@ COMMAND_INVALID_BILLING_DATE_FUTURE = "Invalid billing date. Future months are n
 
 BILLING_JOURNAL_SUCCESS_TITLE = "AWS Billing Journal Synchronization Success"
 BILLING_JOURNAL_ERROR_TITLE = "AWS Billing Journal Synchronization Error"
+TERMINATED_AGREEMENT_BILLING_WINDOW_MONTHS = 6
 BILLING_INVOICE_ATTACHMENT_WARNING_TITLE = "AWS Billing Invoice Attachment Warning"
 BILLING_VALIDATION_WARNING_TITLE = "Billing Validation Summary"
 COST_EXPLORER_DATE_FORMAT = "%Y-%m-%d"

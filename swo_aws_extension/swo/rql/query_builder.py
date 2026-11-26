@@ -1,5 +1,7 @@
 import datetime as dt
 from decimal import Decimal
+from typing import Self
+from urllib.parse import quote
 
 from swo_aws_extension.swo.rql import constants
 
@@ -70,6 +72,10 @@ def _encode_scalar(value: str | bool | int | float | Decimal | dt.date | dt.date
     raise TypeError(f"unsupported value type: {type(value)}")
 
 
+def _encode_field(field: str) -> str:
+    return ".".join(quote(segment, safe="") for segment in field.split("."))
+
+
 def _quote(value: str) -> str:
     escaped = value.replace("'", r"\'")
     return f"'{escaped}'"
@@ -126,6 +132,8 @@ class RQLQuery:
     AND = "and"
     OR = "or"
     OP_EXPR = "expr"
+    OP_ANY = "any"
+    OP_ALL = "all"
 
     def __init__(
         self, _field=None, *, _op=OP_EXPR, _children=None, _negated=False, _expr=None, **kwargs
@@ -330,6 +338,14 @@ class RQLQuery:
             raise TypeError(f"ilike operator expects a string, got {type(value).__name__}")
         return self._bin("ilike", value)
 
+    def any(self, collection_name: str) -> Self:
+        """Return a query that matches when any item of the collection matches this query."""
+        return self._nest(self.OP_ANY, collection_name)
+
+    def all(self, collection_name: str) -> Self:
+        """Return a query that matches when every item of the collection matches this query."""
+        return self._nest(self.OP_ALL, collection_name)
+
     def _bin(self, op, value):
         self._field = ".".join(self._path)
         value = rql_encode(op, value)
@@ -371,6 +387,11 @@ class RQLQuery:
         if query.negated:
             return f"not({query.op}({','.join(tokens)}))"
         return f"{query.op}({','.join(tokens)})"
+
+    def _nest(self, op: str, collection_name: str) -> Self:
+        name = _encode_field(collection_name.replace("__", "."))
+        collection = self._to_string(self) if self.children else self.expr or ""
+        return type(self)(_expr=f"{op}({name},{collection})")
 
     def _copy(self, other):
         return RQLQuery(

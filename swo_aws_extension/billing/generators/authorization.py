@@ -8,6 +8,9 @@ from swo_aws_extension.aws.errors import AWSError
 from swo_aws_extension.billing.generators.agreement import (
     AgreementJournalGenerator,
 )
+from swo_aws_extension.billing.generators.billable_agreements_query import (
+    BillableAgreementsQuery,
+)
 from swo_aws_extension.billing.generators.billing_report_rows import (
     BillingReportRowsBuilder,
     ReportContext,
@@ -23,9 +26,8 @@ from swo_aws_extension.billing.models.journal_result import (
     AuthorizationJournalResult,
 )
 from swo_aws_extension.billing.models.usage import OrganizationUsageResult
-from swo_aws_extension.constants import BILLING_JOURNAL_ERROR_TITLE, AgreementStatusEnum
+from swo_aws_extension.constants import BILLING_JOURNAL_ERROR_TITLE
 from swo_aws_extension.logger import get_logger
-from swo_aws_extension.swo.rql.query_builder import RQLQuery
 from swo_aws_extension.utils.decorators import with_log_context
 
 logger = get_logger(__name__)
@@ -206,10 +208,10 @@ class AuthorizationJournalGenerator:
 
     def _get_authorization_agreements(self, authorization: dict) -> list[dict]:
         select = "&select=subscriptions,subscriptions.lines,parameters"
-        rql_filter = (
-            RQLQuery(authorization__id=authorization.get("id"))
-            & RQLQuery(status__in=[AgreementStatusEnum.ACTIVE, AgreementStatusEnum.UPDATING])
-            & RQLQuery(product__id__in=self._product_ids)
-        )
+        rql_filter = BillableAgreementsQuery(
+            authorization_id=authorization["id"],
+            product_ids=self._product_ids,
+            billing_period=self._billing_period,
+        ).build()
         rql_query = f"{rql_filter}{select}"
         return get_agreements_by_query(self._mpt_client, rql_query)

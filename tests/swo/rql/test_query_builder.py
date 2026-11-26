@@ -412,3 +412,51 @@ def test_repr_for_expr_and_non_expr():
 
     assert repr(q_expr) == "<R(expr) eq(id,'ID')>"
     assert repr(q_and) == "<R(and)>"
+
+
+def test_all():
+    query = RQLQuery(orderQty__gt=1).all("saleDetails")
+
+    result = str(query)
+
+    assert result == "all(saleDetails,gt(orderQty,'1'))"
+
+
+def test_any():
+    query = RQLQuery(orderQty__gt=1).any("saleDetails")
+
+    result = str(query)
+
+    assert result == "any(saleDetails,gt(orderQty,'1'))"
+
+
+def test_all_multiple_conditions():
+    order_qty_query = RQLQuery(orderQty__gt=1)
+    price_query = RQLQuery(price__lt=100)
+    query = (order_qty_query & price_query).all("saleDetails")
+
+    result = str(query)
+
+    assert result == "all(saleDetails,and(gt(orderQty,'1'),lt(price,'100')))"
+
+
+def test_any_multiple_conditions():
+    order_qty_query = RQLQuery(orderQty__gt=1)
+    price_query = RQLQuery(price__lt=100)
+    query = (order_qty_query & price_query).any("saleDetails")
+
+    result = str(query)
+
+    assert result == "any(saleDetails,and(gt(orderQty,'1'),lt(price,'100')))"
+
+
+def test_nested_collection_name_encoded():
+    result = str(RQLQuery(orderQty__gt=1).any("sale&Details"))
+
+    assert result == "any(sale%26Details,gt(orderQty,'1'))"
+
+
+def test_nested_collection_name_double_underscore():
+    result = str(RQLQuery(orderQty__gt=1).any("order__saleDetails"))
+
+    assert result == "any(order.saleDetails,gt(orderQty,'1'))"
